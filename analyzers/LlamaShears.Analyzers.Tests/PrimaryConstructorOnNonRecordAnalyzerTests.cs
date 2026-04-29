@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
 {
     [Test]
-    public async Task Class_with_primary_constructor_reports_LS0001_as_error()
+    public async Task ClassWithPrimaryConstructorReportsLS0001AsError()
     {
         const string source = "public class Foo(int x) { public int X => x; }";
 
@@ -22,7 +22,7 @@ public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
     }
 
     [Test]
-    public async Task Struct_with_primary_constructor_reports_LS0001()
+    public async Task StructWithPrimaryConstructorReportsLS0001()
     {
         const string source = "public struct Bar(int x) { public int X => x; }";
 
@@ -36,7 +36,7 @@ public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
     }
 
     [Test]
-    public async Task Record_class_with_primary_constructor_does_not_report()
+    public async Task RecordClassWithPrimaryConstructorDoesNotReport()
     {
         const string source = "public record Foo(int X);";
 
@@ -48,7 +48,7 @@ public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
     }
 
     [Test]
-    public async Task Record_struct_with_primary_constructor_does_not_report()
+    public async Task RecordStructWithPrimaryConstructorDoesNotReport()
     {
         const string source = "public record struct Bar(int X);";
 
@@ -60,7 +60,7 @@ public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
     }
 
     [Test]
-    public async Task Class_without_primary_constructor_does_not_report()
+    public async Task ClassWithoutPrimaryConstructorDoesNotReport()
     {
         const string source =
             """
