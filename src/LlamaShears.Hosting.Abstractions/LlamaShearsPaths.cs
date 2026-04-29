@@ -31,7 +31,7 @@ public static class LlamaShearsPaths
     public static string GetAgentWorkspaceDefaultPath(string agentName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentName);
-        return Path.Combine(DataRoot, "workspaces", agentName);
+        return Path.Combine(WorkspaceRoot, agentName);
     }
 
     private static string GetPathFromEnvironmentOrDefault(string environmentVariable, Func<string> defaultPathFactory)
