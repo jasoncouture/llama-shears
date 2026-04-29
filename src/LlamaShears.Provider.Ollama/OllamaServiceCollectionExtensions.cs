@@ -33,11 +33,13 @@ public static class OllamaServiceCollectionExtensions
         services.AddOptions<OllamaProviderOptions>()
             .BindConfiguration(configurationSection);
 
-        services.AddHttpClient<IOllamaApiClient, OllamaApiClient>((sp, httpClient) =>
-        {
-            var options = sp.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
-            httpClient.BaseAddress = options.BaseUri;
-        });
+        services
+            .AddHttpClient(nameof(OllamaApiClient), (sp, httpClient) =>
+            {
+                var options = sp.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
+                httpClient.BaseAddress = options.BaseUri;
+            })
+            .AddTypedClient<IOllamaApiClient>(httpClient => new OllamaApiClient(httpClient));
 
         services.AddSingleton<IProviderFactory, OllamaProviderFactory>();
 
