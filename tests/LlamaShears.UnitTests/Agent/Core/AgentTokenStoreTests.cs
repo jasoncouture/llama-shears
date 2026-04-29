@@ -9,7 +9,7 @@ namespace LlamaShears.UnitTests.Agent.Core;
 public sealed class AgentTokenStoreTests
 {
     [Test]
-    public async Task Issue_returns_a_non_empty_base64_token()
+    public async Task IssueReturnsANonEmptyBase64Token()
     {
         var store = BuildStore(new FakeTimeProvider());
 
@@ -21,7 +21,7 @@ public sealed class AgentTokenStoreTests
     }
 
     [Test]
-    public async Task Issue_returns_distinct_tokens_for_repeated_calls()
+    public async Task IssueReturnsDistinctTokensForRepeatedCalls()
     {
         var store = BuildStore(new FakeTimeProvider());
 
@@ -33,7 +33,7 @@ public sealed class AgentTokenStoreTests
     }
 
     [Test]
-    public async Task TryGetAgentInformation_returns_the_bound_agent_for_a_valid_token()
+    public async Task TryGetAgentInformationReturnsTheBoundAgentForAValidToken()
     {
         var store = BuildStore(new FakeTimeProvider());
         var expected = SampleAgent("alice");
@@ -46,7 +46,7 @@ public sealed class AgentTokenStoreTests
     }
 
     [Test]
-    public async Task TryGetAgentInformation_returns_false_for_an_unknown_token()
+    public async Task TryGetAgentInformationReturnsFalseForAnUnknownToken()
     {
         var store = BuildStore(new FakeTimeProvider());
 
@@ -57,7 +57,7 @@ public sealed class AgentTokenStoreTests
     }
 
     [Test]
-    public async Task Token_can_only_be_consumed_once()
+    public async Task TokenCanOnlyBeConsumedOnce()
     {
         var store = BuildStore(new FakeTimeProvider());
         var token = store.Issue(SampleAgent());
@@ -71,7 +71,7 @@ public sealed class AgentTokenStoreTests
     }
 
     [Test]
-    public async Task Token_expires_after_the_configured_lifetime()
+    public async Task TokenExpiresAfterTheConfiguredLifetime()
     {
         var time = new FakeTimeProvider();
         var store = BuildStore(time);
