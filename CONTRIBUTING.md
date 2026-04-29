@@ -8,7 +8,15 @@ The rules in this document and the ADRs in [docs/adr/](docs/adr/) are concrete a
 
 Read it before contributing, and make sure your proposed change aligns with it. The principles are not aspirational — they are how decisions on this project actually get made. A change that fights the principles is unlikely to land, regardless of how well it works locally. A change that reinforces the principles is likely to land even when the diff is awkward.
 
-If your change requires deviating from a principle (it happens — the principles are heuristics in service of outcomes, not laws), name the deviation explicitly in the PR description and explain why the case clears the bar. The deviation will be reviewed against the principle, not against personal taste, and the discussion goes faster when the trade is named up front rather than discovered during review.
+**Do not deviate from a principle in a code PR.** The principles are the project's stance. If you believe a principle should bend for your case — or should change outright — the path is:
+
+1. Open a GitHub issue describing the case and the proposed change in stance. Not a PR. The conversation lives in the issue.
+2. The issue is discussed publicly. The goal is consensus; absent consensus, a maintainer makes the authoritative call.
+3. Once accepted, a maintainer drafts an ADR (a new ADR, or one that supersedes an existing one) capturing the new direction, and opens it as a PR.
+4. The ADR PR is reviewed on its own merits and merged. From that merge forward, the new direction is the project's stance — not a deviation, just the current position, with the trade documented.
+5. The code change that motivated the discussion can land afterward, against the now-current stance.
+
+This is deliberate. The point is to align on changes to the project's thinking *before* code lands against them, so that what would otherwise have been a deviation is no longer a deviation by the time the diff arrives. The project does not tolerate ad-hoc bending of principles in PRs — not because the principles are sacred, but because "we agreed once in a review thread" is exactly the memory-resident policy [PRINCIPLES.md](PRINCIPLES.md) is designed to avoid. The ADR sequence is the authoritative record; if the record doesn't say something, the project doesn't believe it yet.
 
 [ADR-0007 (Pit of success)](docs/adr/0007-pit-of-success.md) and [ADR-0009 (Pragmatism over technical purity)](docs/adr/0009-pragmatism-over-technical-purity.md) are the canonical instances of these principles in the ADR sequence. Reading those alongside PRINCIPLES.md is the fastest way to internalize how the project thinks.
 
