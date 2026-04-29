@@ -16,6 +16,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 8. [No per-model workarounds](0008-no-per-model-workarounds.md)
 9. [Strive for technical purity, where practical](0009-pragmatism-over-technical-purity.md)
 10. [Exception handling requires explicit justification](0010-exception-handling-requires-justification.md)
+11. [Config root lives in the user profile](0011-config-root-location.md)
 
 ## Format
 
