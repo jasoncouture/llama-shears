@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LlamaShears.Provider.Ollama\LlamaShears.Provider.Ollama.csproj" />
     <ProjectReference Include="..\LlamaShears.Agent.Core\LlamaShears.Agent.Core.csproj" />
+    <ProjectReference Include="..\LlamaShears.Api.Web\LlamaShears.Api.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
