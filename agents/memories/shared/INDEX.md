@@ -1,1 +1,3 @@
-# Placeholder for shared memory index
+# Shared memory index
+
+- [Atomic commits and full-solution build/test](feedback_build_and_commit.md) — commit each logical change; always run `dotnet build` and `dotnet test` with no params
