@@ -7,6 +7,10 @@
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"
                       PrivateAssets="all" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\analyzers\LlamaShears.Analyzers.CodeFixes\LlamaShears.Analyzers.CodeFixes.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

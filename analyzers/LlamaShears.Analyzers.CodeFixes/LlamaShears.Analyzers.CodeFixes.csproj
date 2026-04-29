@@ -11,17 +11,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="LlamaShears.Analyzers.CodeFixes" />
-    <InternalsVisibleTo Include="LlamaShears.Analyzers.Tests" />
+    <ProjectReference Include="..\LlamaShears.Analyzers\LlamaShears.Analyzers.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
-    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" PrivateAssets="all">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
