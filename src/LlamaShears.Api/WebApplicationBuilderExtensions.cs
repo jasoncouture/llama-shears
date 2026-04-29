@@ -12,6 +12,7 @@ public static class WebApplicationBuilderExtensions
 
         builder.Services.AddOllamaProvider();
         builder.Services.AddAgentCore();
+        builder.Services.AddAgentManager();
 
         return builder;
     }
