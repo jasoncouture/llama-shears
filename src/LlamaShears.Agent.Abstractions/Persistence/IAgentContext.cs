@@ -8,9 +8,9 @@ public interface IAgentContext
 
     IReadOnlyList<ModelTurn> Turns { get; }
 
-    IReadOnlyList<IConversationEntry> Entries { get; }
+    IReadOnlyList<IContextEntry> Entries { get; }
 
-    Task AppendAsync(IConversationEntry entry, CancellationToken cancellationToken);
+    Task AppendAsync(IContextEntry entry, CancellationToken cancellationToken);
 
     event EventHandler? Cleared;
 }

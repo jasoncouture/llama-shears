@@ -10,5 +10,5 @@ public sealed class ShearsPathsOptions
 
     public string? TemplatesRoot { get; set; }
 
-    public string? ConversationsRoot { get; set; }
+    public string? ContextRoot { get; set; }
 }

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace LlamaShears.UnitTests.Agent.Core.Persistence;
 
-public sealed class JsonLineConversationStoreTests
+public sealed class JsonLineContextStoreTests
 {
     private const string AgentId = "alice";
 
@@ -26,7 +26,7 @@ public sealed class JsonLineConversationStoreTests
         await context.AppendAsync(first, CancellationToken.None);
         await context.AppendAsync(second, CancellationToken.None);
 
-        var read = new List<IConversationEntry>();
+        var read = new List<IContextEntry>();
         await foreach (var entry in fixture.Store.ReadCurrentAsync(AgentId, CancellationToken.None))
         {
             read.Add(entry);
@@ -55,7 +55,7 @@ public sealed class JsonLineConversationStoreTests
             "{\"kind\":\"unknown\"}\n",
             CancellationToken.None);
 
-        var read = new List<IConversationEntry>();
+        var read = new List<IContextEntry>();
         await foreach (var entry in fixture.Store.ReadCurrentAsync(AgentId, CancellationToken.None))
         {
             read.Add(entry);
@@ -84,7 +84,7 @@ public sealed class JsonLineConversationStoreTests
         await context.AppendAsync(turn, CancellationToken.None);
 
         await Assert.That(context.Turns).Contains(turn);
-        await Assert.That(context.Entries).Contains((IConversationEntry)turn);
+        await Assert.That(context.Entries).Contains((IContextEntry)turn);
     }
 
     [Test]
@@ -250,19 +250,19 @@ public sealed class JsonLineConversationStoreTests
             _root = Path.Combine(Path.GetTempPath(), $"llamashears-store-{Guid.NewGuid():N}");
             Paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = _root }));
             TimeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-            Store = new JsonLineConversationStore(Paths, TimeProvider);
+            Store = new JsonLineContextStore(Paths, TimeProvider);
         }
 
         public IShearsPaths Paths { get; }
 
         public FakeTimeProvider TimeProvider { get; }
 
-        public JsonLineConversationStore Store { get; }
+        public JsonLineContextStore Store { get; }
 
-        public JsonLineConversationStore NewStore() => new(Paths, TimeProvider);
+        public JsonLineContextStore NewStore() => new(Paths, TimeProvider);
 
         public string AgentFolder(string agentId) =>
-            Paths.GetPath(PathKind.Conversations, agentId, ensureExists: true);
+            Paths.GetPath(PathKind.Context, agentId, ensureExists: true);
 
         public string CurrentPath(string agentId) =>
             Path.Combine(AgentFolder(agentId), "current.json");

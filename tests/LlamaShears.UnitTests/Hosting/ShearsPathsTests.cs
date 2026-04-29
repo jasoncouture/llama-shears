@@ -21,7 +21,7 @@ public sealed class ShearsPathsTests
     [Arguments(PathKind.Workspace, "workspace")]
     [Arguments(PathKind.Agents, "agents")]
     [Arguments(PathKind.Templates, "templates")]
-    [Arguments(PathKind.Conversations, "conversations")]
+    [Arguments(PathKind.Context, "context")]
     public async Task SubrootDefaultsUnderDataRoot(PathKind kind, string folderName)
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
@@ -42,7 +42,7 @@ public sealed class ShearsPathsTests
         await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Workspace))).IsEqualTo(fixture.Path);
         await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Agents))).IsEqualTo(fixture.Path);
         await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Templates))).IsEqualTo(fixture.Path);
-        await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Conversations))).IsEqualTo(fixture.Path);
+        await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Context))).IsEqualTo(fixture.Path);
     }
 
     [Test]

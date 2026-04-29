@@ -4,7 +4,7 @@ namespace LlamaShears.Provider.Abstractions;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(ModelTurn), "turn")]
-public interface IConversationEntry
+public interface IContextEntry
 {
     int Version => 1;
 }

@@ -2,20 +2,20 @@ using LlamaShears.Provider.Abstractions;
 
 namespace LlamaShears.Agent.Abstractions.Persistence;
 
-public interface IConversationStore
+public interface IContextStore
 {
     Task<IAgentContext> OpenAsync(string agentId, CancellationToken cancellationToken);
 
-    IAsyncEnumerable<IConversationEntry> ReadCurrentAsync(string agentId, CancellationToken cancellationToken);
+    IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, CancellationToken cancellationToken);
 
-    IAsyncEnumerable<IConversationEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken);
+    IAsyncEnumerable<IContextEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<string>> ListAgentsAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Clears the agent's conversation. With <paramref name="archive"/>=true,
+    /// Clears the agent's stored context. With <paramref name="archive"/>=true,
     /// renames <c>current.json</c> to <c>&lt;UnixMillis&gt;.json</c>; otherwise
     /// deletes <c>current.json</c>. The agent's folder is never removed by the
     /// framework — that is the user's or a plugin's job.

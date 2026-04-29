@@ -6,5 +6,5 @@ public enum PathKind
     Workspace,
     Agents,
     Templates,
-    Conversations,
+    Context,
 }

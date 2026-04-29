@@ -3,20 +3,20 @@ using LlamaShears.Provider.Abstractions;
 
 namespace LlamaShears.UnitTests.Serialization;
 
-public sealed class ConversationEntrySerializationTests
+public sealed class ContextEntrySerializationTests
 {
     private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
 
     [Test]
-    public async Task ModelTurnRoundTripsViaIConversationEntry()
+    public async Task ModelTurnRoundTripsViaIContextEntry()
     {
         var original = new ModelTurn(
             ModelRole.User,
             "hello",
             new DateTimeOffset(2026, 4, 29, 20, 0, 0, TimeSpan.Zero));
 
-        var json = JsonSerializer.Serialize<IConversationEntry>(original, _options);
-        var roundTripped = JsonSerializer.Deserialize<IConversationEntry>(json, _options);
+        var json = JsonSerializer.Serialize<IContextEntry>(original, _options);
+        var roundTripped = JsonSerializer.Deserialize<IContextEntry>(json, _options);
 
         await Assert.That(roundTripped).IsEqualTo(original);
     }
@@ -29,7 +29,7 @@ public sealed class ConversationEntrySerializationTests
             "hi",
             new DateTimeOffset(2026, 4, 29, 20, 0, 0, TimeSpan.Zero));
 
-        var json = JsonSerializer.Serialize<IConversationEntry>(turn, _options);
+        var json = JsonSerializer.Serialize<IContextEntry>(turn, _options);
 
         await Assert.That(json).Contains("\"kind\":\"turn\"");
     }
@@ -41,7 +41,7 @@ public sealed class ConversationEntrySerializationTests
             {"kind":"reflection","content":"…"}
             """;
 
-        await Assert.That(() => JsonSerializer.Deserialize<IConversationEntry>(json, _options))
+        await Assert.That(() => JsonSerializer.Deserialize<IContextEntry>(json, _options))
             .Throws<JsonException>();
     }
 }
