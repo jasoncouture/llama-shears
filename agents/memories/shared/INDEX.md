@@ -24,3 +24,4 @@
 - [MCP client loopback auth handler](project_mcp_client_loopback_auth_handler.md) — agent-side outbound MCP `HttpClient` uses a `DelegatingHandler` that detects loopback-to-our-listener and injects the current agent's bearer; external destinations untouched. Future, not yet built.
 - [Framework-first is intentional](project_framework_first_is_intentional.md) — substrate-before-agent-loop is deliberate sequencing to avoid retrofit debt; don't critique scaffolding-to-feature ratio
 - [PR coverage-delta auto-flagging is planned](project_coverage_delta_flagging.md) — coverage measured per PR, decrease flags for review (non-blocking); do not add manual "tests" sections to PR templates
+- [Storage moves from EF/DB to chunked JSON on disk](project_storage_disk_json.md) — EF and the DB are being removed; atomic chunked JSON files; active conversation = folder placement, archive = `mv`
