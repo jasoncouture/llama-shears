@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.Channels;
 using LlamaShears.Agent.Abstractions;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
@@ -12,7 +13,10 @@ public sealed partial class Agent : IAgent
     private readonly ILogger<Agent> _logger;
     private readonly List<ModelTurn> _context;
     private readonly IDisposable _subscription;
-    private int _heartbeating;
+    private readonly Channel<bool> _signal;
+    private readonly CancellationTokenSource _shutdown;
+    private readonly Task _loop;
+    private readonly Task[] _inputWaiters;
 
     public Agent(
         string id,
@@ -31,7 +35,15 @@ public sealed partial class Agent : IAgent
         _context = [..seedContext];
         InputChannels = inputChannels;
         OutputChannels = outputChannels;
+        _signal = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
+        {
+            FullMode = BoundedChannelFullMode.DropWrite,
+            SingleReader = true,
+        });
+        _shutdown = new CancellationTokenSource();
         _subscription = ticks.Subscribe(OnTickAsync);
+        _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
+        _inputWaiters = [.. inputChannels.Select(c => Task.Run(() => WatchInputAsync(c, _shutdown.Token)))];
     }
 
     public string Id { get; }
@@ -51,36 +63,87 @@ public sealed partial class Agent : IAgent
     public void Dispose()
     {
         _subscription.Dispose();
+        _shutdown.Cancel();
+        _signal.Writer.TryComplete();
+        try
+        {
+            Task.WhenAll([_loop, .._inputWaiters]).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        _shutdown.Dispose();
+
+        foreach (var input in InputChannels)
+        {
+            (input as IDisposable)?.Dispose();
+        }
+        foreach (var output in OutputChannels)
+        {
+            (output as IDisposable)?.Dispose();
+        }
     }
 
-    private async ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
+    private ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
     {
         if (!HeartbeatEnabled)
         {
-            return;
+            return ValueTask.CompletedTask;
         }
 
         if (LastHeartbeatAt != default && tick.At - LastHeartbeatAt < HeartbeatPeriod)
         {
-            return;
+            return ValueTask.CompletedTask;
         }
 
-        if (Interlocked.CompareExchange(ref _heartbeating, 1, 0) != 0)
-        {
-            return;
-        }
+        LastHeartbeatAt = tick.At;
+        Pulse();
+        return ValueTask.CompletedTask;
+    }
 
+    private void Pulse()
+    {
+        _signal.Writer.TryWrite(true);
+    }
+
+    private async Task WatchInputAsync(IInputChannel channel, CancellationToken cancellationToken)
+    {
         try
         {
-            await HeartbeatAsync(tick.At, cancellationToken).ConfigureAwait(false);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await channel.WaitForInputAsync(cancellationToken).ConfigureAwait(false);
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                Pulse();
+            }
         }
-        finally
+        catch (OperationCanceledException)
         {
-            Interlocked.Exchange(ref _heartbeating, 0);
         }
     }
 
-    private async Task HeartbeatAsync(DateTimeOffset firedAt, CancellationToken cancellationToken)
+    private async Task RunLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _signal.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                while (_signal.Reader.TryRead(out _))
+                {
+                }
+
+                await ProcessOnceAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task ProcessOnceAsync(CancellationToken cancellationToken)
     {
         var contextSizeBefore = _context.Count;
 
@@ -91,8 +154,6 @@ public sealed partial class Agent : IAgent
                 _context.Add(turn);
             }
         }
-
-        LastHeartbeatAt = firedAt;
 
         if (_context.Count == contextSizeBefore)
         {
