@@ -25,6 +25,18 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 
 - **ADR-0008** — [No per-model workarounds](0008-no-per-model-workarounds.md) — Superseded by [ADR-0015](0015-provider-vs-model-workarounds.md) on 2026-04-28.
 
+## Lifecycle
+
+ADRs move through three states; the active list and the Superseded section above are the first two.
+
+1. **Active.** The decision is in force.
+2. **Superseded.** Demotion happens the moment a replacement ADR is accepted — the entry moves out of the active list and into the Superseded section in the same change that adds the new ADR. The original ADR file stays on disk at this stage; only the index entry moves.
+3. **Pending removal.** Superseded ADRs are eventually moved to a Pending removal section. The cleanup pass after that deletes the ADR file from disk and removes the index entry entirely. Git history carries the full record once an ADR is gone from `docs/adr/`.
+
+Cleanup triggers on count, not on release cadence: when the combined Superseded + Pending removal set grows past *X* entries, do a cleanup pass that demotes Superseded → Pending removal and removes Pending removal → disk. *X is currently undefined.* Either pick a number and write it here, or accept that the trigger is maintainer judgment and name it as such — leaving X as an unbound variable means cleanup will never fire.
+
+Rationale: the index is a working surface. Superseded entries are useful for a short window after the supersession (paper trail, in-flight references), but the value of carrying them inline drops off fast. Git carries the long-term record without cost; the index is for what is currently load-bearing.
+
 ## Format
 
 Each ADR follows the [Michael Nygard format](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions):
