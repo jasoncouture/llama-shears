@@ -16,6 +16,7 @@ public sealed class ChatSession : IDisposable
     private readonly IAsyncSubscriber<AgentTurnEmitted> _turns;
     private readonly IAsyncSubscriber<AgentFragmentEmitted> _fragments;
     private readonly IAsyncPublisher<UserMessageSubmitted> _userMessages;
+    private readonly IAgentDirectory _directory;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _streamingBubbles = [];
     private readonly Lock _gate = new();
@@ -26,11 +27,13 @@ public sealed class ChatSession : IDisposable
     public ChatSession(
         IAsyncSubscriber<AgentTurnEmitted> turns,
         IAsyncSubscriber<AgentFragmentEmitted> fragments,
-        IAsyncPublisher<UserMessageSubmitted> userMessages)
+        IAsyncPublisher<UserMessageSubmitted> userMessages,
+        IAgentDirectory directory)
     {
         _turns = turns;
         _fragments = fragments;
         _userMessages = userMessages;
+        _directory = directory;
     }
 
     public string? SelectedAgentId
@@ -62,8 +65,19 @@ public sealed class ChatSession : IDisposable
     /// </summary>
     public event Action? Changed;
 
-    public void SelectAgent(string? agentId)
+    /// <summary>
+    /// Switches the selected agent. Loads the agent's persisted history
+    /// before subscribing to live events, so a refresh shows prior turns
+    /// in arrival order without a race against incoming fragments.
+    /// </summary>
+    public async Task SelectAgentAsync(string? agentId, CancellationToken cancellationToken)
     {
+        IReadOnlyList<ModelTurn> history = [];
+        if (!string.IsNullOrWhiteSpace(agentId))
+        {
+            history = await _directory.GetTurnsAsync(agentId, cancellationToken).ConfigureAwait(false);
+        }
+
         lock (_gate)
         {
             if (string.Equals(_selectedAgentId, agentId, StringComparison.Ordinal))
@@ -79,6 +93,14 @@ public sealed class ChatSession : IDisposable
             _fragmentSubscription = null;
             if (!string.IsNullOrWhiteSpace(agentId))
             {
+                foreach (var turn in history)
+                {
+                    var bubble = HistoryBubbleFromTurn(turn);
+                    if (bubble is not null)
+                    {
+                        _bubbles.Add(bubble);
+                    }
+                }
                 _turnSubscription = _turns.Subscribe(OnTurnAsync);
                 _fragmentSubscription = _fragments.Subscribe(OnFragmentAsync);
             }
@@ -198,4 +220,21 @@ public sealed class ChatSession : IDisposable
         ModelRole.Thought => ChatBubbleKind.Thought,
         _ => null,
     };
+
+    private static ChatBubble? HistoryBubbleFromTurn(ModelTurn turn)
+    {
+        // Live turn-arrival is the source of truth for Assistant/Thought;
+        // for history backfill we additionally render User turns so the
+        // user sees their side of the prior conversation. System and
+        // framework-injected turns stay hidden — they're prompt plumbing,
+        // not chat content.
+        var kind = turn.Role switch
+        {
+            ModelRole.User => ChatBubbleKind.User,
+            ModelRole.Assistant => ChatBubbleKind.Assistant,
+            ModelRole.Thought => ChatBubbleKind.Thought,
+            _ => (ChatBubbleKind?)null,
+        };
+        return kind is null ? null : new ChatBubble(kind.Value, turn.Content, turn.Timestamp);
+    }
 }

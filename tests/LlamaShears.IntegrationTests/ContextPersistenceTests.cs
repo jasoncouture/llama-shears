@@ -1,6 +1,7 @@
 using System.Text.Json;
 using LlamaShears.Agent.Abstractions.Events;
 using LlamaShears.Agent.Abstractions.Persistence;
+using LlamaShears.Api.Web.Services;
 using LlamaShears.Hosting;
 using LlamaShears.IntegrationTests.Hosting;
 using LlamaShears.Provider.Abstractions;
@@ -36,6 +37,24 @@ public sealed class ContextPersistenceTests
             && e.GetProperty("content").GetString() == "hello");
         await Assert.That(entries).Contains(e =>
             e.GetProperty("role").GetString() == "Assistant");
+    }
+
+    [Test]
+    public async Task AgentDirectoryReturnsPersistedTurnsForUiHistorySeed()
+    {
+        await using var factory = new IsolatedAppFactory();
+        factory.SeedAgent(AgentId, """
+            { "model": { "id": "TEST/dummy" } }
+            """);
+        using var client = factory.CreateClient();
+        await factory.WaitForAgentAsync(AgentId);
+        await SendUserMessageAndWaitForReplyAsync(factory, "remember me");
+
+        var directory = factory.Services.GetRequiredService<IAgentDirectory>();
+        var turns = await directory.GetTurnsAsync(AgentId, CancellationToken.None);
+
+        await Assert.That(turns).Contains(t => t.Role == ModelRole.User && t.Content == "remember me");
+        await Assert.That(turns).Contains(t => t.Role == ModelRole.Assistant);
     }
 
     [Test]

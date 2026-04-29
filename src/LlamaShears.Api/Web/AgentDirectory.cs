@@ -1,17 +1,28 @@
+using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Agent.Core;
 using LlamaShears.Api.Web.Services;
+using LlamaShears.Provider.Abstractions;
 
 namespace LlamaShears.Api.Web;
 
 internal sealed class AgentDirectory : IAgentDirectory
 {
     private readonly AgentManager _manager;
+    private readonly IContextStore _contextStore;
 
-    public AgentDirectory(AgentManager manager)
+    public AgentDirectory(AgentManager manager, IContextStore contextStore)
     {
         _manager = manager;
+        _contextStore = contextStore;
     }
 
     public IReadOnlyList<string> ListAgentIds()
         => [.. _manager.Agents.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)];
+
+    public async Task<IReadOnlyList<ModelTurn>> GetTurnsAsync(string agentId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        var context = await _contextStore.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
+        return context.Turns;
+    }
 }

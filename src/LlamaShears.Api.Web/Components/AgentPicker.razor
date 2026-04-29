@@ -4,7 +4,7 @@
 
 <div class="agent-picker">
     <label for="agent-select">Agent</label>
-    <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChanged">
+    <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChangedAsync">
         <option value="">— select agent —</option>
         @foreach (var id in _agentIds)
         {
@@ -31,9 +31,9 @@
         _agentIds = Directory.ListAgentIds();
     }
 
-    private void OnSelectionChanged(ChangeEventArgs e)
+    private async Task OnSelectionChangedAsync(ChangeEventArgs e)
     {
         var id = e.Value as string;
-        Session.SelectAgent(string.IsNullOrWhiteSpace(id) ? null : id);
+        await Session.SelectAgentAsync(string.IsNullOrWhiteSpace(id) ? null : id, CancellationToken.None);
     }
 }

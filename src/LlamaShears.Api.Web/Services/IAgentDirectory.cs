@@ -1,3 +1,5 @@
+using LlamaShears.Provider.Abstractions;
+
 namespace LlamaShears.Api.Web.Services;
 
 /// <summary>
@@ -13,4 +15,11 @@ public interface IAgentDirectory
     /// the agent manager has not yet completed its first scan.
     /// </summary>
     IReadOnlyList<string> ListAgentIds();
+
+    /// <summary>
+    /// Snapshot of the agent's persisted conversation turns, in arrival
+    /// order, so a fresh circuit can show prior conversation context to
+    /// the user instead of starting blank after a refresh.
+    /// </summary>
+    Task<IReadOnlyList<ModelTurn>> GetTurnsAsync(string agentId, CancellationToken cancellationToken);
 }
