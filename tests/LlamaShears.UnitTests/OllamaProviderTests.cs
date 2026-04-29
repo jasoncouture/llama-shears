@@ -20,7 +20,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task AddOllamaProvider_RegistersProviderFactory()
+    public async Task AddOllamaProviderRegistersProviderFactory()
     {
         var services = ServicesWithConfig();
 
@@ -33,7 +33,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task AddOllamaProvider_RegistersOllamaApiClient()
+    public async Task AddOllamaProviderRegistersOllamaApiClient()
     {
         var services = ServicesWithConfig();
 
@@ -46,7 +46,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task AddOllamaProvider_BindsDefaultSection()
+    public async Task AddOllamaProviderBindsDefaultSection()
     {
         var services = ServicesWithConfig(new Dictionary<string, string?>
         {
@@ -62,7 +62,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task AddOllamaProvider_BindsCustomSection()
+    public async Task AddOllamaProviderBindsCustomSection()
     {
         var services = ServicesWithConfig(new Dictionary<string, string?>
         {
@@ -78,7 +78,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task OllamaProviderOptions_DefaultBaseUri_IsLocalhost11434()
+    public async Task OllamaProviderOptionsDefaultBaseUriIsLocalhost11434()
     {
         var options = new OllamaProviderOptions();
 
@@ -86,7 +86,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task Factory_Name_IsOllama()
+    public async Task FactoryNameIsOllama()
     {
         var services = ServicesWithConfig();
         services.AddOllamaProvider();
@@ -98,7 +98,7 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task Factory_CreateModel_ReturnsOllamaLanguageModel()
+    public async Task FactoryCreateModelReturnsOllamaLanguageModel()
     {
         var services = ServicesWithConfig();
         services.AddOllamaProvider();
