@@ -51,11 +51,9 @@ Treat this directory as the single global workspace for file operations unless e
 
 {{ context.subagent_files }}
 
-<!-- LLAMASHEARS_CACHE_BOUNDARY -->
-
 ## Tooling
 
-Tool availability is filtered by policy. Tool names are case-sensitive — call tools exactly as listed.
+Tool names are case-sensitive — call tools exactly as listed.
 
 {{ tools.list }}
 
