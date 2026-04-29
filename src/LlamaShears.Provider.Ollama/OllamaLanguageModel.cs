@@ -64,6 +64,8 @@ public class OllamaLanguageModel : ILanguageModel
         ModelRole.System => ChatRole.System,
         ModelRole.User => ChatRole.User,
         ModelRole.Assistant => ChatRole.Assistant,
+        ModelRole.FrameworkUser => ChatRole.User,
+        ModelRole.FrameworkAssistant => ChatRole.Assistant,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported model role.")
     };
 }
