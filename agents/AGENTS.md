@@ -27,6 +27,8 @@ For further documentation, see the memory index files in the respective director
 
 ## Memory Storage Guidelines
 
+> **Note:** All paths in this section (and in the Agent Instructions section above) are **relative to this `agents/` folder**, not the repository root. The actual on-disk locations are `agents/memories/shared/` and `agents/memories/local/`.
+
 - Project-wide instructions belong in the shared memories directory: [memories/shared/](memories/shared/)
 - User-specific/local instructions belong in the local memories directory: [memories/local/](memories/local/)
 - If it is unclear which category a memory belongs to, ask the user for clarification before saving.
