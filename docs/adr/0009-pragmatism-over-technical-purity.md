@@ -15,28 +15,46 @@ Each is a "you must do it this way" position the project takes deliberately, bec
 
 Purity has a failure mode, though: it can be pursued past the point where it serves users. The canonical case is the recurring stance in the Go ecosystem that "all configuration must come from environment variables." It is defensible in the abstract — env vars are widely supported, cleanly namespaced, easy to inject in containers. It is also operationally hostile to a real subset of users: macOS GUI-launched applications cannot easily see environment variables set in shell rc files; `launchctl setenv` is per-session; the workarounds are fragile and surprising. A user on macOS running an Ollama-style daemon discovers that the "right way" to configure the tool does not work, and the project's response — when it has one — is "set up your environment differently" rather than "we should accept config from a file." The technically-pure mandate has crossed into impracticality, and the project has chosen aesthetic consistency over the user's outcome.
 
-The point is not that purity is bad. The point is that purity divorced from practicality stops being purity in any useful sense and becomes aesthetic preference defended with a principle. The mandates that earn their place are the ones that are *both* pure *and* practical.
+The point is not that purity is bad. The point is that purity divorced from practicality stops being purity in any useful sense and becomes aesthetic preference defended with a principle. The mandates that earn their place over time are the ones that are *both* pure *and* practical.
 
 ## Decision
 
-The project strives for technical purity. The default design instinct is the principled, consistent, technically-correct approach. Mandates that eliminate whole classes of error or fragility are a feature, not a problem to solve around.
+The project strives for technical purity. The default design instinct is the principled, consistent, technically-correct approach. Mandates that eliminate whole classes of error or fragility are a feature, not a problem.
 
-Purity is gated by practicality. Before accepting a pure design — particularly a mandate that forbids alternatives — the design has to clear this bar:
+**Mandates can be proposed and accepted on technical-purity grounds alone.** A new mandate does not have to prove its practicality in advance. Practicality is a *challenge mechanism*, not a precondition for adoption. Mandates earn their staying power through use.
 
-> Does this impose meaningful friction on a real subset of users in legitimate environments?
+**Practicality challenges are legitimate and the project takes them seriously.** When a real user, in a real environment, with a real use case in scope for the project, hits friction caused by a mandate, the question becomes:
 
-If yes, and the constraint is not load-bearing for security, correctness, ABI stability, or another concrete user-facing reason, the pure design is wrong. The user's environment is not the bug; the constraint is.
+> Does the friction this mandate imposes outweigh the cost of accommodating the use case?
 
-When a previously-accepted mandate becomes impractical — because the world changes, a new platform emerges, or a use case nobody anticipated arrives — the ADR is revised. A mandate that has crossed into impracticality is a bug in the design, not a fact of the project. Revisiting an accepted ADR is expected behaviour, not a failure of resolve.
+Several factors weigh into that decision:
 
-Aesthetic consistency without a load-bearing reason is not technical purity. "It's cleaner this way" or "it's the convention" do not by themselves justify a mandate. The accepted mandate ADRs each carry a concrete justification (ABI stability, ambiguity elimination, navigability); new mandates have to do the same.
+- **How real the friction is.** "A hypothetical user might..." does not count. "Here is a class of users who can't get past it" does.
+- **How load-bearing the mandate is.** Mandates that exist for security, correctness, ABI stability, ambiguity elimination, or similar concrete reasons carry a higher accommodation bar than mandates whose only justification is aesthetic consistency.
+- **The cost of accommodating.** Some accommodations are cheap — accept a config file alongside env vars; provide an escape hatch alongside the opinionated API. Some are prohibitive: running the project on an ESP32 would require fundamentally different memory, threading, and dependency assumptions; the cost is not "a few extra lines" but a separate project.
+- **Whether the use case is in scope at all.** "I just want to chat with an AI" against a project that exists to host autonomous agents is asking the project to be something it isn't. There are good chat tools — use them. That is not friction the project caused, and the project does not have to absorb it.
+
+**When the project chooses not to accommodate, the rationale must be explicit and objective.** Acceptable reasons include:
+
+- The technical cost of accommodation is disproportionate to the friction relieved.
+- The use case is outside the project's stated scope.
+- The accommodation would compromise a load-bearing mandate (security, correctness, ABI stability, etc.).
+- The platform or environment is not in the project's target set, and adapting would require fundamentally different architecture rather than a configuration option.
+
+"That's not how we do it" is not a reason. Neither is silent refusal. When the project declines an accommodation, the project says so, with the reason, in writing — so the user can understand the boundary and route around it.
+
+**When a previously-accepted mandate becomes impractical** — because the world changes, a new platform emerges, or a use case within scope but unanticipated arrives — the ADR is revised. Revisiting an accepted ADR is expected behaviour, not a failure of resolve.
+
+**Aesthetic consistency without a load-bearing reason is not technical purity.** "It's cleaner this way" or "it's the convention" do not by themselves justify a mandate that survives a serious practicality challenge. The accepted mandate ADRs each carry concrete justification; new mandates have to do the same once the challenges arrive.
 
 ## Consequences
 
 - The project's defaults are opinionated and pure where pure pays.
-- Mandates exist where purity is also practical. Where it isn't, the project provides accommodations and explicitly chooses usability over consistency.
-- The bar for proposing a new mandate is "is this technically pure *and* does it not impose meaningful friction on real users in legitimate environments?" Both halves are required.
-- A mandate that was right yesterday but isn't right today gets revised. The existing accepted mandates ([ADR-0001](0001-no-this-qualifier.md) through [ADR-0005](0005-one-type-per-file.md)) all currently clear the bar. If any one of them ever stops clearing it, the right response is to revise the ADR, not to defend the constraint.
-- Some surfaces will have multiple paths to the same outcome because pure-only would create real friction. The accommodation is intentional.
+- Mandates can be made up front; they have to survive practicality challenges to stay.
+- The bar for *keeping* a mandate is "is this technically pure *and* does the friction it imposes not outweigh the cost of accommodating?"
+- The project's response to a friction report is "weigh, decide, explain" — not "tough" and not "we'll do whatever you want."
+- Some surfaces will have multiple paths to the same outcome because pure-only would create friction worth more than the accommodation cost.
+- A mandate that was right yesterday but isn't right today gets revised. The existing accepted mandates ([ADR-0001](0001-no-this-qualifier.md) through [ADR-0005](0005-one-type-per-file.md)) all currently clear the bar; if any one stops, the right response is to revise it, not to defend it.
+- Some asks will be declined — because the accommodation cost is too high, the use case is out of scope, or the platform is not in the project's target set. Those declinings come with explicit rationale, not dismissal.
 
-This ADR pairs with [ADR-0007 (Pit of success)](0007-pit-of-success.md) and [ADR-0008 (No per-model workarounds)](0008-no-per-model-workarounds.md): pit-of-success says the easy path should be the right path; ADR-0008 scopes which class of problems shape that path; this ADR scopes the *kind* of "right" that's worth pursuing — the kind that's both technically defensible and actually usable.
+This ADR pairs with [ADR-0007 (Pit of success)](0007-pit-of-success.md) and [ADR-0008 (No per-model workarounds)](0008-no-per-model-workarounds.md): pit-of-success says the easy path should be the right path; ADR-0008 scopes which class of problems shape that path; this ADR scopes the *kind* of "right" that's worth pursuing — the kind that's both technically defensible and weighed against legitimate user friction with explicit, objective reasoning.
