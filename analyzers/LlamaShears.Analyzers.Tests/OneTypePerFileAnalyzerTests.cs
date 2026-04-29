@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class OneTypePerFileAnalyzerTests
 {
     [Test]
-    public async Task Single_type_does_not_report()
+    public async Task SingleTypeDoesNotReport()
     {
         const string source = "namespace N; public class Foo { }";
 
@@ -18,7 +18,7 @@ public sealed class OneTypePerFileAnalyzerTests
     }
 
     [Test]
-    public async Task Two_top_level_classes_report_on_second()
+    public async Task TwoTopLevelClassesReportOnSecond()
     {
         const string source =
             """
@@ -39,7 +39,7 @@ public sealed class OneTypePerFileAnalyzerTests
     }
 
     [Test]
-    public async Task Three_top_level_types_report_on_extras()
+    public async Task ThreeTopLevelTypesReportOnExtras()
     {
         const string source =
             """
@@ -58,7 +58,7 @@ public sealed class OneTypePerFileAnalyzerTests
     }
 
     [Test]
-    public async Task Nested_types_do_not_report()
+    public async Task NestedTypesDoNotReport()
     {
         const string source =
             """
@@ -79,7 +79,7 @@ public sealed class OneTypePerFileAnalyzerTests
     }
 
     [Test]
-    public async Task Top_level_delegate_counts_as_a_type()
+    public async Task TopLevelDelegateCountsAsAType()
     {
         const string source =
             """
@@ -98,7 +98,7 @@ public sealed class OneTypePerFileAnalyzerTests
     }
 
     [Test]
-    public async Task Types_in_separate_namespaces_in_one_file_still_report()
+    public async Task TypesInSeparateNamespacesInOneFileStillReport()
     {
         const string source =
             """
