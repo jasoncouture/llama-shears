@@ -1,25 +1,29 @@
 using System.Runtime.CompilerServices;
 using LlamaShears.Provider.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 
 namespace LlamaShears.Provider.Ollama;
 
-public class OllamaLanguageModel : ILanguageModel
+public partial class OllamaLanguageModel : ILanguageModel
 {
     private readonly IOllamaApiClient _client;
     private readonly ModelConfiguration _configuration;
     private readonly ObjectPool<List<Message>> _messageListPool;
+    private readonly ILogger<OllamaLanguageModel> _logger;
 
     public OllamaLanguageModel(
         IOllamaApiClient client,
         ModelConfiguration configuration,
-        ObjectPool<List<Message>> messageListPool)
+        ObjectPool<List<Message>> messageListPool,
+        ILogger<OllamaLanguageModel> logger)
     {
         _client = client;
         _configuration = configuration;
         _messageListPool = messageListPool;
+        _logger = logger;
     }
 
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
@@ -46,6 +50,7 @@ public class OllamaLanguageModel : ILanguageModel
                     continue;
                 }
 
+                LogTokenReceived(_logger, _configuration.ModelId, content);
                 yield return new OllamaResponseFragment(content);
             }
         }
@@ -66,4 +71,7 @@ public class OllamaLanguageModel : ILanguageModel
         ModelRole.FrameworkAssistant => ChatRole.Assistant,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported model role.")
     };
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Token from {ModelId}: {Content}")]
+    private static partial void LogTokenReceived(ILogger logger, string modelId, string content);
 }
