@@ -17,12 +17,12 @@ namespace LlamaShears.Data.Interceptors;
 /// </summary>
 public sealed class SaveChangesHookInterceptor : SaveChangesInterceptor
 {
-    private readonly IReadOnlyList<ISaveChangesHook> hooks;
+    private readonly IReadOnlyList<ISaveChangesHook> _hooks;
 
     public SaveChangesHookInterceptor(IEnumerable<ISaveChangesHook> hooks)
     {
         ArgumentNullException.ThrowIfNull(hooks);
-        this.hooks = hooks.ToArray();
+        _hooks = hooks.ToArray();
     }
 
     public override InterceptionResult<int> SavingChanges(
@@ -44,7 +44,7 @@ public sealed class SaveChangesHookInterceptor : SaveChangesInterceptor
 
     private void Apply(DbContext? dbContext)
     {
-        if (dbContext is null || hooks.Count == 0)
+        if (dbContext is null || _hooks.Count == 0)
         {
             return;
         }
@@ -60,7 +60,7 @@ public sealed class SaveChangesHookInterceptor : SaveChangesInterceptor
 
         foreach (var entry in pending)
         {
-            foreach (var hook in hooks)
+            foreach (var hook in _hooks)
             {
                 hook.Apply(entry, hookContext);
             }

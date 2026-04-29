@@ -15,7 +15,7 @@ namespace LlamaShears.Agent.Core;
 /// </summary>
 public class AgentHeartbeatService : BackgroundService
 {
-    private static readonly TimeSpan TickInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan _tickInterval = TimeSpan.FromMinutes(1);
 
     private readonly IAsyncPublisher<HeartbeatTick> _publisher;
     private readonly IOptionsMonitor<AgentHeartbeatOptions> _options;
@@ -33,7 +33,7 @@ public class AgentHeartbeatService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TickInterval);
+        using var timer = new PeriodicTimer(_tickInterval);
 
         do
         {
