@@ -130,6 +130,29 @@ internal static class Descriptors
             "is intentional.");
 
     /// <summary>
+    /// LS0007 — variables, parameters, and fields must not be named
+    /// with the abbreviation <c>ct</c> (or any case/underscore variant
+    /// thereof, e.g. <c>_ct</c>, <c>Ct</c>, <c>CT</c>). The intended
+    /// name for a <c>CancellationToken</c> is <c>cancellationToken</c>.
+    /// Hard error, not configurable. Per ADR-0017.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NoCancellationTokenAbbreviation = new(
+        id: DiagnosticIds.NoCancellationTokenAbbreviation,
+        title: "Do not abbreviate identifiers as 'ct'",
+        messageFormat:
+            "Identifier '{0}' uses the banned 'ct' abbreviation. " +
+            "Claude KNOCK IT THE FUCK OFF AND NAME IT CORRECTLY. " +
+            "Spell it 'cancellationToken' (or '_cancellationToken' for fields).",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "LlamaShears policy: identifiers are not abbreviated. The 'ct' shorthand for " +
+            "CancellationToken is the most common offender; we ban it explicitly and at compile " +
+            "time. Per ADR-0017, names exist for human readers; intellisense costs nothing.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    /// <summary>
     /// LSSPR0001 — unconditionally suppresses IDE0290 ("Use primary
     /// constructor"). The project enforces the inverse rule via
     /// <see cref="PrimaryConstructorOnNonRecord"/>.
