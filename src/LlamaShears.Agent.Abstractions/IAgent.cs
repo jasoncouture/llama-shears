@@ -18,7 +18,7 @@ public interface IAgent
 
     /// <summary>
     /// Desired cadence between heartbeats. The heartbeat dispatcher
-    /// derives heartbeat firings from the host's <see cref="FrameTick"/>
+    /// derives heartbeat firings from the host's <see cref="SystemTick"/>
     /// (currently every 30 seconds), so periods shorter than the frame
     /// interval effectively fire every frame.
     /// </summary>

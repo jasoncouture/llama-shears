@@ -190,8 +190,8 @@ The agent loop terminates when the model invokes a built-in `ReportStatus` tool.
 
 Semantics:
 
-- **`done: true`** — the agent considers its current work complete. The loop ends; the agent is idle until the next frame tick.
-- **`done: false`** — the agent has more to do but is yielding to the host (typically because work is naturally chunked). `instructions` becomes the content of a `FrameworkUser` turn injected at the start of the next frame.
+- **`done: true`** — the agent considers its current work complete. The loop ends; the agent is idle until the next system tick.
+- **`done: false`** — the agent has more to do but is yielding to the host (typically because work is naturally chunked). `instructions` becomes the content of a `FrameworkUser` turn injected at the start of the next system tick.
 - **The `ReportStatus` invocation itself does not enter the persistent context.** When the agent's context is serialised for the next prompt, calls to `ReportStatus` are filtered out. The model never sees its own status reports in subsequent turns.
 
 If the model produces a text-only assistant turn without calling `ReportStatus`, the loop sends a single `FrameworkUser` reminder ("call ReportStatus when done; do not produce final text without it") and re-prompts. One round-trip in the misuse case; zero in the happy path.

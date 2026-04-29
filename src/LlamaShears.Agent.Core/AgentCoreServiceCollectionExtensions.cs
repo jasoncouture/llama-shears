@@ -7,35 +7,35 @@ namespace LlamaShears.Agent.Core;
 
 /// <summary>
 /// Dependency-injection registration for the agent core: MessagePipe
-/// (the internal eventing system), frame-tick options, and the
-/// <see cref="FrameTickService"/> hosted service.
+/// (the internal eventing system), system-tick options, and the
+/// <see cref="SystemTickService"/> hosted service.
 /// </summary>
 public static class AgentCoreServiceCollectionExtensions
 {
     /// <summary>
-    /// Default configuration section bound to <see cref="FrameTickOptions"/>.
+    /// Default configuration section bound to <see cref="SystemTickOptions"/>.
     /// </summary>
-    public const string DefaultFrameTickConfigurationSection = "Frame";
+    public const string DefaultSystemTickConfigurationSection = "Frame";
 
     /// <summary>
-    /// Registers MessagePipe and the frame-tick service. Frame-tick
-    /// options are bound from <paramref name="frameTickConfigurationSection"/>
+    /// Registers MessagePipe and the system-tick service. System-tick
+    /// options are bound from <paramref name="systemTickConfigurationSection"/>
     /// on the <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>
     /// resolved from DI.
     /// </summary>
     public static IServiceCollection AddAgentCore(
         this IServiceCollection services,
-        string frameTickConfigurationSection = DefaultFrameTickConfigurationSection)
+        string systemTickConfigurationSection = DefaultSystemTickConfigurationSection)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentException.ThrowIfNullOrWhiteSpace(frameTickConfigurationSection);
+        ArgumentException.ThrowIfNullOrWhiteSpace(systemTickConfigurationSection);
 
         services.AddMessagePipe();
 
-        services.AddOptions<FrameTickOptions>()
-            .BindConfiguration(frameTickConfigurationSection);
+        services.AddOptions<SystemTickOptions>()
+            .BindConfiguration(systemTickConfigurationSection);
 
-        services.AddHostedService<FrameTickService>();
+        services.AddHostedService<SystemTickService>();
 
         return services;
     }
