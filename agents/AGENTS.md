@@ -5,8 +5,8 @@
 Agents must:
 
 1. Read the memory index files, if they exist, in both:
-	- agents/memories/local/INDEX.md
-	- agents/memories/shared/INDEX.md
+	- [memories/local/INDEX.md](memories/local/INDEX.md)
+	- [memories/shared/INDEX.md](memories/shared/INDEX.md)
 2. Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.
 3. Make atomic commits—each commit should represent a single, self-contained change.
 
@@ -14,8 +14,8 @@ For further documentation, see the memory index files in the respective director
 
 ## Memory Storage Guidelines
 
-- Project-wide instructions belong in the shared memories directory: `agents/memories/shared/`
-- User-specific/local instructions belong in the local memories directory: `agents/memories/local/`
+- Project-wide instructions belong in the shared memories directory: [memories/shared/](memories/shared/)
+- User-specific/local instructions belong in the local memories directory: [memories/local/](memories/local/)
 - If it is unclear which category a memory belongs to, ask the user for clarification before saving.
 
 ## C# Guidelines
