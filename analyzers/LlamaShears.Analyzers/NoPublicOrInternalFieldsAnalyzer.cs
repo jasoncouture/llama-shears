@@ -7,13 +7,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace LlamaShears.Analyzers;
 
-/// <summary>
-/// Reports a hard, non-configurable error for any non-private field
-/// declaration. Public, internal, protected, and protected-internal
-/// fields are all rejected; only <c>private</c> and
-/// <c>private protected</c> fields are allowed. <c>const</c> fields
-/// are exempt — they are compile-time constants rather than state.
-/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class NoPublicOrInternalFieldsAnalyzer : DiagnosticAnalyzer
 {

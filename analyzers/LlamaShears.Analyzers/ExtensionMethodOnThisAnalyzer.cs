@@ -8,15 +8,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace LlamaShears.Analyzers;
 
-/// <summary>
-/// Reports a configurable warning whenever an extension method is
-/// invoked through <c>this.</c> from inside the receiver's own type.
-/// The <c>this.</c> qualifier is required by the language here (so
-/// <see cref="NoThisQualifierAnalyzer"/> permits it), but the pattern
-/// is a smell: the type is reaching out to an external static for
-/// behavior that operates on the instance. Suppress where the
-/// external extension is intentional.
-/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ExtensionMethodOnThisAnalyzer : DiagnosticAnalyzer
 {

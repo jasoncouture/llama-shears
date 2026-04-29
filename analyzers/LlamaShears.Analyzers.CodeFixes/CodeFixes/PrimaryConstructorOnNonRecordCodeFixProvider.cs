@@ -13,16 +13,6 @@ using Microsoft.CodeAnalysis.Formatting;
 
 namespace LlamaShears.Analyzers.CodeFixes;
 
-/// <summary>
-/// Code fix for <see cref="DiagnosticIds.PrimaryConstructorOnNonRecord"/>:
-/// converts a primary-constructor class or struct into an equivalent
-/// type with an explicit constructor and one <c>private readonly</c>
-/// field per parameter (named <c>_name</c>). References to the
-/// primary-constructor parameters from inside the type body are
-/// rewritten to the corresponding field. If the type's base list
-/// includes a primary-constructor base call, that call is forwarded
-/// as a <c>: base(...)</c> initializer on the generated constructor.
-/// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(PrimaryConstructorOnNonRecordCodeFixProvider))]
 [Shared]
 public sealed class PrimaryConstructorOnNonRecordCodeFixProvider : CodeFixProvider

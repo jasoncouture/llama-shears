@@ -8,13 +8,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace LlamaShears.Analyzers;
 
-/// <summary>
-/// Reports a hard, non-configurable error for any <c>this.</c>
-/// qualifier on a member access, with one carve-out: when the member
-/// access is the receiver of an invocation that resolves to an
-/// extension method, the qualifier is required and is allowed. Bare
-/// <c>this</c> (e.g. <c>return this;</c>) is unaffected.
-/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class NoThisQualifierAnalyzer : DiagnosticAnalyzer
 {
