@@ -1,13 +1,11 @@
-using System.Diagnostics;
 using System.Text.Json;
 using LlamaShears.Agent.Abstractions;
-using LlamaShears.Agent.Abstractions.Events;
 using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Agent.Core.Channels;
-using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Hosting;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Agent.Core;
@@ -21,12 +19,8 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     private readonly IShearsPaths _paths;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AgentManager> _logger;
-    private readonly ISystemPromptProvider _systemPromptProvider;
-    private readonly TimeProvider _timeProvider;
     private readonly IContextStore _contextStore;
-    private readonly IAsyncSubscriber<UserMessageSubmitted> _userMessages;
-    private readonly IAsyncPublisher<AgentTurnEmitted> _turnPublisher;
-    private readonly IAsyncPublisher<AgentFragmentEmitted> _fragmentPublisher;
+    private readonly IServiceProvider _services;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private int _reconciling;
@@ -36,24 +30,16 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         IEnumerable<IProviderFactory> providers,
         IShearsPaths paths,
         ILoggerFactory loggerFactory,
-        ISystemPromptProvider systemPromptProvider,
-        TimeProvider timeProvider,
         IContextStore contextStore,
-        IAsyncSubscriber<UserMessageSubmitted> userMessages,
-        IAsyncPublisher<AgentTurnEmitted> turnPublisher,
-        IAsyncPublisher<AgentFragmentEmitted> fragmentPublisher)
+        IServiceProvider services)
     {
         _ticks = ticks;
         _providers = providers;
         _paths = paths;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<AgentManager>();
-        _systemPromptProvider = systemPromptProvider;
-        _timeProvider = timeProvider;
         _contextStore = contextStore;
-        _userMessages = userMessages;
-        _turnPublisher = turnPublisher;
-        _fragmentPublisher = fragmentPublisher;
+        _services = services;
     }
 
     public IReadOnlyDictionary<string, IAgent> Agents
@@ -216,29 +202,28 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
-        var inputs = new List<IInputChannel>
-        {
-            new UiInputChannel(name, _userMessages),
-        };
+        IReadOnlyList<IInputChannel> inputs =
+        [
+            ActivatorUtilities.CreateInstance<UiInputChannel>(_services, name),
+        ];
 
-        var outputs = new List<IOutputChannel>
-        {
-            new UiOutputChannel(name, _turnPublisher),
-            new LoggerOutputChannel(_loggerFactory.CreateLogger<LoggerOutputChannel>(), name),
-        };
+        IReadOnlyList<IOutputChannel> outputs =
+        [
+            ActivatorUtilities.CreateInstance<UiOutputChannel>(_services, name),
+            ActivatorUtilities.CreateInstance<LoggerOutputChannel>(_services, name),
+        ];
 
-        return new Agent(
-            id: name,
-            heartbeatPeriod: config.HeartbeatPeriod,
-            model: model,
-            ticks: _ticks,
-            agentContext: agentContext,
-            inputChannels: inputs,
-            outputChannels: outputs,
-            systemPromptProvider: _systemPromptProvider,
-            timeProvider: _timeProvider,
-            logger: _loggerFactory.CreateLogger<Agent>(),
-            fragments: _fragmentPublisher);
+        var logger = Agent.CreateLogger(_loggerFactory, name);
+
+        return ActivatorUtilities.CreateInstance<Agent>(
+            _services,
+            name,
+            config,
+            model,
+            agentContext,
+            inputs,
+            outputs,
+            logger);
     }
 
     private sealed record AgentSlot(string Name, string Path, IAgent Agent, FileFingerprint Fingerprint);

@@ -108,6 +108,29 @@ public sealed class AgentLoopTests
         await Assert.That(model.PromptInvocations).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task ConfigPropertyExposesTheFullAgentConfig()
+    {
+        await using var provider = BuildServices();
+        var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+
+        var config = TestAgentConfigs.WithHeartbeat(TimeSpan.FromMinutes(15));
+        using var agent = new global::LlamaShears.Agent.Core.Agent(
+            id: "alice",
+            config: config,
+            model: new ScriptedLanguageModel("ignored"),
+            agentContext: new FakeAgentContext("alice"),
+            inputChannels: [],
+            outputChannels: [],
+            logger: NullLogger.Instance,
+            ticks: subscriber,
+            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
+
+        await Assert.That(agent.Config).IsSameReferenceAs(config);
+        await Assert.That(agent.HeartbeatPeriod).IsEqualTo(TimeSpan.FromMinutes(15));
+    }
+
     private static global::LlamaShears.Agent.Core.Agent BuildAgent(
         string id,
         IAsyncSubscriber<SystemTick> ticks,
@@ -118,15 +141,15 @@ public sealed class AgentLoopTests
     {
         return new global::LlamaShears.Agent.Core.Agent(
             id: id,
-            heartbeatPeriod: heartbeatPeriod ?? TimeSpan.Zero,
+            config: TestAgentConfigs.WithHeartbeat(heartbeatPeriod ?? TimeSpan.Zero),
             model: model,
-            ticks: ticks,
             agentContext: new FakeAgentContext(id),
             inputChannels: inputs,
             outputChannels: outputs,
+            logger: NullLogger.Instance,
+            ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(),
-            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance);
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
     }
 
     private static ServiceProvider BuildServices()

@@ -40,15 +40,15 @@ public sealed class AgentFragmentStreamingTests
 
         using var agent = new global::LlamaShears.Agent.Core.Agent(
             id: "alice",
-            heartbeatPeriod: TimeSpan.Zero,
+            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            ticks: ticks,
             agentContext: new FakeAgentContext("alice"),
             inputChannels: [seed],
             outputChannels: [captureChannel],
+            logger: NullLogger.Instance,
+            ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance,
             fragments: fragmentPublisher);
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
@@ -99,15 +99,15 @@ public sealed class AgentFragmentStreamingTests
 
         using var agent = new global::LlamaShears.Agent.Core.Agent(
             id: "alice",
-            heartbeatPeriod: TimeSpan.Zero,
+            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            ticks: ticks,
             agentContext: new FakeAgentContext("alice"),
             inputChannels: [seed],
             outputChannels: [captureChannel],
+            logger: NullLogger.Instance,
+            ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance,
             fragments: fragmentPublisher);
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
@@ -155,15 +155,15 @@ public sealed class AgentFragmentStreamingTests
 
         using var agent = new global::LlamaShears.Agent.Core.Agent(
             id: "alice",
-            heartbeatPeriod: TimeSpan.Zero,
+            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            ticks: ticks,
             agentContext: new FakeAgentContext("alice"),
             inputChannels: [seed],
             outputChannels: [captureChannel],
+            logger: NullLogger.Instance,
+            ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance,
             fragments: fragmentPublisher);
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
