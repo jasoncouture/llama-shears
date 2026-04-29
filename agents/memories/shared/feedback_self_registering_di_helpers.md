@@ -12,6 +12,6 @@ This works because the infrastructure registrations are written to be idempotent
 
 **How to apply:**
 - Reach for this pattern whenever a "register one of these" helper exists alongside a "register the thing that consumes them all" helper. Have the per-item helper call the consumer helper.
-- Verify the companion registration uses idempotent helpers (`TryAdd*`, `TryAddEnumerable`, `AddHostedService<T>`). If it doesn't, fix that first — making it idempotent is a prerequisite, not a follow-up.
+- Verify the companion registration uses idempotent helpers (`TryAdd*`, `TryAddEnumerable`, `AddHostedService<T>`). Idempotency is the default in this codebase but not absolute — if a registration is intentionally non-idempotent, that's a deliberate choice, not something to "fix" without asking. If it's accidentally non-idempotent, fix that first; making it idempotent is a prerequisite, not a follow-up.
 - Reference: `LlamaShears.Hosting.HostingServiceCollectionExtensions.AddHostStartupTask<T>` calls `AddHostStartupTaskRunner` as its first line for exactly this reason.
 - Same logic applies in other DI patches in this codebase (e.g. `AddDatabaseHook<T>` could pull the interceptor registration if it doesn't already; check before adding new fan-in helpers).
