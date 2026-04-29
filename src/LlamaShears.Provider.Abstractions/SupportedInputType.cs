@@ -1,8 +1,5 @@
 namespace LlamaShears.Provider.Abstractions;
 
-/// <summary>
-/// Types of input a model may support.
-/// </summary>
 [Flags]
 public enum SupportedInputType
 {

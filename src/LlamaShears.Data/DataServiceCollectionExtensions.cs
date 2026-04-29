@@ -7,25 +7,10 @@ using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Data;
 
-/// <summary>
-/// Dependency-injection registration for the LlamaShears data layer:
-/// options binding, save-change hooks, the single hook-running
-/// interceptor, and the pooled <see cref="LlamaShearsDbContext"/>.
-/// </summary>
 public static class DataServiceCollectionExtensions
 {
-    /// <summary>
-    /// Default configuration section bound to
-    /// <see cref="LlamaShearsDataOptions"/>.
-    /// </summary>
     public const string DefaultConfigurationSection = "Data";
 
-    /// <summary>
-    /// Registers the LlamaShears data services. Options are bound from
-    /// <paramref name="configurationSection"/> on the
-    /// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>
-    /// resolved from DI.
-    /// </summary>
     public static IServiceCollection AddLlamaShearsData(
         this IServiceCollection services,
         string configurationSection = DefaultConfigurationSection)

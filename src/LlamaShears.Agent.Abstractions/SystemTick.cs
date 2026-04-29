@@ -1,13 +1,10 @@
 namespace LlamaShears.Agent.Abstractions;
 
 /// <summary>
-/// A clock-driven system tick published on the internal MessagePipe
-/// bus at a fixed cadence. Anything that wants to do work on a regular
-/// short interval — schedulers, agent heartbeat dispatchers,
-/// housekeeping, etc. — subscribes to this message. The system tick
-/// is intentionally not a heartbeat: it is the lower-level clock
-/// signal that a separate heartbeat dispatcher (per-agent, longer
-/// cadence) consumes to decide which agents to fire.
+/// Clock-driven tick published on the internal MessagePipe bus at a
+/// fixed cadence. Subscribers are anything wanting work on a regular
+/// short interval (schedulers, heartbeat dispatchers, housekeeping).
+/// The tick is intentionally not a heartbeat: heartbeat dispatchers
+/// are layered on top of it.
 /// </summary>
-/// <param name="At">UTC instant the tick was emitted by the publisher.</param>
 public record SystemTick(DateTimeOffset At);
