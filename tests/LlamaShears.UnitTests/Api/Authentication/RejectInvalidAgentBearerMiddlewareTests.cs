@@ -95,8 +95,8 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var middleware = new RejectInvalidAgentBearerMiddleware(next);
-        await middleware.InvokeAsync(ctx);
+        var middleware = scope.ServiceProvider.GetRequiredService<RejectInvalidAgentBearerMiddleware>();
+        await middleware.InvokeAsync(ctx, next);
 
         return (ctx.Response.StatusCode, nextCalled);
     }
