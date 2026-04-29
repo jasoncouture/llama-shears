@@ -7,7 +7,7 @@ namespace LlamaShears.UnitTests.Api.Mcp;
 public sealed class WhoamiToolTests
 {
     [Test]
-    public async Task Returns_guest_when_no_HttpContext_is_present()
+    public async Task ReturnsGuestWhenNoHttpContextIsPresent()
     {
         var tool = new WhoamiTool(new TestHttpContextAccessor());
 
@@ -17,7 +17,7 @@ public sealed class WhoamiToolTests
     }
 
     [Test]
-    public async Task Returns_guest_when_the_caller_is_not_authenticated()
+    public async Task ReturnsGuestWhenTheCallerIsNotAuthenticated()
     {
         var accessor = new TestHttpContextAccessor { HttpContext = new DefaultHttpContext() };
         var tool = new WhoamiTool(accessor);
@@ -28,7 +28,7 @@ public sealed class WhoamiToolTests
     }
 
     [Test]
-    public async Task Returns_the_NameIdentifier_claim_value_when_the_caller_is_authenticated()
+    public async Task ReturnsTheNameIdentifierClaimValueWhenTheCallerIsAuthenticated()
     {
         var ctx = new DefaultHttpContext();
         var identity = new ClaimsIdentity(authenticationType: "test");
@@ -42,7 +42,7 @@ public sealed class WhoamiToolTests
     }
 
     [Test]
-    public async Task Returns_guest_when_authenticated_user_has_no_NameIdentifier_claim()
+    public async Task ReturnsGuestWhenAuthenticatedUserHasNoNameIdentifierClaim()
     {
         var ctx = new DefaultHttpContext();
         ctx.User = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
