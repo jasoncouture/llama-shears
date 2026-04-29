@@ -26,7 +26,27 @@ internal static class Descriptors
         description:
             "LlamaShears policy forbids primary constructors on classes and structs. " +
             "Convert the type to a record or move the parameters into an explicit constructor.",
-        customTags: new[] { WellKnownDiagnosticTags.NotConfigurable });
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    /// <summary>
+    /// LS0002 — fields must be private. Public, internal, protected,
+    /// protected internal, and private protected fields are all
+    /// rejected; expose state through properties or methods.
+    /// <c>const</c> fields are exempt — they are compile-time
+    /// constants, not state.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NoPublicOrInternalFields = new(
+        id: DiagnosticIds.NoPublicOrInternalFields,
+        title: "Fields must be private",
+        messageFormat: "Field '{0}' is {1}; only private fields are allowed",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "LlamaShears policy: only private instance and static fields are permitted. " +
+            "Expose state via properties or methods. Const fields are exempt because they are compile-time " +
+            "constants, not state.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
     /// <summary>
     /// LSSPR0001 — unconditionally suppresses IDE0290 ("Use primary
