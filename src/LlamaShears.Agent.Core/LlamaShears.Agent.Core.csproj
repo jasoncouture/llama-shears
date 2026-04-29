@@ -19,8 +19,4 @@
     <PackageReference Include="MessagePipe" Version="1.8.1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="LlamaShears.UnitTests" />
-  </ItemGroup>
-
 </Project>
