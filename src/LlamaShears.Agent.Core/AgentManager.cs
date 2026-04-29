@@ -3,7 +3,6 @@ using System.Text.Json;
 using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Core.Channels;
 using LlamaShears.Hosting;
-using LlamaShears.Hosting.Abstractions;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
 using Microsoft.Extensions.Logging;
@@ -16,6 +15,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
 
     private readonly IAsyncSubscriber<SystemTick> _ticks;
     private readonly IEnumerable<IProviderFactory> _providers;
+    private readonly IShearsPaths _paths;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AgentManager> _logger;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
@@ -25,10 +25,12 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     public AgentManager(
         IAsyncSubscriber<SystemTick> ticks,
         IEnumerable<IProviderFactory> providers,
+        IShearsPaths paths,
         ILoggerFactory loggerFactory)
     {
         _ticks = ticks;
         _providers = providers;
+        _paths = paths;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<AgentManager>();
     }
@@ -79,7 +81,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     {
         var present = new Dictionary<string, FilePresence>(StringComparer.OrdinalIgnoreCase);
 
-        var directory = new DirectoryInfo(LlamaShearsPaths.AgentsRoot);
+        var directory = new DirectoryInfo(_paths.AgentsRoot);
         foreach (var file in directory.EnumerateFiles("*.json", SearchOption.TopDirectoryOnly))
         {
             var name = Path.GetFileNameWithoutExtension(file.Name);
