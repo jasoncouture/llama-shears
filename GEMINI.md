@@ -1,3 +1,3 @@
 # GEMINI.md
 
-For agent documentation and index, see agents/AGENTS.md
+Before taking any actions, read agents/AGENTS.md
