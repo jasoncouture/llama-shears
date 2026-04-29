@@ -6,11 +6,13 @@ public static class LlamaShearsPaths
     public const string DataRootEnvironmentVariableName = $"{EnvironmentVariablePrefix}_DATA_ROOT";
     public const string WorkspaceRootEnvironmentVariableName = $"{EnvironmentVariablePrefix}_WORKSPACE_ROOT";
     public const string AgentsRootEnvironmentVariableName = $"{EnvironmentVariablePrefix}_AGENTS_ROOT";
+    public const string TemplatesRootEnvironmentVariableName = $"{EnvironmentVariablePrefix}_TEMPLATES_ROOT";
 
     private static string? _dataRoot;
     private static string? _configPath;
     private static string? _workspaceRoot;
     private static string? _agentsRoot;
+    private static string? _templatesRoot;
 
     /// <summary>
     /// Root for persistent host state. Subsystems compose their own
@@ -23,6 +25,14 @@ public static class LlamaShearsPaths
     public static string WorkspaceRoot => _workspaceRoot ??= CreateWorkspaceRootPath();
 
     public static string AgentsRoot => _agentsRoot ??= CreateAgentsRootPath();
+
+    public static string TemplatesRoot => _templatesRoot ??= CreateTemplatesRootPath();
+
+    public static string GetAgentWorkspaceDefaultPath(string agentName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentName);
+        return Path.Combine(DataRoot, "workspaces", agentName);
+    }
 
     private static string GetPathFromEnvironmentOrDefault(string environmentVariable, Func<string> defaultPathFactory)
     {
@@ -50,4 +60,9 @@ public static class LlamaShearsPaths
         GetPathFromEnvironmentOrDefault(
             AgentsRootEnvironmentVariableName,
             () => Path.Combine(DataRoot, "agents"));
+
+    private static string CreateTemplatesRootPath() =>
+        GetPathFromEnvironmentOrDefault(
+            TemplatesRootEnvironmentVariableName,
+            () => Path.Combine(DataRoot, "templates"));
 }
