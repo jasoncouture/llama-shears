@@ -1,4 +1,5 @@
 using LlamaShears.Agent.Core;
+using LlamaShears.Api.Authentication;
 using LlamaShears.Provider.Ollama;
 using Microsoft.AspNetCore.Builder;
 
@@ -13,6 +14,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddOllamaProvider();
         builder.Services.AddAgentCore();
         builder.Services.AddAgentManager();
+        builder.Services.AddAgentBearerAuthentication();
 
         return builder;
     }
