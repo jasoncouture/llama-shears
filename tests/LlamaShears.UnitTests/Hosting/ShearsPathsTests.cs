@@ -6,7 +6,7 @@ namespace LlamaShears.UnitTests.Hosting;
 public sealed class ShearsPathsTests
 {
     [Test]
-    public async Task DataRoot_defaults_to_dotted_directory_under_the_user_profile()
+    public async Task DataRootDefaultsToDottedDirectoryUnderTheUserProfile()
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
@@ -21,7 +21,7 @@ public sealed class ShearsPathsTests
     [Arguments(PathKind.Workspace, "workspace")]
     [Arguments(PathKind.Agents, "agents")]
     [Arguments(PathKind.Templates, "templates")]
-    public async Task Subroot_defaults_under_DataRoot(PathKind kind, string folderName)
+    public async Task SubrootDefaultsUnderDataRoot(PathKind kind, string folderName)
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
@@ -32,7 +32,7 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
-    public async Task Configured_DataRoot_overrides_default_and_descendants_anchor_under_it()
+    public async Task ConfiguredDataRootOverridesDefaultAndDescendantsAnchorUnderIt()
     {
         using var fixture = new TempRoot();
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
@@ -44,7 +44,7 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
-    public async Task Configured_subroot_overrides_the_default_subfolder_only()
+    public async Task ConfiguredSubrootOverridesTheDefaultSubfolderOnly()
     {
         using var data = new TempRoot();
         using var workspace = new TempRoot();
@@ -60,7 +60,7 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
-    public async Task GetPath_combines_root_with_subpath()
+    public async Task GetPathCombinesRootWithSubpath()
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
@@ -73,7 +73,7 @@ public sealed class ShearsPathsTests
     [Arguments(null)]
     [Arguments("")]
     [Arguments("   ")]
-    public async Task GetPath_treats_blank_subpath_as_root(string? subpath)
+    public async Task GetPathTreatsBlankSubpathAsRoot(string? subpath)
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
@@ -81,7 +81,7 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
-    public async Task GetPath_does_not_create_the_subpath_directory()
+    public async Task GetPathDoesNotCreateTheSubpathDirectory()
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
         var subpath = $"unit-test-{Guid.NewGuid():N}";
@@ -92,7 +92,7 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
-    public async Task GetPath_with_ensureExists_creates_the_subpath_directory()
+    public async Task GetPathWithEnsureExistsCreatesTheSubpathDirectory()
     {
         using var fixture = new TempRoot();
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
@@ -114,7 +114,7 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
-    public async Task GetPath_throws_for_unknown_kind()
+    public async Task GetPathThrowsForUnknownKind()
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
