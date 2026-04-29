@@ -1,8 +1,6 @@
 # ADR-0003: Field names must start with `_`
 
-## Status
-
-Accepted (2026-04-27). Enforced by `LS0003` (`FieldMustStartWithUnderscoreAnalyzer`).
+Accepted 2026-04-27. Enforced by `LS0003` (`FieldMustStartWithUnderscoreAnalyzer`).
 
 ## Context
 
