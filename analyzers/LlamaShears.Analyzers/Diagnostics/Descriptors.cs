@@ -105,6 +105,31 @@ internal static class Descriptors
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
     /// <summary>
+    /// LS0006 — calling an extension method on <c>this</c> from inside
+    /// the receiver's own type. The <c>this.</c> qualifier is required
+    /// by the language for extension-method invocations and so is
+    /// allowed by <see cref="NoThisQualifier"/> (LS0004), but the
+    /// pattern itself is usually a smell: the type is delegating to an
+    /// external static for behavior that operates on the instance, and
+    /// the behavior probably belongs on the instance instead. This is
+    /// a configurable warning rather than a hard error: legitimate
+    /// uses exist (e.g. domain-extension libraries the type does not
+    /// own), and suppression is available where it is intentional.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ExtensionMethodOnThis = new(
+        id: DiagnosticIds.ExtensionMethodOnThis,
+        title: "Extension method invoked on 'this'",
+        messageFormat: "Extension method '{0}' is invoked on 'this'; consider moving the behavior onto the type",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description:
+            "LlamaShears policy: calling an extension method on the current instance is permitted but " +
+            "is a code-review smell. The extension acts on the instance from outside it; usually the " +
+            "behavior belongs on the type itself. Suppress this warning where the external extension " +
+            "is intentional.");
+
+    /// <summary>
     /// LSSPR0001 — unconditionally suppresses IDE0290 ("Use primary
     /// constructor"). The project enforces the inverse rule via
     /// <see cref="PrimaryConstructorOnNonRecord"/>.

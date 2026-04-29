@@ -21,5 +21,7 @@ internal static class DiagnosticIds
 
     public const string OneTypePerFile = "LS0005";
 
+    public const string ExtensionMethodOnThis = "LS0006";
+
     public const string SuppressIde0290 = "LSSPR0001";
 }
