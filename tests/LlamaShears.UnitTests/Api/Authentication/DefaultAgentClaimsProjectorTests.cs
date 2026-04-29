@@ -10,7 +10,7 @@ namespace LlamaShears.UnitTests.Api.Authentication;
 public sealed class DefaultAgentClaimsProjectorTests
 {
     [Test]
-    public async Task Project_emits_a_name_identifier_claim_carrying_the_agent_id()
+    public async Task ProjectEmitsANameIdentifierClaimCarryingTheAgentId()
     {
         var projector = BuildProjector();
 
@@ -20,7 +20,7 @@ public sealed class DefaultAgentClaimsProjectorTests
     }
 
     [Test]
-    public async Task Project_emits_a_name_claim_carrying_the_agent_id()
+    public async Task ProjectEmitsANameClaimCarryingTheAgentId()
     {
         var projector = BuildProjector();
 
@@ -30,7 +30,7 @@ public sealed class DefaultAgentClaimsProjectorTests
     }
 
     [Test]
-    public async Task Project_returns_an_authenticated_identity_for_the_supplied_scheme()
+    public async Task ProjectReturnsAnAuthenticatedIdentityForTheSuppliedScheme()
     {
         var projector = BuildProjector();
 
