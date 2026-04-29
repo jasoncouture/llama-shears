@@ -3,7 +3,7 @@ using LlamaShears.Api.Host;
 using LlamaShears.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddLlamaShearsUserConfiguration();
+builder.Services.AddShearsPaths();
 builder.Services.AddHostStartupTask<TemplateSeedingStartupTask>();
 builder.AddApi();
 

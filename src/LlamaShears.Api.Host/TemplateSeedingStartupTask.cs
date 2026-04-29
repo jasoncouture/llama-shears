@@ -1,5 +1,4 @@
 using LlamaShears.Hosting;
-using LlamaShears.Hosting.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Api.Host;
@@ -9,16 +8,18 @@ public sealed partial class TemplateSeedingStartupTask : IHostStartupTask
     private const string KeepFileName = ".keep";
     private const string BundledContentSubpath = "content/templates";
 
+    private readonly IShearsPaths _paths;
     private readonly ILogger<TemplateSeedingStartupTask> _logger;
 
-    public TemplateSeedingStartupTask(ILogger<TemplateSeedingStartupTask> logger)
+    public TemplateSeedingStartupTask(IShearsPaths paths, ILogger<TemplateSeedingStartupTask> logger)
     {
+        _paths = paths;
         _logger = logger;
     }
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
-        var destination = LlamaShearsPaths.TemplatesRoot;
+        var destination = _paths.TemplatesRoot;
         var source = Path.Combine(AppContext.BaseDirectory, BundledContentSubpath);
 
         SeedIfEmpty(source, destination, _logger);
