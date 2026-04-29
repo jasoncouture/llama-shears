@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Agent.Core;
 
-public sealed class Agent : IAgent
+public sealed partial class Agent : IAgent
 {
     private readonly ILanguageModel _model;
     private readonly ILogger<Agent> _logger;
@@ -100,19 +100,35 @@ public sealed class Agent : IAgent
         }
 
         var prompt = new ModelPrompt([.._context]);
+        var thinking = new StringBuilder();
         var content = new StringBuilder();
 
         await foreach (var fragment in _model.PromptAsync(prompt, cancellationToken).ConfigureAwait(false))
         {
-            if (fragment is IModelTextResponse text)
+            switch (fragment)
             {
-                content.Append(text.Content);
+                case IModelThoughtResponse thought:
+                    thinking.Append(thought.Content);
+                    break;
+                case IModelTextResponse text:
+                    content.Append(text.Content);
+                    break;
+            }
+        }
+
+        if (thinking.Length > 0)
+        {
+            var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), DateTimeOffset.UtcNow);
+            _context.Add(thoughtTurn);
+            foreach (var output in OutputChannels)
+            {
+                await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
             }
         }
 
         if (content.Length == 0)
         {
-            _logger.LogWarning("Agent '{AgentId}' received an empty response from the model.", Id);
+            LogEmptyResponse(_logger, Id);
             return;
         }
 
@@ -124,4 +140,7 @@ public sealed class Agent : IAgent
             await output.SendAsync(response, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
+    private static partial void LogEmptyResponse(ILogger logger, string agentId);
 }

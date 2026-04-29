@@ -34,13 +34,24 @@ public partial class OllamaLanguageModel : ILanguageModel
         var messages = _messageListPool.Get();
         try
         {
-            messages.AddRange(prompt.Turns.Select(ToMessage));
+            // Thought turns are kept in agent context for visibility but
+            // must not be resubmitted to the model — see ModelRole.Thought.
+            foreach (var turn in prompt.Turns)
+            {
+                if (turn.Role == ModelRole.Thought)
+                {
+                    continue;
+                }
+
+                messages.Add(ToMessage(turn));
+            }
 
             var request = new ChatRequest
             {
                 Model = _configuration.ModelId,
                 Stream = true,
                 Messages = messages,
+                Think = ThinkValue.High,
                 Options = new RequestOptions
                 {
                     Seed = Random.Shared.Next(),
@@ -49,14 +60,19 @@ public partial class OllamaLanguageModel : ILanguageModel
 
             await foreach (var chunk in _client.ChatAsync(request, cancellationToken).ConfigureAwait(false))
             {
-                var content = chunk?.Message?.Content;
-                if (string.IsNullOrEmpty(content))
+                var thinking = chunk?.Message?.Thinking;
+                if (!string.IsNullOrEmpty(thinking))
                 {
-                    continue;
+                    LogThoughtReceived(_logger, _configuration.ModelId, thinking);
+                    yield return new OllamaThoughtFragment(thinking);
                 }
 
-                LogTokenReceived(_logger, _configuration.ModelId, content);
-                yield return new OllamaResponseFragment(content);
+                var content = chunk?.Message?.Content;
+                if (!string.IsNullOrEmpty(content))
+                {
+                    LogTokenReceived(_logger, _configuration.ModelId, content);
+                    yield return new OllamaResponseFragment(content);
+                }
             }
         }
         finally
@@ -79,4 +95,7 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Token from {ModelId}: {Content}")]
     private static partial void LogTokenReceived(ILogger logger, string modelId, string content);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Thought from {ModelId}: {Content}")]
+    private static partial void LogThoughtReceived(ILogger logger, string modelId, string content);
 }
