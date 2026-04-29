@@ -11,6 +11,8 @@ public static class WebApplicationExtensions
         app.UseAuthentication();
         app.UseAuthorization();
 
+        app.MapMcp("/mcp");
+
         return app;
     }
 }
