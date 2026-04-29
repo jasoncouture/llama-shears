@@ -1,4 +1,19 @@
-﻿namespace LlamaShears.Provider.Abstractions;
+﻿/// <summary>
+/// Configuration for creating a model instance.
+/// </summary>
+public record ModelConfiguration(
+	string ModelId,
+	IReadOnlyDictionary<string, object>? Parameters = null
+);
+
+/// <summary>
+/// Base interface for all language models.
+/// </summary>
+public interface ILanguageModel
+{
+	// The core interface for all model interactions will be defined here.
+}
+namespace LlamaShears.Provider.Abstractions;
 
 /// <summary>
 /// Types of input a model may support.
@@ -41,4 +56,9 @@ public interface IProviderFactory
 	/// List all models surfaced by this provider, with metadata.
 	/// </summary>
 	IAsyncEnumerable<ModelInfo> ListModelsAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Create a model instance from the given configuration.
+	/// </summary>
+	ILanguageModel CreateModel(ModelConfiguration configuration);
 }
