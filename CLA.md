@@ -1,12 +1,9 @@
 # Contributor License Agreement
 
 You accept and agree to the following terms and conditions for Your
-Contributions (present and future) that you submit to Jason Couture. In
-return, Jason Couture shall not use Your Contributions in a way that
-is contrary to the public benefit or inconsistent with its nonprofit
-status and bylaws in effect at the time of the Contribution. Except
-for the license granted herein to Jason Couture and recipients of
-software distributed by Jason Couture, You reserve all right, title,
+Contributions (present and future) that you submit to Jason Couture.
+Except for the license granted herein to Jason Couture and recipients
+of software distributed by Jason Couture, You reserve all right, title,
 and interest in and to Your Contributions.
 
 1. Definitions.
