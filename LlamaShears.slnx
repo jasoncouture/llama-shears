@@ -1,2 +1,10 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LlamaShears.Agent.Abstractions/LlamaShears.Agent.Abstractions.csproj" />
+    <Project Path="src/LlamaShears.Agent.Core/LlamaShears.Agent.Core.csproj" />
+    <Project Path="src/LlamaShears.Api.Host/LlamaShears.Api.Host.csproj" />
+    <Project Path="src/LlamaShears.Api/LlamaShears.Api.csproj" />
+    <Project Path="src/LlamaShears.Provider.Abstractions/LlamaShears.Provider.Abstractions.csproj" />
+    <Project Path="src/LlamaShears.Provider.Ollama/LlamaShears.Provider.Ollama.csproj" />
+  </Folder>
 </Solution>
