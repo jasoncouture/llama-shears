@@ -67,6 +67,25 @@ internal static class Descriptors
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
     /// <summary>
+    /// LS0004 — <c>this.</c> qualifier is forbidden, except where it
+    /// is required to call an extension method on the current
+    /// instance (the only context where the qualifier is not
+    /// syntactic noise).
+    /// </summary>
+    public static readonly DiagnosticDescriptor NoThisQualifier = new(
+        id: DiagnosticIds.NoThisQualifier,
+        title: "Forbidden 'this.' qualifier",
+        messageFormat: "'this.' is not permitted; remove the qualifier",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "LlamaShears policy: 'this.' is forbidden except where it is required to invoke an " +
+            "extension method on the current instance. Field names start with '_' (LS0003), so " +
+            "there is never a field-vs-parameter shadow that 'this.' would be needed to disambiguate.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    /// <summary>
     /// LSSPR0001 — unconditionally suppresses IDE0290 ("Use primary
     /// constructor"). The project enforces the inverse rule via
     /// <see cref="PrimaryConstructorOnNonRecord"/>.
