@@ -43,6 +43,14 @@ catch (OperationCanceledException)
 
 That comment is acceptable because *every* reviewer reads it the same way. A `// Ignored` on `catch (Exception)` is not, ever — there is no reading of "ignore arbitrary failures" that is obvious.
 
+**Boundary handlers are the structural exception.** At the very top of an isolated unit of work — the entry point of the host process, the iteration body of a background service, an agent-loop tick, an inbound HTTP request, a job-runner dequeue — a broad catch is legitimate when its purpose is to prevent a single failed unit from killing the whole service. The carve-out has a single non-negotiable condition:
+
+> The handler may only swallow if the application's overall state remains intact after the failure.
+
+If the failure leaves a partial mutation observable to other threads, an in-flight transaction half-committed, a shared resource in an inconsistent state, or any other form of corruption, the boundary handler must not swallow. It must let the process die, because a restart is the only safe way to return to a known state. Catching corruption-class exceptions (`StackOverflowException`, `OutOfMemoryException`, `AccessViolationException`, `ExecutionEngineException`) is never appropriate for the same reason — by the time the runtime delivers them, the state guarantees the catch would need to make are already void.
+
+A boundary handler is also expected to log loudly. "Caught and continued" without surfacing the exception to operators is information loss; the boundary handler exists to keep the process running, not to hide that something went wrong.
+
 ## Consequences
 
 - Stack traces stay rich and informative. Failures are loud at the point they occur.
