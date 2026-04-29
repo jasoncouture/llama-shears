@@ -5,7 +5,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class SuppressIde0290Tests
 {
     [Test]
-    public async Task Suppression_descriptor_targets_IDE0290()
+    public async Task SuppressionDescriptorTargetsIDE0290()
     {
         var suppressor = new SuppressIde0290();
 
