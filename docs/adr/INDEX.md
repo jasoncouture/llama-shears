@@ -20,6 +20,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 - **ADR-0013** — [`DateTime` requires explicit justification](0013-datetime-requires-justification.md)
 - **ADR-0014** — [Source-generated logging is the default](0014-source-generated-logging-is-the-default.md) — `CA1873`
 - **ADR-0015** — [Provider workarounds are absorbed, model workarounds are not](0015-provider-vs-model-workarounds.md)
+- **ADR-0016** — [Test method names use PascalCase](0016-test-method-naming.md)
 
 ## Superseded
 
