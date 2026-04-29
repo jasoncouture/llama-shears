@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Ignore local project memories except README and .keep
+agents/memories/local/*
+!agents/memories/local/README
+!agents/memories/local/.keep
