@@ -97,6 +97,18 @@ Each index entry carries three things alongside its vector(s): the file path, an
 - The vector store is allowed to drift behind the filesystem. As long as the framework re-reads on retrieval and re-indexes on hash mismatch, drift is invisible to the model.
 - Adds are eager (write triggers indexing); deletes are lazy (retrieval surfaces orphans, GC handles the cleanup later); edits are detected on retrieval and self-heal before the result returns. That asymmetry matches where the cost lives: agents query memories often, edit them rarely, and inspect their own delete history almost never.
 
+### Periodic reconciliation scanner
+
+Retrieval-time healing is the *safety net*. The primary mechanism for keeping the index honest is a periodic system scan that walks the filesystem and the index together and reconciles the three diff cases:
+
+- **New file** (file exists on disk, no entry in the index) → index it.
+- **Changed file** (entry exists, file's current hash differs from the indexed hash) → re-index it.
+- **Deleted file** (entry exists, file is gone) → remove the entry.
+
+This is feasible because the vector store provides enumeration of its records — `Microsoft.Extensions.VectorData`'s collection types are `IAsyncEnumerable<TRecord>`, and the sqlite-vec backend is a regular SQLite table, so listing `(path, hash)` is a normal query. The scanner doesn't need to keep its own bookkeeping.
+
+The cadence is intentionally not on the retrieval path. Most queries hit a fresh index because the scanner caught up between writes; the retrieval-time hash check is what handles the small window between an edit and the next scan, plus any out-of-band edits (someone opens the file in an external editor and saves).
+
 The agent doesn't manage the vector store — it never sees the index, never invokes "reindex," never deals with vectors. From the agent's perspective, `memories/` is just a directory it can read, write, and delete files in; the framework keeps the search index honest.
 
 ## Open items
