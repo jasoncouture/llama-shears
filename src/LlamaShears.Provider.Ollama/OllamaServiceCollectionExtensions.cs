@@ -1,5 +1,7 @@
 using LlamaShears.Provider.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
 
@@ -32,6 +34,10 @@ public static class OllamaServiceCollectionExtensions
 
         services.AddOptions<OllamaProviderOptions>()
             .BindConfiguration(configurationSection);
+
+        services.TryAddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
+        services.TryAddSingleton(sp =>
+            sp.GetRequiredService<ObjectPoolProvider>().Create(new MessageListPooledObjectPolicy()));
 
         services
             .AddHttpClient(nameof(OllamaApiClient), (sp, httpClient) =>
