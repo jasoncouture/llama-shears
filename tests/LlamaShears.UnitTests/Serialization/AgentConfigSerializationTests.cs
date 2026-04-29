@@ -19,62 +19,88 @@ public sealed class AgentConfigSerializationTests
         // enums is the integer underlying value; humans write strings.
         const string json = """
             {
-              "model": "OLLAMA/gemma4:26b",
+              "model": {
+                "id": "OLLAMA/gemma4:26b",
+                "think": "High"
+              },
               "heartbeatPeriod": "00:00:30",
               "systemPrompt": "You are a helpful assistant. Keep replies short.",
-              "seedTurn": "Tell me a one-sentence joke.",
-              "think": "High"
+              "seedTurn": "Tell me a one-sentence joke."
             }
             """;
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
         await Assert.That(config).IsNotNull();
-        await Assert.That(config!.Think).IsEqualTo(ThinkLevel.High);
+        await Assert.That(config!.Model.Think).IsEqualTo(ThinkLevel.High);
     }
 
     [Test]
-    public async Task Think_is_case_insensitive()
+    public async Task Model_think_is_case_insensitive()
     {
         const string json = """
-            { "model": "OLLAMA/x", "think": "low" }
+            { "model": { "id": "OLLAMA/x", "think": "low" } }
             """;
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Think).IsEqualTo(ThinkLevel.Low);
+        await Assert.That(config!.Model.Think).IsEqualTo(ThinkLevel.Low);
     }
 
     [Test]
-    public async Task Think_defaults_to_None_when_absent()
+    public async Task Model_think_defaults_to_None_when_absent()
     {
         const string json = """
-            { "model": "OLLAMA/x" }
+            { "model": { "id": "OLLAMA/x" } }
             """;
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Think).IsEqualTo(ThinkLevel.None);
+        await Assert.That(config!.Model.Think).IsEqualTo(ThinkLevel.None);
     }
 
     [Test]
-    public async Task Model_deserializes_via_ModelIdentity_converter()
+    public async Task Model_id_deserializes_via_ModelIdentity_converter()
     {
         const string json = """
-            { "model": "OLLAMA/owner/repo:tag" }
+            { "model": { "id": "OLLAMA/owner/repo:tag" } }
             """;
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Model.Provider).IsEqualTo("OLLAMA");
-        await Assert.That(config.Model.Model).IsEqualTo("owner/repo:tag");
+        await Assert.That(config!.Model.Id.Provider).IsEqualTo("OLLAMA");
+        await Assert.That(config.Model.Id.Model).IsEqualTo("owner/repo:tag");
+    }
+
+    [Test]
+    public async Task Model_contextLength_round_trips_as_integer()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x", "contextLength": 262144 } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.Model.ContextLength).IsEqualTo(262144);
+    }
+
+    [Test]
+    public async Task Model_contextLength_defaults_to_null_when_absent()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.Model.ContextLength).IsNull();
     }
 
     [Test]
     public async Task HeartbeatPeriod_round_trips_as_TimeSpan_string()
     {
         const string json = """
-            { "model": "OLLAMA/x", "heartbeatPeriod": "00:01:30" }
+            { "model": { "id": "OLLAMA/x" }, "heartbeatPeriod": "00:01:30" }
             """;
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
@@ -94,10 +120,21 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
+    public async Task Missing_required_model_id_throws()
+    {
+        const string json = """
+            { "model": { "think": "High" } }
+            """;
+
+        await Assert.That(() => JsonSerializer.Deserialize<AgentConfig>(json, _options))
+            .Throws<JsonException>();
+    }
+
+    [Test]
     public async Task Invalid_think_string_throws()
     {
         const string json = """
-            { "model": "OLLAMA/x", "think": "Extreme" }
+            { "model": { "id": "OLLAMA/x", "think": "Extreme" } }
             """;
 
         await Assert.That(() => JsonSerializer.Deserialize<AgentConfig>(json, _options))
