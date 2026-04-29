@@ -22,7 +22,7 @@ The tick interval bounds the *granularity* of heartbeat firing, not its average 
 
 ## What the prompt is
 
-The heartbeat prompt is the contents of a file on disk — specifically, a heartbeat prompt file in the agent's workspace. The exact path is **TBD** and will be specified in a follow-up edit; for now treat the file's *existence and contents* as the contract:
+The heartbeat prompt is the contents of `HEARTBEAT.md` in the agent's workspace (see [agent-workspace.md](agent-workspace.md)). The workspace's on-disk location is still **TBD**; what matters here is the file's *existence and contents* as the contract:
 
 - The file's text is the body of the user-typed turn delivered to the model.
 - The framework prepends some system information to the prompt (current time, last heartbeat time, agent id, and any other context the framework deems relevant for the model to reason about *why it was just woken*). The exact fields are **TBD**.
@@ -56,6 +56,6 @@ The agent's processing model itself (queue semantics, when work runs, what count
 
 ## Open items
 
-- Heartbeat prompt file location — pending; will be wired alongside the agent workspace path.
+- Heartbeat prompt file location — `HEARTBEAT.md` in the agent's workspace; the workspace location itself is still pending (see [agent-workspace.md](agent-workspace.md)).
 - Exact "system information" prepended to the heartbeat prompt — pending; minimum viable set is current UTC, last heartbeat UTC, agent id.
 - Whether heartbeats persist (counter, last-fired timestamp) across host restarts, or always start fresh from the agent's load time. Currently no persistence is wired; this defaults to "fresh" by absence.
