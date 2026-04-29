@@ -5,7 +5,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
 {
     [Test]
-    public async Task Generates_readonly_field_and_constructor_for_single_parameter_class()
+    public async Task GeneratesReadonlyFieldAndConstructorForSingleParameterClass()
     {
         const string source =
             """
@@ -28,7 +28,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
     }
 
     [Test]
-    public async Task Generates_one_field_per_parameter_for_multi_parameter_class()
+    public async Task GeneratesOneFieldPerParameterForMultiParameterClass()
     {
         const string source =
             """
@@ -53,7 +53,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
     }
 
     [Test]
-    public async Task Forwards_primary_base_call_to_explicit_base_initializer()
+    public async Task ForwardsPrimaryBaseCallToExplicitBaseInitializer()
     {
         const string source =
             """
@@ -77,7 +77,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
     }
 
     [Test]
-    public async Task Generates_field_and_constructor_for_struct()
+    public async Task GeneratesFieldAndConstructorForStruct()
     {
         const string source =
             """
