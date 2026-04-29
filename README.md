@@ -23,7 +23,8 @@ LlamaShears is intended to be a *host*, not an agent. It runs agents you configu
 
 | Area                          | State                                                                                |
 |-------------------------------|--------------------------------------------------------------------------------------|
-| Heartbeat                     | Implemented. `AgentHeartbeatService` publishes `HeartbeatTick` on MessagePipe.       |
+| Frame tick                    | Implemented. `FrameTickService` publishes `FrameTick` on MessagePipe every 30 s.     |
+| Heartbeat                     | Not yet implemented. Will be a per-agent dispatcher consuming `FrameTick` and firing agents at their configured cadence. |
 | Data layer (EF Core + SQLite) | Scaffolding in `LlamaShears.Data`. Sessions, agents, agent-session join.             |
 | LLM providers                 | Ollama provider scaffolded. Provider abstraction in place.                           |
 | Memory                        | Not yet implemented. Vector storage will use `Microsoft.Extensions.VectorData`.      |
