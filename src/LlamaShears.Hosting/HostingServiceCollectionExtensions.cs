@@ -26,8 +26,8 @@ public static class HostingServiceCollectionExtensions
         where TTask : class, IHostStartupTask
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddScoped<TTask>();
-        services.AddScoped<IHostStartupTask>(sp => sp.GetRequiredService<TTask>());
+        services.TryAddScoped<TTask>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IHostStartupTask, TTask>());
         return services;
     }
 }
