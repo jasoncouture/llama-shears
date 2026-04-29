@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Text.Json;
 using LlamaShears.Agent.Abstractions;
+using LlamaShears.Agent.Abstractions.Events;
 using LlamaShears.Agent.Core.Channels;
+using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Hosting;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
@@ -18,6 +20,11 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     private readonly IShearsPaths _paths;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AgentManager> _logger;
+    private readonly ISystemPromptProvider _systemPromptProvider;
+    private readonly TimeProvider _timeProvider;
+    private readonly IAsyncSubscriber<UserMessageSubmitted> _userMessages;
+    private readonly IAsyncPublisher<AgentTurnEmitted> _turnPublisher;
+    private readonly IAsyncPublisher<AgentFragmentEmitted> _fragmentPublisher;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private int _reconciling;
@@ -26,13 +33,23 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         IAsyncSubscriber<SystemTick> ticks,
         IEnumerable<IProviderFactory> providers,
         IShearsPaths paths,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ISystemPromptProvider systemPromptProvider,
+        TimeProvider timeProvider,
+        IAsyncSubscriber<UserMessageSubmitted> userMessages,
+        IAsyncPublisher<AgentTurnEmitted> turnPublisher,
+        IAsyncPublisher<AgentFragmentEmitted> fragmentPublisher)
     {
         _ticks = ticks;
         _providers = providers;
         _paths = paths;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<AgentManager>();
+        _systemPromptProvider = systemPromptProvider;
+        _timeProvider = timeProvider;
+        _userMessages = userMessages;
+        _turnPublisher = turnPublisher;
+        _fragmentPublisher = fragmentPublisher;
     }
 
     public IReadOnlyDictionary<string, IAgent> Agents
@@ -195,22 +212,21 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
             ContextLength: config.Model.ContextLength,
             KeepAlive: config.Model.KeepAlive));
 
-        var seedContext = new List<ModelTurn>();
-        if (!string.IsNullOrWhiteSpace(config.SystemPrompt))
+        var now = _timeProvider.GetUtcNow();
+        var systemPrompt = _systemPromptProvider.Build(name, now);
+        var seedContext = new List<ModelTurn>
         {
-            seedContext.Add(new ModelTurn(ModelRole.System, config.SystemPrompt, DateTimeOffset.UtcNow));
-        }
+            new(ModelRole.System, systemPrompt, now),
+        };
 
-        var inputs = new List<IInputChannel>();
-        if (!string.IsNullOrWhiteSpace(config.SeedTurn))
+        var inputs = new List<IInputChannel>
         {
-            inputs.Add(new SeedInputChannel([
-                new ModelTurn(ModelRole.User, config.SeedTurn, DateTimeOffset.UtcNow),
-            ]));
-        }
+            new UiInputChannel(name, _userMessages),
+        };
 
         var outputs = new List<IOutputChannel>
         {
+            new UiOutputChannel(name, _turnPublisher),
             new LoggerOutputChannel(_loggerFactory.CreateLogger<LoggerOutputChannel>(), name),
         };
 
@@ -222,7 +238,8 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
             seedContext: seedContext,
             inputChannels: inputs,
             outputChannels: outputs,
-            logger: _loggerFactory.CreateLogger<Agent>());
+            logger: _loggerFactory.CreateLogger<Agent>(),
+            fragments: _fragmentPublisher);
     }
 
     private sealed record AgentSlot(string Name, string Path, IAgent Agent, FileFingerprint Fingerprint);
