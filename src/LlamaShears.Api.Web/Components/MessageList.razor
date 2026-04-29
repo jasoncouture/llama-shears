@@ -1,0 +1,38 @@
+@using LlamaShears.Api.Web.Services
+@implements IDisposable
+@inject ChatSession Session
+
+<section class="messages">
+    @if (Session.SelectedAgentId is null)
+    {
+        <p class="messages-empty">Pick an agent to start a conversation.</p>
+    }
+    else if (Session.Bubbles.Count == 0)
+    {
+        <p class="messages-empty">No messages yet. Send something below.</p>
+    }
+    else
+    {
+        foreach (var bubble in Session.Bubbles)
+        {
+            <ChatBubbleView Bubble="@bubble" />
+        }
+    }
+</section>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Session.Changed += HandleChanged;
+    }
+
+    private void HandleChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= HandleChanged;
+    }
+}

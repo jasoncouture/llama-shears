@@ -1,0 +1,50 @@
+.bubble {
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ddd;
+    background: #fafafa;
+}
+
+.bubble-header {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.bubble-kind {
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.bubble-content {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.bubble-user {
+    background: #e6f0ff;
+    border-color: #b3d1ff;
+}
+
+.bubble-assistant {
+    background: #f4f4f4;
+}
+
+.bubble-thought {
+    background: #fff8e1;
+    border-color: #f0e0a0;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.bubble-streaming {
+    color: #888;
+    font-style: italic;
+}

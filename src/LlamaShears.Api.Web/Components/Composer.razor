@@ -1,0 +1,45 @@
+@using LlamaShears.Api.Web.Services
+@implements IDisposable
+@inject ChatSession Session
+
+<form class="composer" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+    <textarea
+        @bind="_draft"
+        @bind:event="oninput"
+        placeholder="@Placeholder"
+        rows="3"></textarea>
+    <button type="submit" disabled="@CannotSend">Send</button>
+</form>
+
+@code {
+    private string _draft = string.Empty;
+
+    private bool CannotSend => Session.SelectedAgentId is null || string.IsNullOrWhiteSpace(_draft);
+
+    private string Placeholder => Session.SelectedAgentId is null
+        ? "Pick an agent above, then type your message..."
+        : "Type a message...";
+
+    protected override void OnInitialized()
+    {
+        Session.Changed += HandleChanged;
+    }
+
+    private void HandleChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task SubmitAsync()
+    {
+        if (CannotSend)
+        {
+            return;
+        }
+        var content = _draft;
+        _draft = string.Empty;
+        await Session.SendAsync(content, CancellationToken.None);
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= HandleChanged;
+    }
+}

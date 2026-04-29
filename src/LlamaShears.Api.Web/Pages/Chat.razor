@@ -1,0 +1,14 @@
+@page "/"
+@rendermode InteractiveServer
+@using LlamaShears.Api.Web.Components
+
+<PageTitle>LlamaShears</PageTitle>
+
+<div class="chat">
+    <header class="chat-header">
+        <h1>LlamaShears</h1>
+        <AgentPicker />
+    </header>
+    <MessageList />
+    <Composer />
+</div>
