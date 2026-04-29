@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LlamaShears.Api\LlamaShears.Api.csproj" />
-    <ProjectReference Include="..\LlamaShears.Data\LlamaShears.Data.csproj" />
     <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
   </ItemGroup>
 
