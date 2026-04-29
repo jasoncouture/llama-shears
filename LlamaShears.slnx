@@ -16,6 +16,7 @@
     <Project Path="src/LlamaShears.Provider.Ollama/LlamaShears.Provider.Ollama.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/LlamaShears.IntegrationTests/LlamaShears.IntegrationTests.csproj" />
     <Project Path="tests/LlamaShears.UnitTests/LlamaShears.UnitTests.csproj" />
   </Folder>
 </Solution>
