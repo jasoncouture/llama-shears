@@ -109,6 +109,18 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
+    public async Task HeartbeatPeriod_defaults_to_30_minutes_when_absent()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.HeartbeatPeriod).IsEqualTo(TimeSpan.FromMinutes(30));
+    }
+
+    [Test]
     public async Task Missing_required_model_throws()
     {
         const string json = """
