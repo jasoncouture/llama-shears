@@ -15,5 +15,7 @@ internal static class DiagnosticIds
 
     public const string NoPublicOrInternalFields = "LS0002";
 
+    public const string FieldMustStartWithUnderscore = "LS0003";
+
     public const string SuppressIde0290 = "LSSPR0001";
 }

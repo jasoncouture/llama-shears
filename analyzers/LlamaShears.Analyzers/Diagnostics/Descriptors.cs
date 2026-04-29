@@ -49,6 +49,24 @@ internal static class Descriptors
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
     /// <summary>
+    /// LS0003 — every field name must start with an underscore.
+    /// <c>const</c> fields are exempt because they are compile-time
+    /// constants, not state, and conventionally use PascalCase.
+    /// </summary>
+    public static readonly DiagnosticDescriptor FieldMustStartWithUnderscore = new(
+        id: DiagnosticIds.FieldMustStartWithUnderscore,
+        title: "Field names must start with an underscore",
+        messageFormat: "Field '{0}' must start with an underscore",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "LlamaShears policy: every field name must start with '_'. " +
+            "Const fields are exempt because they are compile-time constants, not state, " +
+            "and conventionally use PascalCase.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    /// <summary>
     /// LSSPR0001 — unconditionally suppresses IDE0290 ("Use primary
     /// constructor"). The project enforces the inverse rule via
     /// <see cref="PrimaryConstructorOnNonRecord"/>.
