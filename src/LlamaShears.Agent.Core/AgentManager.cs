@@ -190,7 +190,8 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         var model = providerFactory.CreateModel(new ModelConfiguration(
             ModelId: config.Model.Id.Model,
             Think: config.Model.Think,
-            ContextLength: config.Model.ContextLength));
+            ContextLength: config.Model.ContextLength,
+            KeepAlive: config.Model.KeepAlive));
 
         var seedContext = new List<ModelTurn>();
         if (!string.IsNullOrWhiteSpace(config.SystemPrompt))

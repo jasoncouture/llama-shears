@@ -152,4 +152,56 @@ public sealed class AgentConfigSerializationTests
         await Assert.That(() => JsonSerializer.Deserialize<AgentConfig>(json, _options))
             .Throws<JsonException>();
     }
+
+    [Test]
+    public async Task Model_keepAlive_defaults_to_null_when_absent()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.Model.KeepAlive).IsNull();
+    }
+
+    [Test]
+    public async Task Model_keepAlive_round_trips_as_TimeSpan_string()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x", "keepAlive": "01:00:00" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.Model.KeepAlive).IsEqualTo(TimeSpan.FromHours(1));
+    }
+
+    [Test]
+    public async Task Model_keepAlive_zero_means_unload_immediately()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x", "keepAlive": "00:00:00" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.Model.KeepAlive).IsEqualTo(TimeSpan.Zero);
+    }
+
+    [Test]
+    public async Task Model_keepAlive_negative_means_never_unload()
+    {
+        // Convention: any negative TimeSpan means "never unload." STJ
+        // parses "-00:00:01" into a negative TimeSpan via the standard
+        // invariant format; no custom converter needed.
+        const string json = """
+            { "model": { "id": "OLLAMA/x", "keepAlive": "-00:00:01" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.Model.KeepAlive).IsNotNull();
+        await Assert.That(config!.Model.KeepAlive < TimeSpan.Zero).IsTrue();
+    }
 }
