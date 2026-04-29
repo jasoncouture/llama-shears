@@ -1,3 +1,4 @@
+using LlamaShears.Api.Authentication;
 using Microsoft.AspNetCore.Builder;
 
 namespace LlamaShears.Api;
@@ -9,6 +10,7 @@ public static class WebApplicationExtensions
         ArgumentNullException.ThrowIfNull(app);
 
         app.UseAuthentication();
+        app.UseRejectInvalidAgentBearer();
         app.UseAuthorization();
 
         app.MapMcp("/mcp");
