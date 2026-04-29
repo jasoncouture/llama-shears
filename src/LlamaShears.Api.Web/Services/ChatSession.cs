@@ -108,9 +108,16 @@ public sealed class ChatSession : IDisposable
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Sends user input to the selected agent. Slash-commands beginning
+    /// with <c>/</c> are intercepted (currently <c>/clear</c> and
+    /// <c>/archive</c>); any other content — including unknown slash
+    /// strings — is forwarded verbatim to the agent.
+    /// </summary>
     public async Task SendAsync(string content, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        var trimmed = content.Trim();
         string agentId;
         lock (_gate)
         {
@@ -119,8 +126,17 @@ public sealed class ChatSession : IDisposable
                 throw new InvalidOperationException("No agent selected.");
             }
             agentId = _selectedAgentId;
-            var now = DateTimeOffset.UtcNow;
-            _bubbles.Add(new ChatBubble(ChatBubbleKind.User, content, now));
+        }
+
+        if (TryParseCommand(trimmed, out var command))
+        {
+            await ExecuteCommandAsync(agentId, command, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        lock (_gate)
+        {
+            _bubbles.Add(new ChatBubble(ChatBubbleKind.User, content, DateTimeOffset.UtcNow));
         }
         Changed?.Invoke();
         await _userMessages.PublishAsync(
@@ -137,6 +153,51 @@ public sealed class ChatSession : IDisposable
             _turnSubscription = null;
             _fragmentSubscription = null;
         }
+    }
+
+    private async Task ExecuteCommandAsync(string agentId, ChatCommand command, CancellationToken cancellationToken)
+    {
+        switch (command)
+        {
+            case ChatCommand.Clear:
+                await _directory.ClearAsync(agentId, archive: false, cancellationToken).ConfigureAwait(false);
+                ResetBubbles();
+                break;
+            case ChatCommand.Archive:
+                await _directory.ClearAsync(agentId, archive: true, cancellationToken).ConfigureAwait(false);
+                ResetBubbles();
+                break;
+        }
+    }
+
+    private void ResetBubbles()
+    {
+        lock (_gate)
+        {
+            _bubbles.Clear();
+            _streamingBubbles.Clear();
+        }
+        Changed?.Invoke();
+    }
+
+    private static bool TryParseCommand(string trimmedContent, out ChatCommand command)
+    {
+        command = default;
+        if (trimmedContent.Length < 2 || trimmedContent[0] != '/')
+        {
+            return false;
+        }
+        if (string.Equals(trimmedContent, "/clear", StringComparison.OrdinalIgnoreCase))
+        {
+            command = ChatCommand.Clear;
+            return true;
+        }
+        if (string.Equals(trimmedContent, "/archive", StringComparison.OrdinalIgnoreCase))
+        {
+            command = ChatCommand.Archive;
+            return true;
+        }
+        return false;
     }
 
     private ValueTask OnTurnAsync(AgentTurnEmitted evt, CancellationToken cancellationToken)
@@ -236,5 +297,11 @@ public sealed class ChatSession : IDisposable
             _ => (ChatBubbleKind?)null,
         };
         return kind is null ? null : new ChatBubble(kind.Value, turn.Content, turn.Timestamp);
+    }
+
+    private enum ChatCommand
+    {
+        Clear,
+        Archive,
     }
 }

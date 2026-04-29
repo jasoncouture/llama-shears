@@ -22,4 +22,12 @@ public interface IAgentDirectory
     /// the user instead of starting blank after a refresh.
     /// </summary>
     Task<IReadOnlyList<ModelTurn>> GetTurnsAsync(string agentId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Clears the agent's stored context. With <paramref name="archive"/>
+    /// set, the existing context is moved to a timestamped archive file;
+    /// otherwise it is deleted. The live <c>IAgentContext</c> is emptied
+    /// either way.
+    /// </summary>
+    Task ClearAsync(string agentId, bool archive, CancellationToken cancellationToken);
 }

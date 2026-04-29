@@ -25,4 +25,10 @@ internal sealed class AgentDirectory : IAgentDirectory
         var context = await _contextStore.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
         return context.Turns;
     }
+
+    public Task ClearAsync(string agentId, bool archive, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        return _contextStore.ClearAsync(agentId, archive, cancellationToken);
+    }
 }
