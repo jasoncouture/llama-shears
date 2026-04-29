@@ -5,7 +5,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class OneTypePerFileCodeFixProviderTests
 {
     [Test]
-    public async Task Extracts_second_class_into_a_sibling_document()
+    public async Task ExtractsSecondClassIntoASiblingDocument()
     {
         const string source =
             """
@@ -30,7 +30,7 @@ public sealed class OneTypePerFileCodeFixProviderTests
     }
 
     [Test]
-    public async Task Extracted_file_carries_using_directives_from_original()
+    public async Task ExtractedFileCarriesUsingDirectivesFromOriginal()
     {
         const string source =
             """
@@ -58,7 +58,7 @@ public sealed class OneTypePerFileCodeFixProviderTests
     }
 
     [Test]
-    public async Task Extracts_top_level_delegate_into_its_own_file()
+    public async Task ExtractsTopLevelDelegateIntoItsOwnFile()
     {
         const string source =
             """
