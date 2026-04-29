@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LlamaShears.Agent.Abstractions\LlamaShears.Agent.Abstractions.csproj" />
+    <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>
