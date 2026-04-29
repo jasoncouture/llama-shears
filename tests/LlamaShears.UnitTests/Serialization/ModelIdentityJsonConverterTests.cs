@@ -6,7 +6,7 @@ namespace LlamaShears.UnitTests.Serialization;
 public sealed class ModelIdentityJsonConverterTests
 {
     [Test]
-    public async Task Serializes_to_provider_slash_model()
+    public async Task SerializesToProviderSlashModel()
     {
         var identity = new ModelIdentity("OLLAMA", "gemma4:26b");
 
@@ -16,7 +16,7 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task Deserializes_provider_slash_model()
+    public async Task DeserializesProviderSlashModel()
     {
         var identity = JsonSerializer.Deserialize<ModelIdentity>("\"OLLAMA/gemma4:26b\"");
 
@@ -26,7 +26,7 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task Splits_on_first_slash_only()
+    public async Task SplitsOnFirstSlashOnly()
     {
         // Model ids may legitimately contain slashes (registry paths, etc.).
         // The provider name is constrained to the IProviderFactory.Name regex
@@ -39,7 +39,7 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task Round_trips_through_serialize_and_deserialize()
+    public async Task RoundTripsThroughSerializeAndDeserialize()
     {
         var original = new ModelIdentity("OLLAMA", "owner/repo:tag");
 
@@ -50,7 +50,7 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task Null_token_deserializes_to_null()
+    public async Task NullTokenDeserializesToNull()
     {
         var identity = JsonSerializer.Deserialize<ModelIdentity?>("null");
 
@@ -58,7 +58,7 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task Non_string_token_throws()
+    public async Task NonStringTokenThrows()
     {
         await Assert.That(() => JsonSerializer.Deserialize<ModelIdentity>("123"))
             .Throws<JsonException>();
@@ -67,7 +67,7 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task Empty_string_throws()
+    public async Task EmptyStringThrows()
     {
         await Assert.That(() => JsonSerializer.Deserialize<ModelIdentity>("\"\""))
             .Throws<JsonException>();
@@ -76,14 +76,14 @@ public sealed class ModelIdentityJsonConverterTests
     }
 
     [Test]
-    public async Task String_without_slash_throws()
+    public async Task StringWithoutSlashThrows()
     {
         await Assert.That(() => JsonSerializer.Deserialize<ModelIdentity>("\"OLLAMA\""))
             .Throws<JsonException>();
     }
 
     [Test]
-    public async Task Slash_with_empty_provider_or_model_throws()
+    public async Task SlashWithEmptyProviderOrModelThrows()
     {
         await Assert.That(() => JsonSerializer.Deserialize<ModelIdentity>("\"/model\""))
             .Throws<JsonException>();
