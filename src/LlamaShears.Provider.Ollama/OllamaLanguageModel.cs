@@ -40,12 +40,13 @@ public class OllamaLanguageModel : ILanguageModel
 
             await foreach (var chunk in _client.ChatAsync(request, cancellationToken).ConfigureAwait(false))
             {
-                if (chunk is null)
+                var content = chunk?.Message?.Content;
+                if (string.IsNullOrEmpty(content))
                 {
                     continue;
                 }
 
-                yield return new OllamaResponseFragment(chunk.Message?.Content ?? string.Empty, chunk.Done);
+                yield return new OllamaResponseFragment(content);
             }
         }
         finally
