@@ -11,3 +11,5 @@
 - [Always use DateTimeOffset](feedback_always_datetimeoffset.md) — every timestamp is `DateTimeOffset`; convert at the boundary when an API returns `DateTime`
 - [Vector store choice — Microsoft.Extensions.VectorData](project_vector_store.md) — when vector storage is added, use `Microsoft.Extensions.VectorData` with the SQLite (sqlite-vec) connector; not yet implemented
 - [Self-registering DI helpers](feedback_self_registering_di_helpers.md) — per-item registrations call their companion infrastructure registration so callers can't forget to wire the consumer
+- [Provider.Abstractions is the core](project_provider_abstractions_is_core.md) — `Provider.Abstractions` is the de-facto plugin contract; will become NuGet-shipped (AssemblyLoadContext); don't rename or split preemptively
+- [Agent config lifecycle](project_agent_config_lifecycle.md) — disk → `AgentManager` (lifecycle, scan top-level `agents/*.json` on tick) → agent provider (read API); configs are immutable snapshots; in-flight interactions see one snapshot end-to-end
