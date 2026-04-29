@@ -12,3 +12,21 @@ This project is a heartbeat-based agentic host, structured in two main layers:
 - No business logic; all intelligence resides in the API layer.
 
 This separation ensures extensibility and maintainability, allowing new providers and clients to be added with minimal friction.
+
+## Provider Model
+
+Providers are pluggable components that surface model capabilities to the API layer. The provider model uses a base interface for core functionality, with optional capability interfaces layered on top:
+
+- **Base Interface:**
+	- Accepts text and a cancellation token.
+	- Returns `IAsyncEnumerable<ModelResponseFragment>` (see below for details).
+- **Capability Interfaces:**
+	- Each additional capability (e.g., embeddings, chat, image generation) is represented by a separate interface.
+	- Providers implement only the interfaces for features they support.
+	- This avoids a monolithic interface and enables clear, type-safe feature detection.
+
+This approach ensures separation of concerns, extensibility, and clarity for both provider implementers and consumers.
+
+### ModelResponseFragment
+
+`ModelResponseFragment` is currently an empty record type, serving as a placeholder for future response structure.
