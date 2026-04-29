@@ -79,23 +79,25 @@ The marker is the difference between *empty because nobody has filled it yet* an
 
 ## Long-term memory and RAG
 
-`memories/**/*.md` is the long-term memory tree. The markdown files on disk are the **source of truth**; the vector index that backs RAG retrieval is a derived, secondary artifact.
+`memories/**/*.md` is the long-term memory tree. The markdown files on disk are the **source of truth**; the vector index that backs RAG retrieval is a derived, secondary artifact. The directory is a *self-healing* RAG document store: drift between the filesystem and the index is detected and corrected on the next query, never surfaced to the model.
 
-The model:
+Each index entry carries three things alongside its vector(s): the file path, and the content hash captured at the time the file was last indexed. Retrieval uses all three:
 
-- When the agent (or the framework on its behalf) writes a memory file under `memories/`, the framework derives a vector from the file's contents and adds it to the vector store with the file path as the key.
+- When the agent (or the framework on its behalf) writes a memory file under `memories/`, the framework derives a vector from the file's contents and adds it to the vector store with the file path as the key and the content hash recorded.
 - When the agent retrieves memories, the framework runs the query against the vector index and gets back a set of hits keyed by file path.
-- For each hit, the framework reads the corresponding file from disk before returning content to the model.
-- A hit whose file is **missing** (the agent deleted it, the disk was edited out-of-band, etc.) is dropped from the result set, noted, and queued for garbage collection of its index entry. The model never sees the orphaned hit.
+- For each hit, the framework looks at the file on disk:
+  - **Missing file** (agent deleted it, edited out-of-band, etc.) → the hit is dropped from the result set, noted, and queued for garbage collection of its index entry. The model never sees the orphaned hit.
+  - **File present but content hash differs from the indexed hash** → the file is re-indexed in place (new vector, new hash), and the query is re-run automatically. The model only ever sees results from a vector index that matches the current file contents.
+  - **File present and hash matches** → the framework reads the file and returns its content to the model.
 - Garbage collection of the vector store is lazy and runs out-of-band; it's not on the retrieval hot path.
 
 **Why this shape:**
 
-- The agent owns its workspace (see *Agent-as-author*). "Delete the file" must be the only thing the agent has to do to forget something — chasing down vector entries by hand would defeat the agent-as-author model.
-- The vector store is allowed to drift behind the filesystem. As long as the framework re-reads on retrieval, drift is invisible to the model.
-- Adds are eager (write triggers indexing); deletes are lazy (retrieval surfaces orphans, GC handles the cleanup later). That asymmetry matches where the cost is: agents query memories often, but rarely inspect their own delete history.
+- The agent owns its workspace (see *Agent-as-author*). "Delete the file" or "edit the file" must be the only thing the agent has to do to forget or update a memory — chasing down vector entries by hand would defeat the agent-as-author model.
+- The vector store is allowed to drift behind the filesystem. As long as the framework re-reads on retrieval and re-indexes on hash mismatch, drift is invisible to the model.
+- Adds are eager (write triggers indexing); deletes are lazy (retrieval surfaces orphans, GC handles the cleanup later); edits are detected on retrieval and self-heal before the result returns. That asymmetry matches where the cost lives: agents query memories often, edit them rarely, and inspect their own delete history almost never.
 
-The agent doesn't manage the vector store — it never sees the index, never invokes "reindex," never deals with vectors. From the agent's perspective, `memories/` is just a directory it can read, write, and delete files in.
+The agent doesn't manage the vector store — it never sees the index, never invokes "reindex," never deals with vectors. From the agent's perspective, `memories/` is just a directory it can read, write, and delete files in; the framework keeps the search index honest.
 
 ## Open items
 
