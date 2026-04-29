@@ -81,7 +81,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     {
         var present = new Dictionary<string, FilePresence>(StringComparer.OrdinalIgnoreCase);
 
-        var directory = new DirectoryInfo(_paths.AgentsRoot);
+        var directory = new DirectoryInfo(_paths.GetPath(PathKind.Agents));
         foreach (var file in directory.EnumerateFiles("*.json", SearchOption.TopDirectoryOnly))
         {
             var name = Path.GetFileNameWithoutExtension(file.Name);

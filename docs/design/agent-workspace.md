@@ -113,11 +113,11 @@ The agent doesn't manage the vector store — it never sees the index, never inv
 
 ## Open items
 
-- **Per-agent workspace location.** Where each agent's workspace lives on disk (relative to `DataRoot` / `WorkspaceRoot` / `AgentsRoot`) is not yet wired. Two natural shapes:
-  - `<AgentsRoot>/<name>/` workspace alongside `<AgentsRoot>/<name>.json` config.
-  - `<AgentsRoot>/<name>/agent.json` config inside the workspace.
+- **Per-agent workspace location.** Where each agent's workspace lives on disk (relative to the roots resolved via `IShearsPaths.GetPath(PathKind.Data | Workspace | Agents)`) is not yet wired. Two natural shapes:
+  - `<Agents>/<name>/` workspace alongside `<Agents>/<name>.json` config.
+  - `<Agents>/<name>/agent.json` config inside the workspace.
   - The user has the call.
-- **User templates root location.** The seeding source for new agent workspaces (see *Template seeding*). Natural default: `<DataRoot>/templates/workspace/`. Pending an explicit decision; will likely live alongside the per-agent workspace path API on `IShearsPaths`.
+- **User templates root location.** The seeding source for new agent workspaces (see *Template seeding*). Natural default: `<Data>/templates/workspace/`. Pending an explicit decision; will likely live alongside the per-agent workspace path API on `IShearsPaths`.
 - **`MEMORY.md` lifecycle.** "Managed by the system periodically" — exact mechanic (compaction strategy, frequency, whether the framework rewrites or the agent does it via tool) is TBD.
 - **Long-term memory format.** `memories/**/*.md` matches the existing `agents/memories/` shared/local memory layout in this repo; whether agents share that exact INDEX-plus-files convention or get a different one is TBD.
 - **Multi-agent collisions.** Whether two agents can share a workspace (or a `memories/` tree) is undecided. Default assumption: each agent gets its own.
