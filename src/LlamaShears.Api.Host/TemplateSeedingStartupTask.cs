@@ -46,8 +46,10 @@ public sealed class TemplateSeedingStartupTask : IHostStartupTask
             return;
         }
 
-        CopyDirectory(source, destination);
-        File.WriteAllBytes(Path.Combine(destination, KeepFileName), []);
+        CopyDirectory(source, destination, logger);
+        var keepPath = Path.Combine(destination, KeepFileName);
+        File.WriteAllBytes(keepPath, []);
+        logger.LogDebug("Wrote {KeepFile}.", keepPath);
 
         logger.LogInformation(
             "Seeded templates root {Destination} from bundled templates at {Source}.",
@@ -55,12 +57,14 @@ public sealed class TemplateSeedingStartupTask : IHostStartupTask
             source);
     }
 
-    private static void CopyDirectory(string source, string destination)
+    private static void CopyDirectory(string source, string destination, ILogger logger)
     {
         foreach (var dir in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(source, dir);
-            Directory.CreateDirectory(Path.Combine(destination, relative));
+            var target = Path.Combine(destination, relative);
+            Directory.CreateDirectory(target);
+            logger.LogDebug("Created directory {Target} (from {Source}).", target, dir);
         }
 
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
@@ -69,6 +73,7 @@ public sealed class TemplateSeedingStartupTask : IHostStartupTask
             var target = Path.Combine(destination, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target, overwrite: false);
+            logger.LogDebug("Copied file {Target} (from {Source}).", target, file);
         }
     }
 }
