@@ -1,25 +1,44 @@
 namespace LlamaShears.Hosting.Abstractions;
 
-/// <summary>
-/// Well-known on-disk locations for LlamaShears user state. Per
-/// ADR-0011, everything lives under the user-profile dotfile root on
-/// every platform — no per-OS branch.
-/// </summary>
 public static class LlamaShearsPaths
 {
-    /// <summary>
-    /// Root directory for all LlamaShears user state on the local
-    /// machine. Resolves to <c>~/.llama-shears</c> on Linux/macOS and
-    /// <c>%USERPROFILE%\.llama-shears</c> on Windows.
-    /// </summary>
-    public static string DataRoot => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".llama-shears");
+    public const string EnvironmentVariablePrefix = "LLAMA_SHEARS";
+    public const string DataRootEnvironmentVariableName = $"{EnvironmentVariablePrefix}_DATA_ROOT";
+    public const string WorkspaceRootEnvironmentVariableName = $"{EnvironmentVariablePrefix}_WORKSPACE_ROOT";
+
+    private static string? _dataRoot;
+    private static string? _configPath;
+    private static string? _workspaceRoot;
 
     /// <summary>
-    /// Path to the host's primary JSON configuration file,
-    /// <c>&lt;DataRoot&gt;/config.json</c>. The host treats this as
-    /// optional and reloads it on change.
+    /// Root for persistent host state. Subsystems compose their own
+    /// paths under this.
     /// </summary>
-    public static string ConfigFile => Path.Combine(DataRoot, "config.json");
+    public static string DataRoot => _dataRoot ??= CreateDataRootPath();
+
+    public static string ConfigFile => _configPath ??= Path.Combine(DataRoot, "config.json");
+
+    public static string WorkspaceRoot => _workspaceRoot ??= CreateWorkspaceRootPath();
+
+    private static string GetPathFromEnvironmentOrDefault(string environmentVariable, Func<string> defaultPathFactory)
+    {
+        var path = Environment.GetEnvironmentVariable(environmentVariable);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            path = defaultPathFactory();
+        }
+        return Directory.CreateDirectory(path).FullName;
+    }
+
+    private static string CreateDataRootPath() =>
+        GetPathFromEnvironmentOrDefault(
+            DataRootEnvironmentVariableName,
+            () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".llama-shears"));
+
+    private static string CreateWorkspaceRootPath() =>
+        GetPathFromEnvironmentOrDefault(
+            WorkspaceRootEnvironmentVariableName,
+            () => Path.Combine(DataRoot, "workspace"));
 }
