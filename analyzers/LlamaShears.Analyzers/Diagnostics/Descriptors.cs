@@ -86,6 +86,25 @@ internal static class Descriptors
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
     /// <summary>
+    /// LS0005 — only one top-level type declaration is permitted per
+    /// file. Nested types are allowed because they are part of the
+    /// outer type's declaration. Extra top-level types must be moved
+    /// to sibling files.
+    /// </summary>
+    public static readonly DiagnosticDescriptor OneTypePerFile = new(
+        id: DiagnosticIds.OneTypePerFile,
+        title: "Only one top-level type per file",
+        messageFormat: "Type '{0}' must be declared in its own file",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "LlamaShears policy: each file declares at most one top-level type (class, struct, " +
+            "interface, enum, record, or delegate). Nested types are unaffected. The accompanying " +
+            "code fix moves the offending type into a sibling file named after the type.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    /// <summary>
     /// LSSPR0001 — unconditionally suppresses IDE0290 ("Use primary
     /// constructor"). The project enforces the inverse rule via
     /// <see cref="PrimaryConstructorOnNonRecord"/>.
