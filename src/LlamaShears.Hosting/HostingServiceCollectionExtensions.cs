@@ -17,6 +17,7 @@ public static class HostingServiceCollectionExtensions
         where TTask : class, IHostStartupTask
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddHostStartupTaskRunner();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IHostStartupTask, TTask>());
         return services;
     }
