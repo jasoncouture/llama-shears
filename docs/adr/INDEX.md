@@ -6,20 +6,24 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 
 ## Index
 
-1. [No `this.` qualifier](0001-no-this-qualifier.md) — Analysis ID LS0004
-2. [No public or internal fields](0002-no-public-fields.md) — Analysis ID LS0002
-3. [Field names must start with `_`](0003-underscore-prefix-for-fields.md) — Analysis ID LS0003
-4. [No primary constructors on non-record types](0004-no-primary-constructors-on-non-record-types.md) — Analysis ID LS0001
-5. [One top-level type per file](0005-one-type-per-file.md) — Analysis ID LS0005
-6. [Extension method invoked on `this` is a smell](0006-extension-method-on-this-is-a-smell.md) — Analysis ID LS0006 (configurable warning)
-7. [Pit of success](0007-pit-of-success.md)
-8. [No per-model workarounds](0008-no-per-model-workarounds.md)
-9. [Strive for technical purity, where practical](0009-pragmatism-over-technical-purity.md)
-10. [Exception handling requires explicit justification](0010-exception-handling-requires-justification.md)
-11. [Config root lives in the user profile](0011-config-root-location.md)
-12. [XML doc comments default to absent](0012-xml-doc-comments-default-absent.md)
-13. [`DateTime` requires explicit justification](0013-datetime-requires-justification.md)
-14. [Source-generated logging is the default](0014-source-generated-logging-is-the-default.md) — `CA1873`
+- **ADR-0001** — [No `this.` qualifier](0001-no-this-qualifier.md) — Analysis ID LS0004
+- **ADR-0002** — [No public or internal fields](0002-no-public-fields.md) — Analysis ID LS0002
+- **ADR-0003** — [Field names must start with `_`](0003-underscore-prefix-for-fields.md) — Analysis ID LS0003
+- **ADR-0004** — [No primary constructors on non-record types](0004-no-primary-constructors-on-non-record-types.md) — Analysis ID LS0001
+- **ADR-0005** — [One top-level type per file](0005-one-type-per-file.md) — Analysis ID LS0005
+- **ADR-0006** — [Extension method invoked on `this` is a smell](0006-extension-method-on-this-is-a-smell.md) — Analysis ID LS0006 (configurable warning)
+- **ADR-0007** — [Pit of success](0007-pit-of-success.md)
+- **ADR-0009** — [Strive for technical purity, where practical](0009-pragmatism-over-technical-purity.md)
+- **ADR-0010** — [Exception handling requires explicit justification](0010-exception-handling-requires-justification.md)
+- **ADR-0011** — [Config root lives in the user profile](0011-config-root-location.md)
+- **ADR-0012** — [XML doc comments default to absent](0012-xml-doc-comments-default-absent.md)
+- **ADR-0013** — [`DateTime` requires explicit justification](0013-datetime-requires-justification.md)
+- **ADR-0014** — [Source-generated logging is the default](0014-source-generated-logging-is-the-default.md) — `CA1873`
+- **ADR-0015** — [Provider workarounds are absorbed, model workarounds are not](0015-provider-vs-model-workarounds.md)
+
+## Superseded
+
+- **ADR-0008** — [No per-model workarounds](0008-no-per-model-workarounds.md) — Superseded by [ADR-0015](0015-provider-vs-model-workarounds.md) on 2026-04-28.
 
 ## Format
 
