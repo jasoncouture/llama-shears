@@ -12,6 +12,12 @@ Agents must:
 
 For further documentation, see the memory index files in the respective directories.
 
+## Memory Storage Guidelines
+
+- Project-wide instructions belong in the shared memories directory: `agents/memories/shared/`
+- User-specific/local instructions belong in the local memories directory: `agents/memories/local/`
+- If it is unclear which category a memory belongs to, ask the user for clarification before saving.
+
 ## C# Guidelines
 
 - Do not use primary constructors on regular classes or structs. Only records may use primary constructors. Disable the associated IDE analysis warnings.
