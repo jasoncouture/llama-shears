@@ -1,5 +1,6 @@
 using LlamaShears.Provider.Abstractions;
 using LlamaShears.Provider.Ollama;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
@@ -8,10 +9,20 @@ namespace LlamaShears.UnitTests;
 
 public class OllamaProviderTests
 {
+    private static ServiceCollection ServicesWithConfig(IDictionary<string, string?>? values = null)
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(values ?? new Dictionary<string, string?>())
+            .Build();
+        services.AddSingleton<IConfiguration>(configuration);
+        return services;
+    }
+
     [Test]
     public async Task AddOllamaProvider_RegistersProviderFactory()
     {
-        var services = new ServiceCollection();
+        var services = ServicesWithConfig();
 
         services.AddOllamaProvider();
 
@@ -24,7 +35,7 @@ public class OllamaProviderTests
     [Test]
     public async Task AddOllamaProvider_RegistersOllamaApiClient()
     {
-        var services = new ServiceCollection();
+        var services = ServicesWithConfig();
 
         services.AddOllamaProvider();
 
@@ -35,17 +46,35 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task AddOllamaProvider_AppliesConfigureDelegate()
+    public async Task AddOllamaProvider_BindsDefaultSection()
     {
-        var services = new ServiceCollection();
-        var customUri = new Uri("http://ollama.example:9999");
+        var services = ServicesWithConfig(new Dictionary<string, string?>
+        {
+            ["Providers:Ollama:BaseUri"] = "http://ollama.example:9999"
+        });
 
-        services.AddOllamaProvider(o => o.BaseUri = customUri);
+        services.AddOllamaProvider();
 
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
 
-        await Assert.That(options.BaseUri).IsEqualTo(customUri);
+        await Assert.That(options.BaseUri).IsEqualTo(new Uri("http://ollama.example:9999"));
+    }
+
+    [Test]
+    public async Task AddOllamaProvider_BindsCustomSection()
+    {
+        var services = ServicesWithConfig(new Dictionary<string, string?>
+        {
+            ["Custom:Path:BaseUri"] = "http://ollama.custom:1234"
+        });
+
+        services.AddOllamaProvider("Custom:Path");
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
+
+        await Assert.That(options.BaseUri).IsEqualTo(new Uri("http://ollama.custom:1234"));
     }
 
     [Test]
@@ -59,7 +88,7 @@ public class OllamaProviderTests
     [Test]
     public async Task Factory_Name_IsOllama()
     {
-        var services = new ServiceCollection();
+        var services = ServicesWithConfig();
         services.AddOllamaProvider();
         using var provider = services.BuildServiceProvider();
 
@@ -71,7 +100,7 @@ public class OllamaProviderTests
     [Test]
     public async Task Factory_CreateModel_ReturnsOllamaLanguageModel()
     {
-        var services = new ServiceCollection();
+        var services = ServicesWithConfig();
         services.AddOllamaProvider();
         using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IProviderFactory>();
