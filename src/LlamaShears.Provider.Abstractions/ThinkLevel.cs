@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LlamaShears.Provider.Abstractions;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace LlamaShears.Provider.Abstractions;
 /// don't support reasoning levels should ignore the value;
 /// <see cref="None"/> means "do not enable reasoning."
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ThinkLevel>))]
 public enum ThinkLevel
 {
     None = 0,
