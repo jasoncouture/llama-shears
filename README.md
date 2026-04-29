@@ -25,7 +25,7 @@ LlamaShears is intended to be a *host*, not an agent. It runs agents you configu
 |-------------------------------|--------------------------------------------------------------------------------------|
 | System tick                   | Implemented. `SystemTickService` publishes `SystemTick` on MessagePipe every 30 s.     |
 | Heartbeat                     | Not yet implemented. Will be a per-agent dispatcher consuming `SystemTick` and firing agents at their configured cadence. |
-| Data layer (EF Core + SQLite) | Scaffolding in `LlamaShears.Data`. Sessions and session messages.                    |
+| Persistence                   | Not yet implemented. Direction is atomic, chunked JSON files on disk; conversation lifecycle is folder placement (active vs. archived). |
 | LLM providers                 | Ollama provider scaffolded. Provider abstraction in place.                           |
 | Memory                        | Not yet implemented. Vector storage will use `Microsoft.Extensions.VectorData`.      |
 | RAG                           | Not yet implemented.                                                                 |
@@ -36,12 +36,11 @@ LlamaShears is intended to be a *host*, not an agent. It runs agents you configu
 ## Building and running
 
 ```sh
-dotnet tool restore
 dotnet build
 dotnet test
 ```
 
-The project targets .NET 10. The `dotnet-ef` migration tool is pinned via `dotnet-tools.json`.
+The project targets .NET 10.
 
 ## Licensing
 

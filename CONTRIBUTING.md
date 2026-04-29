@@ -41,8 +41,6 @@ dotnet test
 
 Tests run via Microsoft Testing Platform; do not pass `--filter` or scope to a specific class. **Always run the entire test suite** before committing — a partial run is not a verification.
 
-The `dotnet-ef` tool is pinned via `dotnet-tools.json`; restore it once with `dotnet tool restore`.
-
 ## Code style
 
 Almost every style rule is a hard compile error enforced by the local analyzers in [analyzers/LlamaShears.Analyzers/](analyzers/LlamaShears.Analyzers/). The complete set of accepted decisions, with rationale, lives in [docs/adr/INDEX.md](docs/adr/INDEX.md). Highlights:
@@ -57,8 +55,6 @@ A few additional conventions that are not analyzer-enforced:
 
 - **Collection expressions** — Prefer `[a, b]` over `ImmutableArray.Create`, `new List<>()`, `new[] { ... }`, etc. Builder/list patterns that compose at runtime are the exception.
 - **Options binding** — Never accept `IConfiguration` as a parameter. Use `services.AddOptions<T>().BindConfiguration("Section")` and expose the section name (defaulted) as the only configurable surface on the registration extension.
-- **EF entities** — No navigation properties. Relationship configuration lives on the principal (referenced) side. No logic in property setters; validation belongs in `ISaveChangesHook` implementations.
-- **Hooks order** — `ISaveChangesHook` execution order is undefined and must not be relied on. Order-dependent work belongs combined into a single hook.
 
 ## Commit conventions
 
