@@ -22,10 +22,8 @@ public static class ModelConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
-        modelBuilder.ConfigureModel<Agent>();
         modelBuilder.ConfigureModel<Session>();
         modelBuilder.ConfigureModel<SessionMessage>();
-        modelBuilder.ConfigureModel<AgentSession>();
         return modelBuilder;
     }
 

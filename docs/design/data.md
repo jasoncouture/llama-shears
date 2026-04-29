@@ -77,12 +77,7 @@ Each registered hook handles **one** marker interface. This is the order-indepen
 - **Add or update:** unconditionally set `LastModified` to `context.UtcNow`.
 - **Delete:** no-op.
 
-#### `AgentNameHook` — `Agent.Name` format / immutability
-Per-entity hook for `Agent`. Validates the name format against `^[a-z][a-z0-9]*$` and throws if `Name` is modified on update. Does not rewrite the caller's input — invalid values throw rather than being silently lowered. See "Agent.Name" above for the full rationale.
-
-The "throw on illegal mutation" stance is deliberate: silent reverts hide caller bugs; throwing surfaces them at save time.
-
-Hooks are registered via `services.AddDatabaseHook<T>()`, which calls `TryAddEnumerable` so hooks accumulate cleanly without duplicates and a re-registered hook is not added twice. The interceptor receives the full set as `IEnumerable<ISaveChangesHook>` from DI. Each hook touches a single property family on a single interface (or a single entity type, in the case of `AgentNameHook`), so order is irrelevant by construction.
+Hooks are registered via `services.AddDatabaseHook<T>()`, which calls `TryAddEnumerable` so hooks accumulate cleanly without duplicates and a re-registered hook is not added twice. The interceptor receives the full set as `IEnumerable<ISaveChangesHook>` from DI. Each hook touches a single property family on a single interface, so order is irrelevant by construction.
 
 ## Per-Entity Model Configuration
 
@@ -148,33 +143,10 @@ The trade-off vs. the standard EF idiom is that we step off the well-trodden pat
 
 | Entity          | Interfaces                                  | Notes                                                                                                |
 |-----------------|---------------------------------------------|------------------------------------------------------------------------------------------------------|
-| `Agent`         | `IDataObject`, `ICreated`, `ILastModified`  | Persistent identity for an agent: `Id`, timestamps, and a unique immutable `Name`. Configuration (model, parameters, on-disk path) is **not** stored here — that is a separate, deferred design decision; the file/disk vs. DB question is intentionally open. |
-| `Session`       | `IDataObject`, `ICreated`, `ILastModified`  | LLM conversation header. Owns inbound relationships from `SessionMessage` and `AgentSession`.        |
+| `Session`       | `IDataObject`, `ICreated`, `ILastModified`  | LLM conversation header. Owns the inbound relationship from `SessionMessage`.                        |
 | `SessionMessage`| `IDataObject`, `ICreated`                   | Single LLM context entry. Append-only — no `LastModified`.                                           |
-| `AgentSession`  | `ICreated`                                  | Join row linking `Agent` ↔ `Session`. Composite PK `(AgentId, SessionId)`; unique index on `SessionId` alone. |
 
-### `Agent.Name`
-
-`Name` is `required` and `init`-only on the entity, so it is set exactly once at construction and never afterwards. The property itself carries **no logic** — by deliberate choice, validation is not in the setter. It lives in `AgentNameHook`, a save-changes hook, so the entity stays a plain data shape and all save-time invariants are enforced through the same mechanism.
-
-The hook enforces:
-
-- **Format:** the value must match `^[a-z][a-z0-9]*$` exactly — a single lowercase ASCII letter followed by zero or more lowercase ASCII letters or digits. Non-canonical input (including any uppercase letter) throws `InvalidOperationException` with the offending value attached via `Exception.Data["agentName"]`.
-- **No silent normalization:** the hook does **not** rewrite the caller's input. If a caller submits `FooBar`, the save fails. Normalizing to canonical form is the caller's responsibility — same stance as Id and Created. This keeps the persisted value byte-equal to what the caller submitted, so there is no hidden mutation between intent and storage.
-- **Immutability:** on update, throw if the `Name` property has been marked modified. (`init`-only blocks this from C# code already; the hook is defense-in-depth against direct change-tracker manipulation.)
-
-The DB enforces uniqueness via `entity.HasIndex(a => a.Name).IsUnique()`. Because the hook rejects mixed case before save, the DB never sees two values that differ only in case.
-
-### `AgentSession` — many-to-many with constraints
-
-`AgentSession` is the agent ↔ session ownership ledger. It is also the active-session history: the *current* session for an agent is the row with the most recent `Created` for that `AgentId`. Older rows are not deleted; they record prior sessions.
-
-- **Composite PK:** `(AgentId, SessionId)`. No surrogate `Id`.
-- **Unique index on `SessionId`:** any given session belongs to at most one agent. The combination of composite PK + standalone unique index is portable across SQLite, PostgreSQL, SQL Server, etc.
-- **Append-only:** no `LastModified`. New rows are inserted; existing rows are never updated. Deletion happens only via cascade from the principal sides.
-- **Cascade behavior:** deleting an `Agent` cascades to its `AgentSession` rows; deleting a `Session` cascades to the `AgentSession` row that points at it. The `Session` itself is not deleted when its `Agent` is — the conversation rows live on, simply without an owning agent.
-
-The relationship config follows the principal-side rule: `Agent.ConfigureModel` declares `HasMany<AgentSession>().WithOne().HasForeignKey(x => x.AgentId)`, and `Session.ConfigureModel` declares `HasMany<AgentSession>().WithOne().HasForeignKey(x => x.SessionId)`. `AgentSession.ConfigureModel` declares only what is intrinsic to its own table: the composite PK and the unique index.
+Agent identity is **not** persisted in the database. Agents are configured externally; the database holds only their conversational state (sessions and messages). How a session is associated with the agent that owns it is a separate, deferred design decision.
 
 ## DbContext Pooling
 

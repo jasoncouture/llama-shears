@@ -43,7 +43,6 @@ public static class DataServiceCollectionExtensions
         services.AddDatabaseHook<IdGenerationHook>();
         services.AddDatabaseHook<CreatedHook>();
         services.AddDatabaseHook<LastModifiedHook>();
-        services.AddDatabaseHook<AgentNameHook>();
 
         services.AddSingleton<SaveChangesHookInterceptor>();
 
