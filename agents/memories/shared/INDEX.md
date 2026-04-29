@@ -9,6 +9,7 @@
 - [Wait for approval after opinion questions](feedback_wait_on_opinion_questions.md) — "what do you think?" / "perhaps we should…" → give opinion and stop, even in auto mode
 - [Prefer collection expressions](feedback_collection_expressions.md) — use `[a, b]` over `ImmutableArray.Create`, `new List<>()`, `new[] { ... }`, etc.
 - [Always use DateTimeOffset](feedback_always_datetimeoffset.md) — every timestamp is `DateTimeOffset`; convert at the boundary when an API returns `DateTime`
+- [Source-generated logging is the default](feedback_source_generated_logging.md) — use `[LoggerMessage]` partial methods; direct `ILogger.LogX` is a code smell (CA1873)
 - [Vector store choice — Microsoft.Extensions.VectorData](project_vector_store.md) — when vector storage is added, use `Microsoft.Extensions.VectorData` with the SQLite (sqlite-vec) connector; not yet implemented
 - [Self-registering DI helpers](feedback_self_registering_di_helpers.md) — per-item registrations call their companion infrastructure registration so callers can't forget to wire the consumer
 - [Provider.Abstractions is the core](project_provider_abstractions_is_core.md) — `Provider.Abstractions` is the de-facto plugin contract; will become NuGet-shipped (AssemblyLoadContext); don't rename or split preemptively
