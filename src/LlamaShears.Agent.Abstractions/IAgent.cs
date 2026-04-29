@@ -48,11 +48,4 @@ public interface IAgent
     /// <see cref="Context"/>.
     /// </summary>
     IReadOnlyList<IOutputChannel> OutputChannels { get; }
-
-    /// <summary>
-    /// Performs the agent's periodic heartbeat tick. Implementations
-    /// typically drain inputs, advance the model, and dispatch outputs
-    /// during this call.
-    /// </summary>
-    Task HeartbeatAsync(CancellationToken cancellationToken);
 }
