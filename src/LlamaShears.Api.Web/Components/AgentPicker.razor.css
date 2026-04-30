@@ -7,14 +7,7 @@
     background: var(--surface);
 }
 
-.agent-picker label {
-    font-size: 0.875rem;
-    color: var(--text-muted);
-    margin-right: 0.25rem;
-}
-
-.agent-picker select,
-.agent-picker button {
+.agent-picker select {
     font: inherit;
     padding: 0.4rem 0.75rem;
     border: 1px solid var(--border-strong);
@@ -23,22 +16,33 @@
     color: var(--text);
 }
 
-.agent-picker select {
-    flex: 1;
-    min-width: 0;
+.agent-picker-empty {
+    color: var(--text-subtle);
+    font-size: 0.875rem;
 }
 
-.agent-picker button {
+.agent-picker-refresh {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
     cursor: pointer;
     transition: background 120ms;
 }
 
-.agent-picker button:hover {
+.agent-picker-refresh:hover {
     background: var(--surface-hover);
 }
 
-.agent-picker-empty {
-    color: var(--text-subtle);
-    font-size: 0.875rem;
-    margin-left: auto;
+.agent-picker-refresh .icon {
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
 }
