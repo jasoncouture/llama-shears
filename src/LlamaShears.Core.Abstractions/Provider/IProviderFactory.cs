@@ -1,5 +1,12 @@
 namespace LlamaShears.Core.Abstractions.Provider;
 
+/// <summary>
+/// Plugin contract for a language-model provider. Surfaces the catalog
+/// of models the provider can serve and constructs
+/// <see cref="ILanguageModel"/> instances from
+/// <see cref="ModelConfiguration"/>. One factory per provider (Ollama,
+/// future cloud providers, etc.).
+/// </summary>
 public interface IProviderFactory
 {
     /// <summary>

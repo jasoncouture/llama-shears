@@ -8,5 +8,11 @@ namespace LlamaShears.Core.SystemPrompt;
 /// </summary>
 public interface ISystemPromptProvider
 {
+    /// <summary>
+    /// Builds the system-prompt body for <paramref name="agentId"/> at
+    /// <paramref name="now"/>. The string returned is fed to the model
+    /// as the prompt's <see cref="LlamaShears.Core.Abstractions.Provider.ModelRole.System"/>
+    /// turn.
+    /// </summary>
     string Build(string agentId, DateTimeOffset now);
 }

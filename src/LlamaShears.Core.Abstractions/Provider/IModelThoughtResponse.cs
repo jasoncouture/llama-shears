@@ -1,5 +1,10 @@
 namespace LlamaShears.Core.Abstractions.Provider;
 
+/// <summary>
+/// Streaming fragment carrying hidden reasoning from a thinking-capable
+/// model. Recorded for visibility but never resubmitted as part of a
+/// later prompt.
+/// </summary>
 public interface IModelThoughtResponse : IModelResponseFragment
 {
     /// <summary>
