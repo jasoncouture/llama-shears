@@ -1,5 +1,32 @@
 @inherits LayoutComponentBase
 
-<main>
-    @Body
-</main>
+<div class="app-shell">
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="@_navOpen" @onclick="ToggleNav">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+    </button>
+
+    <nav class="nav @(_navOpen ? "nav-open" : null)">
+        <NavLink class="nav-item" ActiveClass="nav-item-active" href="/" Match="NavLinkMatch.All" @onclick="CloseNav">
+            <span class="nav-item-text">Chat</span>
+        </NavLink>
+    </nav>
+
+    @if (_navOpen)
+    {
+        <div class="nav-backdrop" @onclick="CloseNav"></div>
+    }
+
+    <main class="app-main">
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool _navOpen;
+
+    private void ToggleNav() => _navOpen = !_navOpen;
+
+    private void CloseNav() => _navOpen = false;
+}

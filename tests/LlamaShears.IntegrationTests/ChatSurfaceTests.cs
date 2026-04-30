@@ -15,9 +15,10 @@ public sealed class ChatSurfaceTests
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        // h1 may carry a Blazor scoped-CSS attribute (e.g. `b-xxxx`); just
-        // assert the visible text is present inside an h1 element.
-        await Assert.That(html).Contains(">LlamaShears</h1>");
+        // The Chat page sets <PageTitle>LlamaShears</PageTitle>, which Blazor
+        // renders into the document <title>. The page itself no longer has
+        // an h1 — the old header bar was replaced by a hamburger nav drawer.
+        await Assert.That(html).Contains("<title>LlamaShears</title>");
         await Assert.That(html).Contains("agent-select");
         await Assert.That(html).Contains("class=\"composer\"");
     }
