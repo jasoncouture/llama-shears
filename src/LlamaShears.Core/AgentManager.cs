@@ -84,7 +84,7 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
         var present = new Dictionary<string, AgentConfig>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in _configs.ListAgentIds())
         {
-            var config = _configs.GetConfig(name);
+            var config = await _configs.GetConfigAsync(name, cancellationToken).ConfigureAwait(false);
             if (config is not null)
             {
                 present[name] = config;

@@ -23,21 +23,20 @@ public sealed class AgentContextProvider : IAgentContextProvider
         _timeProvider = timeProvider;
     }
 
-    public AgentContext? CreateAgentContext()
+    public ValueTask<AgentContext?> CreateAgentContextAsync(CancellationToken cancellationToken)
         => throw new NotImplementedException();
 
-    public AgentContext? CreateAgentContext(string agentId)
+    public async ValueTask<AgentContext?> CreateAgentContextAsync(string agentId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var config = _configProvider.GetConfig(agentId);
+        var config = await _configProvider.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
         if (config is null)
         {
             return null;
         }
 
-        var persisted = _contextStore.OpenAsync(agentId, CancellationToken.None)
-            .GetAwaiter().GetResult();
+        var persisted = await _contextStore.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
 
         return new AgentContext(
             AgentId: agentId,

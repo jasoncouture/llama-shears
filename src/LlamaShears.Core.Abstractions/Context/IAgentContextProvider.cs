@@ -14,11 +14,11 @@ public interface IAgentContextProvider
     /// execution scope the calling code is running inside. Returns
     /// <see langword="null"/> when there is no current ambient agent.
     /// </summary>
-    AgentContext? CreateAgentContext();
+    ValueTask<AgentContext?> CreateAgentContextAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Builds a snapshot for <paramref name="agentId"/>. Returns
     /// <see langword="null"/> when no agent with that id is configured.
     /// </summary>
-    AgentContext? CreateAgentContext(string agentId);
+    ValueTask<AgentContext?> CreateAgentContextAsync(string agentId, CancellationToken cancellationToken);
 }
