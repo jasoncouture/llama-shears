@@ -85,3 +85,62 @@ main {
     outline: 2px solid var(--primary);
     outline-offset: 1px;
 }
+
+/* Thin, slider-only scrollbars for any element that opts in via
+   .scroll-thin or any descendant of .messages. WebKit needs the
+   per-button selectors (just ::-webkit-scrollbar-button isn't always
+   enough on some Chromium builds); Firefox uses scrollbar-width /
+   scrollbar-color. */
+.scroll-thin,
+.messages {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+.scroll-thin::-webkit-scrollbar,
+.messages::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.scroll-thin::-webkit-scrollbar-track,
+.messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scroll-thin::-webkit-scrollbar-thumb,
+.messages::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 4px;
+}
+
+.scroll-thin::-webkit-scrollbar-thumb:hover,
+.messages::-webkit-scrollbar-thumb:hover {
+    background: var(--text-subtle);
+}
+
+.scroll-thin::-webkit-scrollbar-button,
+.scroll-thin::-webkit-scrollbar-button:single-button,
+.scroll-thin::-webkit-scrollbar-button:start,
+.scroll-thin::-webkit-scrollbar-button:end,
+.scroll-thin::-webkit-scrollbar-button:vertical:start:decrement,
+.scroll-thin::-webkit-scrollbar-button:vertical:end:increment,
+.scroll-thin::-webkit-scrollbar-button:horizontal:start:decrement,
+.scroll-thin::-webkit-scrollbar-button:horizontal:end:increment,
+.messages::-webkit-scrollbar-button,
+.messages::-webkit-scrollbar-button:single-button,
+.messages::-webkit-scrollbar-button:start,
+.messages::-webkit-scrollbar-button:end,
+.messages::-webkit-scrollbar-button:vertical:start:decrement,
+.messages::-webkit-scrollbar-button:vertical:end:increment,
+.messages::-webkit-scrollbar-button:horizontal:start:decrement,
+.messages::-webkit-scrollbar-button:horizontal:end:increment {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.scroll-thin::-webkit-scrollbar-corner,
+.messages::-webkit-scrollbar-corner {
+    background: transparent;
+}
