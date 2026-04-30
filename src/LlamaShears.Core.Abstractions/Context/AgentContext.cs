@@ -13,8 +13,9 @@ namespace LlamaShears.Core.Abstractions.Context;
 /// and <see cref="Now"/> — because they're load-bearing for almost every
 /// consumer. Everything else lives under a typed child slice. Scope
 /// (turn/agent/global) is a writer-side concern: by the time a snapshot
-/// is composed, the appropriate plugin items for the moment have already
-/// been folded into <see cref="PluginContext.Items"/>.
+/// is composed, the appropriate plugin items and tools for the moment
+/// have already been folded into <see cref="PluginContext.Items"/> and
+/// <see cref="ToolContext.Items"/>.
 /// </para>
 /// </summary>
 public sealed record AgentContext(
@@ -23,4 +24,5 @@ public sealed record AgentContext(
     AgentConfig Config,
     LanguageModelContext LanguageModel,
     SystemContext System,
+    ToolContext Tools,
     PluginContext Plugins);
