@@ -1,0 +1,34 @@
+.agent-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.agent-picker label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.agent-picker select,
+.agent-picker button {
+    font: inherit;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.agent-picker button {
+    cursor: pointer;
+    transition: background 120ms;
+}
+
+.agent-picker button:hover {
+    background: #f3f4f6;
+}
+
+.agent-picker-empty {
+    color: var(--text-subtle);
+    font-size: 0.875rem;
+}

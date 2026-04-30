@@ -1,0 +1,14 @@
+.messages {
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.messages-empty {
+    color: var(--text-subtle);
+    text-align: center;
+    margin: 2rem 0;
+}

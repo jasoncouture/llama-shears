@@ -2,7 +2,7 @@
 @implements IDisposable
 @inject ChatSession Session
 
-<section class="messages">
+<section class="messages" data-auto-scroll data-agent="@(Session.SelectedAgentId ?? string.Empty)">
     @if (Session.SelectedAgentId is null)
     {
         <p class="messages-empty">Pick an agent to start a conversation.</p>
