@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions.Templating;
 using Scriban;
 
 namespace LlamaShears.Core.Templating;

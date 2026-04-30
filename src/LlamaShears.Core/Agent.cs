@@ -4,7 +4,7 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.SystemPrompt;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.Logging;
 
@@ -187,7 +187,7 @@ public sealed partial class Agent : IAgent
         }
 
         var now = _time.GetUtcNow();
-        var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id, now), now);
+        var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), now);
         var prompt = new ModelPrompt([systemTurn, .. turns]);
         var thinking = new StringBuilder();
         var content = new StringBuilder();

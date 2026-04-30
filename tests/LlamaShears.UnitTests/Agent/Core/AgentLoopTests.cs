@@ -124,7 +124,7 @@ public sealed class AgentLoopTests
             outputChannels: [],
             logger: NullLogger.Instance,
             ticks: subscriber,
-            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
 
         await Assert.That(agent.Config).IsSameReferenceAs(config);
@@ -148,7 +148,7 @@ public sealed class AgentLoopTests
             outputChannels: outputs,
             logger: NullLogger.Instance,
             ticks: ticks,
-            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
     }
 
