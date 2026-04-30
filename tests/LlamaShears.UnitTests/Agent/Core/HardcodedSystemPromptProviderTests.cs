@@ -1,5 +1,5 @@
 using System.Globalization;
-using LlamaShears.Agent.Core.SystemPrompt;
+using LlamaShears.Core.SystemPrompt;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 

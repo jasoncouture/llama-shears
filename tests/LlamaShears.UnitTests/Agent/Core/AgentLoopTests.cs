@@ -1,7 +1,7 @@
-using LlamaShears.Agent.Core;
-using LlamaShears.Agent.Core.SystemPrompt;
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,7 +19,7 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var captured = new CapturingOutputChannel();
-        var seed = new global::LlamaShears.Agent.Core.Channels.SeedInputChannel([
+        var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
         ]);
         var model = new ScriptedLanguageModel("hi back");
@@ -62,7 +62,7 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var captured = new CapturingOutputChannel();
-        var seed = new global::LlamaShears.Agent.Core.Channels.SeedInputChannel([
+        var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
         ]);
         var model = new ScriptedLanguageModel("nope");
@@ -85,7 +85,7 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var captured = new CapturingOutputChannel();
-        var seed = new global::LlamaShears.Agent.Core.Channels.SeedInputChannel([
+        var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
             new ModelTurn(ModelRole.User, "again", DateTimeOffset.UtcNow.AddSeconds(1)),
         ]);
@@ -115,7 +115,7 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.FromMinutes(15));
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
+        using var agent = new global::LlamaShears.Core.Agent(
             id: "alice",
             config: config,
             model: new ScriptedLanguageModel("ignored"),
@@ -131,7 +131,7 @@ public sealed class AgentLoopTests
         await Assert.That(agent.HeartbeatPeriod).IsEqualTo(TimeSpan.FromMinutes(15));
     }
 
-    private static global::LlamaShears.Agent.Core.Agent BuildAgent(
+    private static global::LlamaShears.Core.Agent BuildAgent(
         string id,
         IAsyncSubscriber<SystemTick> ticks,
         ILanguageModel model,
@@ -139,7 +139,7 @@ public sealed class AgentLoopTests
         IReadOnlyList<IOutputChannel> outputs,
         TimeSpan? heartbeatPeriod = null)
     {
-        return new global::LlamaShears.Agent.Core.Agent(
+        return new global::LlamaShears.Core.Agent(
             id: id,
             config: TestAgentConfigs.WithHeartbeat(heartbeatPeriod ?? TimeSpan.Zero),
             model: model,

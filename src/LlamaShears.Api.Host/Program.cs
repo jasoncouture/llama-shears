@@ -1,5 +1,6 @@
 using LlamaShears.Api;
 using LlamaShears.Api.Host;
+using LlamaShears.Core;
 using LlamaShears.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);

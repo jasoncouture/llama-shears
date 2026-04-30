@@ -1,8 +1,8 @@
-using LlamaShears.Agent.Core.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Hosting;
+using LlamaShears.Core.Paths;
+using LlamaShears.Core.Persistence;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 

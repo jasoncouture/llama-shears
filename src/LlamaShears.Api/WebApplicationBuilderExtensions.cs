@@ -1,7 +1,7 @@
-using LlamaShears.Agent.Core;
 using LlamaShears.Api.Authentication;
 using LlamaShears.Api.Mcp;
 using LlamaShears.Api.Web;
+using LlamaShears.Core;
 using LlamaShears.Provider.Ollama;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +15,7 @@ public static class WebApplicationBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.Services.AddOllamaProvider();
-        builder.Services.AddAgentCore();
+        builder.Services.AddCore();
         builder.Services.AddAgentManager();
         builder.Services.AddAgentBearerAuthentication();
         builder.Services.AddMcp();

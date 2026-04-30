@@ -1,8 +1,8 @@
-using LlamaShears.Agent.Core.Channels;
-using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Channels;
+using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -38,7 +38,7 @@ public sealed class AgentFragmentStreamingTests
         ]);
         var model = ScriptedLanguageModel.WithText("Hi", " there", "!");
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
+        using var agent = new global::LlamaShears.Core.Agent(
             id: "alice",
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
@@ -97,7 +97,7 @@ public sealed class AgentFragmentStreamingTests
         ]);
         var model = ScriptedLanguageModel.WithThoughtThenText(["thinking..."], ["done"]);
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
+        using var agent = new global::LlamaShears.Core.Agent(
             id: "alice",
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
@@ -153,7 +153,7 @@ public sealed class AgentFragmentStreamingTests
         // Text only — no thought stream should emit a final.
         var model = ScriptedLanguageModel.WithText("hi");
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
+        using var agent = new global::LlamaShears.Core.Agent(
             id: "alice",
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,

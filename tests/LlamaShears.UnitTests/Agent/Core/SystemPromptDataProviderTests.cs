@@ -1,4 +1,4 @@
-using LlamaShears.Agent.Core.SystemPrompt;
+using LlamaShears.Core.SystemPrompt;
 using Microsoft.Extensions.Time.Testing;
 
 namespace LlamaShears.UnitTests.Agent.Core;
