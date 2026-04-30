@@ -10,6 +10,7 @@ public static class WebUiServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddSingleton<IAgentDirectory, AgentDirectory>();
+        services.AddSingleton<IIconProvider, IconProvider>();
         services.AddScoped<ChatSession>();
 
         return services;

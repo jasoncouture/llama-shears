@@ -64,6 +64,23 @@ public sealed class ChatSurfaceTests
     }
 
     [Test]
+    public async Task RefreshButtonRendersTheArrowClockwiseIconBody()
+    {
+        // Guards the IconProvider <-> WebRootFileProvider <-> RCL static
+        // assets path: if any of those break, the inner svg comes back
+        // empty and the icon button is invisible (page still renders 200,
+        // so a generic "page loads" test wouldn't catch it). The path
+        // data below is verbatim from wwwroot/icons/arrow-clockwise.svg.
+        await using var factory = new IsolatedAppFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/", CancellationToken.None);
+        var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
+
+        await Assert.That(html).Contains("M8 3a5 5 0 1 0 4.546 2.914");
+    }
+
+    [Test]
     public async Task EmptyAgentsDirectoryRendersTheNoAgentsState()
     {
         await using var factory = new IsolatedAppFactory();
