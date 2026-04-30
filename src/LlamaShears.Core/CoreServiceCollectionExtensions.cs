@@ -1,7 +1,9 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Caching;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.SystemPrompt;
@@ -30,7 +32,9 @@ public static class CoreServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(systemTickConfigurationSection);
 
         services.AddMessagePipe();
+        services.AddMemoryCache();
         services.AddShearsPaths();
+        services.TryAddSingleton(typeof(IShearsCache<>), typeof(ShearsCache<>));
 
         services.AddOptions<SystemTickOptions>()
             .BindConfiguration(systemTickConfigurationSection);
