@@ -14,16 +14,16 @@ public sealed class TemplateRenderer : ITemplateRenderer
         _cache = cache;
     }
 
-    public string Render(string templatePath, object input)
+    public async ValueTask<string> RenderAsync(string templatePath, object input, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(templatePath);
         ArgumentNullException.ThrowIfNull(input);
 
-        var template = _cache.GetOrParseAsync<Template, string>(
+        var template = await _cache.GetOrParseAsync<Template, string>(
             templatePath,
             templatePath,
             ParseAsync,
-            CancellationToken.None).GetAwaiter().GetResult()
+            cancellationToken).ConfigureAwait(false)
             ?? throw new FileNotFoundException(
                 $"Template not found: {templatePath}", templatePath);
 
