@@ -7,9 +7,10 @@
         @bind="_draft"
         @bind:event="oninput"
         placeholder="@Placeholder"
-        rows="3"></textarea>
+        rows="1"
+        data-composer-submit></textarea>
     <button type="submit" disabled="@CannotSend">Send</button>
-    <small class="composer-hint">Slash commands: <code>/clear</code>, <code>/archive</code></small>
+    <small class="composer-hint">Enter to send · Shift+Enter for newline · <code>/clear</code> · <code>/archive</code></small>
 </form>
 
 @code {
