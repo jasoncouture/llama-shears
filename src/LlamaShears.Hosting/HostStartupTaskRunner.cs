@@ -3,15 +3,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace LlamaShears.Hosting;
 
-/// <summary>
-/// <see cref="IHostedService"/> that runs every registered
-/// <see cref="IHostStartupTask"/> exactly once when the host starts.
-/// All tasks share a single DI scope created in
-/// <see cref="StartAsync"/>; the scope is disposed before
-/// <see cref="StartAsync"/> returns. Tasks execute in registration
-/// order; an exception from any task aborts host startup and prevents
-/// later tasks from running.
-/// </summary>
 public sealed class HostStartupTaskRunner : IHostedService
 {
     private readonly IServiceScopeFactory _scopeFactory;
