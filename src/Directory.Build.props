@@ -2,6 +2,18 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
+  <PropertyGroup>
+    <!--
+      Required for the LlamaShears XML-doc analyzer (LS0008..LS0013) to work:
+      without this, Roslyn parses '///' as ordinary comments instead of
+      DocumentationCommentTrivia, and the analyzer can't tell which symbols
+      have docs. CS1591 (missing-doc) is silenced because LS0009/0011 cover
+      the same ground with project-aligned wording.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\analyzers\LlamaShears.Analyzers\LlamaShears.Analyzers.csproj"
                       OutputItemType="Analyzer"
