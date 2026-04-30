@@ -8,10 +8,16 @@ namespace LlamaShears.Core.Abstractions.Context;
 /// sources of each child slice. Templates, observers, and plugins read
 /// the tree directly; mutations happen through scope-specific writer
 /// services, never through this record.
+/// <para>
+/// The top level intentionally exposes two primitives — <see cref="AgentId"/>
+/// and <see cref="Now"/> — because they're load-bearing for almost every
+/// consumer. Everything else lives under a typed child slice.
+/// </para>
 /// </summary>
 public sealed record AgentContext(
+    string AgentId,
+    DateTimeOffset Now,
     AgentConfig Config,
-    AgentInfo Info,
     LanguageModelContext LanguageModel,
     SystemContext System,
     PluginContext Plugins,
