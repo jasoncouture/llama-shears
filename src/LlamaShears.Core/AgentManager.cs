@@ -1,7 +1,5 @@
-using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
-using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
 using LlamaShears.Hosting;
@@ -11,13 +9,11 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed class AgentManager : IHostStartupTask, IDisposable
+public sealed partial class AgentManager : IHostStartupTask, IDisposable
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
-
     private readonly IAsyncSubscriber<SystemTick> _ticks;
     private readonly IEnumerable<IProviderFactory> _providers;
-    private readonly IShearsPaths _paths;
+    private readonly IAgentConfigProvider _configs;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AgentManager> _logger;
     private readonly IContextStore _contextStore;
@@ -29,14 +25,14 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     public AgentManager(
         IAsyncSubscriber<SystemTick> ticks,
         IEnumerable<IProviderFactory> providers,
-        IShearsPaths paths,
+        IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
         IContextStore contextStore,
         IServiceProvider services)
     {
         _ticks = ticks;
         _providers = providers;
-        _paths = paths;
+        _configs = configs;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<AgentManager>();
         _contextStore = contextStore;
@@ -85,26 +81,25 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
 
     private async Task ReconcileAsync(CancellationToken cancellationToken)
     {
-        var present = new Dictionary<string, FilePresence>(StringComparer.OrdinalIgnoreCase);
-
-        var directory = new DirectoryInfo(_paths.GetPath(PathKind.Agents));
-        foreach (var file in directory.EnumerateFiles("*.json", SearchOption.TopDirectoryOnly))
+        var present = new Dictionary<string, AgentConfig>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in _configs.ListAgentIds())
         {
-            var name = Path.GetFileNameWithoutExtension(file.Name);
-            present[name] = new FilePresence(
-                file.FullName,
-                new FileFingerprint(new DateTimeOffset(file.LastWriteTimeUtc), file.Length));
+            var config = _configs.GetConfig(name);
+            if (config is not null)
+            {
+                present[name] = config;
+            }
         }
 
-        foreach (var (name, file) in present)
+        foreach (var (name, config) in present)
         {
             if (!_loaded.TryGetValue(name, out var slot))
             {
-                await StartAsync(name, file, cancellationToken).ConfigureAwait(false);
+                await StartAsync(name, config, cancellationToken).ConfigureAwait(false);
             }
-            else if (slot.Fingerprint != file.Fingerprint)
+            else if (slot.Config != config)
             {
-                await ReloadAsync(name, file, cancellationToken).ConfigureAwait(false);
+                await ReloadAsync(name, config, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -114,25 +109,25 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
     }
 
-    private async Task StartAsync(string name, FilePresence file, CancellationToken cancellationToken)
+    private async Task StartAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
-        var slot = await TryLoadAsync(name, file, cancellationToken).ConfigureAwait(false);
+        var slot = await TryBuildSlotAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (slot is null)
         {
             return;
         }
 
         _loaded[name] = slot;
-        _logger.LogInformation("Started agent '{AgentId}' from {Path}", name, file.Path);
+        LogAgentStarted(_logger, name);
     }
 
-    private async Task ReloadAsync(string name, FilePresence file, CancellationToken cancellationToken)
+    private async Task ReloadAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
-        var newSlot = await TryLoadAsync(name, file, cancellationToken).ConfigureAwait(false);
+        var newSlot = await TryBuildSlotAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (newSlot is null)
         {
-            // Keep the previous slot intact: a half-saved or syntactically
-            // broken file shouldn't blow away a working agent.
+            // Keep the previous slot intact: a build failure shouldn't
+            // blow away a working agent.
             return;
         }
 
@@ -142,7 +137,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
 
         _loaded[name] = newSlot;
-        _logger.LogInformation("Reloaded agent '{AgentId}' from {Path}", name, file.Path);
+        LogAgentReloaded(_logger, name);
     }
 
     private void Stop(string name)
@@ -150,30 +145,12 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         if (_loaded.Remove(name, out var slot))
         {
             slot.Agent.Dispose();
-            _logger.LogInformation("Stopped agent '{AgentId}'", slot.Name);
+            LogAgentStopped(_logger, slot.Name);
         }
     }
 
-    private async Task<AgentSlot?> TryLoadAsync(string name, FilePresence file, CancellationToken cancellationToken)
+    private async Task<AgentSlot?> TryBuildSlotAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
-        AgentConfig? config;
-        try
-        {
-            using var stream = File.OpenRead(file.Path);
-            config = JsonSerializer.Deserialize<AgentConfig>(stream, _jsonOptions);
-        }
-        catch (Exception ex) when (ex is IOException or JsonException)
-        {
-            _logger.LogWarning(ex, "Skipping agent '{AgentId}' from {Path}: {Message}", name, file.Path, ex.Message);
-            return null;
-        }
-
-        if (config is null)
-        {
-            _logger.LogWarning("Skipping agent '{AgentId}' from {Path}: empty document", name, file.Path);
-            return null;
-        }
-
         IAgent agent;
         try
         {
@@ -181,11 +158,11 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Skipping agent '{AgentId}' from {Path}: {Message}", name, file.Path, ex.Message);
+            LogBuildFailure(_logger, name, ex.Message, ex);
             return null;
         }
 
-        return new AgentSlot(name, file.Path, agent, file.Fingerprint);
+        return new AgentSlot(name, agent, config);
     }
 
     private async Task<IAgent> BuildAgentAsync(string name, AgentConfig config, CancellationToken cancellationToken)
@@ -227,9 +204,17 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
             logger);
     }
 
-    private sealed record AgentSlot(string Name, string Path, IAgent Agent, FileFingerprint Fingerprint);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
+    private static partial void LogAgentStarted(ILogger logger, string agentId);
 
-    private readonly record struct FilePresence(string Path, FileFingerprint Fingerprint);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Reloaded agent '{AgentId}'.")]
+    private static partial void LogAgentReloaded(ILogger logger, string agentId);
 
-    private readonly record struct FileFingerprint(DateTimeOffset LastWriteTimeUtc, long Length);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Stopped agent '{AgentId}'.")]
+    private static partial void LogAgentStopped(ILogger logger, string agentId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
+    private static partial void LogBuildFailure(ILogger logger, string agentId, string message, Exception ex);
+
+    private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config);
 }

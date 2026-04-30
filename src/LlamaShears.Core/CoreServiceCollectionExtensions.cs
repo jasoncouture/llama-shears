@@ -40,6 +40,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
+        services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
 
         return services;
     }
@@ -50,6 +51,7 @@ public static class CoreServiceCollectionExtensions
 
         services.AddHostStartupTaskRunner();
         services.AddShearsPaths();
+        services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<AgentManager>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IHostStartupTask, AgentManager>(
