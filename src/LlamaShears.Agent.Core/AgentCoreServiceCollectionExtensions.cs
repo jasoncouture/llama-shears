@@ -34,6 +34,7 @@ public static class AgentCoreServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
+        services.TryAddSingleton<ISystemPromptDataProvider, SystemPromptDataProvider>();
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
 
         return services;
