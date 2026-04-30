@@ -24,17 +24,27 @@ public static class CoreServiceCollectionExtensions
 
     public const string DefaultShearsPathsConfigurationSection = "Paths";
 
+    public const string DefaultFileParserCacheConfigurationSection = "FileParserCache";
+
     public static IServiceCollection AddCore(
         this IServiceCollection services,
-        string systemTickConfigurationSection = DefaultSystemTickConfigurationSection)
+        string systemTickConfigurationSection = DefaultSystemTickConfigurationSection,
+        string fileParserCacheConfigurationSection = DefaultFileParserCacheConfigurationSection)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(systemTickConfigurationSection);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileParserCacheConfigurationSection);
 
         services.AddMessagePipe();
         services.AddMemoryCache();
         services.AddShearsPaths();
         services.TryAddSingleton(typeof(IShearsCache<>), typeof(ShearsCache<>));
+        services.TryAddSingleton(typeof(IFileParserCache<>), typeof(FileParserCache<>));
+
+        services.AddOptions<FileParserCacheOptions>()
+            .BindConfiguration(fileParserCacheConfigurationSection)
+            .Validate(o => o.TimeToLive > TimeSpan.Zero, "FileParserCache:TimeToLive must be strictly positive.")
+            .ValidateOnStart();
 
         services.AddOptions<SystemTickOptions>()
             .BindConfiguration(systemTickConfigurationSection);
