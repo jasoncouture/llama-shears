@@ -1,0 +1,26 @@
+@* Provides the element Blazor's circuit-reconnect machinery binds to
+   (via id="components-reconnect-modal"). When this element is in the
+   DOM the framework toggles the components-reconnect-{show, retrying,
+   paused, failed, rejected, hide} class on it instead of injecting its
+   own default overlay/dialog tree. The button uses an inline DOM
+   event because the SignalR runtime is gone in this state — a Blazor
+   @onclick handler can't fire. *@
+
+<div id="components-reconnect-modal" class="reconnect-modal">
+    <div class="reconnect-card">
+        <div class="reconnect-spinner" aria-hidden="true">
+            <div></div>
+            <div></div>
+        </div>
+        <p class="reconnect-msg reconnect-msg-show">
+            Reconnecting to the server… attempt
+            <span id="components-reconnect-current-attempt">1</span>
+            of
+            <span id="components-reconnect-max-retries">8</span>.
+        </p>
+        <p class="reconnect-msg reconnect-msg-paused">Connection paused.</p>
+        <p class="reconnect-msg reconnect-msg-failed">Reconnection failed.</p>
+        <p class="reconnect-msg reconnect-msg-rejected">Could not reconnect to the server.</p>
+        <button type="button" class="reconnect-reload" onclick="location.reload()">Reload</button>
+    </div>
+</div>
