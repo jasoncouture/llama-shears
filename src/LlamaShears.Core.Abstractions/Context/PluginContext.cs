@@ -10,4 +10,4 @@ namespace LlamaShears.Core.Abstractions.Context;
 /// Plugins write through a scope-specific writer service; this record is
 /// read-only.
 /// </summary>
-public sealed record PluginContext(ImmutableDictionary<string, object> Items);
+public sealed record PluginContext(ImmutableDictionary<string, object> Data);
