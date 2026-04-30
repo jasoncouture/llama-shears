@@ -8,13 +8,6 @@ using MessagePipe;
 
 namespace LlamaShears.Core.Channels;
 
-/// <summary>
-/// Input channel backed by <see cref="UserMessageSubmitted"/> events on
-/// the in-process bus. Buffers messages while the agent is busy and, on
-/// the next read, yields exactly one <see cref="ModelTurn"/> — either
-/// the original message verbatim (when only one is queued) or a
-/// coalesced message that lists every queued entry in arrival order.
-/// </summary>
 public sealed class UiInputChannel : IInputChannel, IDisposable
 {
     private readonly string _agentId;

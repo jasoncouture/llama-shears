@@ -4,13 +4,6 @@ using MessagePipe;
 
 namespace LlamaShears.Api.Web.Services;
 
-/// <summary>
-/// Per-circuit chat state. Holds the currently selected agent id, the
-/// rolling bubble list, and the MessagePipe subscriptions that turn
-/// agent-side events into UI updates. Switching the selected agent
-/// disposes the existing subscriptions and re-subscribes filtered to
-/// the new id.
-/// </summary>
 public sealed class ChatSession : IDisposable
 {
     private readonly IAsyncSubscriber<AgentTurnEmitted> _turns;
@@ -58,18 +51,8 @@ public sealed class ChatSession : IDisposable
         }
     }
 
-    /// <summary>
-    /// Raised whenever the bubble list or a streaming bubble's content
-    /// changes. Components subscribe and call <c>StateHasChanged</c> via
-    /// <c>InvokeAsync</c> — events fire off the renderer's sync context.
-    /// </summary>
     public event Action? Changed;
 
-    /// <summary>
-    /// Switches the selected agent. Loads the agent's persisted history
-    /// before subscribing to live events, so a refresh shows prior turns
-    /// in arrival order without a race against incoming fragments.
-    /// </summary>
     public async Task SelectAgentAsync(string? agentId, CancellationToken cancellationToken)
     {
         IReadOnlyList<ModelTurn> history = [];
@@ -108,12 +91,6 @@ public sealed class ChatSession : IDisposable
         Changed?.Invoke();
     }
 
-    /// <summary>
-    /// Sends user input to the selected agent. Slash-commands beginning
-    /// with <c>/</c> are intercepted (currently <c>/clear</c> and
-    /// <c>/archive</c>); any other content — including unknown slash
-    /// strings — is forwarded verbatim to the agent.
-    /// </summary>
     public async Task SendAsync(string content, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);

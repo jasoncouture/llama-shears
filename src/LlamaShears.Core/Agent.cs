@@ -286,12 +286,6 @@ public sealed partial class Agent : IAgent
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
 
-    /// <summary>
-    /// Builds an <see cref="ILogger"/> for an agent with the discriminated
-    /// category <c>LlamaShears.Core.Agent:&lt;name&gt;</c>, so log
-    /// filtering can target a single agent without affecting others. Pair
-    /// this with <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance"/>.
-    /// </summary>
     public static ILogger CreateLogger(ILoggerFactory loggerFactory, string agentId)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
