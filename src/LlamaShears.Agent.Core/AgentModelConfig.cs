@@ -1,4 +1,4 @@
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Agent.Core;
 

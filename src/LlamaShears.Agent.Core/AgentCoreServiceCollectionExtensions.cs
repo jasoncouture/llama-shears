@@ -1,7 +1,7 @@
-using LlamaShears.Agent.Abstractions;
-using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Agent.Core.Persistence;
 using LlamaShears.Agent.Core.SystemPrompt;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Hosting;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;

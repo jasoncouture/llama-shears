@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions\LlamaShears.Core.Abstractions.csproj" />
     <ProjectReference Include="..\LlamaShears.Hosting.Abstractions\LlamaShears.Hosting.Abstractions.csproj" />
   </ItemGroup>
 

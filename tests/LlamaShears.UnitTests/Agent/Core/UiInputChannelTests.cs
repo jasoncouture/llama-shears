@@ -1,6 +1,6 @@
-using LlamaShears.Agent.Abstractions.Events;
 using LlamaShears.Agent.Core.Channels;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Provider;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 

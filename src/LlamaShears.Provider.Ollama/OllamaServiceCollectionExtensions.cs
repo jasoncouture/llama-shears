@@ -1,4 +1,4 @@
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.ObjectPool;

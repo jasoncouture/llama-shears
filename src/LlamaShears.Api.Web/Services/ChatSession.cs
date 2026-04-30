@@ -1,5 +1,5 @@
-using LlamaShears.Agent.Abstractions.Events;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Provider;
 using MessagePipe;
 
 namespace LlamaShears.Api.Web.Services;

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using LlamaShears.Agent.Abstractions.Persistence;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Agent.Core.Persistence;
 

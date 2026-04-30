@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
-using LlamaShears.Agent.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Agent.Core;

@@ -1,10 +1,10 @@
 using System.Text.Json;
-using LlamaShears.Agent.Abstractions.Events;
-using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Api.Web.Services;
-using LlamaShears.Hosting;
+using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.IntegrationTests.Hosting;
-using LlamaShears.Provider.Abstractions;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 

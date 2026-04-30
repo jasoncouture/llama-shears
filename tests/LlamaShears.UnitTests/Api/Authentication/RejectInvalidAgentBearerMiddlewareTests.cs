@@ -1,4 +1,4 @@
-using LlamaShears.Agent.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Api.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;

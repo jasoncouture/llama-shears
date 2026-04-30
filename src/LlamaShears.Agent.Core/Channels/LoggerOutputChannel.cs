@@ -1,5 +1,5 @@
-using LlamaShears.Agent.Abstractions;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Agent.Core.Channels;

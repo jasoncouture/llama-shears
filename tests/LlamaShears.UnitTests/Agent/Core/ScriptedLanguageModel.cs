@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 

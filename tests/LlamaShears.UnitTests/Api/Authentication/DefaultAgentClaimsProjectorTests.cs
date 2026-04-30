@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using LlamaShears.Agent.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Api.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

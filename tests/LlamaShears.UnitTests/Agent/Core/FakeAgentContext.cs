@@ -1,5 +1,5 @@
-using LlamaShears.Agent.Abstractions.Persistence;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
