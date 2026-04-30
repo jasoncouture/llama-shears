@@ -10,7 +10,6 @@
     <Project Path="src/LlamaShears.Api/LlamaShears.Api.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions/LlamaShears.Core.Abstractions.csproj" />
     <Project Path="src/LlamaShears.Core/LlamaShears.Core.csproj" />
-    <Project Path="src/LlamaShears.Hosting.Abstractions/LlamaShears.Hosting.Abstractions.csproj" />
     <Project Path="src/LlamaShears.Hosting/LlamaShears.Hosting.csproj" />
     <Project Path="src/LlamaShears.Provider.Ollama/LlamaShears.Provider.Ollama.csproj" />
   </Folder>
