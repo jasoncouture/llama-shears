@@ -1,2 +1,10 @@
 <Project>
+  <PropertyGroup>
+    <!--
+      Run IDExxxx code-style analyzers during `dotnet build`, not just in
+      the IDE. Without this, severities set in .editorconfig (including
+      IDE0301 = error) are advisory only and never fail the build.
+    -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
 </Project>
