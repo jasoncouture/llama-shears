@@ -39,12 +39,10 @@ internal static class AnalyzerHarness
         CancellationToken cancellationToken = default)
     {
         var compilation = CreateCompilation(source, documentationMode);
-        var withAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create(analyzer));
+        var withAnalyzers = compilation.WithAnalyzers([analyzer]);
         var diagnostics = await withAnalyzers.GetAnalyzerDiagnosticsAsync(cancellationToken)
             .ConfigureAwait(false);
-        return diagnostics
-            .OrderBy(d => d.Location.SourceSpan.Start)
-            .ToImmutableArray();
+        return [.. diagnostics.OrderBy(d => d.Location.SourceSpan.Start)];
     }
 
     /// <summary>
@@ -60,7 +58,7 @@ internal static class AnalyzerHarness
         CancellationToken cancellationToken = default)
     {
         var compilation = CreateCompilation(source, DocumentationMode.Diagnose);
-        var withAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(suppressor));
+        var withAnalyzers = compilation.WithAnalyzers([suppressor]);
         return await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -71,7 +69,7 @@ internal static class AnalyzerHarness
             new CSharpParseOptions(LanguageVersion.Latest, documentationMode));
         return CSharpCompilation.Create(
             assemblyName: "LlamaShears.Analyzers.Tests.Dynamic",
-            syntaxTrees: new[] { syntaxTree },
+            syntaxTrees: [syntaxTree],
             references: DefaultReferences,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
@@ -79,9 +77,11 @@ internal static class AnalyzerHarness
     private static MetadataReference[] BuildDefaultReferences()
     {
         var trustedAssemblies = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty;
-        return trustedAssemblies
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
-            .ToArray();
+        return
+        [
+            .. trustedAssemblies
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path)),
+        ];
     }
 }

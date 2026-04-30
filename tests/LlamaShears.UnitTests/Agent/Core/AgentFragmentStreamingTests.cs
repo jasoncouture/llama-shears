@@ -63,10 +63,10 @@ public sealed class AgentFragmentStreamingTests
         var textFragments = snapshot.Where(f => f.Kind == AgentFragmentKind.Text).ToArray();
         await Assert.That(textFragments).Count().IsEqualTo(4);
         await Assert.That(textFragments[..3].Select(f => f.IsFinal).ToArray())
-            .IsEquivalentTo(new[] { false, false, false });
+            .IsEquivalentTo([false, false, false]);
         await Assert.That(textFragments[3].IsFinal).IsTrue();
         await Assert.That(textFragments.Select(f => f.Delta).ToArray())
-            .IsEquivalentTo(new[] { "Hi", " there", "!", string.Empty });
+            .IsEquivalentTo(["Hi", " there", "!", string.Empty]);
         await Assert.That(textFragments.Select(f => f.StreamId).Distinct().Count()).IsEqualTo(1);
         await Assert.That(textFragments[0].AgentId).IsEqualTo("alice");
     }

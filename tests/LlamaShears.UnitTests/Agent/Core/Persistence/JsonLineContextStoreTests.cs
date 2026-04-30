@@ -239,7 +239,7 @@ public sealed class JsonLineContextStoreTests
 
         var agents = await fixture.Store.ListAgentsAsync(CancellationToken.None);
 
-        await Assert.That(agents).IsEquivalentTo(new[] { "alice", "bob" });
+        await Assert.That(agents).IsEquivalentTo(["alice", "bob"]);
     }
 
     private sealed class Fixture : IDisposable
