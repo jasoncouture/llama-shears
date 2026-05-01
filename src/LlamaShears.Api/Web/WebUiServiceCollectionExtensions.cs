@@ -11,7 +11,7 @@ public static class WebUiServiceCollectionExtensions
 
         services.AddSingleton<IAgentDirectory, AgentDirectory>();
         services.AddSingleton<IIconProvider, IconProvider>();
-        services.AddScoped<ChatSession>();
+        services.AddScoped<IChatSession, ChatSession>();
 
         return services;
     }
