@@ -122,7 +122,7 @@ public sealed class AgentLoopTests
             agentContext: new FakeAgentContext("alice"),
             inputChannels: [],
             outputChannels: [],
-            logger: NullLogger.Instance,
+            loggerFactory: NullLoggerFactory.Instance,
             ticks: subscriber,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
@@ -146,7 +146,7 @@ public sealed class AgentLoopTests
             agentContext: new FakeAgentContext(id),
             inputChannels: inputs,
             outputChannels: outputs,
-            logger: NullLogger.Instance,
+            loggerFactory: NullLoggerFactory.Instance,
             ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));

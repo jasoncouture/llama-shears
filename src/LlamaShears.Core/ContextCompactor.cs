@@ -3,7 +3,7 @@ using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core;
 
-public sealed class ContextCompactor
+public sealed class ContextCompactor : IContextCompactor
 {
     // 1 system + 2 user + 2 assistant. Below this the trade-off (one model
     // call to produce a summary that wouldn't have been near the limit

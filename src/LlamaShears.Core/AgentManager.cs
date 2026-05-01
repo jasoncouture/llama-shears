@@ -193,8 +193,6 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
             ActivatorUtilities.CreateInstance<LoggerOutputChannel>(_services, name),
         ];
 
-        var logger = Agent.CreateLogger(_loggerFactory, name);
-
         return ActivatorUtilities.CreateInstance<Agent>(
             _services,
             name,
@@ -203,7 +201,6 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
             agentContext,
             inputs,
             outputs,
-            logger,
             modelConfig);
     }
 
