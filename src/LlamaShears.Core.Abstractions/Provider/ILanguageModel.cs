@@ -10,12 +10,17 @@ public interface ILanguageModel
 {
     /// <summary>
     /// Streams the model's response to <paramref name="prompt"/> as a
-    /// sequence of fragments. The enumeration completes when the model
-    /// has finished; cancellation aborts the in-flight request. The
-    /// final fragment is always an <see cref="IModelCompletionResponse"/>
-    /// when the provider can report token usage.
+    /// sequence of fragments. <paramref name="options"/> overrides the
+    /// model's configured defaults for this single call (null = use
+    /// configuration). The enumeration completes when the model has
+    /// finished; cancellation aborts the in-flight request. The final
+    /// fragment is always an <see cref="IModelCompletionResponse"/> when
+    /// the provider can report token usage.
     /// </summary>
-    IAsyncEnumerable<IModelResponseFragment> PromptAsync(ModelPrompt prompt, CancellationToken cancellationToken);
+    IAsyncEnumerable<IModelResponseFragment> PromptAsync(
+        ModelPrompt prompt,
+        PromptOptions? options,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Returns an upper-bound token estimate for <paramref name="turn"/>.

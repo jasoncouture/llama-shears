@@ -11,4 +11,6 @@ public sealed record AgentModelConfig
     public int? ContextLength { get; init; }
 
     public TimeSpan? KeepAlive { get; init; }
+
+    public int TokenLimit { get; init; }
 }

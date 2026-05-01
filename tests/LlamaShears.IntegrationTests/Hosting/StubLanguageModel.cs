@@ -37,6 +37,7 @@ public sealed class StubLanguageModel : ILanguageModel
 
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
         ModelPrompt prompt,
+        PromptOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _invocations);
