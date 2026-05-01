@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IAgentDirectory Directory
 @inject ChatSession Session
+@inject NavigationManager Nav
 
 <div class="chat-header">
     <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChangedAsync">
@@ -55,7 +56,9 @@
     private async Task OnSelectionChangedAsync(ChangeEventArgs e)
     {
         var id = e.Value as string;
-        await Session.SelectAgentAsync(string.IsNullOrWhiteSpace(id) ? null : id, CancellationToken.None);
+        var normalized = string.IsNullOrWhiteSpace(id) ? null : id;
+        await Session.SelectAgentAsync(normalized, CancellationToken.None);
+        Nav.NavigateTo(normalized is null ? "/" : $"/{Uri.EscapeDataString(normalized)}", replace: true);
     }
 
     public void Dispose()

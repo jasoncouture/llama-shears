@@ -1,5 +1,9 @@
-@page "/"
+@page "/{AgentId?}"
 @using LlamaShears.Api.Web.Components
+@using LlamaShears.Api.Web.Services
+@inject ChatSession Session
+@inject IAgentDirectory Directory
+@inject NavigationManager Nav
 
 <PageTitle>LlamaShears</PageTitle>
 
@@ -10,3 +14,24 @@
     </section>
     <Composer />
 </div>
+
+@code {
+    [Parameter]
+    public string? AgentId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AgentId))
+        {
+            return;
+        }
+        if (Directory.ListAgentIds().Contains(AgentId))
+        {
+            await Session.SelectAgentAsync(AgentId, CancellationToken.None);
+        }
+        else
+        {
+            Nav.NavigateTo("/", replace: true);
+        }
+    }
+}
