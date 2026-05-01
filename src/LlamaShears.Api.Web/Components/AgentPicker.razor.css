@@ -21,8 +21,20 @@
     font-size: 0.875rem;
 }
 
-.agent-picker-refresh {
+.agent-picker-actions {
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.agent-picker-sep {
+    width: 1px;
+    align-self: stretch;
+    background: var(--border-strong);
+}
+
+.agent-picker-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -34,9 +46,20 @@
     background: var(--surface);
     color: var(--text);
     cursor: pointer;
-    transition: background 120ms;
+    transition: background 120ms, color 120ms, border-color 120ms, box-shadow 120ms;
 }
 
-.agent-picker-refresh:hover {
+.agent-picker-button:hover {
     background: var(--surface-hover);
+}
+
+.agent-picker-toggle.is-on {
+    color: var(--bubble-thought-text);
+    border-color: var(--bubble-thought-border);
+    background: var(--bubble-thought-bg);
+    box-shadow: 0 0 0 2px var(--primary-ring);
+}
+
+.agent-picker-toggle.is-on:hover {
+    background: var(--bubble-thought-bg);
 }

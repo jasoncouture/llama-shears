@@ -1,4 +1,5 @@
 @using LlamaShears.Api.Web.Services
+@implements IDisposable
 @inject IAgentDirectory Directory
 @inject ChatSession Session
 
@@ -14,9 +15,20 @@
     {
         <span class="agent-picker-empty">No agents loaded yet.</span>
     }
-    <button type="button" class="agent-picker-refresh" title="Refresh" aria-label="Refresh agents" @onclick="Refresh">
-        <Icon Name="arrow-clockwise" />
-    </button>
+    <div class="agent-picker-actions">
+        <button type="button" class="agent-picker-button" title="Refresh" aria-label="Refresh agents" @onclick="Refresh">
+            <Icon Name="arrow-clockwise" />
+        </button>
+        <span class="agent-picker-sep" aria-hidden="true"></span>
+        <button type="button"
+                class="agent-picker-button agent-picker-toggle @(Session.ShowThoughts ? "is-on" : null)"
+                title="@(Session.ShowThoughts ? "Hide thinking" : "Show thinking")"
+                aria-label="Toggle thinking visibility"
+                aria-pressed="@(Session.ShowThoughts ? "true" : "false")"
+                @onclick="ToggleThoughts">
+            <Icon Name="lightbulb-fill" />
+        </button>
+    </div>
 </div>
 
 @code {
@@ -24,17 +36,30 @@
 
     protected override void OnInitialized()
     {
+        Session.Changed += HandleChanged;
         Refresh();
     }
+
+    private void HandleChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void Refresh()
     {
         _agentIds = Directory.ListAgentIds();
     }
 
+    private void ToggleThoughts()
+    {
+        Session.ShowThoughts = !Session.ShowThoughts;
+    }
+
     private async Task OnSelectionChangedAsync(ChangeEventArgs e)
     {
         var id = e.Value as string;
         await Session.SelectAgentAsync(string.IsNullOrWhiteSpace(id) ? null : id, CancellationToken.None);
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= HandleChanged;
     }
 }
