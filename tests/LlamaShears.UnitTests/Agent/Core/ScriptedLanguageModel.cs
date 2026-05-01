@@ -29,18 +29,12 @@ internal sealed class ScriptedLanguageModel : ILanguageModel
 
     public int PromptInvocations => Volatile.Read(ref _invocations);
 
-    public PromptOptions? LastOptions { get; private set; }
-
-    public ModelPrompt? LastPrompt { get; private set; }
-
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
         ModelPrompt prompt,
         PromptOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _invocations);
-        LastOptions = options;
-        LastPrompt = prompt;
         foreach (var fragment in _fragments)
         {
             cancellationToken.ThrowIfCancellationRequested();
