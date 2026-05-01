@@ -55,6 +55,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
+        services.TryAddSingleton<ContextCompactor>();
 
         return services;
     }

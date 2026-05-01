@@ -23,6 +23,9 @@ public sealed partial class Agent : IAgent
     private readonly Task _loop;
     private readonly Task[] _inputWaiters;
     private readonly IAsyncPublisher<AgentFragmentEmitted>? _fragments;
+    private readonly ContextCompactor? _compactor;
+    private readonly ModelConfiguration? _modelConfiguration;
+    private readonly IContextStore? _contextStore;
 
     public Agent(
         string id,
@@ -35,6 +38,9 @@ public sealed partial class Agent : IAgent
         IAsyncSubscriber<SystemTick> ticks,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
+        ContextCompactor? compactor = null,
+        ModelConfiguration? modelConfiguration = null,
+        IContextStore? contextStore = null,
         IAsyncPublisher<AgentFragmentEmitted>? fragments = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -56,6 +62,9 @@ public sealed partial class Agent : IAgent
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
         _time = timeProvider;
+        _compactor = compactor;
+        _modelConfiguration = modelConfiguration;
+        _contextStore = contextStore;
         InputChannels = inputChannels;
         OutputChannels = outputChannels;
         _signal = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
@@ -189,6 +198,7 @@ public sealed partial class Agent : IAgent
         var now = _time.GetUtcNow();
         var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), now);
         var prompt = new ModelPrompt([systemTurn, .. turns]);
+        prompt = await MaybeCompactAsync(prompt, cancellationToken).ConfigureAwait(false);
         var thinking = new StringBuilder();
         var content = new StringBuilder();
         var thoughtStreamId = Guid.NewGuid();
@@ -267,6 +277,35 @@ public sealed partial class Agent : IAgent
         }
     }
 
+    private async ValueTask<ModelPrompt> MaybeCompactAsync(ModelPrompt prompt, CancellationToken cancellationToken)
+    {
+        if (_compactor is null || _modelConfiguration is null || _contextStore is null)
+        {
+            return prompt;
+        }
+
+        var compacted = await _compactor.CompactAsync(prompt, _model, _modelConfiguration, cancellationToken).ConfigureAwait(false);
+        if (ReferenceEquals(compacted, prompt))
+        {
+            return prompt;
+        }
+
+        // Compaction happened: archive the old persisted context and
+        // re-seed it with the rebuilt non-system turns. The system turn
+        // is reconstructed per-call and never persisted.
+        LogContextCompacted(_logger, Id);
+        await _contextStore.ClearAsync(Id, archive: true, cancellationToken).ConfigureAwait(false);
+        foreach (var turn in compacted.Turns)
+        {
+            if (turn.Role == ModelRole.System)
+            {
+                continue;
+            }
+            await _agentContext.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
+        }
+        return compacted;
+    }
+
     private async Task PublishFragmentAsync(
         AgentFragmentKind kind,
         string delta,
@@ -285,6 +324,9 @@ public sealed partial class Agent : IAgent
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
+    private static partial void LogContextCompacted(ILogger logger, string agentId);
 
     public static ILogger CreateLogger(ILoggerFactory loggerFactory, string agentId)
     {

@@ -172,12 +172,13 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
             ?? throw new InvalidOperationException(
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
-        var model = providerFactory.CreateModel(new ModelConfiguration(
+        var modelConfig = new ModelConfiguration(
             ModelId: config.Model.Id.Model,
             Think: config.Model.Think,
             ContextLength: config.Model.ContextLength,
             KeepAlive: config.Model.KeepAlive,
-            TokenLimit: config.Model.TokenLimit));
+            TokenLimit: config.Model.TokenLimit);
+        var model = providerFactory.CreateModel(modelConfig);
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
@@ -202,7 +203,8 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
             agentContext,
             inputs,
             outputs,
-            logger);
+            logger,
+            modelConfig);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
