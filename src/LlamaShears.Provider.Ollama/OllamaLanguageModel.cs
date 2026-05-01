@@ -75,6 +75,11 @@ public partial class OllamaLanguageModel : ILanguageModel
                     LogTokenReceived(_logger, _configuration.ModelId, content);
                     yield return new OllamaResponseFragment(content);
                 }
+
+                if (chunk is ChatDoneResponseStream done)
+                {
+                    yield return new OllamaCompletionFragment(done.PromptEvalCount + done.EvalCount);
+                }
             }
         }
         finally
