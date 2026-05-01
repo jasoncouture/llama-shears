@@ -27,6 +27,13 @@ public interface IAgentContext
     IReadOnlyList<IContextEntry> Entries { get; }
 
     /// <summary>
+    /// Last observed cumulative model token count for the conversation,
+    /// taken from the most recent <see cref="ModelTokenInformationContextEntry"/>
+    /// in <see cref="Entries"/>. Zero when no completion has been recorded yet.
+    /// </summary>
+    int TokenCount => Entries.OfType<ModelTokenInformationContextEntry>().Select(i => i.TokenCount).DefaultIfEmpty(0).First();
+
+    /// <summary>
     /// Appends <paramref name="entry"/> to the live log and to the
     /// underlying store atomically. Subsequent reads of
     /// <see cref="Turns"/> / <see cref="Entries"/> include it.

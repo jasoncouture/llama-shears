@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
 using LlamaShears.Core.SystemPrompt;
@@ -7,6 +8,7 @@ using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using NSubstitute;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
@@ -49,6 +51,9 @@ public sealed class AgentFragmentStreamingTests
             ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
+            compactor: BuildNoOpCompactor(),
+            modelConfiguration: new ModelConfiguration("test"),
+            agentContextProvider: BuildContextProvider(),
             fragments: fragmentPublisher);
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
@@ -108,6 +113,9 @@ public sealed class AgentFragmentStreamingTests
             ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
+            compactor: BuildNoOpCompactor(),
+            modelConfiguration: new ModelConfiguration("test"),
+            agentContextProvider: BuildContextProvider(),
             fragments: fragmentPublisher);
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
@@ -164,6 +172,9 @@ public sealed class AgentFragmentStreamingTests
             ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
+            compactor: BuildNoOpCompactor(),
+            modelConfiguration: new ModelConfiguration("test"),
+            agentContextProvider: BuildContextProvider(),
             fragments: fragmentPublisher);
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
@@ -183,5 +194,26 @@ public sealed class AgentFragmentStreamingTests
         var services = new ServiceCollection();
         services.AddMessagePipe();
         return services.BuildServiceProvider();
+    }
+
+    private static IContextCompactor BuildNoOpCompactor()
+    {
+        var compactor = Substitute.For<IContextCompactor>();
+        compactor.CompactAsync(
+                Arg.Any<AgentContext>(),
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<ILanguageModel>(),
+                Arg.Any<ModelConfiguration>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
+        return compactor;
+    }
+
+    private static IAgentContextProvider BuildContextProvider()
+    {
+        var provider = Substitute.For<IAgentContextProvider>();
+        provider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(call.Arg<string>())));
+        return provider;
     }
 }

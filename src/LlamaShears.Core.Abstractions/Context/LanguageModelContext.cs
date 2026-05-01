@@ -5,4 +5,5 @@ namespace LlamaShears.Core.Abstractions.Context;
 
 public sealed record LanguageModelContext(
     ImmutableArray<ModelTurn> Turns,
-    ImmutableArray<IContextEntry> Entries);
+    ImmutableArray<IContextEntry> Entries,
+    int ContextWindowTokenCount);

@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using MessagePipe;
@@ -25,10 +26,10 @@ public sealed partial class Agent : IAgent
     private readonly IReadOnlyList<IInputChannel> _inputChannels;
     private readonly IReadOnlyList<IOutputChannel> _outputChannels;
     private readonly TimeSpan _heartbeatPeriod;
-    private readonly IAsyncPublisher<AgentFragmentEmitted>? _fragments;
-    private readonly IContextCompactor? _compactor;
-    private readonly ModelConfiguration? _modelConfiguration;
-    private readonly IContextStore? _contextStore;
+    private readonly IAsyncPublisher<AgentFragmentEmitted> _fragments;
+    private readonly IContextCompactor _compactor;
+    private readonly ModelConfiguration _modelConfiguration;
+    private readonly IAgentContextProvider _agentContextProvider;
     private DateTimeOffset _lastHeartbeatAt;
 
     public Agent(
@@ -42,10 +43,10 @@ public sealed partial class Agent : IAgent
         IAsyncSubscriber<SystemTick> ticks,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
-        IContextCompactor? compactor = null,
-        ModelConfiguration? modelConfiguration = null,
-        IContextStore? contextStore = null,
-        IAsyncPublisher<AgentFragmentEmitted>? fragments = null)
+        IContextCompactor compactor,
+        ModelConfiguration modelConfiguration,
+        IAgentContextProvider agentContextProvider,
+        IAsyncPublisher<AgentFragmentEmitted> fragments)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(config);
@@ -57,6 +58,10 @@ public sealed partial class Agent : IAgent
         ArgumentNullException.ThrowIfNull(ticks);
         ArgumentNullException.ThrowIfNull(systemPromptProvider);
         ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(compactor);
+        ArgumentNullException.ThrowIfNull(modelConfiguration);
+        ArgumentNullException.ThrowIfNull(agentContextProvider);
+        ArgumentNullException.ThrowIfNull(fragments);
 
         Id = id;
         _model = model;
@@ -67,7 +72,7 @@ public sealed partial class Agent : IAgent
         _time = timeProvider;
         _compactor = compactor;
         _modelConfiguration = modelConfiguration;
-        _contextStore = contextStore;
+        _agentContextProvider = agentContextProvider;
         _inputChannels = inputChannels;
         _outputChannels = outputChannels;
         _heartbeatPeriod = config.HeartbeatPeriod;
@@ -91,7 +96,7 @@ public sealed partial class Agent : IAgent
         _signal.Writer.TryComplete();
         try
         {
-            Task.WhenAll([_loop, .._inputWaiters]).GetAwaiter().GetResult();
+            Task.WhenAll([_loop, .. _inputWaiters]).GetAwaiter().GetResult();
         }
         catch (OperationCanceledException)
         {
@@ -146,19 +151,34 @@ public sealed partial class Agent : IAgent
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
-        try
+        using var loggingScope = _logger.BeginScope("{agentId}", Id);
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (await _signal.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            try
             {
+                if (!await _signal.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    return;
+                }
                 while (_signal.Reader.TryRead(out _))
                 {
                 }
-
                 await ProcessOnceAsync(cancellationToken).ConfigureAwait(false);
             }
-        }
-        catch (OperationCanceledException)
-        {
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                LogAgentStopping(Id);
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Anything else — timeout, network, model-side fault — must
+                // not kill the loop. Log it loudly and wait for the next
+                // signal. Silently swallowing here is what hid the
+                // HttpClient.Timeout / streaming-deadlock failure mode for
+                // multiple sessions.
+                LogProcessOnceFailed(Id, ex);
+            }
         }
     }
 
@@ -183,7 +203,9 @@ public sealed partial class Agent : IAgent
         var now = _time.GetUtcNow();
         var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), now);
         var prompt = new ModelPrompt([systemTurn, .. turns]);
-        prompt = await MaybeCompactAsync(prompt, cancellationToken).ConfigureAwait(false);
+        var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
+        prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, cancellationToken).ConfigureAwait(false);
         var thinking = new StringBuilder();
         var content = new StringBuilder();
         var thoughtStreamId = Guid.NewGuid();
@@ -214,6 +236,9 @@ public sealed partial class Agent : IAgent
                         textStreamId,
                         isFinal: false,
                         cancellationToken).ConfigureAwait(false);
+                    break;
+                case IModelCompletionResponse completion:
+                    await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(completion.TokenCount), cancellationToken).ConfigureAwait(false);
                     break;
             }
         }
@@ -262,35 +287,6 @@ public sealed partial class Agent : IAgent
         }
     }
 
-    private async ValueTask<ModelPrompt> MaybeCompactAsync(ModelPrompt prompt, CancellationToken cancellationToken)
-    {
-        if (_compactor is null || _modelConfiguration is null || _contextStore is null)
-        {
-            return prompt;
-        }
-
-        var compacted = await _compactor.CompactAsync(prompt, _model, _modelConfiguration, cancellationToken).ConfigureAwait(false);
-        if (ReferenceEquals(compacted, prompt))
-        {
-            return prompt;
-        }
-
-        // Compaction happened: archive the old persisted context and
-        // re-seed it with the rebuilt non-system turns. The system turn
-        // is reconstructed per-call and never persisted.
-        LogContextCompacted(_logger, Id);
-        await _contextStore.ClearAsync(Id, archive: true, cancellationToken).ConfigureAwait(false);
-        foreach (var turn in compacted.Turns)
-        {
-            if (turn.Role == ModelRole.System)
-            {
-                continue;
-            }
-            await _agentContext.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
-        }
-        return compacted;
-    }
-
     private async Task PublishFragmentAsync(
         AgentFragmentKind kind,
         string delta,
@@ -298,10 +294,6 @@ public sealed partial class Agent : IAgent
         bool isFinal,
         CancellationToken cancellationToken)
     {
-        if (_fragments is null)
-        {
-            return;
-        }
         await _fragments.PublishAsync(
             new AgentFragmentEmitted(Id, kind, delta, streamId, isFinal),
             cancellationToken).ConfigureAwait(false);
@@ -310,6 +302,9 @@ public sealed partial class Agent : IAgent
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
-    private static partial void LogContextCompacted(ILogger logger, string agentId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' is stopping.")]
+    private partial void LogAgentStopping(string agentId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
+    private partial void LogProcessOnceFailed(string agentId, Exception ex);
 }

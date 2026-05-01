@@ -9,6 +9,7 @@ namespace LlamaShears.Core.Abstractions.Provider;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(ModelTurn), "turn")]
+[JsonDerivedType(typeof(ModelTokenInformationContextEntry), "token_metrics")]
 public interface IContextEntry
 {
     /// <summary>

@@ -44,7 +44,8 @@ public sealed class AgentContextProvider : IAgentContextProvider
             Config: config,
             LanguageModel: new LanguageModelContext(
                 Turns: [.. persisted.Turns],
-                Entries: [.. persisted.Entries]),
+                Entries: [.. persisted.Entries],
+                persisted.TokenCount),
             System: new SystemContext(),
             Tools: new ToolContext([]),
             Plugins: new PluginContext([]));
