@@ -30,6 +30,7 @@ public static class OllamaServiceCollectionExtensions
             {
                 var options = sp.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
                 httpClient.BaseAddress = options.BaseUri;
+                httpClient.Timeout = options.RequestTimeout;
             })
             .AddTypedClient<IOllamaApiClient>(httpClient => new OllamaApiClient(httpClient));
 
