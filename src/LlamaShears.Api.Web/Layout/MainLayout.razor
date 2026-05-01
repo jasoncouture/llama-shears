@@ -1,5 +1,4 @@
 @inherits LayoutComponentBase
-@using LlamaShears.Api.Web.Components
 
 <div class="app-shell">
     <header class="app-header">
@@ -12,7 +11,7 @@
     </header>
 
     <nav class="nav @(_navOpen ? "nav-open" : null)">
-        <NavLink class="nav-item" ActiveClass="nav-item-active" href="/" Match="NavLinkMatch.All" @onclick="CloseNav">
+        <NavLink class="nav-item" ActiveClass="nav-item-active" href="/chat" @onclick="CloseNav">
             <span class="nav-item-text">Chat</span>
         </NavLink>
     </nav>
