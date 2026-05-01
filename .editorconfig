@@ -6,8 +6,20 @@ root = true
 csharp_style_prefer_primary_constructors = false
 dotnet_diagnostic.IDE0290.severity = none
 
-# Empty collections must use the collection expression form (`[]`).
-# Promoted to error so the build fails on `Type<...>.Empty` /
-# `ImmutableX.Create()` / `Array.Empty<T>()` style at call sites.
+# Collections must use the collection expression form (`[]`) wherever it
+# applies. Promoted to error per-diagnostic so the build (not just the IDE)
+# fails on `new[] { ... }`, `Type<...>.Empty`, `Array.Empty<T>()`,
+# `ImmutableX.Create(...)`, builder, and fluent forms.
+#
+# Per-ID lines are required: the inline `:error` on the option key drives
+# IDE severity but EnforceCodeStyleInBuild only honors per-diagnostic
+# severity for the IDE03xx family. The option key still has to set the
+# value (`when_types_loosely_match`) — that's what makes the rule fire at
+# all; the per-ID lines are what make it fail the build.
 dotnet_style_prefer_collection_expression = when_types_loosely_match:error
+dotnet_diagnostic.IDE0300.severity = error
 dotnet_diagnostic.IDE0301.severity = error
+dotnet_diagnostic.IDE0302.severity = error
+dotnet_diagnostic.IDE0303.severity = error
+dotnet_diagnostic.IDE0304.severity = error
+dotnet_diagnostic.IDE0305.severity = error
