@@ -1,10 +1,26 @@
 using System.Net;
 using LlamaShears.IntegrationTests.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace LlamaShears.IntegrationTests;
 
 public sealed class ChatSurfaceTests
 {
+    [Test]
+    public async Task GetRootRedirectsToChat()
+    {
+        await using var factory = new IsolatedAppFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var response = await client.GetAsync("/", CancellationToken.None);
+
+        await Assert.That((int)response.StatusCode).IsBetween(300, 399);
+        await Assert.That(response.Headers.Location?.AbsolutePath).IsEqualTo("/chat");
+    }
+
     [Test]
     public async Task GetChatPageReturns200AndRendersTheChatShell()
     {

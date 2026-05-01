@@ -1,0 +1,16 @@
+@page "/"
+@inject NavigationManager Nav
+
+<PageTitle>LlamaShears</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo(SelectInitialDestination(), replace: true);
+    }
+
+    // Currently always lands on the chat page. The signature is the seam
+    // for picking dynamically (e.g. last-visited page, role-based default,
+    // tutorial vs. returning user) once those inputs exist.
+    private static string SelectInitialDestination() => "/chat";
+}
