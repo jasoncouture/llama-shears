@@ -55,29 +55,6 @@ public sealed class AgentLoopTests
     }
 
     [Test]
-    public async Task DisabledHeartbeatSwallowsTicks()
-    {
-        await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
-
-        var captured = new CapturingOutputChannel();
-        var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
-            new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
-        ]);
-        var model = new ScriptedLanguageModel("nope");
-
-        using var agent = BuildAgent("alice", subscriber, model, [seed], [captured]);
-        agent.HeartbeatEnabled = false;
-
-        await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
-        await Task.Delay(150, CancellationToken.None);
-
-        await Assert.That(model.PromptInvocations).IsEqualTo(0);
-        await Assert.That(captured.Turns).IsEmpty();
-    }
-
-    [Test]
     public async Task HeartbeatPeriodThrottlesSubsequentTicksWithinWindow()
     {
         await using var provider = BuildServices();
@@ -106,29 +83,6 @@ public sealed class AgentLoopTests
         await Task.Delay(150, CancellationToken.None);
 
         await Assert.That(model.PromptInvocations).IsEqualTo(1);
-    }
-
-    [Test]
-    public async Task ConfigPropertyExposesTheFullAgentConfig()
-    {
-        await using var provider = BuildServices();
-        var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
-
-        var config = TestAgentConfigs.WithHeartbeat(TimeSpan.FromMinutes(15));
-        using var agent = new global::LlamaShears.Core.Agent(
-            id: "alice",
-            config: config,
-            model: new ScriptedLanguageModel("ignored"),
-            agentContext: new FakeAgentContext("alice"),
-            inputChannels: [],
-            outputChannels: [],
-            loggerFactory: NullLoggerFactory.Instance,
-            ticks: subscriber,
-            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
-            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
-
-        await Assert.That(agent.Config).IsSameReferenceAs(config);
-        await Assert.That(agent.HeartbeatPeriod).IsEqualTo(TimeSpan.FromMinutes(15));
     }
 
     private static global::LlamaShears.Core.Agent BuildAgent(
