@@ -17,6 +17,7 @@ public sealed class ChatSession : IDisposable
     private IDisposable? _fragmentSubscription;
     private string? _selectedAgentId;
     private bool _showThoughts = true;
+    private bool _showStreaming = true;
 
     public ChatSession(
         IAsyncSubscriber<AgentTurnEmitted> turns,
@@ -70,6 +71,29 @@ public sealed class ChatSession : IDisposable
                     return;
                 }
                 _showThoughts = value;
+            }
+            Changed?.Invoke();
+        }
+    }
+
+    public bool ShowStreaming
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _showStreaming;
+            }
+        }
+        set
+        {
+            lock (_gate)
+            {
+                if (_showStreaming == value)
+                {
+                    return;
+                }
+                _showStreaming = value;
             }
             Changed?.Invoke();
         }
