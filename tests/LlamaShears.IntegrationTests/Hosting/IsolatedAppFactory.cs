@@ -89,10 +89,10 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
     public async Task WaitForAgentAsync(string agentId, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var manager = Services.GetRequiredService<AgentManager>();
+        var manager = Services.GetRequiredService<IAgentManager>();
         var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(5));
         await TickAsync().ConfigureAwait(false);
-        while (!manager.Agents.ContainsKey(agentId))
+        while (!manager.Contains(agentId))
         {
             if (DateTimeOffset.UtcNow >= deadline)
             {
