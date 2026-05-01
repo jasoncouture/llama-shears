@@ -1,4 +1,4 @@
-.agent-picker {
+.chat-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -7,7 +7,7 @@
     background: var(--surface);
 }
 
-.agent-picker select {
+.chat-header select {
     font: inherit;
     padding: 0.4rem 0.75rem;
     border: 1px solid var(--border-strong);
@@ -16,25 +16,25 @@
     color: var(--text);
 }
 
-.agent-picker-empty {
+.chat-header-empty {
     color: var(--text-subtle);
     font-size: 0.875rem;
 }
 
-.agent-picker-actions {
+.chat-header-actions {
     margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.agent-picker-sep {
+.chat-header-sep {
     width: 1px;
     align-self: stretch;
     background: var(--border-strong);
 }
 
-.agent-picker-button {
+.chat-header-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -49,17 +49,17 @@
     transition: background 120ms, color 120ms, border-color 120ms, box-shadow 120ms;
 }
 
-.agent-picker-button:hover {
+.chat-header-button:hover {
     background: var(--surface-hover);
 }
 
-.agent-picker-toggle.is-on {
+.chat-header-toggle.is-on {
     color: var(--bubble-thought-text);
     border-color: var(--bubble-thought-border);
     background: var(--bubble-thought-bg);
     box-shadow: 0 0 0 2px var(--primary-ring);
 }
 
-.agent-picker-toggle.is-on:hover {
+.chat-header-toggle.is-on:hover {
     background: var(--bubble-thought-bg);
 }
