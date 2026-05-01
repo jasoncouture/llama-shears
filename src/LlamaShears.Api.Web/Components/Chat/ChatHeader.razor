@@ -6,7 +6,10 @@
 
 <div class="chat-header">
     <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChangedAsync">
-        <option value="" disabled>— select agent —</option>
+        @if (Session.SelectedAgentId is null)
+        {
+            <option value="">— select agent —</option>
+        }
         @foreach (var id in _agentIds)
         {
             <option value="@id">@id</option>
