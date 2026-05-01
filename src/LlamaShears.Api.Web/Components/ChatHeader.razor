@@ -71,7 +71,7 @@
         var id = e.Value as string;
         var normalized = string.IsNullOrWhiteSpace(id) ? null : id;
         await Session.SelectAgentAsync(normalized, CancellationToken.None);
-        Nav.NavigateTo(normalized is null ? "/" : $"/{Uri.EscapeDataString(normalized)}", replace: true);
+        Nav.NavigateTo(normalized is null ? "/chat" : $"/chat/{Uri.EscapeDataString(normalized)}", replace: true);
     }
 
     public void Dispose()

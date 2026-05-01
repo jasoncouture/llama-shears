@@ -1,4 +1,4 @@
-@page "/{AgentId?}"
+@page "/chat/{AgentId?}"
 @using LlamaShears.Api.Web.Components
 @using LlamaShears.Api.Web.Services
 @inject ChatSession Session
@@ -31,7 +31,7 @@
         }
         else
         {
-            Nav.NavigateTo("/", replace: true);
+            Nav.NavigateTo("/chat", replace: true);
         }
     }
 }
