@@ -14,6 +14,7 @@
     else
     {
         ChatBubbleKind? hiddenStreamingKind = null;
+        var hasVisibleStreaming = false;
         foreach (var bubble in Session.Bubbles)
         {
             var hideAsThought = bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts;
@@ -26,9 +27,13 @@
                 }
                 continue;
             }
+            if (bubble.IsStreaming)
+            {
+                hasVisibleStreaming = true;
+            }
             <ChatBubbleView Bubble="@bubble" AgentName="@Session.SelectedAgentId" />
         }
-        if (hiddenStreamingKind is { } kind)
+        if (hiddenStreamingKind is { } kind && !hasVisibleStreaming)
         {
             var modifier = kind == ChatBubbleKind.Thought ? "thinking" : "responding";
             var label = kind == ChatBubbleKind.Thought ? "thinking" : "typing";
