@@ -8,6 +8,7 @@
         @bind:event="oninput"
         placeholder="@Placeholder"
         rows="1"
+        disabled="@NoAgent"
         data-composer-submit></textarea>
     <button type="submit" disabled="@CannotSend">Send</button>
     <small class="composer-hint">Enter to send · Shift+Enter for newline · <code>/clear</code> · <code>/archive</code></small>
@@ -16,9 +17,11 @@
 @code {
     private string _draft = string.Empty;
 
-    private bool CannotSend => Session.SelectedAgentId is null || string.IsNullOrWhiteSpace(_draft);
+    private bool NoAgent => Session.SelectedAgentId is null;
 
-    private string Placeholder => Session.SelectedAgentId is null
+    private bool CannotSend => NoAgent || string.IsNullOrWhiteSpace(_draft);
+
+    private string Placeholder => NoAgent
         ? "Pick an agent above, then type your message..."
         : "Type a message...";
 
