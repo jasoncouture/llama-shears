@@ -6,23 +6,34 @@ public static class Event
     {
         public const string Agent = "agent";
 
-        public const string System = "system";
+        public const string Host = "system";
+        public const string Channel = "channel";
     }
 
     public static class WellKnown
     {
-        public static EventType HostStartup { get; } = new(Sources.System, "startup");
+        public static class Host
+        {
+            public static EventType Startup { get; } = new(Sources.Host, "startup");
+            public static EventType Shutdown { get; } = new(Sources.Host, "shutdown");
+        }
+        public static class Agent
+        {
 
-        public static EventType HostShutdown { get; } = new(Sources.System, "shutdown");
-
-        public static EventType AgentLoaded { get; } = new(Sources.Agent, "loaded");
-
-        public static EventType AgentUnloaded { get; } = new(Sources.Agent, "unloaded");
-
-        public static EventType AgentLoadError { get; } = new(Sources.Agent, "loading-error");
-
-        public static EventType AgentBusy { get; } = new(Sources.Agent, "busy");
-
-        public static EventType AgentIdle { get; } = new(Sources.Agent, "idle");
+            public static EventType Loaded { get; } = new(Sources.Agent, "loaded");
+            public static EventType Unloaded { get; } = new(Sources.Agent, "unloaded");
+            public static EventType LoadError { get; } = new(Sources.Agent, "loading-error");
+            public static EventType Busy { get; } = new(Sources.Agent, "busy");
+            public static EventType Idle { get; } = new(Sources.Agent, "idle");
+            public static EventType Message { get; } = new(Sources.Agent, "message");
+            public static EventType Thought { get; } = new(Sources.Agent, "thought");
+        }
+        public static class Channel
+        {
+            public static EventType Created { get; } = new(Sources.Channel, "created");
+            public static EventType Destroyed { get; } = new(Sources.Channel, "destroyed");
+            public static EventType Message { get; } = new(Sources.Channel, "message");
+            public static EventType Error { get; } = new(Sources.Channel, "error");
+        }
     }
 }
