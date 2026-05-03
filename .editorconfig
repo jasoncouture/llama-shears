@@ -23,3 +23,17 @@ dotnet_diagnostic.IDE0302.severity = error
 dotnet_diagnostic.IDE0303.severity = error
 dotnet_diagnostic.IDE0304.severity = error
 dotnet_diagnostic.IDE0305.severity = error
+
+# Private fields use _camelCase. Without an explicit rule, the IDE's
+# "encapsulate field" / "introduce field" autofixes default to plain
+# camelCase, which doesn't match the codebase. Applies to instance and
+# static private fields alike — this project does not use the s_ prefix.
+dotnet_naming_rule.private_fields_underscore_camel_case.severity = warning
+dotnet_naming_rule.private_fields_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore_camel_case.style = underscore_camel_case
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
