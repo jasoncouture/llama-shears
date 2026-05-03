@@ -62,7 +62,7 @@ public sealed class AgentFragmentStreamingTests
         IReadOnlyList<AgentFragmentEmitted> snapshot;
         lock (captureGate)
         {
-            snapshot = [..captured];
+            snapshot = [.. captured];
         }
 
         var textFragments = snapshot.Where(f => f.Kind == AgentFragmentKind.Text).ToArray();
@@ -124,7 +124,7 @@ public sealed class AgentFragmentStreamingTests
         IReadOnlyList<AgentFragmentEmitted> snapshot;
         lock (captureGate)
         {
-            snapshot = [..captured];
+            snapshot = [.. captured];
         }
 
         var thoughtIds = snapshot.Where(f => f.Kind == AgentFragmentKind.Thought).Select(f => f.StreamId).Distinct().ToArray();
@@ -183,7 +183,7 @@ public sealed class AgentFragmentStreamingTests
         IReadOnlyList<AgentFragmentEmitted> snapshot;
         lock (captureGate)
         {
-            snapshot = [..captured];
+            snapshot = [.. captured];
         }
 
         await Assert.That(snapshot.Any(f => f.Kind == AgentFragmentKind.Thought)).IsFalse();

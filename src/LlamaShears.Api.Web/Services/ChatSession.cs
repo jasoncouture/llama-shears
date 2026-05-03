@@ -48,7 +48,7 @@ public sealed class ChatSession : IChatSession
         {
             lock (_gate)
             {
-                return [.._bubbles];
+                return [.. _bubbles];
             }
         }
     }

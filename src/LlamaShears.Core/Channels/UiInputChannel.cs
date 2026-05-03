@@ -44,7 +44,7 @@ public sealed class UiInputChannel : IInputChannel, IDisposable
             {
                 yield break;
             }
-            drained = [.._pending];
+            drained = [.. _pending];
             _pending.Clear();
             _signal = NewSignal();
         }

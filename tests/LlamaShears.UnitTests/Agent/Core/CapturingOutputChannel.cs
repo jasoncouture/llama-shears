@@ -15,7 +15,7 @@ internal sealed class CapturingOutputChannel : IOutputChannel
         {
             lock (_gate)
             {
-                return [.._turns];
+                return [.. _turns];
             }
         }
     }

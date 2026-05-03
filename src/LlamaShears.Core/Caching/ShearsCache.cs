@@ -39,7 +39,7 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
         return new CacheResult<TItem>(Present: true, TypeMismatch: false, Value: typed);
     }
 
-    
+
 
     public void Invalidate(string cacheKey)
     {
