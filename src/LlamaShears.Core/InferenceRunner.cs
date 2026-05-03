@@ -84,7 +84,7 @@ public sealed class InferenceRunner : IInferenceRunner
         {
             if (thinking.Length > 0)
             {
-                var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
+                var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetLocalNow());
                 await _eventPublisher.PublishAsync(
                     Event.WellKnown.Agent.Turn with { Id = eventId },
                     thoughtTurn,
@@ -93,7 +93,7 @@ public sealed class InferenceRunner : IInferenceRunner
             }
             if (content.Length > 0)
             {
-                var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
+                var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow());
                 await _eventPublisher.PublishAsync(
                     Event.WellKnown.Agent.Turn with { Id = eventId },
                     assistantTurn,
