@@ -28,6 +28,8 @@ internal static class DiagnosticIds
 
     public const string DocumentationModeNotDiagnose = "LS0013";
 
+    public const string ExplicitDelegateInvocation = "LS0014";
+
     public const string SuppressIde0290 = "LSSPR0001";
 
     public const string SuppressCs1591 = "LSSPR0002";

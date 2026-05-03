@@ -18,3 +18,4 @@ LS0010  | LlamaShears.Style  | Warning  | Non-public interface is missing an XML
 LS0011  | LlamaShears.Style  | Error    | Public interface member is missing an XML doc comment.
 LS0012  | LlamaShears.Style  | Warning  | Non-public interface member is missing an XML doc comment. Configurable.
 LS0013  | LlamaShears.Style  | Error    | C# DocumentationMode is not Diagnose; enable <GenerateDocumentationFile>true</GenerateDocumentationFile> in the project for the XML doc analyzer to detect doc comments correctly.
+LS0014  | LlamaShears.Style  | Error    | Delegate invocation must use '.Invoke' (or '?.Invoke' for nullable receivers); direct call syntax is ambiguous with method calls.
