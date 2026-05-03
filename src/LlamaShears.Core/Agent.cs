@@ -4,6 +4,9 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
+using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using MessagePipe;
@@ -11,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class Agent : IAgent
+public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisposable
 {
     private readonly ILanguageModel _model;
     private readonly ILogger _logger;
@@ -27,6 +30,7 @@ public sealed partial class Agent : IAgent
     private readonly IReadOnlyList<IOutputChannel> _outputChannels;
     private readonly TimeSpan _heartbeatPeriod;
     private readonly IAsyncPublisher<AgentFragmentEmitted> _fragments;
+    private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
@@ -46,27 +50,16 @@ public sealed partial class Agent : IAgent
         IContextCompactor compactor,
         ModelConfiguration modelConfiguration,
         IAgentContextProvider agentContextProvider,
-        IAsyncPublisher<AgentFragmentEmitted> fragments)
+        IAsyncPublisher<AgentFragmentEmitted> fragments,
+        IEventPublisher eventPublisher)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        ArgumentNullException.ThrowIfNull(config);
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(agentContext);
-        ArgumentNullException.ThrowIfNull(inputChannels);
-        ArgumentNullException.ThrowIfNull(outputChannels);
-        ArgumentNullException.ThrowIfNull(loggerFactory);
-        ArgumentNullException.ThrowIfNull(ticks);
-        ArgumentNullException.ThrowIfNull(systemPromptProvider);
-        ArgumentNullException.ThrowIfNull(timeProvider);
-        ArgumentNullException.ThrowIfNull(compactor);
-        ArgumentNullException.ThrowIfNull(modelConfiguration);
-        ArgumentNullException.ThrowIfNull(agentContextProvider);
-        ArgumentNullException.ThrowIfNull(fragments);
 
         Id = id;
         _model = model;
         _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{id}");
         _fragments = fragments;
+        _eventPublisher = eventPublisher;
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
         _time = timeProvider;
@@ -151,7 +144,7 @@ public sealed partial class Agent : IAgent
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
-        using var loggingScope = _logger.BeginScope("{agentId}", Id);
+        using var loggingScope = _logger.BeginScope("{AgentId}", Id);
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -163,7 +156,9 @@ public sealed partial class Agent : IAgent
                 while (_signal.Reader.TryRead(out _))
                 {
                 }
-                await ProcessOnceAsync(cancellationToken).ConfigureAwait(false);
+                var correlationId = Guid.CreateVersion7();
+                using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
+                await ProcessOnceAsync(correlationId, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -182,7 +177,7 @@ public sealed partial class Agent : IAgent
         }
     }
 
-    private async Task ProcessOnceAsync(CancellationToken cancellationToken)
+    private async Task ProcessOnceAsync(Guid correlationId, CancellationToken cancellationToken)
     {
         var contextSizeBefore = _agentContext.Turns.Count;
 
@@ -226,6 +221,8 @@ public sealed partial class Agent : IAgent
                         thoughtStreamId,
                         isFinal: false,
                         cancellationToken).ConfigureAwait(false);
+                    await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Thought with { Id = Id }, new AgentThoughtFragment(thought.Content, false), correlationId, cancellationToken);
+                        
                     break;
                 case IModelTextResponse text:
                     content.Append(text.Content);
@@ -236,6 +233,7 @@ public sealed partial class Agent : IAgent
                         textStreamId,
                         isFinal: false,
                         cancellationToken).ConfigureAwait(false);
+                        await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Message with { Id = Id }, new AgentMessageFragment(text.Content, false), correlationId, cancellationToken);
                     break;
                 case IModelCompletionResponse completion:
                     await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(completion.TokenCount), cancellationToken).ConfigureAwait(false);
@@ -251,6 +249,8 @@ public sealed partial class Agent : IAgent
                 thoughtStreamId,
                 isFinal: true,
                 cancellationToken).ConfigureAwait(false);
+                await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Thought with { Id = Id }, new AgentThoughtFragment(string.Empty, true), correlationId, cancellationToken);
+                
         }
         if (textStreamSeen)
         {
@@ -260,12 +260,15 @@ public sealed partial class Agent : IAgent
                 textStreamId,
                 isFinal: true,
                 cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Message with { Id = Id }, new AgentMessageFragment(string.Empty, true), correlationId, cancellationToken);
         }
 
         if (thinking.Length > 0)
         {
             var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
             await _agentContext.AppendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Thought with { Id = Id }, new AgentThought(thinking.ToString()), correlationId, cancellationToken);
+            
             foreach (var output in _outputChannels)
             {
                 await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
@@ -280,6 +283,8 @@ public sealed partial class Agent : IAgent
 
         var response = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
         await _agentContext.AppendAsync(response, cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Message with { Id = Id }, new AgentMessage(content.ToString()), correlationId, cancellationToken);
+        
 
         foreach (var output in _outputChannels)
         {
@@ -307,4 +312,9 @@ public sealed partial class Agent : IAgent
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
     private partial void LogProcessOnceFailed(string agentId, Exception ex);
+
+    public ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }

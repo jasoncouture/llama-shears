@@ -11,7 +11,6 @@ using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.SystemPrompt;
 using LlamaShears.Hosting;
-using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -38,7 +37,6 @@ public static class CoreServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(systemTickConfigurationSection);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileParserCacheConfigurationSection);
 
-        services.AddMessagePipe();
         services.AddMemoryCache();
         services.AddShearsPaths();
         services.TryAddSingleton(typeof(IShearsCache<>), typeof(ShearsCache<>));

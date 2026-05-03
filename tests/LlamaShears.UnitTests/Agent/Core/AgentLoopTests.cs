@@ -2,6 +2,7 @@ using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
@@ -121,7 +122,8 @@ public sealed class AgentLoopTests
             compactor: compactor,
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
-            fragments: Substitute.For<IAsyncPublisher<AgentFragmentEmitted>>());
+            fragments: Substitute.For<IAsyncPublisher<AgentFragmentEmitted>>(),
+            eventPublisher: Substitute.For<IEventPublisher>());
     }
 
     private static ServiceProvider BuildServices()
