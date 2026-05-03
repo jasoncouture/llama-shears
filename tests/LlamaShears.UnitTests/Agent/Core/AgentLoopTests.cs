@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Eventing;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,8 +20,8 @@ public sealed class AgentLoopTests
     public async Task TickWithPendingInputDrivesAResponseIntoContextAndOutputs()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         var captured = new CapturingOutputChannel();
         var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
@@ -28,9 +29,9 @@ public sealed class AgentLoopTests
         ]);
         var model = new ScriptedLanguageModel("hi back");
 
-        using var agent = BuildAgent("alice", subscriber, model, [seed], [captured]);
+        using var agent = BuildAgent("alice", bus, model, [seed], [captured]);
 
-        await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
+        await PublishTickAsync(publisher, DateTimeOffset.UtcNow);
 
         await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
@@ -43,15 +44,15 @@ public sealed class AgentLoopTests
     public async Task TickWithNoInputDoesNotInvokeTheModel()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         var captured = new CapturingOutputChannel();
         var model = new ScriptedLanguageModel("should not appear");
 
-        using var agent = BuildAgent("alice", subscriber, model, [], [captured]);
+        using var agent = BuildAgent("alice", bus, model, [], [captured]);
 
-        await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
+        await PublishTickAsync(publisher, DateTimeOffset.UtcNow);
         await Task.Delay(150, CancellationToken.None);
 
         await Assert.That(model.PromptInvocations).IsEqualTo(0);
@@ -62,8 +63,8 @@ public sealed class AgentLoopTests
     public async Task HeartbeatPeriodThrottlesSubsequentTicksWithinWindow()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         var captured = new CapturingOutputChannel();
         var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
@@ -74,24 +75,30 @@ public sealed class AgentLoopTests
 
         using var agent = BuildAgent(
             "alice",
-            subscriber,
+            bus,
             model,
             [seed],
             [captured],
             heartbeatPeriod: TimeSpan.FromHours(1));
 
         var first = DateTimeOffset.UtcNow;
-        await publisher.PublishAsync(new SystemTick(first), CancellationToken.None);
+        await PublishTickAsync(publisher, first);
         await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
-        await publisher.PublishAsync(new SystemTick(first.AddMinutes(1)), CancellationToken.None);
+        await PublishTickAsync(publisher, first.AddMinutes(1));
         await Task.Delay(150, CancellationToken.None);
 
         await Assert.That(model.PromptInvocations).IsEqualTo(1);
     }
 
+    private static ValueTask PublishTickAsync(IEventPublisher publisher, DateTimeOffset at)
+        => publisher.PublishAsync(
+            Event.WellKnown.Host.Tick,
+            new SystemTick(at),
+            CancellationToken.None);
+
     private static global::LlamaShears.Core.Agent BuildAgent(
         string id,
-        IAsyncSubscriber<SystemTick> ticks,
+        IEventBus bus,
         ILanguageModel model,
         IReadOnlyList<IInputChannel> inputs,
         IReadOnlyList<IOutputChannel> outputs,
@@ -116,7 +123,7 @@ public sealed class AgentLoopTests
             inputChannels: inputs,
             outputChannels: outputs,
             loggerFactory: NullLoggerFactory.Instance,
-            ticks: ticks,
+            bus: bus,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
@@ -129,7 +136,8 @@ public sealed class AgentLoopTests
     private static ServiceProvider BuildServices()
     {
         var services = new ServiceCollection();
-        services.AddMessagePipe();
+        services.AddLogging();
+        services.AddEventingFramework();
         return services.BuildServiceProvider();
     }
 }

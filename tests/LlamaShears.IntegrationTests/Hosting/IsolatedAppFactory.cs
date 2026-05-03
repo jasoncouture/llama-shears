@@ -1,7 +1,7 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
-using MessagePipe;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -74,9 +74,11 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
     /// </summary>
     public async Task TickAsync(CancellationToken cancellationToken = default)
     {
-        var publisher = Services.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), cancellationToken)
-            .ConfigureAwait(false);
+        var publisher = Services.GetRequiredService<IEventPublisher>();
+        await publisher.PublishAsync(
+            Event.WellKnown.Host.Tick,
+            new SystemTick(DateTimeOffset.UtcNow),
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

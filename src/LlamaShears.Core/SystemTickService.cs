@@ -1,5 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
-using MessagePipe;
+using LlamaShears.Core.Abstractions.Events;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -10,12 +10,12 @@ public class SystemTickService : BackgroundService
 {
     private static readonly TimeSpan _tickInterval = TimeSpan.FromSeconds(30);
 
-    private readonly IAsyncPublisher<SystemTick> _publisher;
+    private readonly IEventPublisher _publisher;
     private readonly IOptionsMonitor<SystemTickOptions> _options;
     private readonly ILogger<SystemTickService> _logger;
 
     public SystemTickService(
-        IAsyncPublisher<SystemTick> publisher,
+        IEventPublisher publisher,
         IOptionsMonitor<SystemTickOptions> options,
         ILogger<SystemTickService> logger)
     {
@@ -37,7 +37,10 @@ public class SystemTickService : BackgroundService
 
             try
             {
-                _publisher.Publish(new SystemTick(DateTimeOffset.UtcNow));
+                await _publisher.PublishAsync(
+                    Event.WellKnown.Host.Tick,
+                    new SystemTick(DateTimeOffset.UtcNow),
+                    stoppingToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
