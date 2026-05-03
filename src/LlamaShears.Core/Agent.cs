@@ -229,8 +229,11 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                         thoughtStreamId,
                         isFinal: false,
                         cancellationToken).ConfigureAwait(false);
-                    await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Thought with { Id = Id }, new AgentThoughtFragment(thought.Content, false), correlationId, cancellationToken);
-                        
+                    await _eventPublisher.PublishAsync(
+                        Event.WellKnown.Agent.Thought with { Id = Id },
+                        new AgentThoughtFragment(thinking.ToString(), Final: false),
+                        correlationId,
+                        cancellationToken).ConfigureAwait(false);
                     break;
                 case IModelTextResponse text:
                     content.Append(text.Content);
@@ -241,7 +244,11 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                         textStreamId,
                         isFinal: false,
                         cancellationToken).ConfigureAwait(false);
-                        await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Message with { Id = Id }, new AgentMessageFragment(text.Content, false), correlationId, cancellationToken);
+                    await _eventPublisher.PublishAsync(
+                        Event.WellKnown.Agent.Message with { Id = Id },
+                        new AgentMessageFragment(content.ToString(), Final: false),
+                        correlationId,
+                        cancellationToken).ConfigureAwait(false);
                     break;
                 case IModelCompletionResponse completion:
                     await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(completion.TokenCount), cancellationToken).ConfigureAwait(false);
@@ -257,8 +264,11 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                 thoughtStreamId,
                 isFinal: true,
                 cancellationToken).ConfigureAwait(false);
-                await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Thought with { Id = Id }, new AgentThoughtFragment(string.Empty, true), correlationId, cancellationToken);
-                
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.Thought with { Id = Id },
+                new AgentThoughtFragment(thinking.ToString(), Final: true),
+                correlationId,
+                cancellationToken).ConfigureAwait(false);
         }
         if (textStreamSeen)
         {
@@ -268,15 +278,17 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                 textStreamId,
                 isFinal: true,
                 cancellationToken).ConfigureAwait(false);
-            await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Message with { Id = Id }, new AgentMessageFragment(string.Empty, true), correlationId, cancellationToken);
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.Message with { Id = Id },
+                new AgentMessageFragment(content.ToString(), Final: true),
+                correlationId,
+                cancellationToken).ConfigureAwait(false);
         }
 
         if (thinking.Length > 0)
         {
             var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
             await _agentContext.AppendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
-            await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Thought with { Id = Id }, new AgentThought(thinking.ToString()), correlationId, cancellationToken);
-            
             foreach (var output in _outputChannels)
             {
                 await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
@@ -291,8 +303,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
 
         var response = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
         await _agentContext.AppendAsync(response, cancellationToken).ConfigureAwait(false);
-        await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Message with { Id = Id }, new AgentMessage(content.ToString()), correlationId, cancellationToken);
-        
 
         foreach (var output in _outputChannels)
         {
