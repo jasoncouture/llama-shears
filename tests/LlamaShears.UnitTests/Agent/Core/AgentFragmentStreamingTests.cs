@@ -1,10 +1,13 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
 using LlamaShears.Core.Eventing;
+using LlamaShears.Core.Eventing.Extensions;
+using LlamaShears.Core.Persistence;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +27,7 @@ public sealed class AgentFragmentStreamingTests
         var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var fragmentSubscriber = provider.GetRequiredService<IAsyncSubscriber<AgentFragmentEmitted>>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var captured = new List<AgentFragmentEmitted>();
         var captureGate = new Lock();
@@ -46,7 +50,7 @@ public sealed class AgentFragmentStreamingTests
             id: "alice",
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            agentContext: new FakeAgentContext("alice"),
+            agentContext: ctx,
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
@@ -57,7 +61,7 @@ public sealed class AgentFragmentStreamingTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(),
             fragments: fragmentPublisher,
-            eventPublisher: Substitute.For<IEventPublisher>());
+            eventPublisher: tickPublisher);
 
         await tickPublisher.PublishAsync(
             Event.WellKnown.Host.Tick,
@@ -90,6 +94,7 @@ public sealed class AgentFragmentStreamingTests
         var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var fragmentSubscriber = provider.GetRequiredService<IAsyncSubscriber<AgentFragmentEmitted>>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var captured = new List<AgentFragmentEmitted>();
         var captureGate = new Lock();
@@ -112,7 +117,7 @@ public sealed class AgentFragmentStreamingTests
             id: "alice",
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            agentContext: new FakeAgentContext("alice"),
+            agentContext: ctx,
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
@@ -123,7 +128,7 @@ public sealed class AgentFragmentStreamingTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(),
             fragments: fragmentPublisher,
-            eventPublisher: Substitute.For<IEventPublisher>());
+            eventPublisher: tickPublisher);
 
         await tickPublisher.PublishAsync(
             Event.WellKnown.Host.Tick,
@@ -152,6 +157,7 @@ public sealed class AgentFragmentStreamingTests
         var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var fragmentSubscriber = provider.GetRequiredService<IAsyncSubscriber<AgentFragmentEmitted>>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var captured = new List<AgentFragmentEmitted>();
         var captureGate = new Lock();
@@ -175,7 +181,7 @@ public sealed class AgentFragmentStreamingTests
             id: "alice",
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            agentContext: new FakeAgentContext("alice"),
+            agentContext: ctx,
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
@@ -186,7 +192,7 @@ public sealed class AgentFragmentStreamingTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(),
             fragments: fragmentPublisher,
-            eventPublisher: Substitute.For<IEventPublisher>());
+            eventPublisher: tickPublisher);
 
         await tickPublisher.PublishAsync(
             Event.WellKnown.Host.Tick,
@@ -208,7 +214,11 @@ public sealed class AgentFragmentStreamingTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddEventingFramework();
-        return services.BuildServiceProvider();
+        services.AddSingleton<IContextStore>(new FakeContextStore());
+        services.AddEventHandler<AgentTurnContextPersister>();
+        var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<AgentTurnContextPersister>();
+        return provider;
     }
 
     private static IContextCompactor BuildNoOpCompactor()

@@ -1,11 +1,14 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
 using LlamaShears.Core.Eventing;
+using LlamaShears.Core.Eventing.Extensions;
+using LlamaShears.Core.Persistence;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,13 +23,11 @@ public sealed class AgentEventPublishingTests
     [Test]
     public async Task TextFragmentsCarryCumulativeContentAndTheFinalFragmentHoldsTheCompleteMessage()
     {
-        var publisher = new CapturingEventPublisher();
-        await RunSingleTurnAsync(
+        var captured = await RunSingleTurnAsync(
             agentId: "alice",
-            model: ScriptedLanguageModel.WithText("Hi", " there"),
-            publisher: publisher);
+            model: ScriptedLanguageModel.WithText("Hi", " there"));
 
-        var fragments = publisher.Captured
+        var fragments = captured
             .Where(c => c.Type.Component == Event.Sources.Agent && c.Type.EventName == "message")
             .Select(c => c.Data)
             .OfType<AgentMessageFragment>()
@@ -43,15 +44,13 @@ public sealed class AgentEventPublishingTests
     [Test]
     public async Task ThoughtFragmentsCarryCumulativeContentAndTheFinalFragmentHoldsTheCompleteThought()
     {
-        var publisher = new CapturingEventPublisher();
-        await RunSingleTurnAsync(
+        var captured = await RunSingleTurnAsync(
             agentId: "alice",
             model: ScriptedLanguageModel.WithThoughtThenText(
                 ["thinking", "..."],
-                ["done"]),
-            publisher: publisher);
+                ["done"]));
 
-        var fragments = publisher.Captured
+        var fragments = captured
             .Where(c => c.Type.Component == Event.Sources.Agent && c.Type.EventName == "thought")
             .Select(c => c.Data)
             .OfType<AgentThoughtFragment>()
@@ -66,29 +65,33 @@ public sealed class AgentEventPublishingTests
     }
 
     [Test]
-    public async Task EveryEventEmittedDuringATurnSharesTheSameCorrelationId()
+    public async Task EveryFragmentEventEmittedDuringATurnSharesTheSameCorrelationId()
     {
-        var publisher = new CapturingEventPublisher();
-        await RunSingleTurnAsync(
+        var captured = await RunSingleTurnAsync(
             agentId: "alice",
-            model: ScriptedLanguageModel.WithThoughtThenText(["thinking"], ["done"]),
-            publisher: publisher);
+            model: ScriptedLanguageModel.WithThoughtThenText(["thinking"], ["done"]));
 
-        var correlationIds = publisher.Captured.Select(c => c.CorrelationId).Distinct().ToArray();
+        var fragmentEvents = captured
+            .Where(c => c.Data is AgentMessageFragment or AgentThoughtFragment)
+            .ToArray();
+        var correlationIds = fragmentEvents.Select(c => c.CorrelationId).Distinct().ToArray();
+
         await Assert.That(correlationIds).Count().IsEqualTo(1);
         await Assert.That(correlationIds[0]).IsNotEqualTo(Guid.Empty);
     }
 
     [Test]
-    public async Task EventTypeCarriesTheAgentIdInItsIdSegment()
+    public async Task FragmentEventTypesCarryTheAgentIdInTheirIdSegment()
     {
-        var publisher = new CapturingEventPublisher();
-        await RunSingleTurnAsync(
+        var captured = await RunSingleTurnAsync(
             agentId: "alice",
-            model: ScriptedLanguageModel.WithText("hi"),
-            publisher: publisher);
+            model: ScriptedLanguageModel.WithText("hi"));
 
-        var ids = publisher.Captured.Select(c => c.Type.Id).Distinct().ToArray();
+        var fragmentEvents = captured
+            .Where(c => c.Data is AgentMessageFragment or AgentThoughtFragment)
+            .ToArray();
+        var ids = fragmentEvents.Select(c => c.Type.Id).Distinct().ToArray();
+
         await Assert.That(ids).Count().IsEqualTo(1);
         await Assert.That(ids[0]).IsEqualTo("alice");
     }
@@ -96,29 +99,26 @@ public sealed class AgentEventPublishingTests
     [Test]
     public async Task ATurnWithNoTextProducesNoMessageFragmentEvents()
     {
-        var publisher = new CapturingEventPublisher();
-        await RunSingleTurnAsync(
+        var captured = await RunSingleTurnAsync(
             agentId: "alice",
-            model: ScriptedLanguageModel.WithThoughtThenText(["just thinking"], []),
-            publisher: publisher);
+            model: ScriptedLanguageModel.WithThoughtThenText(["just thinking"], []));
 
-        var messageFragments = publisher.Captured
-            .Where(c => c.Type.Component == Event.Sources.Agent && c.Type.EventName == "message")
+        var messageFragments = captured
             .Select(c => c.Data)
             .OfType<AgentMessageFragment>()
             .ToArray();
         await Assert.That(messageFragments).IsEmpty();
     }
 
-    private static async Task RunSingleTurnAsync(
+    private static async Task<IReadOnlyList<CapturedEvent>> RunSingleTurnAsync(
         string agentId,
-        ScriptedLanguageModel model,
-        CapturingEventPublisher publisher)
+        ScriptedLanguageModel model)
     {
         await using var provider = BuildServices();
-        var tickPublisher = provider.GetRequiredService<IEventPublisher>();
+        var capturing = new CapturingEventPublisher(provider.GetRequiredService<IEventPublisher>());
         var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
 
         var captureChannel = new CapturingOutputChannel();
         var seed = new SeedInputChannel([
@@ -129,7 +129,7 @@ public sealed class AgentEventPublishingTests
             id: agentId,
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
-            agentContext: new FakeAgentContext(agentId),
+            agentContext: ctx,
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
@@ -140,13 +140,15 @@ public sealed class AgentEventPublishingTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(agentId),
             fragments: fragmentPublisher,
-            eventPublisher: publisher);
+            eventPublisher: capturing);
 
-        await tickPublisher.PublishAsync(
+        await capturing.PublishAsync(
             Event.WellKnown.Host.Tick,
             new SystemTick(DateTimeOffset.UtcNow),
             CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+
+        return capturing.Captured;
     }
 
     private static ServiceProvider BuildServices()
@@ -154,7 +156,11 @@ public sealed class AgentEventPublishingTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddEventingFramework();
-        return services.BuildServiceProvider();
+        services.AddSingleton<IContextStore>(new FakeContextStore());
+        services.AddEventHandler<AgentTurnContextPersister>();
+        var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<AgentTurnContextPersister>();
+        return provider;
     }
 
     private static IContextCompactor BuildNoOpCompactor()
@@ -178,10 +184,22 @@ public sealed class AgentEventPublishingTests
         return contextProvider;
     }
 
+    /// <summary>
+    /// Records every published event AND forwards to the real bus so the
+    /// activated persister still sees turns. Without forwarding, the agent's
+    /// agent:turn events would be swallowed and the agent's own context
+    /// growth check would never trigger model invocation.
+    /// </summary>
     private sealed class CapturingEventPublisher : IEventPublisher
     {
+        private readonly IEventPublisher _inner;
         private readonly List<CapturedEvent> _captured = [];
         private readonly Lock _gate = new();
+
+        public CapturingEventPublisher(IEventPublisher inner)
+        {
+            _inner = inner;
+        }
 
         public IReadOnlyList<CapturedEvent> Captured
         {
@@ -194,16 +212,16 @@ public sealed class AgentEventPublishingTests
             }
         }
 
-        public ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken)
+        public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken)
             where T : class
         {
             lock (_gate)
             {
                 _captured.Add(new CapturedEvent(eventType, data, correlationId));
             }
-            return ValueTask.CompletedTask;
+            await _inner.PublishAsync(eventType, data, correlationId, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private sealed record CapturedEvent(EventType Type, object? Data, Guid CorrelationId);
+    internal sealed record CapturedEvent(EventType Type, object? Data, Guid CorrelationId);
 }

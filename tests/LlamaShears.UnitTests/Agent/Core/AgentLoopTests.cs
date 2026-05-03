@@ -1,10 +1,13 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
+using LlamaShears.Core.Eventing.Extensions;
+using LlamaShears.Core.Persistence;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +24,7 @@ public sealed class AgentLoopTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
-        var bus = provider.GetRequiredService<IEventBus>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var captured = new CapturingOutputChannel();
         var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
@@ -29,7 +32,7 @@ public sealed class AgentLoopTests
         ]);
         var model = new ScriptedLanguageModel("hi back");
 
-        using var agent = BuildAgent("alice", bus, model, [seed], [captured]);
+        using var agent = BuildAgent("alice", provider, ctx, model, [seed], [captured]);
 
         await PublishTickAsync(publisher, DateTimeOffset.UtcNow);
 
@@ -45,12 +48,12 @@ public sealed class AgentLoopTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
-        var bus = provider.GetRequiredService<IEventBus>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var captured = new CapturingOutputChannel();
         var model = new ScriptedLanguageModel("should not appear");
 
-        using var agent = BuildAgent("alice", bus, model, [], [captured]);
+        using var agent = BuildAgent("alice", provider, ctx, model, [], [captured]);
 
         await PublishTickAsync(publisher, DateTimeOffset.UtcNow);
         await Task.Delay(150, CancellationToken.None);
@@ -64,7 +67,7 @@ public sealed class AgentLoopTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
-        var bus = provider.GetRequiredService<IEventBus>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var captured = new CapturingOutputChannel();
         var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
@@ -75,7 +78,8 @@ public sealed class AgentLoopTests
 
         using var agent = BuildAgent(
             "alice",
-            bus,
+            provider,
+            ctx,
             model,
             [seed],
             [captured],
@@ -98,7 +102,8 @@ public sealed class AgentLoopTests
 
     private static global::LlamaShears.Core.Agent BuildAgent(
         string id,
-        IEventBus bus,
+        IServiceProvider services,
+        IAgentContext agentContext,
         ILanguageModel model,
         IReadOnlyList<IInputChannel> inputs,
         IReadOnlyList<IOutputChannel> outputs,
@@ -119,18 +124,18 @@ public sealed class AgentLoopTests
             id: id,
             config: TestAgentConfigs.WithHeartbeat(heartbeatPeriod ?? TimeSpan.Zero),
             model: model,
-            agentContext: new FakeAgentContext(id),
+            agentContext: agentContext,
             inputChannels: inputs,
             outputChannels: outputs,
             loggerFactory: NullLoggerFactory.Instance,
-            bus: bus,
+            bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
-            fragments: Substitute.For<IAsyncPublisher<AgentFragmentEmitted>>(),
-            eventPublisher: Substitute.For<IEventPublisher>());
+            fragments: services.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>(),
+            eventPublisher: services.GetRequiredService<IEventPublisher>());
     }
 
     private static ServiceProvider BuildServices()
@@ -138,6 +143,10 @@ public sealed class AgentLoopTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddEventingFramework();
-        return services.BuildServiceProvider();
+        services.AddSingleton<IContextStore>(new FakeContextStore());
+        services.AddEventHandler<AgentTurnContextPersister>();
+        var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<AgentTurnContextPersister>();
+        return provider;
     }
 }

@@ -3,6 +3,8 @@ using LlamaShears.Api.Mcp;
 using LlamaShears.Api.Web;
 using LlamaShears.Core;
 using LlamaShears.Core.Eventing;
+using LlamaShears.Core.Eventing.Extensions;
+using LlamaShears.Core.Persistence;
 using LlamaShears.Provider.Ollama;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddEventingFramework();
         builder.Services.AddCore();
         builder.Services.AddAgentManager();
+        builder.Services.AddEventHandler<AgentTurnContextPersister>();
         builder.Services.AddAgentBearerAuthentication();
         builder.Services.AddMcp();
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
