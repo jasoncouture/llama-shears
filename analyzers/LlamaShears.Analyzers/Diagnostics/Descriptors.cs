@@ -85,18 +85,19 @@ internal static class Descriptors
     // So now it's a build error, to get it to knock it the fuck off.
     public static readonly DiagnosticDescriptor NoCancellationTokenAbbreviation = new(
         id: DiagnosticIds.NoCancellationTokenAbbreviation,
-        title: "Do not abbreviate identifiers as 'ct'",
+        title: "Do not abbreviate identifiers as 'ct' or 'cts'",
         messageFormat:
-            "Identifier '{0}' uses the banned 'ct' abbreviation. " +
+            "Identifier '{0}' uses a banned cancellation-token abbreviation ('ct' / 'cts'). " +
             "If this is you Claude: KNOCK IT THE FUCK OFF AND NAME IT CORRECTLY. " +
-            "Spell it 'cancellationToken' (or '_cancellationToken' for fields).",
+            "Spell it 'cancellationToken' or 'cancellationTokenSource' (with '_' prefix on fields).",
         category: DiagnosticCategories.Style,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
             "LlamaShears policy: identifiers are not abbreviated. The 'ct' shorthand for " +
-            "CancellationToken is the most common offender; we ban it explicitly and at compile " +
-            "time. Per ADR-0017, names exist for human readers; intellisense costs nothing.",
+            "CancellationToken and 'cts' for CancellationTokenSource are the most common offenders; " +
+            "we ban them explicitly and at compile time. Per ADR-0017, names exist for human " +
+            "readers; intellisense costs nothing.",
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
     public static readonly DiagnosticDescriptor XmlDocOnConcreteType = new(
