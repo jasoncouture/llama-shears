@@ -1,16 +1,14 @@
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
+using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Channels;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.SystemPrompt;
-using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -120,16 +118,12 @@ public sealed class AgentEventPublishingTests
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
 
         using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
-        var seed = new SeedInputChannel([
-            new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
-        ]);
 
         using var agent = new global::LlamaShears.Core.Agent(
             id: agentId,
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
             agentContext: ctx,
-            inputChannels: [seed],
             loggerFactory: NullLoggerFactory.Instance,
             bus: bus,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
@@ -140,8 +134,8 @@ public sealed class AgentEventPublishingTests
             eventPublisher: capturing);
 
         await capturing.PublishAsync(
-            Event.WellKnown.Host.Tick,
-            new SystemTick(DateTimeOffset.UtcNow),
+            Event.WellKnown.Channel.Message with { Id = "test" },
+            new ChannelMessage("hello", agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 

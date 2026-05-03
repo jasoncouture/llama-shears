@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Threading.Channels;
 using LlamaShears.Core.Abstractions.Agent;
@@ -12,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHandler<ChannelMessage>, IDisposable
+public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisposable
 {
     private readonly ILanguageModel _model;
     private readonly ILogger _logger;
@@ -20,24 +21,19 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
     private readonly ISystemPromptProvider _systemPrompt;
     private readonly TimeProvider _time;
     private readonly IDisposable _subscription;
-    private readonly Channel<bool> _signal;
+    private readonly Channel<IEventEnvelope<ChannelMessage>> _inbound;
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
-    private readonly Task[] _inputWaiters;
-    private readonly IReadOnlyList<IInputChannel> _inputChannels;
-    private readonly TimeSpan _heartbeatPeriod;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
-    private DateTimeOffset _lastHeartbeatAt;
 
     public Agent(
         string id,
         AgentConfig config,
         ILanguageModel model,
         IAgentContext agentContext,
-        IReadOnlyList<IInputChannel> inputChannels,
         ILoggerFactory loggerFactory,
         IEventBus bus,
         ISystemPromptProvider systemPromptProvider,
@@ -48,6 +44,7 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         IEventPublisher eventPublisher)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        _ = config;
 
         Id = id;
         _model = model;
@@ -59,20 +56,16 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         _compactor = compactor;
         _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
-        _inputChannels = inputChannels;
-        _heartbeatPeriod = config.HeartbeatPeriod;
-        _signal = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
+        _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
-            FullMode = BoundedChannelFullMode.DropWrite,
             SingleReader = true,
         });
         _shutdown = new CancellationTokenSource();
-        _subscription = bus.Subscribe<SystemTick>(
-            Event.WellKnown.Host.Tick,
-            EventDeliveryMode.FireAndForget,
+        _subscription = bus.Subscribe<ChannelMessage>(
+            $"{Event.WellKnown.Channel.Message}:+",
+            EventDeliveryMode.Awaited,
             this);
         _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
-        _inputWaiters = [.. inputChannels.Select(c => Task.Run(() => WatchInputAsync(c, _shutdown.Token)))];
     }
 
     public string Id { get; }
@@ -81,80 +74,61 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
     {
         _subscription.Dispose();
         _shutdown.Cancel();
-        _signal.Writer.TryComplete();
+        _inbound.Writer.TryComplete();
         try
         {
-            Task.WhenAll([_loop, .. _inputWaiters]).GetAwaiter().GetResult();
+            _loop.GetAwaiter().GetResult();
         }
         catch (OperationCanceledException)
         {
         }
         _shutdown.Dispose();
-
-        foreach (var input in _inputChannels)
-        {
-            (input as IDisposable)?.Dispose();
-        }
     }
 
-    public ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
+    public ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
     {
-        var tick = envelope.Data;
-        if (tick is null)
+        var data = envelope.Data;
+        if (data is null)
         {
             return ValueTask.CompletedTask;
         }
-        if (_lastHeartbeatAt != default && tick.At - _lastHeartbeatAt < _heartbeatPeriod)
+        if (!string.IsNullOrWhiteSpace(data.AgentId) && !string.Equals(data.AgentId, Id, StringComparison.Ordinal))
         {
             return ValueTask.CompletedTask;
         }
-
-        _lastHeartbeatAt = tick.At;
-        Pulse();
+        _inbound.Writer.TryWrite(envelope);
         return ValueTask.CompletedTask;
-    }
-
-    private void Pulse()
-    {
-        _signal.Writer.TryWrite(true);
-    }
-
-    private async Task WatchInputAsync(IInputChannel channel, CancellationToken cancellationToken)
-    {
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await channel.WaitForInputAsync(cancellationToken).ConfigureAwait(false);
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-                Pulse();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
     }
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
         using var loggingScope = _logger.BeginScope("{AgentId}", Id);
+        var reader = _inbound.Reader;
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                if (!await _signal.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+                if (!await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
                 {
                     return;
                 }
-                while (_signal.Reader.TryRead(out _))
+                if (!reader.TryRead(out var first))
                 {
+                    continue;
                 }
+                var batch = new List<IEventEnvelope<ChannelMessage>> { first };
+                while (reader.TryPeek(out var next) && next.Type == first.Type)
+                {
+                    if (!reader.TryRead(out var taken))
+                    {
+                        break;
+                    }
+                    batch.Add(taken);
+                }
+
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
-                await ProcessOnceAsync(correlationId, cancellationToken).ConfigureAwait(false);
+                await ProcessBatchAsync(batch, correlationId, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -163,38 +137,24 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
             }
             catch (Exception ex)
             {
-                // Anything else — timeout, network, model-side fault — must
-                // not kill the loop. Log it loudly and wait for the next
-                // signal. Silently swallowing here is what hid the
-                // HttpClient.Timeout / streaming-deadlock failure mode for
-                // multiple sessions.
                 LogProcessOnceFailed(Id, ex);
             }
         }
     }
 
-    private async Task ProcessOnceAsync(Guid correlationId, CancellationToken cancellationToken)
+    private async Task ProcessBatchAsync(
+        IReadOnlyList<IEventEnvelope<ChannelMessage>> batch,
+        Guid correlationId,
+        CancellationToken cancellationToken)
     {
-        var contextSizeBefore = _agentContext.Turns.Count;
-
-        foreach (var input in _inputChannels)
-        {
-            await foreach (var turn in input.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                await _eventPublisher.PublishAsync(
-                    Event.WellKnown.Agent.Turn with { Id = Id },
-                    turn,
-                    correlationId,
-                    cancellationToken).ConfigureAwait(false);
-            }
-        }
+        var userTurn = BuildUserTurn(batch);
+        await _eventPublisher.PublishAsync(
+            Event.WellKnown.Agent.Turn with { Id = Id },
+            userTurn,
+            correlationId,
+            cancellationToken).ConfigureAwait(false);
 
         var turns = _agentContext.Turns;
-        if (turns.Count == contextSizeBefore)
-        {
-            return;
-        }
-
         var now = _time.GetUtcNow();
         var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), now);
         var prompt = new ModelPrompt([systemTurn, .. turns]);
@@ -275,6 +235,32 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
             cancellationToken).ConfigureAwait(false);
     }
 
+    private static ModelTurn BuildUserTurn(IReadOnlyList<IEventEnvelope<ChannelMessage>> batch)
+    {
+        if (batch.Count == 1)
+        {
+            var only = batch[0].Data!;
+            return new ModelTurn(ModelRole.User, only.Text, only.Timestamp);
+        }
+
+        var sb = new StringBuilder();
+        sb.Append(string.Format(
+            CultureInfo.InvariantCulture,
+            "The following {0} messages arrived since your last response, in order:",
+            batch.Count));
+        for (var i = 0; i < batch.Count; i++)
+        {
+            var msg = batch[i].Data!;
+            sb.Append("\n\n[");
+            sb.Append((i + 1).ToString(CultureInfo.InvariantCulture));
+            sb.Append("] (");
+            sb.Append(msg.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+            sb.Append(") ");
+            sb.Append(msg.Text);
+        }
+        return new ModelTurn(ModelRole.User, sb.ToString(), batch[^1].Data!.Timestamp);
+    }
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
 
@@ -283,9 +269,4 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
     private partial void LogProcessOnceFailed(string agentId, Exception ex);
-
-    public ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
 }

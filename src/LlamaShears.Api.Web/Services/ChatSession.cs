@@ -1,8 +1,7 @@
-using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
+using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
-using MessagePipe;
 
 namespace LlamaShears.Api.Web.Services;
 
@@ -12,7 +11,7 @@ public sealed class ChatSession :
     IEventHandler<AgentThoughtFragment>
 {
     private readonly IEventBus _bus;
-    private readonly IAsyncPublisher<UserMessageSubmitted> _userMessages;
+    private readonly IEventPublisher _publisher;
     private readonly IAgentDirectory _directory;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
@@ -25,11 +24,11 @@ public sealed class ChatSession :
 
     public ChatSession(
         IEventBus bus,
-        IAsyncPublisher<UserMessageSubmitted> userMessages,
+        IEventPublisher publisher,
         IAgentDirectory directory)
     {
         _bus = bus;
-        _userMessages = userMessages;
+        _publisher = publisher;
         _directory = directory;
     }
 
@@ -172,8 +171,9 @@ public sealed class ChatSession :
             _bubbles.Add(new ChatBubble(ChatBubbleKind.User, content, DateTimeOffset.UtcNow));
         }
         Changed?.Invoke();
-        await _userMessages.PublishAsync(
-            new UserMessageSubmitted(agentId, content, DateTimeOffset.UtcNow),
+        await _publisher.PublishAsync(
+            Event.WellKnown.Channel.Message with { Id = "webui" },
+            new ChannelMessage(content, agentId, DateTimeOffset.UtcNow),
             cancellationToken).ConfigureAwait(false);
     }
 
