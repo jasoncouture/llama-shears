@@ -22,6 +22,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 - **ADR-0015** — [Provider workarounds are absorbed, model workarounds are not](0015-provider-vs-model-workarounds.md)
 - **ADR-0016** — [Test method names use PascalCase](0016-test-method-naming.md)
 - **ADR-0017** — [Services come from DI, or via `ActivatorUtilities`](0017-services-come-from-di-or-activatorutilities.md)
+- **ADR-0018** — [Invoke delegates explicitly via `.Invoke`](0018-explicit-delegate-invocation.md) — Analysis ID LS0014
 
 ## Superseded
 
