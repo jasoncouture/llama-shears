@@ -1,3 +1,4 @@
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
@@ -111,6 +112,7 @@ public sealed class AgentLoopTests
         var contextProvider = Substitute.For<IAgentContextProvider>();
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
+        var publisher = services.GetRequiredService<IEventPublisher>();
         return new global::LlamaShears.Core.Agent(
             id: id,
             model: model,
@@ -122,7 +124,8 @@ public sealed class AgentLoopTests
             compactor: compactor,
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
-            eventPublisher: services.GetRequiredService<IEventPublisher>());
+            eventPublisher: publisher,
+            inferenceRunner: new InferenceRunner(publisher, TimeProvider.System));
     }
 
     private static ServiceProvider BuildServices()

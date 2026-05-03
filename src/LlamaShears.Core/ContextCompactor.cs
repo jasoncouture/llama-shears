@@ -1,4 +1,3 @@
-using System.Text;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
@@ -36,15 +35,18 @@ public sealed partial class ContextCompactor : IContextCompactor
         "only memory of what came before.";
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
+    private readonly IInferenceRunner _inferenceRunner;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
         IAgentContextProvider agentContextProvider,
         IContextStore contextStore,
+        IInferenceRunner inferenceRunner,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
+        _inferenceRunner = inferenceRunner;
         _logger = logger;
     }
 
@@ -87,7 +89,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             return prompt;
         }
 
-        var summary = await SummarizeAsync(prompt, model, window, cancellationToken).ConfigureAwait(false);
+        var summary = await SummarizeAsync(agentContext.AgentId, prompt, model, window, cancellationToken).ConfigureAwait(false);
 
         var rebuilt = new List<ModelTurn>(3);
         if (prompt.Turns[0].Role == ModelRole.System)
@@ -119,6 +121,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private static partial void LogContextCompacted(ILogger logger, string agentId);
 
     private async ValueTask<string> SummarizeAsync(
+        string agentId,
         ModelPrompt prompt,
         ILanguageModel model,
         int window,
@@ -140,16 +143,16 @@ public sealed partial class ContextCompactor : IContextCompactor
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
         var options = new PromptOptions(TokenLimit: summaryCap);
 
-        var builder = new StringBuilder();
-        await foreach (var fragment in model.PromptAsync(summarizationPrompt, options, cancellationToken).ConfigureAwait(false))
-        {
-            if (fragment is IModelTextResponse text)
-            {
-                builder.Append(text.Content);
-            }
-        }
+        var outcome = await _inferenceRunner.RunAsync(
+            eventId: $"{agentId}-compaction",
+            model: model,
+            prompt: summarizationPrompt,
+            options: options,
+            emitTurns: false,
+            correlationId: Guid.CreateVersion7(),
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var summary = builder.ToString().Trim();
+        var summary = outcome.Content.Trim();
         if (summary.Length == 0)
         {
             throw new CompactionFailedException(

@@ -1,3 +1,4 @@
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
@@ -130,7 +131,8 @@ public sealed class AgentEventPublishingTests
             compactor: BuildNoOpCompactor(),
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(agentId),
-            eventPublisher: capturing);
+            eventPublisher: capturing,
+            inferenceRunner: new InferenceRunner(capturing, TimeProvider.System));
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

@@ -57,6 +57,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
+        services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
 
         return services;
