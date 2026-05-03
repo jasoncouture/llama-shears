@@ -117,10 +117,9 @@ public sealed class AgentEventPublishingTests
         await using var provider = BuildServices();
         var capturing = new CapturingEventPublisher(provider.GetRequiredService<IEventPublisher>());
         var bus = provider.GetRequiredService<IEventBus>();
-        var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
 
-        var captureChannel = new CapturingOutputChannel();
+        using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
         var seed = new SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
         ]);
@@ -131,7 +130,6 @@ public sealed class AgentEventPublishingTests
             model: model,
             agentContext: ctx,
             inputChannels: [seed],
-            outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
             bus: bus,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
@@ -139,7 +137,6 @@ public sealed class AgentEventPublishingTests
             compactor: BuildNoOpCompactor(),
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(agentId),
-            fragments: fragmentPublisher,
             eventPublisher: capturing);
 
         await capturing.PublishAsync(

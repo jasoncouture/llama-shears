@@ -24,15 +24,16 @@ public sealed class AgentLoopTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
-        var captured = new CapturingOutputChannel();
+        using var captured = new CapturingTurnSubscriber(bus, "alice");
         var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
         ]);
         var model = new ScriptedLanguageModel("hi back");
 
-        using var agent = BuildAgent("alice", provider, ctx, model, [seed], [captured]);
+        using var agent = BuildAgent("alice", provider, ctx, model, [seed]);
 
         await PublishTickAsync(publisher, DateTimeOffset.UtcNow);
 
@@ -48,12 +49,13 @@ public sealed class AgentLoopTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
-        var captured = new CapturingOutputChannel();
+        using var captured = new CapturingTurnSubscriber(bus, "alice");
         var model = new ScriptedLanguageModel("should not appear");
 
-        using var agent = BuildAgent("alice", provider, ctx, model, [], [captured]);
+        using var agent = BuildAgent("alice", provider, ctx, model, []);
 
         await PublishTickAsync(publisher, DateTimeOffset.UtcNow);
         await Task.Delay(150, CancellationToken.None);
@@ -67,9 +69,10 @@ public sealed class AgentLoopTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
-        var captured = new CapturingOutputChannel();
+        using var captured = new CapturingTurnSubscriber(bus, "alice");
         var seed = new global::LlamaShears.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
             new ModelTurn(ModelRole.User, "again", DateTimeOffset.UtcNow.AddSeconds(1)),
@@ -82,7 +85,6 @@ public sealed class AgentLoopTests
             ctx,
             model,
             [seed],
-            [captured],
             heartbeatPeriod: TimeSpan.FromHours(1));
 
         var first = DateTimeOffset.UtcNow;
@@ -106,7 +108,6 @@ public sealed class AgentLoopTests
         IAgentContext agentContext,
         ILanguageModel model,
         IReadOnlyList<IInputChannel> inputs,
-        IReadOnlyList<IOutputChannel> outputs,
         TimeSpan? heartbeatPeriod = null)
     {
         var compactor = Substitute.For<IContextCompactor>();
@@ -126,7 +127,6 @@ public sealed class AgentLoopTests
             model: model,
             agentContext: agentContext,
             inputChannels: inputs,
-            outputChannels: outputs,
             loggerFactory: NullLoggerFactory.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
@@ -134,7 +134,6 @@ public sealed class AgentLoopTests
             compactor: compactor,
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
-            fragments: services.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>(),
             eventPublisher: services.GetRequiredService<IEventPublisher>());
     }
 

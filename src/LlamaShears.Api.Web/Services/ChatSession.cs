@@ -1,32 +1,34 @@
 using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 using MessagePipe;
 
 namespace LlamaShears.Api.Web.Services;
 
-public sealed class ChatSession : IChatSession
+public sealed class ChatSession :
+    IChatSession,
+    IEventHandler<AgentMessageFragment>,
+    IEventHandler<AgentThoughtFragment>
 {
-    private readonly IAsyncSubscriber<AgentTurnEmitted> _turns;
-    private readonly IAsyncSubscriber<AgentFragmentEmitted> _fragments;
+    private readonly IEventBus _bus;
     private readonly IAsyncPublisher<UserMessageSubmitted> _userMessages;
     private readonly IAgentDirectory _directory;
     private readonly List<ChatBubble> _bubbles = [];
-    private readonly Dictionary<Guid, ChatBubble> _streamingBubbles = [];
+    private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Lock _gate = new();
-    private IDisposable? _turnSubscription;
-    private IDisposable? _fragmentSubscription;
+    private IDisposable? _messageSubscription;
+    private IDisposable? _thoughtSubscription;
     private string? _selectedAgentId;
     private bool _showThoughts = true;
     private bool _showStreaming = true;
 
     public ChatSession(
-        IAsyncSubscriber<AgentTurnEmitted> turns,
-        IAsyncSubscriber<AgentFragmentEmitted> fragments,
+        IEventBus bus,
         IAsyncPublisher<UserMessageSubmitted> userMessages,
         IAgentDirectory directory)
     {
-        _turns = turns;
-        _fragments = fragments;
+        _bus = bus;
         _userMessages = userMessages;
         _directory = directory;
     }
@@ -118,10 +120,10 @@ public sealed class ChatSession : IChatSession
             _selectedAgentId = agentId;
             _bubbles.Clear();
             _streamingBubbles.Clear();
-            _turnSubscription?.Dispose();
-            _fragmentSubscription?.Dispose();
-            _turnSubscription = null;
-            _fragmentSubscription = null;
+            _messageSubscription?.Dispose();
+            _thoughtSubscription?.Dispose();
+            _messageSubscription = null;
+            _thoughtSubscription = null;
             if (!string.IsNullOrWhiteSpace(agentId))
             {
                 foreach (var turn in history)
@@ -132,8 +134,14 @@ public sealed class ChatSession : IChatSession
                         _bubbles.Add(bubble);
                     }
                 }
-                _turnSubscription = _turns.Subscribe(OnTurnAsync);
-                _fragmentSubscription = _fragments.Subscribe(OnFragmentAsync);
+                _messageSubscription = _bus.Subscribe<AgentMessageFragment>(
+                    $"{Event.WellKnown.Agent.Message}:{agentId}",
+                    EventDeliveryMode.Awaited,
+                    this);
+                _thoughtSubscription = _bus.Subscribe<AgentThoughtFragment>(
+                    $"{Event.WellKnown.Agent.Thought}:{agentId}",
+                    EventDeliveryMode.Awaited,
+                    this);
             }
         }
         Changed?.Invoke();
@@ -173,11 +181,54 @@ public sealed class ChatSession : IChatSession
     {
         lock (_gate)
         {
-            _turnSubscription?.Dispose();
-            _fragmentSubscription?.Dispose();
-            _turnSubscription = null;
-            _fragmentSubscription = null;
+            _messageSubscription?.Dispose();
+            _thoughtSubscription?.Dispose();
+            _messageSubscription = null;
+            _thoughtSubscription = null;
         }
+    }
+
+    public ValueTask HandleAsync(IEventEnvelope<AgentMessageFragment> envelope, CancellationToken cancellationToken)
+    {
+        if (envelope.Data is { } fragment)
+        {
+            ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Assistant, fragment.Content, fragment.Final);
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(IEventEnvelope<AgentThoughtFragment> envelope, CancellationToken cancellationToken)
+    {
+        if (envelope.Data is { } fragment)
+        {
+            ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Thought, fragment.Content, fragment.Final);
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    private void ApplyFragment(string? agentId, Guid correlationId, ChatBubbleKind kind, string content, bool final)
+    {
+        lock (_gate)
+        {
+            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var key = (correlationId, kind);
+            if (!_streamingBubbles.TryGetValue(key, out var bubble))
+            {
+                bubble = new ChatBubble(kind, content, DateTimeOffset.UtcNow, correlationId);
+                _streamingBubbles[key] = bubble;
+                _bubbles.Add(bubble);
+            }
+            bubble.Update(content, streaming: !final);
+            if (final)
+            {
+                _streamingBubbles.Remove(key);
+            }
+        }
+        Changed?.Invoke();
     }
 
     private async Task ExecuteCommandAsync(string agentId, ChatCommand command, CancellationToken cancellationToken)
@@ -224,88 +275,6 @@ public sealed class ChatSession : IChatSession
         }
         return false;
     }
-
-    private ValueTask OnTurnAsync(AgentTurnEmitted evt, CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            if (!string.Equals(evt.AgentId, _selectedAgentId, StringComparison.Ordinal))
-            {
-                return ValueTask.CompletedTask;
-            }
-
-            // Replace any still-streaming bubble of the same kind with
-            // the authoritative content; otherwise append a fresh one.
-            var kind = MapKind(evt.Turn.Role);
-            if (kind is null)
-            {
-                return ValueTask.CompletedTask;
-            }
-
-            var streamingBubble = _bubbles.LastOrDefault(b =>
-                b.Kind == kind && b.IsStreaming);
-            if (streamingBubble is not null)
-            {
-                streamingBubble.Replace(evt.Turn.Content);
-            }
-            else
-            {
-                _bubbles.Add(new ChatBubble(kind.Value, evt.Turn.Content, evt.Turn.Timestamp));
-            }
-        }
-        Changed?.Invoke();
-        return ValueTask.CompletedTask;
-    }
-
-    private ValueTask OnFragmentAsync(AgentFragmentEmitted evt, CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            if (!string.Equals(evt.AgentId, _selectedAgentId, StringComparison.Ordinal))
-            {
-                return ValueTask.CompletedTask;
-            }
-
-            if (!_streamingBubbles.TryGetValue(evt.StreamId, out var bubble))
-            {
-                if (evt.IsFinal)
-                {
-                    return ValueTask.CompletedTask;
-                }
-                var kind = evt.Kind == AgentFragmentKind.Thought
-                    ? ChatBubbleKind.Thought
-                    : ChatBubbleKind.Assistant;
-                bubble = new ChatBubble(kind, string.Empty, DateTimeOffset.UtcNow, evt.StreamId);
-                _streamingBubbles[evt.StreamId] = bubble;
-                _bubbles.Add(bubble);
-            }
-
-            if (evt.IsFinal)
-            {
-                // Don't seal here. The eventual AgentTurnEmitted is the
-                // authoritative source: it will replace the bubble's
-                // content (correcting any drift between fragment
-                // accumulation and the final string) and seal the bubble.
-                // If we sealed here, OnTurnAsync would be unable to find
-                // a streaming bubble and would append a duplicate.
-                _streamingBubbles.Remove(evt.StreamId);
-            }
-            else if (!string.IsNullOrEmpty(evt.Delta))
-            {
-                bubble.AppendDelta(evt.Delta);
-            }
-        }
-        Changed?.Invoke();
-        return ValueTask.CompletedTask;
-    }
-
-    private static ChatBubbleKind? MapKind(ModelRole role) => role switch
-    {
-        ModelRole.Assistant => ChatBubbleKind.Assistant,
-        ModelRole.FrameworkAssistant => ChatBubbleKind.Assistant,
-        ModelRole.Thought => ChatBubbleKind.Thought,
-        _ => null,
-    };
 
     private static ChatBubble? HistoryBubbleFromTurn(ModelTurn turn)
     {

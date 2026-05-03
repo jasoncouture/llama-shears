@@ -1,7 +1,6 @@
 using System.Text;
 using System.Threading.Channels;
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -9,7 +8,6 @@ using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
-using MessagePipe;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -27,9 +25,7 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
     private readonly Task _loop;
     private readonly Task[] _inputWaiters;
     private readonly IReadOnlyList<IInputChannel> _inputChannels;
-    private readonly IReadOnlyList<IOutputChannel> _outputChannels;
     private readonly TimeSpan _heartbeatPeriod;
-    private readonly IAsyncPublisher<AgentFragmentEmitted> _fragments;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
@@ -42,7 +38,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         ILanguageModel model,
         IAgentContext agentContext,
         IReadOnlyList<IInputChannel> inputChannels,
-        IReadOnlyList<IOutputChannel> outputChannels,
         ILoggerFactory loggerFactory,
         IEventBus bus,
         ISystemPromptProvider systemPromptProvider,
@@ -50,7 +45,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         IContextCompactor compactor,
         ModelConfiguration modelConfiguration,
         IAgentContextProvider agentContextProvider,
-        IAsyncPublisher<AgentFragmentEmitted> fragments,
         IEventPublisher eventPublisher)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -58,7 +52,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         Id = id;
         _model = model;
         _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{id}");
-        _fragments = fragments;
         _eventPublisher = eventPublisher;
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
@@ -67,7 +60,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
         _inputChannels = inputChannels;
-        _outputChannels = outputChannels;
         _heartbeatPeriod = config.HeartbeatPeriod;
         _signal = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
         {
@@ -102,10 +94,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         foreach (var input in _inputChannels)
         {
             (input as IDisposable)?.Dispose();
-        }
-        foreach (var output in _outputChannels)
-        {
-            (output as IDisposable)?.Dispose();
         }
     }
 
@@ -215,8 +203,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, cancellationToken).ConfigureAwait(false);
         var thinking = new StringBuilder();
         var content = new StringBuilder();
-        var thoughtStreamId = Guid.NewGuid();
-        var textStreamId = Guid.NewGuid();
         var thoughtStreamSeen = false;
         var textStreamSeen = false;
 
@@ -227,12 +213,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                 case IModelThoughtResponse thought:
                     thinking.Append(thought.Content);
                     thoughtStreamSeen = true;
-                    await PublishFragmentAsync(
-                        AgentFragmentKind.Thought,
-                        thought.Content,
-                        thoughtStreamId,
-                        isFinal: false,
-                        cancellationToken).ConfigureAwait(false);
                     await _eventPublisher.PublishAsync(
                         Event.WellKnown.Agent.Thought with { Id = Id },
                         new AgentThoughtFragment(thinking.ToString(), Final: false),
@@ -242,12 +222,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                 case IModelTextResponse text:
                     content.Append(text.Content);
                     textStreamSeen = true;
-                    await PublishFragmentAsync(
-                        AgentFragmentKind.Text,
-                        text.Content,
-                        textStreamId,
-                        isFinal: false,
-                        cancellationToken).ConfigureAwait(false);
                     await _eventPublisher.PublishAsync(
                         Event.WellKnown.Agent.Message with { Id = Id },
                         new AgentMessageFragment(content.ToString(), Final: false),
@@ -262,12 +236,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
 
         if (thoughtStreamSeen)
         {
-            await PublishFragmentAsync(
-                AgentFragmentKind.Thought,
-                string.Empty,
-                thoughtStreamId,
-                isFinal: true,
-                cancellationToken).ConfigureAwait(false);
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.Thought with { Id = Id },
                 new AgentThoughtFragment(thinking.ToString(), Final: true),
@@ -276,12 +244,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         }
         if (textStreamSeen)
         {
-            await PublishFragmentAsync(
-                AgentFragmentKind.Text,
-                string.Empty,
-                textStreamId,
-                isFinal: true,
-                cancellationToken).ConfigureAwait(false);
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.Message with { Id = Id },
                 new AgentMessageFragment(content.ToString(), Final: true),
@@ -297,10 +259,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
                 thoughtTurn,
                 correlationId,
                 cancellationToken).ConfigureAwait(false);
-            foreach (var output in _outputChannels)
-            {
-                await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
-            }
         }
 
         if (content.Length == 0)
@@ -314,23 +272,6 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
             Event.WellKnown.Agent.Turn with { Id = Id },
             response,
             correlationId,
-            cancellationToken).ConfigureAwait(false);
-
-        foreach (var output in _outputChannels)
-        {
-            await output.SendAsync(response, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task PublishFragmentAsync(
-        AgentFragmentKind kind,
-        string delta,
-        Guid streamId,
-        bool isFinal,
-        CancellationToken cancellationToken)
-    {
-        await _fragments.PublishAsync(
-            new AgentFragmentEmitted(Id, kind, delta, streamId, isFinal),
             cancellationToken).ConfigureAwait(false);
     }
 

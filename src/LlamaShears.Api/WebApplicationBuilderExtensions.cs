@@ -22,6 +22,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddCore();
         builder.Services.AddAgentManager();
         builder.Services.AddEventHandler<AgentTurnContextPersister>();
+        builder.Services.AddEventHandler<AgentTurnLogger>();
         builder.Services.AddAgentBearerAuthentication();
         builder.Services.AddMcp();
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();

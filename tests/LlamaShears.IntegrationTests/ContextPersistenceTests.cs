@@ -2,6 +2,7 @@ using System.Text.Json;
 using LlamaShears.Api.Web.Services;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.IntegrationTests.Hosting;
@@ -151,17 +152,20 @@ public sealed class ContextPersistenceTests
         string content)
     {
         var publisher = factory.Services.GetRequiredService<IAsyncPublisher<UserMessageSubmitted>>();
-        var subscriber = factory.Services.GetRequiredService<IAsyncSubscriber<AgentTurnEmitted>>();
+        var bus = factory.Services.GetRequiredService<IEventBus>();
 
-        var done = new TaskCompletionSource<AgentTurnEmitted>(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var subscription = subscriber.Subscribe((evt, _) =>
-        {
-            if (evt.AgentId == AgentId && evt.Turn.Role == ModelRole.Assistant)
+        var done = new TaskCompletionSource<ModelTurn>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var subscription = bus.Subscribe<ModelTurn>(
+            $"{Event.WellKnown.Agent.Turn}:{AgentId}",
+            EventDeliveryMode.Awaited,
+            (envelope, _) =>
             {
-                done.TrySetResult(evt);
-            }
-            return ValueTask.CompletedTask;
-        });
+                if (envelope.Data is { Role: ModelRole.Assistant } turn)
+                {
+                    done.TrySetResult(turn);
+                }
+                return ValueTask.CompletedTask;
+            });
 
         await publisher.PublishAsync(
             new UserMessageSubmitted(AgentId, content, DateTimeOffset.UtcNow),
