@@ -193,7 +193,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         return ActivatorUtilities.CreateInstance<Agent>(
             _services,
             name,
-            config,
             model,
             agentContext,
             modelConfig);

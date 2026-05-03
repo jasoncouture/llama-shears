@@ -113,7 +113,6 @@ public sealed class AgentLoopTests
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         return new global::LlamaShears.Core.Agent(
             id: id,
-            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
             agentContext: agentContext,
             loggerFactory: NullLoggerFactory.Instance,

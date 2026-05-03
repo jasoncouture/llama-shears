@@ -121,7 +121,6 @@ public sealed class AgentEventPublishingTests
 
         using var agent = new global::LlamaShears.Core.Agent(
             id: agentId,
-            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero),
             model: model,
             agentContext: ctx,
             loggerFactory: NullLoggerFactory.Instance,
