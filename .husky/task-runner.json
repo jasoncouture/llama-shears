@@ -14,6 +14,20 @@
          ],
          "command": "bash",
          "args": [ "-c", "dotnet clean && dotnet build", "_", "${staged}" ]
+      },
+      {
+         "name": "dotnet-test-on-source-change",
+         "group": "pre-commit",
+         "include": [
+            "**/*.cs",
+            "**/*.razor",
+            "**/*.csproj",
+            "**/*.sln",
+            "**/*.slnx",
+            "**/*.props"
+         ],
+         "command": "bash",
+         "args": [ "-c", "dotnet test", "_", "${staged}" ]
       }
    ]
 }
