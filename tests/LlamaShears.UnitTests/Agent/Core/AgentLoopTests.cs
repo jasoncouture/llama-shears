@@ -107,6 +107,7 @@ public sealed class AgentLoopTests
                 Arg.Any<ModelPrompt>(),
                 Arg.Any<ILanguageModel>(),
                 Arg.Any<ModelConfiguration>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
         var contextProvider = Substitute.For<IAgentContextProvider>();

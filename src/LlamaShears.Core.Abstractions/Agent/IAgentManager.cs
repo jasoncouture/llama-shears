@@ -20,4 +20,10 @@ public interface IAgentManager
     /// is currently loaded.
     /// </summary>
     bool Contains(string agentId);
+
+    /// <summary>
+    /// Returns the loaded agent with the given id, or <see langword="null"/>
+    /// if none is loaded under that id.
+    /// </summary>
+    IAgent? Get(string agentId);
 }

@@ -32,4 +32,14 @@ public interface IAgent : IDisposable
     /// Releases a permit previously acquired by <see cref="LockAsync"/>.
     /// </summary>
     ValueTask UnlockAsync();
+
+    /// <summary>
+    /// Acquires the agent's processing gate and runs the context
+    /// compactor against the agent's current context, bypassing the
+    /// usual under-budget guard so the call is willing to compact a
+    /// healthy-but-aged context. The compactor's other guards (min
+    /// turn count, missing context length) still apply, so a small
+    /// or unconfigured context is left alone.
+    /// </summary>
+    Task RequestCompactionAsync(CancellationToken cancellationToken);
 }
