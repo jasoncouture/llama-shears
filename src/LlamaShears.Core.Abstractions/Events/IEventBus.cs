@@ -17,7 +17,7 @@ public interface IEventBus
     /// </summary>
     /// <typeparam name="T">The payload type the handler observes.</typeparam>
     IDisposable Subscribe<T>(
-        string pattern,
+        string? pattern,
         EventDeliveryMode mode,
         IEventHandler<T> handler)
         where T : class;

@@ -4,7 +4,7 @@ public static class EventBusExtensions
 {
     public static IDisposable Subscribe<T>(
         this IEventBus bus,
-        string pattern,
+        string? pattern,
         EventDeliveryMode mode,
         Func<IEventEnvelope<T>, CancellationToken, ValueTask> handler)
         where T : class
