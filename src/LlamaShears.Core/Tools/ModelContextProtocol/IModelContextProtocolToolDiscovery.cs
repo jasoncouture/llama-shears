@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Context;
 
 namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
@@ -11,12 +12,13 @@ public interface IModelContextProtocolToolDiscovery
 {
     /// <summary>
     /// Connects to each MCP server in the supplied map, lists its
-    /// tools, and returns one <see cref="ModelContextProtocolToolSet"/>
-    /// per server that responded. Servers that fail (network error,
-    /// handshake failure, etc.) are logged and dropped from the result,
-    /// never thrown.
+    /// tools, and returns one <see cref="ToolGroup"/> per server that
+    /// responded — the group's <see cref="ToolGroup.Source"/> carries
+    /// the server name. Servers that fail (network error, handshake
+    /// failure, etc.) are logged and dropped from the result, never
+    /// thrown.
     /// </summary>
-    ValueTask<ImmutableArray<ModelContextProtocolToolSet>> DiscoverAsync(
+    ValueTask<ImmutableArray<ToolGroup>> DiscoverAsync(
         IReadOnlyDictionary<string, Uri> servers,
         CancellationToken cancellationToken);
 }

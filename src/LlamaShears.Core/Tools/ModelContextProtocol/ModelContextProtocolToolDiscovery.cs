@@ -22,7 +22,7 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
         _logger = loggerFactory.CreateLogger<ModelContextProtocolToolDiscovery>();
     }
 
-    public async ValueTask<ImmutableArray<ModelContextProtocolToolSet>> DiscoverAsync(
+    public async ValueTask<ImmutableArray<ToolGroup>> DiscoverAsync(
         IReadOnlyDictionary<string, Uri> servers,
         CancellationToken cancellationToken)
     {
@@ -32,23 +32,25 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
             return [];
         }
 
-        var builder = ImmutableArray.CreateBuilder<ModelContextProtocolToolSet>(servers.Count);
+        var builder = ImmutableArray.CreateBuilder<ToolGroup>(servers.Count);
         foreach (var (name, uri) in servers)
         {
-            var toolset = await DiscoverServerAsync(name, uri, cancellationToken).ConfigureAwait(false);
-            if (toolset is not null)
+            var group = await DiscoverServerAsync(name, uri, cancellationToken).ConfigureAwait(false);
+            if (group is not null)
             {
-                builder.Add(toolset);
+                builder.Add(group);
             }
         }
         return builder.ToImmutable();
     }
 
-    private async Task<ModelContextProtocolToolSet?> DiscoverServerAsync(
+    private async Task<ToolGroup?> DiscoverServerAsync(
         string serverName,
         Uri serverUri,
         CancellationToken cancellationToken)
     {
+        // HttpClientFactory pools the underlying handler; the returned
+        // HttpClient is a cheap wrapper and is not disposed here.
         var httpClient = _httpClientFactory.CreateClient(HttpClientName);
         try
         {
@@ -67,19 +69,14 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
                 loggerFactory: _loggerFactory,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             var tools = await client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-            return new ModelContextProtocolToolSet(
-                ServerName: serverName,
-                ServerUri: serverUri,
+            return new ToolGroup(
+                Source: serverName,
                 Tools: [.. tools.Select(MapTool)]);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogServerDiscoveryFailed(_logger, serverName, serverUri, ex.Message, ex);
             return null;
-        }
-        finally
-        {
-            httpClient.Dispose();
         }
     }
 
