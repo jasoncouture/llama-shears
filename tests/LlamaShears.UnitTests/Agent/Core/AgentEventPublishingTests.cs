@@ -8,8 +8,8 @@ using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Persistence;
-using LlamaShears.Core.SystemPrompt;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -121,12 +121,12 @@ public sealed class AgentEventPublishingTests
         using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
 
         using var agent = new global::LlamaShears.Core.Agent(
-            id: agentId,
+            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId),
             model: model,
             agentContext: ctx,
             loggerFactory: NullLoggerFactory.Instance,
             bus: bus,
-            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
+            systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
             modelConfiguration: new ModelConfiguration("test"),
@@ -175,6 +175,14 @@ public sealed class AgentEventPublishingTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(agentId)));
         return contextProvider;
+    }
+
+    private static ISystemPromptProvider BuildStubSystemPromptProvider()
+    {
+        var stub = Substitute.For<ISystemPromptProvider>();
+        stub.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult("system"));
+        return stub;
     }
 
     /// <summary>

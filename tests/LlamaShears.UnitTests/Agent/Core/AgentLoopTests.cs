@@ -7,8 +7,8 @@ using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Persistence;
-using LlamaShears.Core.SystemPrompt;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -115,18 +115,26 @@ public sealed class AgentLoopTests
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
         return new global::LlamaShears.Core.Agent(
-            id: id,
+            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
             model: model,
             agentContext: agentContext,
             loggerFactory: NullLoggerFactory.Instance,
             bus: services.GetRequiredService<IEventBus>(),
-            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
+            systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
             inferenceRunner: new InferenceRunner(publisher, TimeProvider.System));
+    }
+
+    private static ISystemPromptProvider BuildStubSystemPromptProvider()
+    {
+        var stub = Substitute.For<ISystemPromptProvider>();
+        stub.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult("system"));
+        return stub;
     }
 
     private static ServiceProvider BuildServices()

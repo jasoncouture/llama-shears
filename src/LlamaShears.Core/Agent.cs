@@ -14,6 +14,7 @@ namespace LlamaShears.Core;
 
 public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisposable
 {
+    private readonly AgentConfig _config;
     private readonly ILanguageModel _model;
     private readonly ILogger _logger;
     private readonly IAgentContext _agentContext;
@@ -31,7 +32,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IInferenceRunner _inferenceRunner;
 
     public Agent(
-        string id,
+        AgentConfig config,
         ILanguageModel model,
         IAgentContext agentContext,
         ILoggerFactory loggerFactory,
@@ -44,11 +45,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(config);
+        ArgumentException.ThrowIfNullOrWhiteSpace(config.Id);
 
-        Id = id;
+        _config = config;
         _model = model;
-        _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{id}");
+        _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{config.Id}");
         _eventPublisher = eventPublisher;
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
@@ -69,7 +71,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
     }
 
-    public string Id { get; }
+    public string Id => _config.Id;
 
     public DateTimeOffset? LastActivity
         => _agentContext.Turns is [.., var last] ? last.Timestamp : null;
@@ -89,7 +91,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         try
         {
             var turns = _agentContext.Turns;
-            var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), _time.GetLocalNow());
+            var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
+            var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
             var prompt = new ModelPrompt([systemTurn, .. turns]);
             var snapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
@@ -195,7 +198,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
         var turns = _agentContext.Turns;
         var now = _time.GetLocalNow();
-        var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), now);
+        var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
+        var systemTurn = new ModelTurn(ModelRole.System, systemBody, now);
         var prompt = new ModelPrompt([systemTurn, .. turns]);
         var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
@@ -220,6 +224,11 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             LogEmptyResponse(_logger, Id);
         }
     }
+
+    private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
+        new(
+            AgentId: _config.Id,
+            WorkspacePath: _config.WorkspacePath);
 
     private static ModelTurn BuildUserTurn(IReadOnlyList<IEventEnvelope<ChannelMessage>> batch)
     {

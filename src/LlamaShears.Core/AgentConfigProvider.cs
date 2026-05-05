@@ -45,7 +45,7 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
         var path = Path.Combine(_paths.GetPath(PathKind.Agents), agentId + ".json");
-        var state = new ParseState(agentId, path, _logger);
+        var state = new ParseState(agentId, path, _logger, _paths);
 
         try
         {
@@ -86,7 +86,66 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
             return ValueTask.FromResult<AgentConfig?>(null);
         }
 
-        return ValueTask.FromResult<AgentConfig?>(config);
+        return ValueTask.FromResult<AgentConfig?>(config with
+        {
+            Id = state.AgentId,
+            WorkspacePath = ResolveWorkspacePath(config.WorkspacePath, state),
+        });
+    }
+
+    private static string ResolveWorkspacePath(string? configured, ParseState state)
+    {
+        string resolved;
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            resolved = state.Paths.GetPath(PathKind.Workspace, state.AgentId);
+        }
+        else if (TryExpandHomeTilde(configured, out var expanded))
+        {
+            resolved = expanded;
+        }
+        else if (Path.IsPathRooted(configured))
+        {
+            resolved = configured;
+        }
+        else
+        {
+            resolved = Path.Combine(state.Paths.GetPath(PathKind.Data), configured);
+        }
+
+        Directory.CreateDirectory(resolved);
+        return EnsureTrailingSeparator(resolved);
+    }
+
+    private static string EnsureTrailingSeparator(string path)
+    {
+        if (path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar))
+        {
+            return path;
+        }
+        return $"{path}{Path.DirectorySeparatorChar}";
+    }
+
+    private static bool TryExpandHomeTilde(string path, out string expanded)
+    {
+        if (path[0] != '~')
+        {
+            expanded = path;
+            return false;
+        }
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (path.Length == 1)
+        {
+            expanded = home;
+            return true;
+        }
+        if (path[1] == '/' || path[1] == '\\')
+        {
+            expanded = Path.Combine(home, path[2..]);
+            return true;
+        }
+        expanded = path;
+        return false;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}' from {Path}: {Message}")]
@@ -95,5 +154,5 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}' from {Path}: empty document")]
     private static partial void LogEmptyConfig(ILogger logger, string agentId, string path);
 
-    private readonly record struct ParseState(string AgentId, string Path, ILogger Logger);
+    private readonly record struct ParseState(string AgentId, string Path, ILogger Logger, IShearsPaths Paths);
 }
