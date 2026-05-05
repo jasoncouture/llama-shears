@@ -9,6 +9,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
+using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
@@ -38,6 +39,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IToolCallDispatcher _toolDispatcher;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IPromptContextProvider _promptContext;
+    private readonly IMemorySearcher _memorySearcher;
     private readonly ImmutableArray<ToolGroup> _tools;
 
 
@@ -57,6 +59,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IToolCallDispatcher toolDispatcher,
         ICurrentAgentAccessor currentAgent,
         IPromptContextProvider promptContext,
+        IMemorySearcher memorySearcher,
         ImmutableArray<ToolGroup> tools = default)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -76,6 +79,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _toolDispatcher = toolDispatcher;
         _currentAgent = currentAgent;
         _promptContext = promptContext;
+        _memorySearcher = memorySearcher;
         _tools = tools.IsDefault ? [] : tools;
         _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
@@ -217,6 +221,11 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
+        // Memories don't change inside the tool loop — the user input
+        // and the prior assistant turn are both fixed for the duration
+        // of this batch — so search once and reuse across iterations.
+        var memories = await SearchMemoriesAsync(userTurn, cancellationToken).ConfigureAwait(false);
+
         for (var iteration = 0; iteration < _config.Tools.TurnLimit; iteration++)
         {
             // The final iteration runs with no tools so the model has
@@ -235,7 +244,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             var importantMessage = isFinalIteration
                 ? "You have exceeded your turn limit. Respond in text — any further tool calls will be ignored. This is your final output before control returns to the user."
                 : null;
-            prompt = await InjectPromptContextAsync(prompt, batch[^1].Type.Id, importantMessage, cancellationToken).ConfigureAwait(false);
+            prompt = await InjectPromptContextAsync(prompt, batch[^1].Type.Id, importantMessage, memories, cancellationToken).ConfigureAwait(false);
 
             var outcome = await _inferenceRunner.RunAsync(
                 eventId: Id,
@@ -354,7 +363,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ModelPrompt> InjectPromptContextAsync(ModelPrompt prompt, string? channelId, string? importantMessage, CancellationToken cancellationToken)
+    private async Task<ModelPrompt> InjectPromptContextAsync(
+        ModelPrompt prompt,
+        string? channelId,
+        string? importantMessage,
+        IReadOnlyList<PromptContextMemory> memories,
+        CancellationToken cancellationToken)
     {
         var now = _time.GetLocalNow();
         var parameters = new PromptContextParameters(
@@ -363,7 +377,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             DayOfWeek: now.DayOfWeek.ToString(),
             ChannelId: channelId,
             ImportantMessage: importantMessage,
-            WorkspacePath: _config.WorkspacePath);
+            WorkspacePath: _config.WorkspacePath)
+        {
+            Memories = memories,
+        };
         var body = await _promptContext.GetAsync(_config.PromptContext, parameters, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(body))
         {
@@ -402,6 +419,79 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             augmented.Add(turns[i]);
         }
         return new ModelPrompt(augmented);
+    }
+
+    private const int MemorySearchLimit = 5;
+    private const double MemorySearchMinScore = 0.5;
+
+    // Build a query out of the last assistant turn (if any) plus the
+    // freshly-coalesced user turn, then surface the matching memory
+    // bodies into the per-turn ephemeral block. Best-effort: if the
+    // embedding model is unreachable, the misconfiguration is logged
+    // and the turn proceeds without memory enrichment.
+    private async ValueTask<IReadOnlyList<PromptContextMemory>> SearchMemoriesAsync(
+        ModelTurn userTurn,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(_config.WorkspacePath))
+        {
+            return [];
+        }
+
+        var query = BuildMemoryQuery(userTurn);
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        try
+        {
+            var hits = await _memorySearcher
+                .SearchAsync(_config.Id, query, MemorySearchLimit, MemorySearchMinScore, cancellationToken)
+                .ConfigureAwait(false);
+            if (hits.Count == 0)
+            {
+                return [];
+            }
+
+            var results = new List<PromptContextMemory>(hits.Count);
+            foreach (var hit in hits)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var fullPath = Path.Combine(_config.WorkspacePath, hit.RelativePath);
+                if (!File.Exists(fullPath))
+                {
+                    continue;
+                }
+                var content = await File.ReadAllTextAsync(fullPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                results.Add(new PromptContextMemory(hit.RelativePath, content, hit.Score));
+            }
+            return results;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogMemorySearchFailed(_logger, Id, ex.Message, ex);
+            return [];
+        }
+    }
+
+    private string BuildMemoryQuery(ModelTurn userTurn)
+    {
+        ModelTurn? lastAssistant = null;
+        var turns = _agentContext.Turns;
+        for (var i = turns.Count - 1; i >= 0; i--)
+        {
+            if (turns[i].Role == ModelRole.Assistant)
+            {
+                lastAssistant = turns[i];
+                break;
+            }
+        }
+        if (lastAssistant is null)
+        {
+            return userTurn.Content;
+        }
+        return $"{lastAssistant.Content}\n\n{userTurn.Content}";
     }
 
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
@@ -462,4 +552,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' produced {Count} tool call(s) on the final tools-less turn; dropped.")]
     private static partial void LogFinalTurnToolCallsDropped(ILogger logger, string agentId, int count);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Memory search failed for agent '{AgentId}': {Message}. Proceeding without memory enrichment.")]
+    private static partial void LogMemorySearchFailed(ILogger logger, string agentId, string message, Exception ex);
 }

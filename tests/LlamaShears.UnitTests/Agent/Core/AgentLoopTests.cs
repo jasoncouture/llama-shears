@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
+using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
@@ -131,7 +132,8 @@ public sealed class AgentLoopTests
             inferenceRunner: new InferenceRunner(publisher, TimeProvider.System),
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
-            promptContext: Substitute.For<IPromptContextProvider>());
+            promptContext: Substitute.For<IPromptContextProvider>(),
+            memorySearcher: Substitute.For<IMemorySearcher>());
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
