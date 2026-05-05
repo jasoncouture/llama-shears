@@ -89,10 +89,26 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
-        var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken).ConfigureAwait(false);
-
         await using var conn = OpenDb(ctx.IndexDbPath);
         EnsureSchema(conn);
+
+        // Short-circuit on an empty index — embedding a query that has
+        // nothing to match against is a wasted round-trip (and a fatal
+        // hang if the embedder is unreachable).
+        await using (var countCmd = conn.CreateCommand())
+        {
+            countCmd.CommandText = "SELECT COUNT(*) FROM memories";
+            var count = Convert.ToInt32(
+                await countCmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false),
+                System.Globalization.CultureInfo.InvariantCulture);
+            if (count == 0)
+            {
+                LogSearchScored(_logger, agentId, 0, 0, 0, minScore);
+                return [];
+            }
+        }
+
+        var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken).ConfigureAwait(false);
 
         var ranked = new List<MemorySearchResult>();
         var scanned = 0;
@@ -204,7 +220,10 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             DeleteEntry(conn, path);
             LogIndexedRemoved(_logger, agentId, path);
         }
-        return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count);
+        // After reconcile the index contains exactly what's on disk:
+        // every file we walked landed in `seen`, every orphan we found
+        // was deleted. seen.Count is the post-reconcile total.
+        return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count, Total: seen.Count);
     }
 
     private async ValueTask<MemoryContext> ResolveAsync(string agentId, CancellationToken cancellationToken)

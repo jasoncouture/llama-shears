@@ -126,19 +126,22 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
         });
         builder.ConfigureTestServices(services =>
         {
-            // Strip every real IProviderFactory the host registered (Ollama,
-            // future cloud providers) and substitute the in-process stub.
-            // No matter what an agent JSON references, the resolved model
-            // is StubLanguageModel — live network calls are structurally
-            // impossible under test.
+            // Strip every real IProviderFactory and IEmbeddingProviderFactory
+            // the host registered (Ollama, future cloud providers) and
+            // substitute in-process stubs. No matter what an agent JSON
+            // references, the resolved chat model is StubLanguageModel and
+            // the resolved embedding model is StubEmbeddingModel — live
+            // network calls are structurally impossible under test.
             for (var i = services.Count - 1; i >= 0; i--)
             {
-                if (services[i].ServiceType == typeof(IProviderFactory))
+                var t = services[i].ServiceType;
+                if (t == typeof(IProviderFactory) || t == typeof(IEmbeddingProviderFactory))
                 {
                     services.RemoveAt(i);
                 }
             }
             services.AddSingleton<IProviderFactory>(ProviderFactory);
+            services.AddSingleton<IEmbeddingProviderFactory, StubEmbeddingProviderFactory>();
         });
     }
 

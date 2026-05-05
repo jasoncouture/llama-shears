@@ -71,6 +71,7 @@ public sealed class SqliteMemoryServiceTests
         await Assert.That(summary.Added).IsEqualTo(1);
         await Assert.That(summary.Updated).IsEqualTo(0);
         await Assert.That(summary.Removed).IsEqualTo(0);
+        await Assert.That(summary.Total).IsEqualTo(1);
     }
 
     [Test]
@@ -86,6 +87,7 @@ public sealed class SqliteMemoryServiceTests
         await Assert.That(summary.Updated).IsEqualTo(1);
         await Assert.That(summary.Added).IsEqualTo(0);
         await Assert.That(summary.Removed).IsEqualTo(0);
+        await Assert.That(summary.Total).IsEqualTo(1);
     }
 
     [Test]
@@ -101,6 +103,7 @@ public sealed class SqliteMemoryServiceTests
         await Assert.That(summary.Removed).IsEqualTo(1);
         await Assert.That(summary.Added).IsEqualTo(0);
         await Assert.That(summary.Updated).IsEqualTo(0);
+        await Assert.That(summary.Total).IsEqualTo(0);
     }
 
     [Test]
@@ -117,6 +120,7 @@ public sealed class SqliteMemoryServiceTests
         await Assert.That(summary.Updated).IsEqualTo(1);
         await Assert.That(summary.Added).IsEqualTo(0);
         await Assert.That(summary.Removed).IsEqualTo(0);
+        await Assert.That(summary.Total).IsEqualTo(1);
     }
 
     [Test]

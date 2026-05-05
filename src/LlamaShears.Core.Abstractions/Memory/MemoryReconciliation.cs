@@ -1,3 +1,3 @@
 namespace LlamaShears.Core.Abstractions.Memory;
 
-public sealed record MemoryReconciliation(int Added, int Updated, int Removed);
+public sealed record MemoryReconciliation(int Added, int Updated, int Removed, int Total);
