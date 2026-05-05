@@ -7,13 +7,10 @@ namespace LlamaShears.UnitTests.Agent.Core;
 internal static class TestAgentConfigs
 {
     public static AgentConfig WithHeartbeat(TimeSpan heartbeatPeriod, string id = "test") =>
-        new()
+        new(
+            Model: new AgentModelConfig(Id: new ModelIdentity("TEST", "stub")),
+            Id: id)
         {
-            Id = id,
-            Model = new AgentModelConfig
-            {
-                Id = new ModelIdentity("TEST", "stub"),
-            },
             HeartbeatPeriod = heartbeatPeriod,
         };
 

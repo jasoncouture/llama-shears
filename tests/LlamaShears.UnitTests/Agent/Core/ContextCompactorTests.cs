@@ -180,15 +180,11 @@ public sealed class ContextCompactorTests
         {
             totalEstimate += (int)Math.Ceiling(turn.Content.Length * 1.5 / 2.0);
         }
-        var agentConfig = new AgentConfig
-        {
-            Model = new AgentModelConfig
-            {
-                Id = new ModelIdentity("OLLAMA", config.ModelId),
-                ContextLength = config.ContextLength,
-                TokenLimit = config.TokenLimit,
-            },
-        };
+        var agentConfig = new AgentConfig(
+            Model: new AgentModelConfig(
+                Id: new ModelIdentity("OLLAMA", config.ModelId),
+                ContextLength: config.ContextLength,
+                TokenLimit: config.TokenLimit));
         return new AgentContext(
             AgentId: "test",
             Now: Now,
