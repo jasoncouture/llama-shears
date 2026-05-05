@@ -1,13 +1,10 @@
 using System.ComponentModel;
 using System.Globalization;
-using System.Security.Claims;
 using System.Text;
-using LlamaShears.Core.Abstractions.Agent;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
-namespace LlamaShears.Api.Tools.ModelContextProtocol;
+namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 
 [McpServerToolType]
 public sealed partial class ReadFileTool
@@ -15,17 +12,12 @@ public sealed partial class ReadFileTool
     private const int DefaultByteCap = 64 * 1024;
     private const int MaxByteCap = 256 * 1024;
 
-    private readonly IHttpContextAccessor _http;
-    private readonly IAgentConfigProvider _configs;
+    private readonly IAgentWorkspaceLocator _workspace;
     private readonly ILogger<ReadFileTool> _logger;
 
-    public ReadFileTool(
-        IHttpContextAccessor http,
-        IAgentConfigProvider configs,
-        ILogger<ReadFileTool> logger)
+    public ReadFileTool(IAgentWorkspaceLocator workspace, ILogger<ReadFileTool> logger)
     {
-        _http = http;
-        _configs = configs;
+        _workspace = workspace;
         _logger = logger;
     }
 
@@ -52,11 +44,10 @@ public sealed partial class ReadFileTool
         }
         var cap = Math.Clamp(byteCap, 1, MaxByteCap);
 
-        var agentId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var workspace = await ResolveWorkspaceAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
         var resolved = Path.GetFullPath(Path.IsPathRooted(path)
             ? path
-            : Path.Combine(workspace, path));
+            : Path.Combine(workspace.Root, path));
 
         if (Directory.Exists(resolved))
         {
@@ -70,7 +61,7 @@ public sealed partial class ReadFileTool
         try
         {
             var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, cap, cancellationToken).ConfigureAwait(false);
-            LogRead(_logger, agentId, resolved, content.Length, truncated);
+            LogRead(_logger, workspace.AgentId, resolved, content.Length, truncated);
             if (truncated)
             {
                 content = string.Concat(
@@ -86,23 +77,9 @@ public sealed partial class ReadFileTool
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogReadFailed(_logger, agentId, resolved, ex.Message, ex);
+            LogReadFailed(_logger, workspace.AgentId, resolved, ex.Message, ex);
             return $"Read failed: {ex.Message}";
         }
-    }
-
-    private async Task<string> ResolveWorkspaceAsync(string? agentId, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(agentId))
-        {
-            return Environment.CurrentDirectory;
-        }
-        var config = await _configs.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
-        if (config is null || string.IsNullOrEmpty(config.WorkspacePath))
-        {
-            return Environment.CurrentDirectory;
-        }
-        return Path.GetFullPath(config.WorkspacePath);
     }
 
     private static async Task<(string Content, bool Truncated)> ReadRangeAsync(
@@ -138,9 +115,6 @@ public sealed partial class ReadFileTool
                 break;
             }
 
-            // +1 for the newline rejoiner. Counted before append so we
-            // can stop cleanly the moment the next line would breach
-            // the cap.
             var lineBytes = Encoding.UTF8.GetByteCount(current) + 1;
             if (bytes + lineBytes > byteCap)
             {

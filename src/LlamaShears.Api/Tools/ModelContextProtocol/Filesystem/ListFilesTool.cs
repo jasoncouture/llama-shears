@@ -1,13 +1,10 @@
 using System.ComponentModel;
 using System.Globalization;
-using System.Security.Claims;
 using System.Text;
-using LlamaShears.Core.Abstractions.Agent;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
-namespace LlamaShears.Api.Tools.ModelContextProtocol;
+namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 
 [McpServerToolType]
 public sealed partial class ListFilesTool
@@ -15,17 +12,12 @@ public sealed partial class ListFilesTool
     private const int DefaultMaxEntries = 200;
     private const int HardMaxEntries = 1000;
 
-    private readonly IHttpContextAccessor _http;
-    private readonly IAgentConfigProvider _configs;
+    private readonly IAgentWorkspaceLocator _workspace;
     private readonly ILogger<ListFilesTool> _logger;
 
-    public ListFilesTool(
-        IHttpContextAccessor http,
-        IAgentConfigProvider configs,
-        ILogger<ListFilesTool> logger)
+    public ListFilesTool(IAgentWorkspaceLocator workspace, ILogger<ListFilesTool> logger)
     {
-        _http = http;
-        _configs = configs;
+        _workspace = workspace;
         _logger = logger;
     }
 
@@ -38,21 +30,20 @@ public sealed partial class ListFilesTool
         CancellationToken cancellationToken = default)
     {
         var cap = Math.Clamp(maxEntries, 1, HardMaxEntries);
-        var agentId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var workspace = await ResolveWorkspaceAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
 
         string resolved;
         string displayPath;
         if (string.IsNullOrWhiteSpace(path))
         {
-            resolved = workspace;
+            resolved = workspace.Root;
             displayPath = "(workspace root)";
         }
         else
         {
             resolved = Path.GetFullPath(Path.IsPathRooted(path)
                 ? path
-                : Path.Combine(workspace, path));
+                : Path.Combine(workspace.Root, path));
             displayPath = path;
         }
 
@@ -68,28 +59,14 @@ public sealed partial class ListFilesTool
         try
         {
             var rendered = Render(resolved, displayPath, recursive, cap, out var entryCount, out var truncated);
-            LogList(_logger, agentId, resolved, entryCount, truncated);
+            LogList(_logger, workspace.AgentId, resolved, entryCount, truncated);
             return rendered;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogListFailed(_logger, agentId, resolved, ex.Message, ex);
+            LogListFailed(_logger, workspace.AgentId, resolved, ex.Message, ex);
             return $"List failed: {ex.Message}";
         }
-    }
-
-    private async Task<string> ResolveWorkspaceAsync(string? agentId, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(agentId))
-        {
-            return Environment.CurrentDirectory;
-        }
-        var config = await _configs.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
-        if (config is null || string.IsNullOrEmpty(config.WorkspacePath))
-        {
-            return Environment.CurrentDirectory;
-        }
-        return Path.GetFullPath(config.WorkspacePath);
     }
 
     private static string Render(
@@ -145,8 +122,7 @@ public sealed partial class ListFilesTool
                 }
                 catch (IOException)
                 {
-                    // File vanished or is unreadable between enumerate
-                    // and stat — fall through with size 0.
+                    // size 0 if the file vanished between enumerate and stat
                 }
                 builder.Append('\n');
                 builder.AppendFormat(CultureInfo.InvariantCulture, "{0} ({1} bytes)", rel, size);

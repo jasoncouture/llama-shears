@@ -2,6 +2,7 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
@@ -10,6 +11,7 @@ using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Abstractions.Templating;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Context;
+using LlamaShears.Core.Memory;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.PromptContext;
@@ -36,6 +38,8 @@ public static class CoreServiceCollectionExtensions
     public const string DefaultFileParserCacheConfigurationSection = "FileParserCache";
 
     public const string DefaultModelContextProtocolConfigurationSection = "ModelContextProtocol";
+
+    public const string DefaultMemoryConfigurationSection = "Memory";
 
     public static IServiceCollection AddCore(
         this IServiceCollection services,
@@ -79,6 +83,13 @@ public static class CoreServiceCollectionExtensions
 
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(modelContextProtocolConfigurationSection);
+
+        services.AddOptions<MemoryServiceOptions>()
+            .BindConfiguration(DefaultMemoryConfigurationSection);
+        services.TryAddSingleton<SqliteMemoryService>();
+        services.TryAddSingleton<IMemoryStore>(sp => sp.GetRequiredService<SqliteMemoryService>());
+        services.TryAddSingleton<IMemorySearcher>(sp => sp.GetRequiredService<SqliteMemoryService>());
+        services.TryAddSingleton<IMemoryIndexer>(sp => sp.GetRequiredService<SqliteMemoryService>());
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();

@@ -1,3 +1,5 @@
+using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
+using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,13 +14,22 @@ public static class ModelContextProtocolServiceCollectionExtensions
 
         services.AddHttpContextAccessor();
         services.TryAddSingleton<IInternalModelContextProtocolServer, InternalModelContextProtocolServer>();
+        services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
 
         services.AddMcpServer()
             .WithHttpTransport()
             .WithTools<WhoamiTool>()
             .WithTools<RandomNumberTool>()
             .WithTools<ReadFileTool>()
-            .WithTools<ListFilesTool>();
+            .WithTools<ListFilesTool>()
+            .WithTools<WriteFileTool>()
+            .WithTools<AppendFileTool>()
+            .WithTools<DeleteFileTool>()
+            .WithTools<RegexReplaceFileTool>()
+            .WithTools<GrepTool>()
+            .WithTools<StoreMemoryTool>()
+            .WithTools<SearchMemoryTool>()
+            .WithTools<IndexMemoryTool>();
 
         return services;
     }
