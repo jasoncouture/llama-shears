@@ -1,0 +1,6 @@
+@LlamaShears_HostAddress = http://localhost:5125
+
+GET {{LlamaShears_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

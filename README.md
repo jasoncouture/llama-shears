@@ -30,7 +30,7 @@ LlamaShears is intended to be a *host*, not an agent. It runs agents you configu
 | Memory                        | Not yet implemented. Vector storage will use `Microsoft.Extensions.VectorData`.      |
 | RAG                           | Not yet implemented.                                                                 |
 | MCP integration               | Scaffolded. Server mounted at `/mcp` behind agent bearer auth; only a `whoami` smoke-test tool so far. |
-| API host                      | Minimal ASP.NET surface in `LlamaShears.Api.Host`.                                   |
+| API host                      | Minimal ASP.NET surface in the `LlamaShears` host project.                          |
 | Desktop UI                    | Not yet implemented. Likely Avalonia, with Linux as a first-class target.            |
 
 ## Building and running
