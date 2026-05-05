@@ -52,7 +52,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         try
         {
             var hash = ComputeHash(content);
-            var vector = await ctx.Embedding.EmbedAsync(ctx.DocumentPrefix + content, cancellationToken).ConfigureAwait(false);
+            var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken).ConfigureAwait(false);
             await using var conn = OpenDb(ctx.IndexDbPath);
             EnsureSchema(conn);
             UpsertEntry(conn, relativePath, hash, vector);
@@ -89,7 +89,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
-        var queryVector = await ctx.Embedding.EmbedAsync(ctx.QueryPrefix + query, cancellationToken).ConfigureAwait(false);
+        var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken).ConfigureAwait(false);
 
         await using var conn = OpenDb(ctx.IndexDbPath);
         EnsureSchema(conn);
@@ -176,7 +176,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 {
                     continue;
                 }
-                var vector = await ctx.Embedding.EmbedAsync(ctx.DocumentPrefix + content, cancellationToken).ConfigureAwait(false);
+                var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken).ConfigureAwait(false);
                 UpsertEntry(conn, relativePath, hash, vector);
                 if (existingHash is null)
                 {
