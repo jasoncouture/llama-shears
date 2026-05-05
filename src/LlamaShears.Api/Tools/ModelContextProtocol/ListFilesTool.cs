@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -15,47 +16,59 @@ public sealed partial class ListFilesTool
     private const int HardMaxEntries = 1000;
 
     private readonly IHttpContextAccessor _http;
+    private readonly IAgentConfigProvider _configs;
     private readonly ILogger<ListFilesTool> _logger;
 
     public ListFilesTool(
         IHttpContextAccessor http,
+        IAgentConfigProvider configs,
         ILogger<ListFilesTool> logger)
     {
         _http = http;
+        _configs = configs;
         _logger = logger;
     }
 
     [McpServerTool(Name = "list_files")]
     [Description("Lists files and directories under the given path on the host filesystem. Directories are listed first (with a trailing slash), then files (with byte size). Output is capped; a truncation marker is appended when the listing exceeds the cap.")]
     public async Task<string> ListFiles(
-        [Description("Path to list. Relative paths resolve against the host process's working directory; absolute paths are honored as-is. Required.")] string path,
+        [Description("Path to list. Relative paths resolve against the agent's workspace; absolute paths are honored as-is. Empty (default) lists the agent's workspace root.")] string path = "",
         [Description("If true, recurse into subdirectories. Defaults to false.")] bool recursive = false,
         [Description("Maximum number of entries to return. Defaults to 200; hard-capped at 1000.")] int maxEntries = DefaultMaxEntries,
         CancellationToken cancellationToken = default)
     {
+        var cap = Math.Clamp(maxEntries, 1, HardMaxEntries);
+        var agentId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var workspace = await ResolveWorkspaceAsync(agentId, cancellationToken).ConfigureAwait(false);
+
+        string resolved;
+        string displayPath;
         if (string.IsNullOrWhiteSpace(path))
         {
-            return "path is required.";
+            resolved = workspace;
+            displayPath = "(workspace root)";
         }
-        var cap = Math.Clamp(maxEntries, 1, HardMaxEntries);
-
-        var resolved = Path.GetFullPath(path);
-        var agentId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        else
+        {
+            resolved = Path.GetFullPath(Path.IsPathRooted(path)
+                ? path
+                : Path.Combine(workspace, path));
+            displayPath = path;
+        }
 
         if (File.Exists(resolved))
         {
-            return $"Refused: '{path}' is a file. Use read_file instead.";
+            return $"Refused: '{displayPath}' is a file. Use read_file instead.";
         }
         if (!Directory.Exists(resolved))
         {
-            return $"Directory not found: {path}";
+            return $"Directory not found: {displayPath}";
         }
 
         try
         {
-            var rendered = Render(resolved, path, recursive, cap, out var entryCount, out var truncated);
+            var rendered = Render(resolved, displayPath, recursive, cap, out var entryCount, out var truncated);
             LogList(_logger, agentId, resolved, entryCount, truncated);
-            await Task.CompletedTask.ConfigureAwait(false);
             return rendered;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -63,6 +76,20 @@ public sealed partial class ListFilesTool
             LogListFailed(_logger, agentId, resolved, ex.Message, ex);
             return $"List failed: {ex.Message}";
         }
+    }
+
+    private async Task<string> ResolveWorkspaceAsync(string? agentId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(agentId))
+        {
+            return Environment.CurrentDirectory;
+        }
+        var config = await _configs.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
+        if (config is null || string.IsNullOrEmpty(config.WorkspacePath))
+        {
+            return Environment.CurrentDirectory;
+        }
+        return Path.GetFullPath(config.WorkspacePath);
     }
 
     private static string Render(

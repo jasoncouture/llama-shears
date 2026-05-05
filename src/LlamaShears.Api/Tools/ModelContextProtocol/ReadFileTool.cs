@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -15,20 +16,23 @@ public sealed partial class ReadFileTool
     private const int MaxByteCap = 256 * 1024;
 
     private readonly IHttpContextAccessor _http;
+    private readonly IAgentConfigProvider _configs;
     private readonly ILogger<ReadFileTool> _logger;
 
     public ReadFileTool(
         IHttpContextAccessor http,
+        IAgentConfigProvider configs,
         ILogger<ReadFileTool> logger)
     {
         _http = http;
+        _configs = configs;
         _logger = logger;
     }
 
     [McpServerTool(Name = "read_file")]
     [Description("Reads a file from the host filesystem. Returns at most byte_cap bytes from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
     public async Task<string> ReadFile(
-        [Description("Path to read. Relative paths are resolved against the host process's working directory; absolute paths are honored as-is.")] string path,
+        [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
         [Description("Number of lines to return. 0 (default) means read to end of file, subject to the byte cap.")] int lineCount = 0,
         [Description("Maximum bytes of content to return. Defaults to 65536 (64 KiB). Hard-capped at 262144 (256 KiB).")] int byteCap = DefaultByteCap,
@@ -48,8 +52,11 @@ public sealed partial class ReadFileTool
         }
         var cap = Math.Clamp(byteCap, 1, MaxByteCap);
 
-        var resolved = Path.GetFullPath(path);
         var agentId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var workspace = await ResolveWorkspaceAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var resolved = Path.GetFullPath(Path.IsPathRooted(path)
+            ? path
+            : Path.Combine(workspace, path));
 
         if (Directory.Exists(resolved))
         {
@@ -82,6 +89,20 @@ public sealed partial class ReadFileTool
             LogReadFailed(_logger, agentId, resolved, ex.Message, ex);
             return $"Read failed: {ex.Message}";
         }
+    }
+
+    private async Task<string> ResolveWorkspaceAsync(string? agentId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(agentId))
+        {
+            return Environment.CurrentDirectory;
+        }
+        var config = await _configs.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
+        if (config is null || string.IsNullOrEmpty(config.WorkspacePath))
+        {
+            return Environment.CurrentDirectory;
+        }
+        return Path.GetFullPath(config.WorkspacePath);
     }
 
     private static async Task<(string Content, bool Truncated)> ReadRangeAsync(
