@@ -21,11 +21,26 @@ internal sealed class EventBus : IEventBus, IEventPublisher
         using var loggerScope = _logger.BeginScope("{EventType} {EventCorrelationId}", eventType, correlationId);
         var publisher = _serviceProvider.GetRequiredService<IAsyncPublisher<IEventEnvelope<T>>>();
         var envelope = new EventEnvelope<T>(eventType, EventDeliveryMode.FireAndForget, correlationId, data);
-        _logger.LogTrace("Publishing fire and forget event: {Envelope}", envelope);
-        publisher.Publish(envelope, cancellationToken);
+
+        var denied = EventDeliveryMask.None;
+        foreach (var filter in _serviceProvider.GetServices<IEventFilter>())
+        {
+            denied |= await filter.GetDeniedModesAsync(envelope, cancellationToken);
+            if (denied == EventDeliveryMask.Both) break;
+        }
+
+        if (!denied.HasFlag(EventDeliveryMask.FireAndForget))
+        {
+            _logger.LogTrace("Publishing fire and forget event: {Envelope}", envelope);
+            publisher.Publish(envelope, cancellationToken);
+        }
+
         envelope = envelope with { DeliveryMode = EventDeliveryMode.Awaited };
-        _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
-        await publisher.PublishAsync(envelope, cancellationToken);
+        if (!denied.HasFlag(EventDeliveryMask.Awaited))
+        {
+            _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
+            await publisher.PublishAsync(envelope, cancellationToken);
+        }
         _logger.LogTrace("Event publishing complete");
     }
 
