@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Channels;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -393,7 +394,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         if (batch.Count == 1)
         {
             var only = batch[0].Data!;
-            return new ModelTurn(ModelRole.User, only.Text, only.Timestamp);
+            return new ModelTurn(ModelRole.User, only.Text, only.Timestamp)
+            {
+                Attachments = only.Attachments,
+            };
         }
 
         var sb = new StringBuilder();
@@ -401,6 +405,11 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             CultureInfo.InvariantCulture,
             "The following {0} messages arrived since your last response, in order:",
             batch.Count));
+        // Coalesce attachments from every message in the batch onto
+        // the merged turn — the model needs all of them alongside the
+        // merged text. They're tagged in-text by the bracketed index
+        // so the model can correlate "image #2 of [3]" with its line.
+        var combined = ImmutableArray.CreateBuilder<Attachment>();
         for (var i = 0; i < batch.Count; i++)
         {
             var msg = batch[i].Data!;
@@ -410,8 +419,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             sb.Append(msg.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
             sb.Append(") ");
             sb.Append(msg.Text);
+            if (!msg.Attachments.IsDefaultOrEmpty)
+            {
+                combined.AddRange(msg.Attachments);
+            }
         }
-        return new ModelTurn(ModelRole.User, sb.ToString(), batch[^1].Data!.Timestamp);
+        return new ModelTurn(ModelRole.User, sb.ToString(), batch[^1].Data!.Timestamp)
+        {
+            Attachments = combined.ToImmutable(),
+        };
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]

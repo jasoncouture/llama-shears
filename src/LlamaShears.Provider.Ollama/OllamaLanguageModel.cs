@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
@@ -246,7 +247,29 @@ public partial class OllamaLanguageModel : ILanguageModel
             // that surface ToolName see a consistent identifier.
             message.ToolName = $"{resolved.Source}{ToolNameSeparator}{resolved.Name}";
         }
+        if (!turn.Attachments.IsDefaultOrEmpty)
+        {
+            message.Images = ExtractImages(turn.Attachments);
+        }
         return message;
+    }
+
+    private static string[]? ExtractImages(ImmutableArray<Attachment> attachments)
+    {
+        // Ollama's Message.Images is base64 strings only; non-image
+        // attachments (when we add them) get sent through whatever
+        // their kind-specific channel is. For now, drop anything that
+        // isn't an Image.
+        List<string>? images = null;
+        foreach (var attachment in attachments)
+        {
+            if (attachment.Kind == AttachmentKind.Image)
+            {
+                images ??= [];
+                images.Add(attachment.Base64Data);
+            }
+        }
+        return images?.ToArray();
     }
 
     private static List<Message.ToolCall> ToOllamaToolCalls(ImmutableArray<ToolCall> calls)
