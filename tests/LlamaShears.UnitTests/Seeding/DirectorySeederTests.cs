@@ -1,20 +1,21 @@
-using LlamaShears.Api.Host;
+using LlamaShears.Core.Seeding;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace LlamaShears.UnitTests.Hosting;
+namespace LlamaShears.UnitTests.Seeding;
 
-public sealed class TemplateSeedingStartupTaskTests
+public sealed class DirectorySeederTests
 {
     [Test]
-    public async Task SeedIfEmptyCopiesDirectoryTreeAndWritesKeepWhenDestinationIsEmpty()
+    public async Task CopiesDirectoryTreeAndWritesKeepWhenDestinationIsEmpty()
     {
         using var fixture = new SeedingFixture();
+        var seeder = new DirectorySeeder(NullLogger<DirectorySeeder>.Instance);
 
         File.WriteAllText(Path.Combine(fixture.Source, "ROOT.md"), "root");
         Directory.CreateDirectory(Path.Combine(fixture.Source, "workspace"));
         File.WriteAllText(Path.Combine(fixture.Source, "workspace", "INNER.md"), "inner");
 
-        TemplateSeedingStartupTask.SeedIfEmpty(fixture.Source, fixture.Destination, NullLogger.Instance);
+        seeder.SeedIfEmpty(fixture.Source, fixture.Destination);
 
         await Assert.That(File.Exists(Path.Combine(fixture.Destination, "ROOT.md"))).IsTrue();
         await Assert.That(File.Exists(Path.Combine(fixture.Destination, "workspace", "INNER.md"))).IsTrue();
@@ -22,44 +23,74 @@ public sealed class TemplateSeedingStartupTaskTests
     }
 
     [Test]
-    public async Task SeedIfEmptySkipsWhenDestinationContainsOnlyKeep()
+    public async Task SkipsCopyWhenDestinationContainsOnlyKeep()
     {
         using var fixture = new SeedingFixture();
+        var seeder = new DirectorySeeder(NullLogger<DirectorySeeder>.Instance);
 
         File.WriteAllText(Path.Combine(fixture.Source, "ROOT.md"), "root");
         Directory.CreateDirectory(fixture.Destination);
         File.WriteAllBytes(Path.Combine(fixture.Destination, ".keep"), []);
 
-        TemplateSeedingStartupTask.SeedIfEmpty(fixture.Source, fixture.Destination, NullLogger.Instance);
+        seeder.SeedIfEmpty(fixture.Source, fixture.Destination);
 
         await Assert.That(File.Exists(Path.Combine(fixture.Destination, "ROOT.md"))).IsFalse();
+        await Assert.That(File.Exists(Path.Combine(fixture.Destination, ".keep"))).IsTrue();
     }
 
     [Test]
-    public async Task SeedIfEmptySkipsWhenDestinationAlreadyHasFiles()
+    public async Task SkipsCopyWhenDestinationAlreadyHasFiles()
     {
         using var fixture = new SeedingFixture();
+        var seeder = new DirectorySeeder(NullLogger<DirectorySeeder>.Instance);
 
         File.WriteAllText(Path.Combine(fixture.Source, "ROOT.md"), "root");
         Directory.CreateDirectory(fixture.Destination);
         File.WriteAllText(Path.Combine(fixture.Destination, "EXISTING.md"), "existing");
 
-        TemplateSeedingStartupTask.SeedIfEmpty(fixture.Source, fixture.Destination, NullLogger.Instance);
+        seeder.SeedIfEmpty(fixture.Source, fixture.Destination);
 
         await Assert.That(File.ReadAllText(Path.Combine(fixture.Destination, "EXISTING.md"))).IsEqualTo("existing");
         await Assert.That(File.Exists(Path.Combine(fixture.Destination, "ROOT.md"))).IsFalse();
-        await Assert.That(File.Exists(Path.Combine(fixture.Destination, ".keep"))).IsFalse();
     }
 
     [Test]
-    public async Task SeedIfEmptyCreatesEmptyDestinationWhenSourceMissingButDoesNotThrow()
+    public async Task EnsuresKeepInNonEmptyDestinationLackingIt()
+    {
+        using var fixture = new SeedingFixture();
+        var seeder = new DirectorySeeder(NullLogger<DirectorySeeder>.Instance);
+
+        File.WriteAllText(Path.Combine(fixture.Source, "ROOT.md"), "root");
+        Directory.CreateDirectory(fixture.Destination);
+        File.WriteAllText(Path.Combine(fixture.Destination, "EXISTING.md"), "existing");
+
+        seeder.SeedIfEmpty(fixture.Source, fixture.Destination);
+
+        await Assert.That(File.Exists(Path.Combine(fixture.Destination, ".keep"))).IsTrue();
+    }
+
+    [Test]
+    public async Task ThrowsWhenSourceMissingAndDestinationIsEmpty()
     {
         using var fixture = new SeedingFixture(createSource: false);
+        var seeder = new DirectorySeeder(NullLogger<DirectorySeeder>.Instance);
 
-        TemplateSeedingStartupTask.SeedIfEmpty(fixture.Source, fixture.Destination, NullLogger.Instance);
+        await Assert.That(() => seeder.SeedIfEmpty(fixture.Source, fixture.Destination))
+            .Throws<DirectoryNotFoundException>();
+    }
 
-        await Assert.That(Directory.Exists(fixture.Destination)).IsTrue();
-        await Assert.That(File.Exists(Path.Combine(fixture.Destination, ".keep"))).IsFalse();
+    [Test]
+    public async Task DoesNotThrowWhenSourceMissingButDestinationAlreadyHasContent()
+    {
+        using var fixture = new SeedingFixture(createSource: false);
+        var seeder = new DirectorySeeder(NullLogger<DirectorySeeder>.Instance);
+
+        Directory.CreateDirectory(fixture.Destination);
+        File.WriteAllText(Path.Combine(fixture.Destination, "EXISTING.md"), "existing");
+
+        seeder.SeedIfEmpty(fixture.Source, fixture.Destination);
+
+        await Assert.That(File.Exists(Path.Combine(fixture.Destination, ".keep"))).IsTrue();
     }
 
     private sealed class SeedingFixture : IDisposable
