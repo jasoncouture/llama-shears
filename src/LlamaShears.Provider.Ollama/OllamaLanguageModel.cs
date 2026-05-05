@@ -58,7 +58,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                 Stream = true,
                 Messages = messages,
                 Think = MapThinkLevel(_configuration.Think),
-                KeepAlive = MapKeepAlive(_configuration.KeepAlive),
+                KeepAlive = OllamaKeepAlive.Map(_configuration.KeepAlive),
                 Tools = BuildTools(options),
                 Options = new RequestOptions
                 {
@@ -321,27 +321,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         ThinkLevel.High => ThinkValue.High,
         _ => null,
     };
-
-    private static string? MapKeepAlive(TimeSpan? keepAlive)
-    {
-        if (keepAlive is not { } span)
-        {
-            return null;
-        }
-
-        if (span == TimeSpan.Zero)
-        {
-            return "0";
-        }
-
-        if (span < TimeSpan.Zero)
-        {
-            return "-1";
-        }
-
-        // Ollama wants whole minutes with the "m" suffix for inactivity timeouts.
-        return $"{(long)Math.Round(span.TotalMinutes)}m";
-    }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Token from {ModelId}: {Content}")]
     private static partial void LogTokenReceived(ILogger logger, string modelId, string content);

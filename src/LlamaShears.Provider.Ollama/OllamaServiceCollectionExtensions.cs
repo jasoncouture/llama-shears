@@ -35,6 +35,7 @@ public static class OllamaServiceCollectionExtensions
             .AddTypedClient<IOllamaApiClient>(httpClient => new OllamaApiClient(httpClient));
 
         services.AddSingleton<IProviderFactory, OllamaProviderFactory>();
+        services.AddSingleton<IEmbeddingProviderFactory, OllamaEmbeddingProviderFactory>();
 
         return services;
     }
