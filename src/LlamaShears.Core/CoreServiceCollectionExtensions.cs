@@ -14,6 +14,7 @@ using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Seeding;
 using LlamaShears.Core.SystemPrompt;
 using LlamaShears.Core.Templating;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -67,6 +68,12 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();
+
+        services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
+        services.TryAddTransient<LoopbackBearerHandler>();
+        services.AddHttpClient(ModelContextProtocolToolDiscovery.HttpClientName)
+            .AddHttpMessageHandler<LoopbackBearerHandler>();
+        services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
 
         return services;
     }

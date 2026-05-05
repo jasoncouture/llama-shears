@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="1.2.0" />
     <PackageReference Include="Scriban" Version="7.1.0" />
   </ItemGroup>
 
