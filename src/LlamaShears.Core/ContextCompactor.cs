@@ -190,6 +190,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             options: options,
             emitTurns: false,
             correlationId: Guid.CreateVersion7(),
+            dispatchTool: null,
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var summary = outcome.Content.Trim();

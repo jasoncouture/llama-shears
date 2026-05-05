@@ -24,6 +24,7 @@ public sealed class InferenceRunner : IInferenceRunner
         PromptOptions? options,
         bool emitTurns,
         Guid correlationId,
+        Func<ToolCall, CancellationToken, ValueTask<ToolCallResult>>? dispatchTool,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
@@ -36,6 +37,13 @@ public sealed class InferenceRunner : IInferenceRunner
         var textStreamSeen = false;
         int? tokenCount = null;
         var toolCalls = ImmutableArray.CreateBuilder<ToolCall>();
+        // Dispatch tasks accumulate as tool calls arrive. With a non-null
+        // dispatcher the runner kicks off each tool the moment its
+        // fragment lands, so execution overlaps with the model's
+        // continued streaming of subsequent calls. With a null dispatcher
+        // (e.g. compaction) the list stays empty and ToolResults on the
+        // outcome is default.
+        var dispatchTasks = dispatchTool is null ? null : new List<Task<ToolCallResult>>();
 
         await foreach (var fragment in model.PromptAsync(prompt, options, cancellationToken).ConfigureAwait(false))
         {
@@ -70,6 +78,11 @@ public sealed class InferenceRunner : IInferenceRunner
                             toolFragment.Call.CallId),
                         correlationId,
                         cancellationToken).ConfigureAwait(false);
+                    if (dispatchTool is not null)
+                    {
+                        var call = toolFragment.Call;
+                        dispatchTasks!.Add(Task.Run(() => dispatchTool.Invoke(call, cancellationToken).AsTask(), cancellationToken));
+                    }
                     break;
                 case IModelCompletionResponse completion:
                     tokenCount = completion.TokenCount;
@@ -124,10 +137,18 @@ public sealed class InferenceRunner : IInferenceRunner
             }
         }
 
+        var toolResults = ImmutableArray<ToolCallResult>.Empty;
+        if (dispatchTasks is { Count: > 0 })
+        {
+            var results = await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
+            toolResults = ImmutableArray.Create(results);
+        }
+
         return new InferenceOutcome(
             thinking.ToString(),
             content.ToString(),
             tokenCount,
-            toolCalls.ToImmutable());
+            toolCalls.ToImmutable(),
+            toolResults);
     }
 }

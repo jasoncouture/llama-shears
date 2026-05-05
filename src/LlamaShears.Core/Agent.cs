@@ -261,6 +261,20 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         // consume it instead of issuing a fresh search.
         var memories = await ConsumePrefetchOrSearchAsync(userTurn, cancellationToken).ConfigureAwait(false);
 
+        // Loopback bearer minting reads from ICurrentAgentAccessor; the
+        // scope must be active before tool dispatch fires, and dispatch
+        // now starts inside the inference runner the moment a tool call
+        // arrives (so it overlaps with continued model streaming).
+        // Hoisting the scope to the whole batch keeps every dispatched
+        // tool — across every iteration of the tool loop — seeing the
+        // right agent. AsyncLocal flows into the inner tasks because
+        // they capture the current ExecutionContext at start.
+        var agentInfo = new AgentInfo(
+            AgentId: Id,
+            ModelId: _modelConfiguration.ModelId,
+            ContextWindowSize: _modelConfiguration.ContextLength ?? 0);
+        using var agentScope = _currentAgent.BeginScope(agentInfo);
+
         for (var iteration = 0; iteration < _config.Tools.TurnLimit; iteration++)
         {
             // The final iteration runs with no tools so the model has
@@ -281,6 +295,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 : null;
             prompt = await InjectPromptContextAsync(prompt, batch[^1].Type.Id, importantMessage, memories, cancellationToken).ConfigureAwait(false);
 
+            // The final iteration is text-only, so don't pass a
+            // dispatcher — any confabulated tool calls are dropped
+            // anyway. Earlier iterations get eager dispatch so tools
+            // start running the moment their fragment lands rather than
+            // waiting for the model to finish the whole turn.
+            var dispatcher = isFinalIteration
+                ? (Func<ToolCall, CancellationToken, ValueTask<ToolCallResult>>?)null
+                : (call, callCancellationToken) => DispatchToolAsync(call, correlationId, callCancellationToken);
+
             var outcome = await _inferenceRunner.RunAsync(
                 eventId: Id,
                 model: _model,
@@ -288,6 +311,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 options: promptOptions,
                 emitTurns: true,
                 correlationId: correlationId,
+                dispatchTool: dispatcher,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (outcome.TokenCount is { } tokens)
@@ -322,38 +346,16 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 return;
             }
 
-            await DispatchToolCallsAsync(outcome.ToolCalls, correlationId, cancellationToken).ConfigureAwait(false);
+            await PublishToolTurnsAsync(outcome.ToolCalls, outcome.ToolResults, correlationId, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task DispatchToolCallsAsync(
+    private async Task PublishToolTurnsAsync(
         ImmutableArray<ToolCall> calls,
+        ImmutableArray<ToolCallResult> results,
         Guid correlationId,
         CancellationToken cancellationToken)
     {
-        var agentInfo = new AgentInfo(
-            AgentId: Id,
-            ModelId: _modelConfiguration.ModelId,
-            ContextWindowSize: _modelConfiguration.ContextLength ?? 0);
-
-        // Loopback bearer minting reads from ICurrentAgentAccessor;
-        // hold the scope across the whole dispatch batch so each
-        // outbound MCP call sees the agent it's acting on behalf of.
-        // AsyncLocal flows into the parallel tasks below because they
-        // capture the current ExecutionContext at start.
-        using var scope = _currentAgent.BeginScope(agentInfo);
-
-        // Fan out: each tool runs concurrently and publishes its own
-        // ToolResult event the moment it completes, so the UI sees
-        // results land in real arrival order.
-        var results = new ToolCallResult[calls.Length];
-        var dispatchTasks = new Task[calls.Length];
-        for (var i = 0; i < calls.Length; i++)
-        {
-            dispatchTasks[i] = DispatchOneAsync(calls[i], i, results, correlationId, cancellationToken);
-        }
-        await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
-
         // Persist Tool turns in original call order. Re-prompt history
         // stays deterministic regardless of which tool finished first,
         // which matters for any model that pairs tool_calls to
@@ -376,16 +378,17 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         }
     }
 
-    private async Task DispatchOneAsync(
+    private async ValueTask<ToolCallResult> DispatchToolAsync(
         ToolCall call,
-        int index,
-        ToolCallResult[] results,
         Guid correlationId,
         CancellationToken cancellationToken)
     {
         var result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
-        results[index] = result;
-
+        // Publish the result event the moment dispatch completes. This
+        // can land *while* the model is still streaming subsequent tool
+        // calls — that's intentional. The UI sees results in real
+        // arrival order; the conversation history is still assembled in
+        // call order in PublishToolTurnsAsync.
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.ToolResult with { Id = Id },
             new AgentToolResultFragment(
@@ -396,6 +399,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 call.CallId),
             correlationId,
             cancellationToken).ConfigureAwait(false);
+        return result;
     }
 
     private async Task<ModelPrompt> InjectPromptContextAsync(

@@ -27,6 +27,12 @@ internal sealed class ScriptedLanguageModel : ILanguageModel
             .. text.Select(IModelResponseFragment (t) => new TextFragment(t)),
         ]);
 
+    public static ScriptedLanguageModel WithFragments(params IModelResponseFragment[] fragments)
+        => new(fragments);
+
+    public static IModelResponseFragment ToolCallFragment(string source, string name, string argumentsJson, string? callId = null)
+        => new ScriptedToolCallFragment(new ToolCall(source, name, argumentsJson, callId));
+
     public int PromptInvocations => Volatile.Read(ref _invocations);
 
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
@@ -46,4 +52,6 @@ internal sealed class ScriptedLanguageModel : ILanguageModel
     private sealed record TextFragment(string Content) : IModelTextResponse;
 
     private sealed record ThoughtFragment(string Content) : IModelThoughtResponse;
+
+    private sealed record ScriptedToolCallFragment(ToolCall Call) : IModelToolCallFragment;
 }
