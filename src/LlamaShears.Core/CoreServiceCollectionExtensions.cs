@@ -82,6 +82,7 @@ public static class CoreServiceCollectionExtensions
             .AddHttpMessageHandler<LoopbackBearerHandler>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
+        services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();
 
         return services;
     }
