@@ -11,5 +11,5 @@ public record ModelTurn(
 {
     public ImmutableArray<ToolCall> ToolCalls { get; init; } = [];
 
-    public string? ToolName { get; init; }
+    public ToolCall? ToolCall { get; init; }
 }
