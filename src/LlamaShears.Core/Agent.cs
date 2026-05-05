@@ -263,26 +263,30 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         // Loopback bearer minting reads from ICurrentAgentAccessor;
         // hold the scope across the whole dispatch batch so each
         // outbound MCP call sees the agent it's acting on behalf of.
+        // AsyncLocal flows into the parallel tasks below because they
+        // capture the current ExecutionContext at start.
         using var scope = _currentAgent.BeginScope(agentInfo);
 
-        foreach (var call in calls)
+        // Fan out: each tool runs concurrently and publishes its own
+        // ToolResult event the moment it completes, so the UI sees
+        // results land in real arrival order.
+        var results = new ToolCallResult[calls.Length];
+        var dispatchTasks = new Task[calls.Length];
+        for (var i = 0; i < calls.Length; i++)
         {
-            var result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
+            dispatchTasks[i] = DispatchOneAsync(calls[i], i, results, correlationId, cancellationToken);
+        }
+        await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
 
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.ToolResult with { Id = Id },
-                new AgentToolResultFragment(
-                    call.Source,
-                    call.Name,
-                    result.Content,
-                    result.IsError,
-                    call.CallId),
-                correlationId,
-                cancellationToken).ConfigureAwait(false);
-
+        // Persist Tool turns in original call order. Re-prompt history
+        // stays deterministic regardless of which tool finished first,
+        // which matters for any model that pairs tool_calls to
+        // tool_results positionally rather than by id.
+        for (var i = 0; i < calls.Length; i++)
+        {
             var toolTurn = new ModelTurn(
                 ModelRole.Tool,
-                result.Content,
+                results[i].Content,
                 _time.GetLocalNow());
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.Turn with { Id = Id },
@@ -290,6 +294,28 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 correlationId,
                 cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task DispatchOneAsync(
+        ToolCall call,
+        int index,
+        ToolCallResult[] results,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
+        results[index] = result;
+
+        await _eventPublisher.PublishAsync(
+            Event.WellKnown.Agent.ToolResult with { Id = Id },
+            new AgentToolResultFragment(
+                call.Source,
+                call.Name,
+                result.Content,
+                result.IsError,
+                call.CallId),
+            correlationId,
+            cancellationToken).ConfigureAwait(false);
     }
 
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
