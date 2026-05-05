@@ -29,6 +29,10 @@
     font-size: 1.0625rem;
     line-height: 1.55;
     text-align: left;
+    /* Force wrap inside long unbroken tokens (URLs, paths) so the
+       bubble doesn't blow past its column. <pre> children opt out via
+       white-space: pre, which overrides the wrap. */
+    overflow-wrap: anywhere;
 }
 
 /* Markdown-rendered content: stop pre-wrap so prose flows; the inner
