@@ -5,6 +5,7 @@
     <Project Path="analyzers/LlamaShears.Analyzers.Tests/LlamaShears.Analyzers.Tests.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/LlamaShears.Provider.Onnx.Embeddings/LlamaShears.Provider.Onnx.Embeddings.csproj" />
     <Project Path="src/LlamaShears/LlamaShears.csproj" />
     <Project Path="src/LlamaShears.Api.Web/LlamaShears.Api.Web.csproj" />
     <Project Path="src/LlamaShears.Api/LlamaShears.Api.csproj" />
