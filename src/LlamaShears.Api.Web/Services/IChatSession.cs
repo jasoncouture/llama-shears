@@ -27,6 +27,14 @@ public interface IChatSession : IDisposable
     bool ShowStreaming { get; set; }
 
     /// <summary>
+    /// Whether tool-call activity (in-flight summary bubble and
+    /// per-call result bubbles) is rendered with detail. When off,
+    /// dispatch still happens; the UI shows a generic busy
+    /// placeholder while tools run. Setting fires <see cref="Changed"/>.
+    /// </summary>
+    bool ShowTools { get; set; }
+
+    /// <summary>
     /// Raised when any of the above observable state changes.
     /// </summary>
     event Action? Changed;

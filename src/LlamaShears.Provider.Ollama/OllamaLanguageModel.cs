@@ -95,9 +95,16 @@ public partial class OllamaLanguageModel : ILanguageModel
 
                         var (source, name) = SplitToolName(flatName);
                         var argumentsJson = SerializeArguments(ollamaCall.Function.Arguments);
+                        // Ollama's ToolCall.Id is optional and we routinely
+                        // see it null. Synthesize one so the UI (and any
+                        // future positional-tolerant routing) has a stable
+                        // handle for the call -> result pairing.
+                        var callId = string.IsNullOrEmpty(ollamaCall.Id)
+                            ? Guid.CreateVersion7().ToString()
+                            : ollamaCall.Id;
                         LogToolCallReceived(_logger, _configuration.ModelId, source, name);
                         yield return new OllamaToolCallFragment(
-                            new ToolCall(source, name, argumentsJson));
+                            new ToolCall(source, name, argumentsJson, callId));
                     }
                 }
 

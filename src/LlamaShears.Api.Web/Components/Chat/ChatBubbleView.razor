@@ -1,19 +1,61 @@
 @using LlamaShears.Api.Web.Services
 
-<article class="bubble bubble-@KindClass @(Bubble.IsStreaming ? "bubble-pulse" : null)">
-    <header class="bubble-header">
-        @if (Bubble.Kind != ChatBubbleKind.User)
-        {
-            <span class="bubble-kind">@KindLabel</span>
-        }
-        <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
-        @if (Bubble.IsStreaming)
-        {
+@if (Bubble.Kind == ChatBubbleKind.ToolInFlight)
+{
+    <article class="bubble bubble-tool-inflight bubble-pulse">
+        <header class="bubble-header">
+            <span class="bubble-kind">running tools</span>
+            <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
             <span class="bubble-streaming">…</span>
+        </header>
+        <ul class="bubble-tool-list">
+            @foreach (var tool in Bubble.InFlightTools ?? [])
+            {
+                <li><code>@tool.Source<span class="bubble-tool-sep">__</span>@tool.Name</code></li>
+            }
+        </ul>
+    </article>
+}
+else if (Bubble.Kind == ChatBubbleKind.ToolResult)
+{
+    <article class="bubble bubble-tool-result @(Bubble.IsError ? "bubble-tool-error" : null)">
+        <header class="bubble-header">
+            <span class="bubble-kind">
+                <code>@Bubble.CompletedCall!.Source<span class="bubble-tool-sep">__</span>@Bubble.CompletedCall!.Name</code>
+            </span>
+            <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
+            @if (Bubble.IsError)
+            {
+                <span class="bubble-tool-error-label">error</span>
+            }
+        </header>
+        @if (HasArguments)
+        {
+            <details class="bubble-tool-args">
+                <summary>arguments</summary>
+                <pre class="bubble-tool-args-body">@Bubble.CompletedCall!.ArgumentsJson</pre>
+            </details>
         }
-    </header>
-    <pre class="bubble-content">@Bubble.Content</pre>
-</article>
+        <pre class="bubble-content">@Bubble.Content</pre>
+    </article>
+}
+else
+{
+    <article class="bubble bubble-@KindClass @(Bubble.IsStreaming ? "bubble-pulse" : null)">
+        <header class="bubble-header">
+            @if (Bubble.Kind != ChatBubbleKind.User)
+            {
+                <span class="bubble-kind">@KindLabel</span>
+            }
+            <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
+            @if (Bubble.IsStreaming)
+            {
+                <span class="bubble-streaming">…</span>
+            }
+        </header>
+        <pre class="bubble-content">@Bubble.Content</pre>
+    </article>
+}
 
 @code {
     [Parameter, EditorRequired]
@@ -35,4 +77,13 @@
         : Bubble.Kind.ToString();
 
     private string FullTimestamp => Bubble.At.ToLocalTime().ToString("F", System.Globalization.CultureInfo.CurrentCulture);
+
+    private bool HasArguments
+    {
+        get
+        {
+            var args = Bubble.CompletedCall?.ArgumentsJson;
+            return !string.IsNullOrWhiteSpace(args) && args != "{}";
+        }
+    }
 }

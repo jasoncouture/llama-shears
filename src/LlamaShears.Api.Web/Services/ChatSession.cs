@@ -8,19 +8,25 @@ namespace LlamaShears.Api.Web.Services;
 public sealed class ChatSession :
     IChatSession,
     IEventHandler<AgentMessageFragment>,
-    IEventHandler<AgentThoughtFragment>
+    IEventHandler<AgentThoughtFragment>,
+    IEventHandler<AgentToolCallFragment>,
+    IEventHandler<AgentToolResultFragment>
 {
     private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
     private readonly IAgentDirectory _directory;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
+    private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
     private readonly Lock _gate = new();
     private IDisposable? _messageSubscription;
     private IDisposable? _thoughtSubscription;
+    private IDisposable? _toolCallSubscription;
+    private IDisposable? _toolResultSubscription;
     private string? _selectedAgentId;
     private bool _showThoughts = true;
     private bool _showStreaming = true;
+    private bool _showTools = true;
 
     public ChatSession(
         IEventBus bus,
@@ -100,6 +106,29 @@ public sealed class ChatSession :
         }
     }
 
+    public bool ShowTools
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _showTools;
+            }
+        }
+        set
+        {
+            lock (_gate)
+            {
+                if (_showTools == value)
+                {
+                    return;
+                }
+                _showTools = value;
+            }
+            Changed?.Invoke();
+        }
+    }
+
     public event Action? Changed;
 
     public async Task SelectAgentAsync(string? agentId, CancellationToken cancellationToken)
@@ -119,10 +148,15 @@ public sealed class ChatSession :
             _selectedAgentId = agentId;
             _bubbles.Clear();
             _streamingBubbles.Clear();
+            _inFlightToolBubbles.Clear();
             _messageSubscription?.Dispose();
             _thoughtSubscription?.Dispose();
+            _toolCallSubscription?.Dispose();
+            _toolResultSubscription?.Dispose();
             _messageSubscription = null;
             _thoughtSubscription = null;
+            _toolCallSubscription = null;
+            _toolResultSubscription = null;
             if (!string.IsNullOrWhiteSpace(agentId))
             {
                 foreach (var turn in history)
@@ -139,6 +173,14 @@ public sealed class ChatSession :
                     this);
                 _thoughtSubscription = _bus.Subscribe<AgentThoughtFragment>(
                     $"{Event.WellKnown.Agent.Thought}:{agentId}",
+                    EventDeliveryMode.Awaited,
+                    this);
+                _toolCallSubscription = _bus.Subscribe<AgentToolCallFragment>(
+                    $"{Event.WellKnown.Agent.ToolCall}:{agentId}",
+                    EventDeliveryMode.Awaited,
+                    this);
+                _toolResultSubscription = _bus.Subscribe<AgentToolResultFragment>(
+                    $"{Event.WellKnown.Agent.ToolResult}:{agentId}",
                     EventDeliveryMode.Awaited,
                     this);
             }
@@ -183,8 +225,12 @@ public sealed class ChatSession :
         {
             _messageSubscription?.Dispose();
             _thoughtSubscription?.Dispose();
+            _toolCallSubscription?.Dispose();
+            _toolResultSubscription?.Dispose();
             _messageSubscription = null;
             _thoughtSubscription = null;
+            _toolCallSubscription = null;
+            _toolResultSubscription = null;
         }
     }
 
@@ -204,6 +250,126 @@ public sealed class ChatSession :
             ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Thought, fragment.Content, fragment.Final);
         }
         return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(IEventEnvelope<AgentToolCallFragment> envelope, CancellationToken cancellationToken)
+    {
+        if (envelope.Data is { } fragment)
+        {
+            ApplyToolCall(envelope.Type.Id, envelope.CorrelationId, fragment);
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(IEventEnvelope<AgentToolResultFragment> envelope, CancellationToken cancellationToken)
+    {
+        if (envelope.Data is { } fragment)
+        {
+            ApplyToolResult(envelope.Type.Id, envelope.CorrelationId, fragment);
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    private void ApplyToolCall(string? agentId, Guid correlationId, AgentToolCallFragment fragment)
+    {
+        lock (_gate)
+        {
+            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            {
+                return;
+            }
+            if (string.IsNullOrEmpty(fragment.CallId))
+            {
+                // Without an id we can't correlate the eventual result
+                // back to this call. Drop it rather than render a bubble
+                // we can never clear.
+                return;
+            }
+
+            if (!_inFlightToolBubbles.TryGetValue(correlationId, out var bubble))
+            {
+                bubble = ChatBubble.ToolInFlight(correlationId, DateTimeOffset.UtcNow);
+                _inFlightToolBubbles[correlationId] = bubble;
+                _bubbles.Add(bubble);
+            }
+            bubble.AddInFlight(new ToolCallView(
+                fragment.Source,
+                fragment.Name,
+                fragment.ArgumentsJson,
+                fragment.CallId));
+        }
+        Changed?.Invoke();
+    }
+
+    private void ApplyToolResult(string? agentId, Guid correlationId, AgentToolResultFragment fragment)
+    {
+        lock (_gate)
+        {
+            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            {
+                return;
+            }
+            if (string.IsNullOrEmpty(fragment.CallId))
+            {
+                return;
+            }
+
+            // Remove from the in-flight summary, then insert a result
+            // bubble immediately ABOVE that summary so the running
+            // indicator stays anchored at the bottom while completed
+            // calls stack above it in completion order.
+            var inFlightBubble = _inFlightToolBubbles.GetValueOrDefault(correlationId);
+            var inFlightCall = inFlightBubble is not null
+                ? FindInFlight(inFlightBubble, fragment.CallId)
+                : null;
+            inFlightBubble?.RemoveInFlight(fragment.CallId);
+
+            var call = inFlightCall ?? new ToolCallView(
+                fragment.Source,
+                fragment.Name,
+                ArgumentsJson: "{}",
+                fragment.CallId);
+            var resultBubble = ChatBubble.ToolResult(call, fragment.Result, fragment.IsError, DateTimeOffset.UtcNow);
+
+            if (inFlightBubble is null)
+            {
+                _bubbles.Add(resultBubble);
+            }
+            else
+            {
+                var insertAt = _bubbles.IndexOf(inFlightBubble);
+                if (insertAt < 0)
+                {
+                    _bubbles.Add(resultBubble);
+                }
+                else
+                {
+                    _bubbles.Insert(insertAt, resultBubble);
+                }
+                if (inFlightBubble.InFlightCount == 0)
+                {
+                    _bubbles.Remove(inFlightBubble);
+                    _inFlightToolBubbles.Remove(correlationId);
+                }
+            }
+        }
+        Changed?.Invoke();
+    }
+
+    private static ToolCallView? FindInFlight(ChatBubble bubble, string callId)
+    {
+        if (bubble.InFlightTools is null)
+        {
+            return null;
+        }
+        foreach (var view in bubble.InFlightTools)
+        {
+            if (string.Equals(view.CallId, callId, StringComparison.Ordinal))
+            {
+                return view;
+            }
+        }
+        return null;
     }
 
     private void ApplyFragment(string? agentId, Guid correlationId, ChatBubbleKind kind, string content, bool final)
@@ -252,6 +418,7 @@ public sealed class ChatSession :
         {
             _bubbles.Clear();
             _streamingBubbles.Clear();
+            _inFlightToolBubbles.Clear();
         }
         Changed?.Invoke();
     }

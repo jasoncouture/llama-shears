@@ -5,4 +5,6 @@ public enum ChatBubbleKind
     User,
     Assistant,
     Thought,
+    ToolInFlight,
+    ToolResult,
 }

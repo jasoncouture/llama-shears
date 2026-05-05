@@ -51,6 +51,72 @@
     align-self: flex-start;
 }
 
+.bubble-tool-inflight,
+.bubble-tool-result {
+    background: var(--bubble-bg);
+    border-color: var(--border-strong);
+    border-left: 3px solid var(--primary);
+    font-size: 0.9rem;
+    align-self: flex-start;
+}
+
+.bubble-tool-error {
+    border-left-color: #ef4444;
+}
+
+.bubble-tool-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.bubble-tool-list code,
+.bubble-tool-result .bubble-kind code {
+    background: var(--code-bg);
+    padding: 0.05rem 0.35rem;
+    border-radius: var(--radius-sm);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+}
+
+.bubble-tool-sep {
+    color: var(--text-subtle);
+    font-weight: 400;
+}
+
+.bubble-tool-args {
+    margin: 0.35rem 0;
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.bubble-tool-args summary {
+    cursor: pointer;
+    user-select: none;
+}
+
+.bubble-tool-args-body {
+    margin: 0.35rem 0 0;
+    padding: 0.5rem 0.75rem;
+    background: var(--code-bg);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    color: var(--text);
+}
+
+.bubble-tool-error-label {
+    color: #ef4444;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+}
+
 .bubble-streaming {
     color: var(--text-subtle);
     font-style: italic;
