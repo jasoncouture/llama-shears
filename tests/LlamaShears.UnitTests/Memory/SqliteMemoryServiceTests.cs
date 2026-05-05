@@ -66,7 +66,7 @@ public sealed class SqliteMemoryServiceTests
         Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(Path.Combine(dir, "1.md"), "out-of-band write");
 
-        var summary = await h.Service.ReconcileAsync(h.AgentId, CancellationToken.None);
+        var summary = await h.Service.ReconcileAsync(h.AgentId, force: false, CancellationToken.None);
 
         await Assert.That(summary.Added).IsEqualTo(1);
         await Assert.That(summary.Updated).IsEqualTo(0);
@@ -81,7 +81,7 @@ public sealed class SqliteMemoryServiceTests
         var full = h.PathOf(memory.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         await File.WriteAllTextAsync(full, "edited out of band");
 
-        var summary = await h.Service.ReconcileAsync(h.AgentId, CancellationToken.None);
+        var summary = await h.Service.ReconcileAsync(h.AgentId, force: false, CancellationToken.None);
 
         await Assert.That(summary.Updated).IsEqualTo(1);
         await Assert.That(summary.Added).IsEqualTo(0);
@@ -96,11 +96,27 @@ public sealed class SqliteMemoryServiceTests
         var full = h.PathOf(memory.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         File.Delete(full);
 
-        var summary = await h.Service.ReconcileAsync(h.AgentId, CancellationToken.None);
+        var summary = await h.Service.ReconcileAsync(h.AgentId, force: false, CancellationToken.None);
 
         await Assert.That(summary.Removed).IsEqualTo(1);
         await Assert.That(summary.Added).IsEqualTo(0);
         await Assert.That(summary.Updated).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task ForceReconcileReembedsUnchangedFiles()
+    {
+        using var h = MemoryTestHarness.Create();
+        await h.Service.StoreAsync(h.AgentId, "stable content", CancellationToken.None);
+
+        var summary = await h.Service.ReconcileAsync(h.AgentId, force: true, CancellationToken.None);
+
+        // The file's hash hasn't changed, so without force the count is
+        // zero across the board. Force flips the unchanged file into the
+        // updated bucket.
+        await Assert.That(summary.Updated).IsEqualTo(1);
+        await Assert.That(summary.Added).IsEqualTo(0);
+        await Assert.That(summary.Removed).IsEqualTo(0);
     }
 
     [Test]

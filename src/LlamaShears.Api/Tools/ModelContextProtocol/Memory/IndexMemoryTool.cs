@@ -22,8 +22,10 @@ public sealed partial class IndexMemoryTool
     }
 
     [McpServerTool(Name = "index_memory")]
-    [Description("Forces a full reconcile of the agent's memory index against the filesystem. Adds new files, re-embeds changed ones, and removes orphaned index entries. Reports the counts.")]
-    public async Task<string> IndexMemory(CancellationToken cancellationToken = default)
+    [Description("Forces a full reconcile of the agent's memory index against the filesystem. Adds new files, re-embeds changed ones, and removes orphaned index entries. Reports the counts. Pass force=true to re-embed every file regardless of whether its content has changed — use this if the embedding model or its prompt convention has changed and old vectors need rebuilding.")]
+    public async Task<string> IndexMemory(
+        [Description("If true, re-embed every file even when its content hash already matches the indexed hash. Defaults to false.")] bool force = false,
+        CancellationToken cancellationToken = default)
     {
         var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrEmpty(workspace.AgentId))
@@ -33,7 +35,7 @@ public sealed partial class IndexMemoryTool
 
         try
         {
-            var summary = await _indexer.ReconcileAsync(workspace.AgentId, cancellationToken).ConfigureAwait(false);
+            var summary = await _indexer.ReconcileAsync(workspace.AgentId, force, cancellationToken).ConfigureAwait(false);
             LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed);
             return string.Format(
                 CultureInfo.InvariantCulture,

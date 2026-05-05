@@ -422,7 +422,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     }
 
     private const int MemorySearchLimit = 5;
-    private const double MemorySearchMinScore = 0.5;
+    // Cosine on asymmetric encoders (embeddinggemma, nomic) sits in
+    // ~0.4-0.7 for genuine matches once query/document prefixes are
+    // applied; 0.5 was too tight and dropped real hits.
+    private const double MemorySearchMinScore = 0.35;
 
     // Build a query out of the last assistant turn (if any) plus the
     // freshly-coalesced user turn, then surface the matching memory
