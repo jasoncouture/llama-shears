@@ -8,6 +8,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
+using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -35,6 +36,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IToolCallDispatcher _toolDispatcher;
     private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IPromptContextProvider _promptContext;
     private readonly ImmutableArray<ToolGroup> _tools;
 
     private const int MaxToolIterations = 8;
@@ -54,6 +56,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IInferenceRunner inferenceRunner,
         IToolCallDispatcher toolDispatcher,
         ICurrentAgentAccessor currentAgent,
+        IPromptContextProvider promptContext,
         ImmutableArray<ToolGroup> tools = default)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -72,6 +75,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _inferenceRunner = inferenceRunner;
         _toolDispatcher = toolDispatcher;
         _currentAgent = currentAgent;
+        _promptContext = promptContext;
         _tools = tools.IsDefault ? [] : tools;
         _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
@@ -227,6 +231,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
             prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
+            prompt = await InjectPromptContextAsync(prompt, cancellationToken).ConfigureAwait(false);
 
             var outcome = await _inferenceRunner.RunAsync(
                 eventId: Id,
@@ -323,6 +328,53 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 call.CallId),
             correlationId,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ModelPrompt> InjectPromptContextAsync(ModelPrompt prompt, CancellationToken cancellationToken)
+    {
+        var now = _time.GetLocalNow();
+        var parameters = new PromptContextParameters(
+            Now: now.ToString("o", CultureInfo.InvariantCulture),
+            Timezone: TimeZoneInfo.Local.Id,
+            DayOfWeek: now.DayOfWeek.ToString());
+        var body = await _promptContext.GetAsync(parameters, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            // No template (or rendered to empty). The system prompt
+            // describes the prefix as optional in that case — we just
+            // skip the injection.
+            return prompt;
+        }
+
+        var turns = prompt.Turns;
+        var lastUserIdx = -1;
+        for (var i = turns.Count - 1; i >= 0; i--)
+        {
+            if (turns[i].Role == ModelRole.User)
+            {
+                lastUserIdx = i;
+                break;
+            }
+        }
+        if (lastUserIdx < 0)
+        {
+            // No user turn to anchor to (shouldn't happen during a
+            // user-driven cycle); leave the prompt untouched rather
+            // than dangle an ephemeral block in the air.
+            return prompt;
+        }
+
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, now);
+        var augmented = new List<ModelTurn>(turns.Count + 1);
+        for (var i = 0; i < turns.Count; i++)
+        {
+            if (i == lastUserIdx)
+            {
+                augmented.Add(ephemeral);
+            }
+            augmented.Add(turns[i]);
+        }
+        return new ModelPrompt(augmented);
     }
 
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
