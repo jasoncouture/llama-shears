@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Content;
+
 namespace LlamaShears.Api.Web.Services;
 
 /// <summary>
@@ -52,4 +55,12 @@ public interface IChatSession : IDisposable
     /// turn.
     /// </summary>
     Task SendAsync(string content, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Sends user input plus attachments (images today; future kinds
+    /// land alongside) to the selected agent. Empty
+    /// <paramref name="attachments"/> behaves identically to the
+    /// text-only overload.
+    /// </summary>
+    Task SendAsync(string content, ImmutableArray<Attachment> attachments, CancellationToken cancellationToken);
 }

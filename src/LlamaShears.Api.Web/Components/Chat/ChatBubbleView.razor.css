@@ -237,6 +237,22 @@
     letter-spacing: 0.05em;
 }
 
+.bubble-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.bubble-attachment-image {
+    max-width: min(100%, 24rem);
+    max-height: 18rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--bubble-border);
+    object-fit: contain;
+    background: var(--code-bg);
+}
+
 .bubble-streaming {
     color: var(--text-subtle);
     font-style: italic;

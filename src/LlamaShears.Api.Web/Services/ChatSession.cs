@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
@@ -188,9 +190,16 @@ public sealed class ChatSession :
         Changed?.Invoke();
     }
 
-    public async Task SendAsync(string content, CancellationToken cancellationToken)
+    public Task SendAsync(string content, CancellationToken cancellationToken)
+        => SendAsync(content, attachments: [], cancellationToken);
+
+    public async Task SendAsync(
+        string content,
+        ImmutableArray<Attachment> attachments,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        var safeAttachments = attachments.IsDefault ? [] : attachments;
         var trimmed = content.Trim();
         string agentId;
         lock (_gate)
@@ -210,12 +219,19 @@ public sealed class ChatSession :
 
         lock (_gate)
         {
-            _bubbles.Add(new ChatBubble(ChatBubbleKind.User, content, DateTimeOffset.UtcNow));
+            _bubbles.Add(new ChatBubble(
+                ChatBubbleKind.User,
+                content,
+                DateTimeOffset.UtcNow,
+                attachments: safeAttachments));
         }
         Changed?.Invoke();
         await _publisher.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "webui" },
-            new ChannelMessage(content, agentId, DateTimeOffset.Now),
+            new ChannelMessage(content, agentId, DateTimeOffset.Now)
+            {
+                Attachments = safeAttachments,
+            },
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -475,16 +491,24 @@ public sealed class ChatSession :
             ModelRole.Thought => ChatBubbleKind.Thought,
             _ => (ChatBubbleKind?)null,
         };
-        if (kind is null || string.IsNullOrEmpty(turn.Content))
+        if (kind is null)
         {
-            // Empty-content assistant turns are real: a model that
-            // responds with only tool calls leaves Content empty and
-            // ToolCalls populated. The bubble would be a blank rectangle;
-            // skip it. The companion Tool turn carries the user-visible
-            // outcome.
             return null;
         }
-        return new ChatBubble(kind.Value, turn.Content, turn.Timestamp);
+        // Empty-content assistant/user/thought turns are skipped UNLESS
+        // they carry attachments — an image-only message has empty text
+        // by design and we still want to render the picture.
+        var hasContent = !string.IsNullOrEmpty(turn.Content);
+        var hasAttachments = !turn.Attachments.IsDefaultOrEmpty;
+        if (!hasContent && !hasAttachments)
+        {
+            return null;
+        }
+        return new ChatBubble(
+            kind.Value,
+            turn.Content,
+            turn.Timestamp,
+            attachments: turn.Attachments);
     }
 
     private enum ChatCommand

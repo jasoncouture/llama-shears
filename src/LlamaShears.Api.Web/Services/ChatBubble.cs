@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Content;
+
 namespace LlamaShears.Api.Web.Services;
 
 public sealed class ChatBubble
@@ -12,7 +15,8 @@ public sealed class ChatBubble
         bool isStreaming,
         List<ToolCallView>? inFlightTools,
         ToolCallView? completedCall,
-        bool isError)
+        bool isError,
+        ImmutableArray<Attachment> attachments)
     {
         Kind = kind;
         Content = content;
@@ -22,10 +26,16 @@ public sealed class ChatBubble
         _inFlightTools = inFlightTools;
         CompletedCall = completedCall;
         IsError = isError;
+        Attachments = attachments.IsDefault ? [] : attachments;
     }
 
-    public ChatBubble(ChatBubbleKind kind, string content, DateTimeOffset at, Guid? streamId = null)
-        : this(kind, content, at, streamId, isStreaming: false, inFlightTools: null, completedCall: null, isError: false)
+    public ChatBubble(
+        ChatBubbleKind kind,
+        string content,
+        DateTimeOffset at,
+        Guid? streamId = null,
+        ImmutableArray<Attachment> attachments = default)
+        : this(kind, content, at, streamId, isStreaming: false, inFlightTools: null, completedCall: null, isError: false, attachments)
     {
     }
 
@@ -38,7 +48,8 @@ public sealed class ChatBubble
             isStreaming: true,
             inFlightTools: [],
             completedCall: null,
-            isError: false);
+            isError: false,
+            attachments: []);
 
     public static ChatBubble ToolResult(ToolCallView call, string result, bool isError, DateTimeOffset at)
         => new(
@@ -49,7 +60,8 @@ public sealed class ChatBubble
             isStreaming: false,
             inFlightTools: null,
             completedCall: call,
-            isError: isError);
+            isError: isError,
+            attachments: []);
 
     public ChatBubbleKind Kind { get; }
 
@@ -66,6 +78,8 @@ public sealed class ChatBubble
     public ToolCallView? CompletedCall { get; }
 
     public bool IsError { get; }
+
+    public ImmutableArray<Attachment> Attachments { get; }
 
     public void Update(string content, bool streaming)
     {
