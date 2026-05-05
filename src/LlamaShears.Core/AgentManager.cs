@@ -7,6 +7,7 @@ using LlamaShears.Core.Abstractions.Seeding;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -26,8 +27,10 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IDirectorySeeder _seeder;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
     private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IHostApplicationLifetime _appLifetime;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
+    private CancellationTokenRegistration _appStartedRegistration;
     private int _reconciling;
 
     public AgentManager(
@@ -40,7 +43,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IShearsPaths paths,
         IDirectorySeeder seeder,
         IModelContextProtocolToolDiscovery toolDiscovery,
-        ICurrentAgentAccessor currentAgent)
+        ICurrentAgentAccessor currentAgent,
+        IHostApplicationLifetime appLifetime)
     {
         _bus = bus;
         _providers = providers;
@@ -53,6 +57,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _seeder = seeder;
         _toolDiscovery = toolDiscovery;
         _currentAgent = currentAgent;
+        _appLifetime = appLifetime;
     }
 
     public IReadOnlyList<string> AgentIds
@@ -72,15 +77,40 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
+        // Defer reconciliation until the host has fully started: agent
+        // bring-up calls into the in-process MCP listener over loopback,
+        // and Kestrel binds at the tail of hosted-service startup. Ticking
+        // before that wins us a doomed first-pass discovery.
+        _appStartedRegistration = _appLifetime.ApplicationStarted.Register(OnApplicationStarted);
+        return ValueTask.CompletedTask;
+    }
+
+    private void OnApplicationStarted()
+    {
         _subscription = _bus.Subscribe<SystemTick>(
             Event.WellKnown.Host.Tick,
             EventDeliveryMode.FireAndForget,
             this);
-        return ValueTask.CompletedTask;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ReconcileIfIdleAsync(_appLifetime.ApplicationStopping).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                LogInitialReconcileFailure(_logger, ex);
+            }
+        });
     }
 
     public void Dispose()
     {
+        _appStartedRegistration.Dispose();
         _subscription?.Dispose();
         _subscription = null;
 
@@ -90,11 +120,16 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
     }
 
-    public async ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
+    public ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
+        => ReconcileIfIdleAsync(cancellationToken);
+
+    private async ValueTask ReconcileIfIdleAsync(CancellationToken cancellationToken)
     {
-        // Skip if a previous tick is still reconciling. Disk I/O on a
+        // Skip if a previous reconcile is still running. Disk I/O on a
         // 30s tick should never overlap, but a slow filesystem could
-        // queue up handlers; collapsing the backlog is correct.
+        // queue up handlers; collapsing the backlog is correct. The
+        // post-startup initial reconcile uses the same gate so a tick
+        // that fires mid-bringup doesn't race it.
         if (Interlocked.CompareExchange(ref _reconciling, 1, 0) != 0)
         {
             return;
@@ -269,6 +304,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
     private static partial void LogToolDiscovered(ILogger logger, string agentId, string serverName, string toolName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Initial agent reconcile failed.")]
+    private static partial void LogInitialReconcileFailure(ILogger logger, Exception ex);
 
     private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config);
 }
