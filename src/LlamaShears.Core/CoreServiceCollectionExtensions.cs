@@ -90,6 +90,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IMemoryStore>(sp => sp.GetRequiredService<SqliteMemoryService>());
         services.TryAddSingleton<IMemorySearcher>(sp => sp.GetRequiredService<SqliteMemoryService>());
         services.TryAddSingleton<IMemoryIndexer>(sp => sp.GetRequiredService<SqliteMemoryService>());
+        services.AddHostedService<MemoryIndexerBackgroundService>();
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();

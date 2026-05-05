@@ -20,7 +20,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         ArgumentNullException.ThrowIfNull(text);
 
         var response = await _client
-            .EmbedAsync(BuildRequest([Decorate(text, purpose)]), cancellationToken)
+            .EmbedAsync(BuildRequest([text]), cancellationToken)
             .ConfigureAwait(false);
         var embeddings = response?.Embeddings;
         if (embeddings is null || embeddings.Count == 0)
@@ -45,7 +45,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         var inputs = new List<string>(texts.Count);
         for (var i = 0; i < texts.Count; i++)
         {
-            inputs.Add(Decorate(texts[i], purpose));
+            inputs.Add(texts[i]);
         }
 
         var response = await _client.EmbedAsync(BuildRequest(inputs), cancellationToken).ConfigureAwait(false);
@@ -62,35 +62,6 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
             results[i] = embeddings[i];
         }
         return results;
-    }
-
-    // Asymmetric retrieval models expect explicit task prefixes — without
-    // them every input is encoded the same way and cosine scores collapse
-    // toward each other. Detection is by ModelId substring because Ollama
-    // doesn't expose a "I am asymmetric, here is my prompt schema" hint;
-    // when we add another asymmetric family we extend the table.
-    private string Decorate(string text, EmbeddingPurpose purpose)
-    {
-        var modelId = _configuration.ModelId;
-        if (modelId.Contains("embeddinggemma", StringComparison.OrdinalIgnoreCase))
-        {
-            return purpose switch
-            {
-                EmbeddingPurpose.Query => $"task: search result | query: {text}",
-                EmbeddingPurpose.Document => $"title: none | text: {text}",
-                _ => text,
-            };
-        }
-        if (modelId.Contains("nomic-embed-text", StringComparison.OrdinalIgnoreCase))
-        {
-            return purpose switch
-            {
-                EmbeddingPurpose.Query => $"search_query: {text}",
-                EmbeddingPurpose.Document => $"search_document: {text}",
-                _ => text,
-            };
-        }
-        return text;
     }
 
     private EmbedRequest BuildRequest(List<string> inputs) => new()

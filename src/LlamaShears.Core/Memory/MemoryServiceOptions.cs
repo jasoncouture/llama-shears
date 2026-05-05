@@ -6,4 +6,5 @@ public sealed class MemoryServiceOptions
 {
     public ModelIdentity? DefaultEmbeddingModel { get; set; }
     public TimeSpan? DefaultEmbeddingKeepAlive { get; set; }
+    public MemoryIndexerOptions Indexer { get; set; } = new();
 }
