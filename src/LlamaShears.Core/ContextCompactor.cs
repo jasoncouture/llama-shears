@@ -1,5 +1,7 @@
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 
@@ -36,17 +38,20 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
     private readonly IInferenceRunner _inferenceRunner;
+    private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
         IAgentContextProvider agentContextProvider,
         IContextStore contextStore,
         IInferenceRunner inferenceRunner,
+        IEventPublisher eventPublisher,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
         _inferenceRunner = inferenceRunner;
+        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -92,32 +97,50 @@ public sealed partial class ContextCompactor : IContextCompactor
             return prompt;
         }
 
-        var summary = await SummarizeAsync(agentContext.AgentId, prompt, model, window, cancellationToken).ConfigureAwait(false);
-
-        var rebuilt = new List<ModelTurn>(3);
-        if (prompt.Turns[0].Role == ModelRole.System)
+        // Surface the start/finish of compaction so the UI can show a
+        // busy indicator while the model produces the summary. Finish
+        // fires in finally so a thrown summarization doesn't strand the
+        // UI in a permanent compacting state.
+        await _eventPublisher.PublishAsync(
+            Event.WellKnown.Agent.CompactingStarted with { Id = agentContext.AgentId },
+            new AgentCompactionMarker(),
+            cancellationToken).ConfigureAwait(false);
+        try
         {
-            rebuilt.Add(prompt.Turns[0]);
-        }
-        rebuilt.Add(new ModelTurn(ModelRole.Assistant, summary, lastTurn.Timestamp));
-        rebuilt.Add(lastTurn);
-        var rebuiltPrompt = new ModelPrompt(rebuilt);
+            var summary = await SummarizeAsync(agentContext.AgentId, prompt, model, window, cancellationToken).ConfigureAwait(false);
 
-        // Compaction succeeded: archive the old persisted context and
-        // re-seed it with the rebuilt non-system turns. The system turn
-        // is reconstructed per-call by the caller and never persisted.
-        LogContextCompacted(_logger, agentContext.AgentId);
-        await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken).ConfigureAwait(false);
-        var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken).ConfigureAwait(false);
-        foreach (var turn in rebuiltPrompt.Turns)
-        {
-            if (turn.Role == ModelRole.System)
+            var rebuilt = new List<ModelTurn>(3);
+            if (prompt.Turns[0].Role == ModelRole.System)
             {
-                continue;
+                rebuilt.Add(prompt.Turns[0]);
             }
-            await live.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
+            rebuilt.Add(new ModelTurn(ModelRole.Assistant, summary, lastTurn.Timestamp));
+            rebuilt.Add(lastTurn);
+            var rebuiltPrompt = new ModelPrompt(rebuilt);
+
+            // Compaction succeeded: archive the old persisted context and
+            // re-seed it with the rebuilt non-system turns. The system turn
+            // is reconstructed per-call by the caller and never persisted.
+            LogContextCompacted(_logger, agentContext.AgentId);
+            await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken).ConfigureAwait(false);
+            var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken).ConfigureAwait(false);
+            foreach (var turn in rebuiltPrompt.Turns)
+            {
+                if (turn.Role == ModelRole.System)
+                {
+                    continue;
+                }
+                await live.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
+            }
+            return rebuiltPrompt;
         }
-        return rebuiltPrompt;
+        finally
+        {
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.CompactingFinished with { Id = agentContext.AgentId },
+                new AgentCompactionMarker(),
+                CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]

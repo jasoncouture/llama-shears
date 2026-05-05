@@ -30,6 +30,8 @@ public static class Event
             public static EventType Thought { get; } = new(Sources.Agent, "thought");
             public static EventType ToolCall { get; } = new(Sources.Agent, "tool-call");
             public static EventType ToolResult { get; } = new(Sources.Agent, "tool-result");
+            public static EventType CompactingStarted { get; } = new(Sources.Agent, "compacting-started");
+            public static EventType CompactingFinished { get; } = new(Sources.Agent, "compacting-finished");
             public static EventType Turn { get; } = new(Sources.Agent, "turn");
         }
         public static class Channel

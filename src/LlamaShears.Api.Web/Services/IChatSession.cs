@@ -38,6 +38,14 @@ public interface IChatSession : IDisposable
     bool ShowTools { get; set; }
 
     /// <summary>
+    /// True while the selected agent is summarizing its context.
+    /// Drives a busy indicator in the message list; resets when the
+    /// compactor finishes (success or fault). Cleared when the
+    /// selected agent changes.
+    /// </summary>
+    bool IsCompacting { get; }
+
+    /// <summary>
     /// Raised when any of the above observable state changes.
     /// </summary>
     event Action? Changed;

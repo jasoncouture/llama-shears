@@ -166,7 +166,7 @@ public sealed class ContextCompactorTests
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
         var runner = new InferenceRunner(publisher, TimeProvider.System);
-        return new ContextCompactor(provider, store, runner, NullLogger<ContextCompactor>.Instance);
+        return new ContextCompactor(provider, store, runner, publisher, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)
