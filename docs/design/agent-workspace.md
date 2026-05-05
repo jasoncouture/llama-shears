@@ -13,74 +13,84 @@ The conventional paths follow one consistent rule:
 
 Either way, absence is never an error.
 
+## Where the workspace lives
+
+By default the workspace is `<Workspace>/<agent-id>/`, i.e. `<Data>/workspace/<agent-id>/` with the standard configuration. `AgentConfig.WorkspacePath` overrides that on a per-agent basis: absolute, `~/...`, or relative-to-`<Data>` are all accepted (see [agent-config.md](agent-config.md)). The directory is always created during config resolution, before the agent is loaded.
+
+The host's bundled templates live next door at `<Templates>/workspace/`, which is itself an editable copy of the host's `content/templates/workspace/` tree. The seeding chain is *bundled → user templates root → per-agent workspace*; the rules are below.
+
 ## Conventional files
 
-The framework looks for these specific filenames, in the workspace root:
-
-| File              | Purpose                                                                      |
-| ----------------- | ---------------------------------------------------------------------------- |
-| `BOOTSTRAP.md`    | One-shot setup instructions. Tells the agent to configure itself. The agent is expected to remove this file once bootstrap is complete. |
-| `IDENTITY.md`     | The agent's identity — name, creature, vibe, emoji, avatar, etc. Every field is optional. |
-| `SOUL.md`         | Who the agent is, how it behaves, what its objectives are.                   |
-| `USER.md`         | The agent's running notes about its user — name, preferences, history, etc. |
-| `HEARTBEAT.md`    | Periodic heartbeat instructions (see [heartbeat.md](heartbeat.md)).          |
-| `TOOLS.md`        | The agent's own reference notes about how its tools work.                    |
-| `MEMORY.md`       | Short-term memory storage.                                                   |
-| `memories/**/*.md`| Long-term memories. Eventually backed by RAG; for now, a flat tree of markdown files (modeled on openclaw). |
+| File | Purpose |
+|------|---------|
+| `BOOTSTRAP.md` | One-shot setup instructions. Tells the agent to configure itself. The agent is expected to remove this file once bootstrap is complete. |
+| `IDENTITY.md` | The agent's identity — name, vibe, emoji, avatar, etc. Every field is optional. |
+| `SOUL.md` | Who the agent is, how it behaves, what its objectives are. |
+| `USER.md` | The agent's running notes about its user — name, preferences, history, etc. |
+| `HEARTBEAT.md` | Periodic heartbeat instructions (see [heartbeat.md](heartbeat.md); not yet wired). |
+| `TOOLS.md` | The agent's own reference notes about how its tools work. |
+| `MEMORY.md` | Short-term memory storage. |
+| `AGENTS.md` | Reference notes for sub-agents (sub-agent spawning is anticipated, not yet wired). |
+| `memory/YYYY-MM-DD/<unix-seconds>.md` | Long-term memory entries. The vector index lives at `system/.memory.db`. See [memory.md](memory.md). |
 | `system/DEFAULT.md` | Top-level system prompt template for the agent's primary loop. |
-| `system/MINIMAL.md`  | Stripped-down system prompt template for short-lived or headless runs (cron, batch, single-shot tasks) where the full persona/output-directives scaffolding is overkill. |
+| `system/MINIMAL.md` | Stripped-down system prompt template for short-lived or headless runs (cron, batch, single-shot tasks). |
 | `system/SUBAGENT.md` | System prompt template used when the agent spawns a sub-agent. |
+| `system/context/PROMPT.md` | Template for the per-turn ephemeral context block injected before the user turn. See [prompt-context.md](prompt-context.md). |
 
-All conventional files are optional — every one of them may be missing, and the framework treats absence as "nothing to inject" or "fall back to the framework default," depending on the file (see *Self-contained agents*).
+All conventional files are optional — every one of them may be missing, and the framework treats absence as "nothing to inject" or "fall back to the framework default," depending on the file (see *What the framework does with these files*).
 
 ## What the framework does with these files
 
 The framework's job is to deliver the right file content into the agent's prompt at the right time. Beyond that, the workspace is the agent's directory: read it, write it, restructure it.
 
-| File                   | Framework behavior                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------------------- |
-| `BOOTSTRAP.md`         | If present at agent load, its contents become the **first** turn delivered to the agent. The agent is expected to delete the file as part of processing it; if it's still present at the next load, the framework will send it again. |
-| `IDENTITY.md`, `SOUL.md` | If present, **always** sent as part of the agent's prompt context — every cycle, every heartbeat, every input. These are the persistent "who am I" preamble. |
-| `HEARTBEAT.md`         | Read on every heartbeat firing (see [heartbeat.md](heartbeat.md)). Empty/missing → no heartbeat that interval. |
-| `MEMORY.md`            | System-managed periodically. The exact lifecycle (when the framework writes/reads/compacts) is **TBD**. |
-| `system/DEFAULT.md`, `system/MINIMAL.md`, `system/SUBAGENT.md` | Rendered (Scriban) and used as the system prompt for the relevant loop. Missing → the framework's bundled default for that loop is used. The format is the framework's, but the file lives in the workspace so the agent (or operator) can override it without touching the host. |
-| `USER.md`, `TOOLS.md`, `memories/`, anything else | Not read by the framework. Available to the agent through its tool surface; the agent decides when to consult them. |
+| File | Framework behavior | Implementation |
+|------|--------------------|----------------|
+| `BOOTSTRAP.md` | Read on every prompt and rendered into the ephemeral block (first, ahead of `IDENTITY.md` / `SOUL.md`) for as long as it exists. The agent is expected to delete the file once bootstrap is complete. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
+| `IDENTITY.md`, `SOUL.md` | If present, rendered into the per-turn ephemeral context block — every iteration, every batch. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
+| `system/DEFAULT.md`, `system/MINIMAL.md`, `system/SUBAGENT.md` | Rendered (Scriban) and used as the agent's system prompt. Selection: `AgentConfig.SystemPrompt` (defaults to `DEFAULT`). Fallback chain: workspace `<name>.md` → workspace `DEFAULT.md` → bundled `<name>.md` → bundled `DEFAULT.md`. | [`FilesystemSystemPromptProvider`](../../src/LlamaShears.Core/SystemPrompt/FilesystemSystemPromptProvider.cs) |
+| `system/context/PROMPT.md` | Renders the per-turn ephemeral block. Same fallback chain as the system prompt. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
+| `memory/**/*.md` | Source of truth for long-term memory. The framework keeps a SQLite vector index at `system/.memory.db` in sync via on-write indexing and a periodic reconciliation scanner. | [`SqliteMemoryService`](../../src/LlamaShears.Core/Memory/SqliteMemoryService.cs) + [`MemoryIndexerBackgroundService`](../../src/LlamaShears.Core/Memory/MemoryIndexerBackgroundService.cs) |
+| `system/.memory.db` | Framework-owned SQLite database. Derived; agents must not modify it directly. |  |
+| `HEARTBEAT.md`, `USER.md`, `TOOLS.md`, `MEMORY.md`, `AGENTS.md`, anything else | Not currently read by the framework. Available to the agent through its filesystem tools (`read_file`, `write_file`, `grep`, …); the agent decides when to consult them. The system prompt and the ephemeral context block list other root-level `.md` files by *name* so the model knows what's there. | — |
+
+The "always inject `IDENTITY` and `SOUL`" promise is delivered through the *ephemeral block*, not through the persistent system prompt. That means edits land on the next iteration without requiring a reload, and a heavily-edited agent doesn't end up paying the token cost of stale identity content from the persisted history. See [prompt-context.md](prompt-context.md).
 
 ## Agent-as-author
 
-The workspace is read-write from the agent's perspective. Every conventional file (with the eventual exception of system-managed `MEMORY.md`) can be created, edited, or deleted by the agent itself through whatever filesystem tools its surface exposes. This is intentional and is the basis for several of the patterns above:
+The workspace is read-write from the agent's perspective. Every conventional file (with the exception of `system/.memory.db`, which is framework-derived) can be created, edited, or deleted by the agent itself through whatever filesystem tools its surface exposes. This is intentional and is the basis for several of the patterns above:
 
 - An agent removes its own `BOOTSTRAP.md` to mark setup complete.
 - An agent edits `USER.md` after learning something about its user.
-- An agent uses `HEARTBEAT.md` as a self-scheduling mechanism: write content to wake itself, delete the file when it has handled the request (see [heartbeat.md](heartbeat.md)'s *Silent* section).
-- An agent writes a new file under `memories/` when it wants to remember something long-term.
+- An agent writes a new file under `memory/` to remember something long-term; the framework eagerly indexes it on write and the next reconciliation pass keeps the index honest. See [memory.md](memory.md).
+- An agent edits or deletes a memory file; on the next memory query the orphan is filtered out, and the next reconciliation removes the index entry.
+
+The bundled MCP filesystem tools (`read_file`, `list_files`, `write_file`, `append_file`, `delete_file`, `regex_replace_file`, `grep`) let the agent do all of this through its own MCP client. They resolve relative paths against the workspace root, so most agent-authored writes are workspace-local by default; absolute paths *are* honored, so an agent can read or write anywhere on disk the host process can reach. See [mcp.md](mcp.md).
 
 The agent owning the workspace is what makes the workspace a workspace. The framework's responsibility is the small set of conventional files above; everything else in the directory is between the agent and itself.
 
 ## Template seeding
 
-A new workspace doesn't spring out of nothing — the framework seeds it from a set of editable templates that ship with the host. Two layers, each with the same self-disabling pattern:
+A new workspace doesn't spring out of nothing — the framework seeds it from a set of editable templates that ship with the host. Two layers, each with the same self-disabling pattern.
 
 ### Layer 1 — Bundled templates → user templates root
 
-The host ships a bundled template tree at `content/templates/workspace/` (built into the host's output and publish trees as Content). On host boot:
+The host ships a bundled template tree at `src/LlamaShears/content/templates/` (built into the host's output and publish trees as Content). [`TemplateSeedingStartupTask`](../../src/LlamaShears/TemplateSeedingStartupTask.cs) runs at host startup:
 
-1. If the user templates root path does not exist, create the directory.
-2. If the user templates root is **empty** (no files at all), copy the bundled templates into it and write a `.keep` marker file.
-3. If the user templates root contains anything — even just `.keep`, even just one stray file — leave it alone.
+1. If `<Templates>` doesn't exist, create the directory.
+2. If `<Templates>` is **empty**, copy the bundled `content/templates/` into it and write a `.keep` marker.
+3. If `<Templates>` contains anything — even just `.keep`, even just one stray file — leave it alone.
 
 The user templates root is editable. The point is to give the operator a place to customize the defaults that subsequent agents will inherit, without losing those edits to the next deploy of the host.
 
 ### Layer 2 — User templates root → agent workspace
 
-When `AgentManager` first sees an `<NAME>.json`, it determines the agent's workspace path. On agent first load:
+When `AgentManager` first sees an `<id>.json`, it determines the agent's workspace path (via `AgentConfigProvider`, which has already created the directory — see [agent-config.md](agent-config.md)) and calls `IDirectorySeeder.SeedIfEmpty(<Templates>/workspace/, <workspace>)`:
 
-1. If the workspace directory does not exist, create it.
-2. If the workspace is **empty**, copy the full user templates root tree into it. The copy includes `.keep` as a side effect of copying everything.
-3. If the workspace is non-empty, leave it alone.
-4. After the copy, ensure `.keep` exists in the workspace; if for any reason it wasn't carried over, create it.
+1. If the workspace is **empty**, copy the full `<Templates>/workspace/` tree into it and write `.keep` afterward.
+2. If the workspace is non-empty, leave it alone (a debug log records the skip).
+3. Either way, ensure `.keep` exists in the workspace by the end.
 
-This means an agent's workspace is, by default, a snapshot of whatever the operator has in the user templates root at the moment the agent is first loaded. From that point on, the workspace evolves on its own — the templates are a starting point, not a syncing source of truth.
+This means an agent's workspace is, by default, a snapshot of whatever the operator has in `<Templates>/workspace/` at the moment the agent is first loaded. From that point on, the workspace evolves on its own — the templates are a starting point, not a syncing source of truth.
 
 ### `.keep` semantics
 
@@ -94,45 +104,18 @@ The marker is the difference between *empty because nobody has filled it yet* an
 
 ## Long-term memory and RAG
 
-`memories/**/*.md` is the long-term memory tree. The markdown files on disk are the **source of truth**; the vector index that backs RAG retrieval is a derived, secondary artifact. The directory is a *self-healing* RAG document store: drift between the filesystem and the index is detected and corrected on the next query, never surfaced to the model.
+`memory/**/*.md` is the long-term memory tree. The markdown files on disk are the **source of truth**; the SQLite vector index at `system/.memory.db` is a derived, secondary artifact. The directory is a *self-healing* RAG document store: drift between the filesystem and the index is detected and corrected, never surfaced to the model.
 
-Each index entry carries three things alongside its vector(s): the file path, and the content hash captured at the time the file was last indexed. Retrieval uses all three:
+The mechanics — how store/search/reconcile actually run, which embedding model is used, why the threshold sits where it does — are in [memory.md](memory.md). The contract from the agent's perspective is:
 
-- When the agent (or the framework on its behalf) writes a memory file under `memories/`, the framework derives a vector from the file's contents and adds it to the vector store with the file path as the key and the content hash recorded.
-- When the agent retrieves memories, the framework runs the query against the vector index and gets back a set of hits keyed by file path.
-- For each hit, the framework looks at the file on disk:
-  - **Missing file** (agent deleted it, edited out-of-band, etc.) → the hit is dropped from the result set, noted, and queued for garbage collection of its index entry. The model never sees the orphaned hit.
-  - **File present but content hash differs from the indexed hash** → the file is re-indexed in place (new vector, new hash), and the query is re-run automatically. The model only ever sees results from a vector index that matches the current file contents.
-  - **File present and hash matches** → the framework reads the file and returns its content to the model.
-- Garbage collection of the vector store is lazy and runs out-of-band; it's not on the retrieval hot path.
-
-**Why this shape:**
-
-- The agent owns its workspace (see *Agent-as-author*). "Delete the file" or "edit the file" must be the only thing the agent has to do to forget or update a memory — chasing down vector entries by hand would defeat the agent-as-author model.
-- The vector store is allowed to drift behind the filesystem. As long as the framework re-reads on retrieval and re-indexes on hash mismatch, drift is invisible to the model.
-- Adds are eager (write triggers indexing); deletes are lazy (retrieval surfaces orphans, GC handles the cleanup later); edits are detected on retrieval and self-heal before the result returns. That asymmetry matches where the cost lives: agents query memories often, edit them rarely, and inspect their own delete history almost never.
-
-### Periodic reconciliation scanner
-
-Retrieval-time healing is the *safety net*. The primary mechanism for keeping the index honest is a periodic system scan that walks the filesystem and the index together and reconciles the three diff cases:
-
-- **New file** (file exists on disk, no entry in the index) → index it.
-- **Changed file** (entry exists, file's current hash differs from the indexed hash) → re-index it.
-- **Deleted file** (entry exists, file is gone) → remove the entry.
-
-This is feasible because the vector store provides enumeration of its records — `Microsoft.Extensions.VectorData`'s collection types are `IAsyncEnumerable<TRecord>`, and the sqlite-vec backend is a regular SQLite table, so listing `(path, hash)` is a normal query. The scanner doesn't need to keep its own bookkeeping.
-
-The cadence is intentionally not on the retrieval path. Most queries hit a fresh index because the scanner caught up between writes; the retrieval-time hash check is what handles the small window between an edit and the next scan, plus any out-of-band edits (someone opens the file in an external editor and saves).
-
-The agent doesn't manage the vector store — it never sees the index, never invokes "reindex," never deals with vectors. From the agent's perspective, `memories/` is just a directory it can read, write, and delete files in; the framework keeps the search index honest.
+- Write a file under `memory/` (typically through `store_memory`, which auto-locates a path); it becomes searchable on the same call.
+- Search via `search_memory`; you get back the matching files' contents, scored by similarity.
+- Edit or delete a file; the index reconciles itself by the next query, or sooner via the periodic reconciliation scanner.
 
 ## Open items
 
-- **Per-agent workspace location.** Where each agent's workspace lives on disk (relative to the roots resolved via `IShearsPaths.GetPath(PathKind.Data | Workspace | Agents)`) is not yet wired. Two natural shapes:
-  - `<Agents>/<name>/` workspace alongside `<Agents>/<name>.json` config.
-  - `<Agents>/<name>/agent.json` config inside the workspace.
-  - The user has the call.
-- **User templates root location.** The seeding source for new agent workspaces (see *Template seeding*). Natural default: `<Data>/templates/workspace/`. Pending an explicit decision; will likely live alongside the per-agent workspace path API on `IShearsPaths`.
-- **`MEMORY.md` lifecycle.** "Managed by the system periodically" — exact mechanic (compaction strategy, frequency, whether the framework rewrites or the agent does it via tool) is TBD.
-- **Long-term memory format.** `memories/**/*.md` matches the existing `agents/memories/` shared/local memory layout in this repo; whether agents share that exact INDEX-plus-files convention or get a different one is TBD.
-- **Multi-agent collisions.** Whether two agents can share a workspace (or a `memories/` tree) is undecided. Default assumption: each agent gets its own.
+- **`HEARTBEAT.md` consumer.** The conventional file exists and is template-seeded; nothing reads it yet. See [heartbeat.md](heartbeat.md).
+- **`USER.md` lifecycle.** The convention is "agent's notes about its user." There's no framework behavior tied to it today. Whether the framework should surface it into the ephemeral context block by default (the way it does for `IDENTITY.md` and `SOUL.md`) is undecided.
+- **`MEMORY.md` lifecycle.** Recorded as "short-term memory storage." Currently agent-managed; whether the framework eventually reads, writes, or compacts it is TBD.
+- **Sub-agent workspaces.** `system/SUBAGENT.md` is in the seed; sub-agent spawning isn't wired. When it is, where the sub-agent's workspace lives (a subdirectory of the parent's? a sibling under `<Workspace>`?) is undecided.
+- **Multi-agent collisions.** Whether two agents can share a workspace (or a `memory/` tree) is undecided. Default assumption: each agent gets its own.

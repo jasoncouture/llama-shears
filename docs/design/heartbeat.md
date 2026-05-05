@@ -1,18 +1,20 @@
 # Agent heartbeat
 
+> **Status:** design intent. The configuration field exists ([`AgentConfig.HeartbeatPeriod`](../../src/LlamaShears.Core.Abstractions/Agent/AgentConfig.cs)) and the workspace template carries a `HEARTBEAT.md` placeholder, but **no code reads either today**. The agent loop only processes inputs that arrive on `channel:message:+`; nothing fires a heartbeat turn on `system:tick`. This document records the design so the wiring, when it lands, has a target.
+
 ## What it is
 
 A heartbeat is the agent's mechanism to act on its own when nothing else is asking it to. It is a single, well-defined kind of input — a `User`-roled turn (with `FrameworkUser` provenance, since the framework authored it on the user's behalf) — that prompts the model and lets the agent decide whether to do something or do nothing. The model is in charge of the answer; the framework's job is only to fire the heartbeat at the right times.
 
-A heartbeat is not the system tick. The system tick is a periodic housekeeping signal — its sole job is to nudge agents to check whether their heartbeat is due. Multiple ticks may fire between heartbeats. A heartbeat may also be skipped on any given interval (see *Disabled vs. silent*).
+A heartbeat is not the system tick. The system tick is a periodic housekeeping signal — its sole job is to nudge agents to check whether their heartbeat is due. Multiple ticks may fire between heartbeats. A heartbeat may also be skipped on any given interval (see *Disabled vs. silent*). The tick service that exists today is documented in [system-tick.md](system-tick.md); it currently drives only `AgentManager` reconciliation.
 
 ## When it fires
 
-Each agent has a heartbeat **period** (a `TimeSpan`). On every system tick, the agent compares `now - LastHeartbeatAt` against the period. If the elapsed time is at or past the period, the agent reads its heartbeat file *and resets `LastHeartbeatAt` to now*. If the file has content, that content becomes the heartbeat turn (see *What the prompt is*). If the file is missing or empty at that moment, no heartbeat fires for this interval — but the timer still resets, so the next opportunity is one full period later.
+Each agent has a heartbeat **period** (a `TimeSpan`, `AgentConfig.HeartbeatPeriod`, default 30 minutes). On every system tick, the agent compares `now - LastHeartbeatAt` against the period. If the elapsed time is at or past the period, the agent reads its heartbeat file *and resets `LastHeartbeatAt` to now*. If the file has content, that content becomes the heartbeat turn (see *What the prompt is*). If the file is missing or empty at that moment, no heartbeat fires for this interval — but the timer still resets, so the next opportunity is one full period later.
 
 This is deliberate: the period is a throttle, not just a delay. A heartbeat fires *at most* every period, regardless of file state. An agent that wants faster wake-up granularity must shorten its period.
 
-Concretely, with a 30-minute period:
+Concretely, with a 30-minute period and the current 30-second tick:
 
 - Tick at elapsed = 29m 58s → period not elapsed; nothing happens.
 - 30 seconds later, next tick at elapsed = 30m 28s → period elapsed; file is read; `LastHeartbeatAt` resets to now. If the file is non-empty, heartbeat fires. If empty/missing, no heartbeat — but the next opportunity is still ~30 minutes from this tick.
@@ -22,7 +24,7 @@ The tick interval bounds the *granularity* of heartbeat firing, not its average 
 
 ## What the prompt is
 
-The heartbeat prompt is the contents of `HEARTBEAT.md` in the agent's workspace (see [agent-workspace.md](agent-workspace.md)). The workspace's on-disk location is still **TBD**; what matters here is the file's *existence and contents* as the contract:
+The heartbeat prompt is the contents of `HEARTBEAT.md` in the agent's workspace (see [agent-workspace.md](agent-workspace.md)). The contract is:
 
 - The file's text is the body of the user-typed turn delivered to the model.
 - The framework prepends some system information to the prompt (current time, last heartbeat time, agent id, and any other context the framework deems relevant for the model to reason about *why it was just woken*). The exact fields are **TBD**.
@@ -48,14 +50,15 @@ There is intentionally no `enabled: true/false` field in the agent config. The t
 
 ## Where this fits in the agent's processing model
 
-Heartbeats are one source of input among several (the others being `IInputChannel` instances). All inputs flow through the same queue. When the agent's processor is busy, queued heartbeats wait their turn alongside any other queued turns and are delivered together on the next cycle.
+Heartbeats are one source of input among several (the others being `IInputChannel` instances, of which `channel:message:*` is the wired example today). All inputs flow through the same queue. When the agent's processor is busy, queued heartbeats wait their turn alongside any other queued turns and are delivered together on the next cycle.
 
 This means a heartbeat is **not** guaranteed to result in a discrete model call by itself — if other inputs are already waiting, the heartbeat turn rides along in the same prompt. That is the correct behavior: a heartbeat is "wake up and consider what's happening," and "what's happening" includes any pending inputs.
 
-The agent's processing model itself (queue semantics, when work runs, what counts as "busy") is a separate concern from the heartbeat. The heartbeat documented here only specifies *when a heartbeat turn enters the queue and what it contains*.
+The agent's processing model itself (queue semantics, batch coalescing, when work runs, what counts as "busy") is documented in [agent-loop.md](agent-loop.md). The heartbeat documented here only specifies *when a heartbeat turn enters the queue and what it contains*.
 
 ## Open items
 
-- Heartbeat prompt file location — `HEARTBEAT.md` in the agent's workspace; the workspace location itself is still pending (see [agent-workspace.md](agent-workspace.md)).
-- Exact "system information" prepended to the heartbeat prompt — pending; minimum viable set is current UTC, last heartbeat UTC, agent id.
-- Whether heartbeats persist (counter, last-fired timestamp) across host restarts, or always start fresh from the agent's load time. Currently no persistence is wired; this defaults to "fresh" by absence.
+- **Implementation.** Nothing in `Agent.cs` or `AgentManager.cs` reads `HeartbeatPeriod` or `HEARTBEAT.md`. The wiring is the open question; the design above is the target.
+- **Exact "system information" prepended to the heartbeat prompt** — pending; minimum viable set is current local time, last heartbeat timestamp, agent id.
+- **Whether heartbeats persist (counter, last-fired timestamp) across host restarts**, or always start fresh from the agent's load time. Currently no persistence is wired; this defaults to "fresh" by absence.
+- **Coalescing rule for heartbeats vs. user input.** The agent's loop already coalesces consecutive same-channel messages into one batch; whether a heartbeat fired into a non-empty queue should trigger its own iteration or merge into the existing batch is undecided.
