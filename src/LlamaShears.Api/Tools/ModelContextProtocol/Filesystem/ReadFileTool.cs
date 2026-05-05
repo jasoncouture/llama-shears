@@ -21,7 +21,7 @@ public sealed partial class ReadFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "read_file")]
+    [McpServerTool(Name = "file_read")]
     [Description("Reads a file from the host filesystem. Returns at most byte_cap bytes from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
     public async Task<string> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,

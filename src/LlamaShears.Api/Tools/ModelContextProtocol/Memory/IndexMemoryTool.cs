@@ -21,7 +21,7 @@ public sealed partial class IndexMemoryTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "index_memory")]
+    [McpServerTool(Name = "memory_index")]
     [Description("Forces a full reconcile of the agent's memory index against the filesystem. Adds new files, re-embeds changed ones, and removes orphaned index entries. Reports the counts. Pass force=true to re-embed every file regardless of whether its content has changed — use this if the embedding model or its prompt convention has changed and old vectors need rebuilding.")]
     public async Task<string> IndexMemory(
         [Description("If true, re-embed every file even when its content hash already matches the indexed hash. Defaults to false.")] bool force = false,
@@ -30,7 +30,7 @@ public sealed partial class IndexMemoryTool
         var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
-            return "Refused: index_memory requires an authenticated agent on the request.";
+            return "Refused: memory_index requires an authenticated agent on the request.";
         }
 
         try

@@ -26,7 +26,7 @@ public sealed partial class GrepTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "grep")]
+    [McpServerTool(Name = "file_grep")]
     [Description("Searches the agent's workspace for a regex across files matching a path glob. Returns one line per match in the form 'relative/path:line:column: matched-line'. Output is capped; a truncation marker is appended when the result exceeds the cap.")]
     public async Task<string> Grep(
         [Description(".NET regex pattern to match against each line.")] string pattern,

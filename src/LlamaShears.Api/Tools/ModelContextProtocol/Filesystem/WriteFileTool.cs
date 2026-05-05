@@ -20,7 +20,7 @@ public sealed partial class WriteFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "write_file")]
+    [McpServerTool(Name = "file_write")]
     [Description("Writes the complete file content to a path within the agent's workspace. By default, refuses if the file already exists; pass overwrite=true to replace it. Writes into the workspace's protected 'system/' subfolder are always refused. Parent directories are created if missing.")]
     public async Task<string> WriteFile(
         [Description("Path to write. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,

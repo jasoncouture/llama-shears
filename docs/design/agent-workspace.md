@@ -51,7 +51,7 @@ The framework's job is to deliver the right file content into the agent's prompt
 | `system/context/PROMPT.md` | Renders the per-turn ephemeral block. Same fallback chain as the system prompt. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
 | `memory/**/*.md` | Source of truth for long-term memory. The framework keeps a SQLite vector index at `system/.memory.db` in sync via on-write indexing and a periodic reconciliation scanner. | [`SqliteMemoryService`](../../src/LlamaShears.Core/Memory/SqliteMemoryService.cs) + [`MemoryIndexerBackgroundService`](../../src/LlamaShears.Core/Memory/MemoryIndexerBackgroundService.cs) |
 | `system/.memory.db` | Framework-owned SQLite database. Derived; agents must not modify it directly. |  |
-| `HEARTBEAT.md`, `USER.md`, `TOOLS.md`, `MEMORY.md`, `AGENTS.md`, anything else | Not currently read by the framework. Available to the agent through its filesystem tools (`read_file`, `write_file`, `grep`, …); the agent decides when to consult them. The system prompt and the ephemeral context block list other root-level `.md` files by *name* so the model knows what's there. | — |
+| `HEARTBEAT.md`, `USER.md`, `TOOLS.md`, `MEMORY.md`, `AGENTS.md`, anything else | Not currently read by the framework. Available to the agent through its filesystem tools (`file_read`, `file_write`, `file_grep`, …); the agent decides when to consult them. The system prompt and the ephemeral context block list other root-level `.md` files by *name* so the model knows what's there. | — |
 
 The "always inject `IDENTITY` and `SOUL`" promise is delivered through the *ephemeral block*, not through the persistent system prompt. That means edits land on the next iteration without requiring a reload, and a heavily-edited agent doesn't end up paying the token cost of stale identity content from the persisted history. See [prompt-context.md](prompt-context.md).
 
@@ -64,7 +64,7 @@ The workspace is read-write from the agent's perspective. Every conventional fil
 - An agent writes a new file under `memory/` to remember something long-term; the framework eagerly indexes it on write and the next reconciliation pass keeps the index honest. See [memory.md](memory.md).
 - An agent edits or deletes a memory file; on the next memory query the orphan is filtered out, and the next reconciliation removes the index entry.
 
-The bundled MCP filesystem tools (`read_file`, `list_files`, `write_file`, `append_file`, `delete_file`, `regex_replace_file`, `grep`) let the agent do all of this through its own MCP client. They resolve relative paths against the workspace root, so most agent-authored writes are workspace-local by default; absolute paths *are* honored, so an agent can read or write anywhere on disk the host process can reach. See [mcp.md](mcp.md).
+The bundled MCP filesystem tools (`file_read`, `file_list`, `file_write`, `file_append`, `file_delete`, `file_regex_replace`, `file_grep`) let the agent do all of this through its own MCP client. They resolve relative paths against the workspace root, so most agent-authored writes are workspace-local by default; absolute paths *are* honored, so an agent can read or write anywhere on disk the host process can reach. See [mcp.md](mcp.md).
 
 The agent owning the workspace is what makes the workspace a workspace. The framework's responsibility is the small set of conventional files above; everything else in the directory is between the agent and itself.
 
@@ -108,8 +108,8 @@ The marker is the difference between *empty because nobody has filled it yet* an
 
 The mechanics — how store/search/reconcile actually run, which embedding model is used, why the threshold sits where it does — are in [memory.md](memory.md). The contract from the agent's perspective is:
 
-- Write a file under `memory/` (typically through `store_memory`, which auto-locates a path); it becomes searchable on the same call.
-- Search via `search_memory`; you get back the matching files' contents, scored by similarity.
+- Write a file under `memory/` (typically through `memory_store`, which auto-locates a path); it becomes searchable on the same call.
+- Search via `memory_search`; you get back the matching files' contents, scored by similarity.
 - Edit or delete a file; the index reconciles itself by the next query, or sooner via the periodic reconciliation scanner.
 
 ## Open items

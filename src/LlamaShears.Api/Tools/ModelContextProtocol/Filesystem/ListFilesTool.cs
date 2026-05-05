@@ -21,7 +21,7 @@ public sealed partial class ListFilesTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "list_files")]
+    [McpServerTool(Name = "file_list")]
     [Description("Lists files and directories under the given path on the host filesystem. Directories are listed first (with a trailing slash), then files (with byte size). Output is capped; a truncation marker is appended when the listing exceeds the cap.")]
     public async Task<string> ListFiles(
         [Description("Path to list. Relative paths resolve against the agent's workspace; absolute paths are honored as-is. Empty (default) lists the agent's workspace root.")] string path = "",

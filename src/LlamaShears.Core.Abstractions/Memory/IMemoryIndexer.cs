@@ -4,7 +4,7 @@ namespace LlamaShears.Core.Abstractions.Memory;
 /// Reconciles the agent's memory index against the filesystem.
 /// Walks <c>memory/**/*.md</c> and the index together: new files get
 /// indexed, changed files re-indexed, and orphaned index entries
-/// removed. Invoked explicitly by the <c>index_memory</c> tool and on
+/// removed. Invoked explicitly by the <c>memory_index</c> tool and on
 /// any future periodic schedule.
 /// </summary>
 public interface IMemoryIndexer

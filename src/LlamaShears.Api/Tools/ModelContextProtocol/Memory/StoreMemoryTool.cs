@@ -20,8 +20,8 @@ public sealed partial class StoreMemoryTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "store_memory")]
-    [Description("Stores a memory file in the agent's workspace under memory/YYYY-MM-DD/<unix-seconds>.md. The file is the source of truth; it is also embedded into the agent's vector index so search_memory can find it. Indexing failures do not fail the write — the next index_memory will catch up.")]
+    [McpServerTool(Name = "memory_store")]
+    [Description("Stores a memory file in the agent's workspace under memory/YYYY-MM-DD/<unix-seconds>.md. The file is the source of truth; it is also embedded into the agent's vector index so memory_search can find it. Indexing failures do not fail the write — the next memory_index will catch up.")]
     public async Task<string> StoreMemory(
         [Description("Memory content (markdown). Stored verbatim.")] string content,
         CancellationToken cancellationToken = default)
