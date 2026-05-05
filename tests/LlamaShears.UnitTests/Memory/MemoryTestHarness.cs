@@ -10,12 +10,18 @@ namespace LlamaShears.UnitTests.Memory;
 
 internal sealed class MemoryTestHarness : IDisposable
 {
-    private MemoryTestHarness(string root, string agentId, SqliteMemoryService service, FakeTimeProvider time)
+    private MemoryTestHarness(
+        string root,
+        string agentId,
+        SqliteMemoryService service,
+        FakeTimeProvider time,
+        VariableDimensionEmbeddingProviderFactory? variableDim)
     {
         Root = root;
         AgentId = agentId;
         Service = service;
         Time = time;
+        VariableDim = variableDim;
     }
 
     public string Root { get; }
@@ -26,7 +32,15 @@ internal sealed class MemoryTestHarness : IDisposable
 
     public FakeTimeProvider Time { get; }
 
+    public VariableDimensionEmbeddingProviderFactory? VariableDim { get; }
+
     public static MemoryTestHarness Create(string agentId = "test-agent")
+        => CreateInternal(agentId, variableDim: null);
+
+    public static MemoryTestHarness CreateWithVariableDimension(int initialDimensions, string agentId = "test-agent")
+        => CreateInternal(agentId, new VariableDimensionEmbeddingProviderFactory(initialDimensions));
+
+    private static MemoryTestHarness CreateInternal(string agentId, VariableDimensionEmbeddingProviderFactory? variableDim)
     {
         var root = Path.Combine(Path.GetTempPath(), "llamashears-memory-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -41,14 +55,17 @@ internal sealed class MemoryTestHarness : IDisposable
 
         var time = new FakeTimeProvider(DateTimeOffset.UnixEpoch.AddSeconds(1_700_000_000));
         var options = Options.Create(new MemoryServiceOptions());
+        IEmbeddingProviderFactory[] factories = variableDim is null
+            ? [new StubEmbeddingProviderFactory()]
+            : [variableDim];
         var service = new SqliteMemoryService(
             configs,
-            [new StubEmbeddingProviderFactory()],
+            factories,
             time,
             options,
             NullLogger<SqliteMemoryService>.Instance);
 
-        return new MemoryTestHarness(root, agentId, service, time);
+        return new MemoryTestHarness(root, agentId, service, time, variableDim);
     }
 
     public string PathOf(params string[] parts) => Path.Combine([Root, .. parts]);
