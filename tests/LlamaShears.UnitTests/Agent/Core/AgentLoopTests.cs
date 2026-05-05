@@ -64,6 +64,45 @@ public sealed class AgentLoopTests
     }
 
     [Test]
+    public async Task PrefetchEnabledAgentInvokesSearcherOnceAndStillProducesTurn()
+    {
+        await using var provider = BuildServices();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
+
+        using var captured = new CapturingTurnSubscriber(bus, "alice");
+        var model = new ScriptedLanguageModel("hi back");
+        var memorySearcher = Substitute.For<IMemorySearcher>();
+        memorySearcher
+            .SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<double>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<IReadOnlyList<MemorySearchResult>>([]));
+
+        var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice") with
+        {
+            Memory = new AgentMemoryConfig(Prefetch: true),
+            WorkspacePath = Path.Combine(Path.GetTempPath(), $"prefetch-{Guid.NewGuid():N}"),
+        };
+
+        using var agent = BuildAgent("alice", provider, ctx, model, config, memorySearcher);
+
+        await PublishChannelMessageAsync(publisher, "alice", "hello");
+
+        await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+
+        await Assert.That(captured.Turns).Count().IsEqualTo(1);
+        await Assert.That(captured.Turns[0].Role).IsEqualTo(ModelRole.Assistant);
+        await memorySearcher
+            .Received(1)
+            .SearchAsync(
+                "alice",
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Any<double>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task BroadcastChannelMessageWithNullAgentIdReachesEveryAgent()
     {
         await using var provider = BuildServices();
@@ -102,7 +141,9 @@ public sealed class AgentLoopTests
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
-        ILanguageModel model)
+        ILanguageModel model,
+        AgentConfig? config = null,
+        IMemorySearcher? memorySearcher = null)
     {
         var compactor = Substitute.For<IContextCompactor>();
         compactor.CompactAsync(
@@ -118,7 +159,7 @@ public sealed class AgentLoopTests
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
         return new global::LlamaShears.Core.Agent(
-            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
+            config: config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
             model: model,
             agentContext: agentContext,
             loggerFactory: NullLoggerFactory.Instance,
@@ -133,7 +174,7 @@ public sealed class AgentLoopTests
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>());
+            memorySearcher: memorySearcher ?? Substitute.For<IMemorySearcher>());
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
