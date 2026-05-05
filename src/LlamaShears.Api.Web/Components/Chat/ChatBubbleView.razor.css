@@ -83,7 +83,7 @@
 }
 
 .bubble-tool-list code,
-.bubble-tool-result .bubble-kind code {
+.bubble-tool-name {
     background: var(--code-bg);
     padding: 0.05rem 0.35rem;
     border-radius: var(--radius-sm);
@@ -91,30 +91,35 @@
     font-size: 0.85em;
 }
 
-.bubble-tool-sep {
-    color: var(--text-subtle);
+.bubble-tool-name {
+    color: var(--text);
     font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
-.bubble-tool-args {
+.bubble-tool-args,
+.bubble-tool-body {
     margin: 0.35rem 0;
     font-size: 0.85em;
     color: var(--text-muted);
 }
 
-.bubble-tool-args summary {
+.bubble-tool-args summary,
+.bubble-tool-body summary {
     cursor: pointer;
     user-select: none;
 }
 
-.bubble-tool-args-body {
+.bubble-tool-args-body,
+.bubble-tool-body .bubble-content {
     margin: 0.35rem 0 0;
     padding: 0.5rem 0.75rem;
     background: var(--code-bg);
     border-radius: var(--radius-sm);
     overflow-x: auto;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.85em;
+    font-size: 0.95em;
     color: var(--text);
 }
 
