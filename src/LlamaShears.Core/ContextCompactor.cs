@@ -88,12 +88,13 @@ public sealed partial class ContextCompactor : IContextCompactor
         }
 
         var lastTurn = prompt.Turns[^1];
-        if (lastTurn.Role is not (ModelRole.User or ModelRole.FrameworkUser))
+        var preserveTrailingUser = lastTurn.Role is ModelRole.User or ModelRole.FrameworkUser;
+        if (!preserveTrailingUser && !force)
         {
-            // Trailing turn isn't a user message, so the "preserve last
-            // user message, summarize everything else" rebuild doesn't
-            // apply. Hand back unchanged; the caller's the one with the
-            // policy for "what to do when we can't compact".
+            // Auto-compaction's rebuild assumes a user-anchored prompt
+            // (the just-arrived message is preserved while everything
+            // before it is summarized). User-forced /compact takes the
+            // force path and skips this requirement.
             return prompt;
         }
 
@@ -107,7 +108,13 @@ public sealed partial class ContextCompactor : IContextCompactor
             cancellationToken).ConfigureAwait(false);
         try
         {
-            var summary = await SummarizeAsync(agentContext.AgentId, prompt, model, window, cancellationToken).ConfigureAwait(false);
+            var summary = await SummarizeAsync(
+                agentContext.AgentId,
+                prompt,
+                model,
+                window,
+                preserveTrailingUser,
+                cancellationToken).ConfigureAwait(false);
 
             var rebuilt = new List<ModelTurn>(3);
             if (prompt.Turns[0].Role == ModelRole.System)
@@ -115,7 +122,10 @@ public sealed partial class ContextCompactor : IContextCompactor
                 rebuilt.Add(prompt.Turns[0]);
             }
             rebuilt.Add(new ModelTurn(ModelRole.Assistant, summary, lastTurn.Timestamp));
-            rebuilt.Add(lastTurn);
+            if (preserveTrailingUser)
+            {
+                rebuilt.Add(lastTurn);
+            }
             var rebuiltPrompt = new ModelPrompt(rebuilt);
 
             // Compaction succeeded: archive the old persisted context and
@@ -151,13 +161,17 @@ public sealed partial class ContextCompactor : IContextCompactor
         ModelPrompt prompt,
         ILanguageModel model,
         int window,
+        bool preserveTrailingUser,
         CancellationToken cancellationToken)
     {
-        // Everything except the trailing user message, plus a fresh
-        // user-role instruction asking for the summary. The trailing
-        // user turn is preserved out-of-band and re-attached to the
-        // rebuilt prompt after summarization completes.
-        var historyCount = prompt.Turns.Count - 1;
+        // Auto-compaction excludes the trailing user message (it gets
+        // re-attached to the rebuilt prompt). User-forced compaction
+        // has no trailing user to preserve, so all turns go into the
+        // summary input. Either way the call ends with a fresh
+        // user-role instruction asking for the summary.
+        var historyCount = preserveTrailingUser
+            ? prompt.Turns.Count - 1
+            : prompt.Turns.Count;
         var historyTurns = new List<ModelTurn>(historyCount + 1);
         for (var i = 0; i < historyCount; i++)
         {
