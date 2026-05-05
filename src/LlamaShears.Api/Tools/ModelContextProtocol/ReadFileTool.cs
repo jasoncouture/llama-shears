@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
-using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -16,23 +15,20 @@ public sealed partial class ReadFileTool
     private const int MaxByteCap = 256 * 1024;
 
     private readonly IHttpContextAccessor _http;
-    private readonly IAgentConfigProvider _configs;
     private readonly ILogger<ReadFileTool> _logger;
 
     public ReadFileTool(
         IHttpContextAccessor http,
-        IAgentConfigProvider configs,
         ILogger<ReadFileTool> logger)
     {
         _http = http;
-        _configs = configs;
         _logger = logger;
     }
 
     [McpServerTool(Name = "read_file")]
-    [Description("Reads a file from the calling agent's workspace. Returns at most byte_cap bytes from the requested line range and appends a truncation marker if the file content exceeded the cap. The path must resolve inside the agent's workspace; absolute paths outside the workspace are refused.")]
+    [Description("Reads a file from the host filesystem. Returns at most byte_cap bytes from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
     public async Task<string> ReadFile(
-        [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths must still resolve inside it.")] string path,
+        [Description("Path to read. Relative paths are resolved against the host process's working directory; absolute paths are honored as-is.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
         [Description("Number of lines to return. 0 (default) means read to end of file, subject to the byte cap.")] int lineCount = 0,
         [Description("Maximum bytes of content to return. Defaults to 65536 (64 KiB). Hard-capped at 262144 (256 KiB).")] int byteCap = DefaultByteCap,
@@ -52,31 +48,8 @@ public sealed partial class ReadFileTool
         }
         var cap = Math.Clamp(byteCap, 1, MaxByteCap);
 
+        var resolved = Path.GetFullPath(path);
         var agentId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(agentId))
-        {
-            return "Authentication required to read files.";
-        }
-
-        var config = await _configs.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
-        if (config is null || string.IsNullOrEmpty(config.WorkspacePath))
-        {
-            return $"Agent '{agentId}' has no configured workspace.";
-        }
-
-        var workspace = Path.GetFullPath(config.WorkspacePath);
-        var workspacePrefix = workspace.EndsWith(Path.DirectorySeparatorChar)
-            ? workspace
-            : $"{workspace}{Path.DirectorySeparatorChar}";
-        var resolved = Path.GetFullPath(Path.IsPathRooted(path)
-            ? path
-            : Path.Combine(workspace, path));
-
-        if (!resolved.StartsWith(workspacePrefix, StringComparison.Ordinal))
-        {
-            LogPathEscape(_logger, agentId, path, resolved);
-            return "Refused: path resolves outside the agent's workspace.";
-        }
 
         if (Directory.Exists(resolved))
         {
@@ -90,6 +63,7 @@ public sealed partial class ReadFileTool
         try
         {
             var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, cap, cancellationToken).ConfigureAwait(false);
+            LogRead(_logger, agentId, resolved, content.Length, truncated);
             if (truncated)
             {
                 content = string.Concat(
@@ -105,7 +79,7 @@ public sealed partial class ReadFileTool
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogReadFailed(_logger, agentId, path, ex.Message, ex);
+            LogReadFailed(_logger, agentId, resolved, ex.Message, ex);
             return $"Read failed: {ex.Message}";
         }
     }
@@ -164,9 +138,9 @@ public sealed partial class ReadFileTool
         return (builder.ToString(), Truncated: false);
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing read for agent '{AgentId}': path '{Path}' resolved to '{Resolved}' outside workspace.")]
-    private static partial void LogPathEscape(ILogger logger, string agentId, string path, string resolved);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' read {Bytes} bytes from '{Path}' (truncated={Truncated}).")]
+    private static partial void LogRead(ILogger logger, string? agentId, string path, int bytes, bool truncated);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Read failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogReadFailed(ILogger logger, string agentId, string path, string message, Exception ex);
+    private static partial void LogReadFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
 }

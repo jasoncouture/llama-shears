@@ -17,7 +17,8 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithHttpTransport()
             .WithTools<WhoamiTool>()
             .WithTools<RandomNumberTool>()
-            .WithTools<ReadFileTool>();
+            .WithTools<ReadFileTool>()
+            .WithTools<ListFilesTool>();
 
         return services;
     }
