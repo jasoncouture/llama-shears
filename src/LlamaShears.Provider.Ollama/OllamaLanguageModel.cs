@@ -238,6 +238,10 @@ public partial class OllamaLanguageModel : ILanguageModel
         {
             message.ToolCalls = ToOllamaToolCalls(turn.ToolCalls);
         }
+        if (turn.Role == ModelRole.Tool && !string.IsNullOrEmpty(turn.ToolName))
+        {
+            message.ToolName = turn.ToolName;
+        }
         return message;
     }
 
