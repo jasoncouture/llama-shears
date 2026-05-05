@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.Seeding;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IServiceProvider _services;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
+    private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
+    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private int _reconciling;
@@ -35,7 +38,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IContextStore contextStore,
         IServiceProvider services,
         IShearsPaths paths,
-        IDirectorySeeder seeder)
+        IDirectorySeeder seeder,
+        IModelContextProtocolToolDiscovery toolDiscovery,
+        ICurrentAgentAccessor currentAgent)
     {
         _bus = bus;
         _providers = providers;
@@ -46,6 +51,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _services = services;
         _paths = paths;
         _seeder = seeder;
+        _toolDiscovery = toolDiscovery;
+        _currentAgent = currentAgent;
     }
 
     public IReadOnlyList<string> AgentIds
@@ -137,6 +144,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         SeedAgentWorkspace(config);
 
+        await DiscoverToolsAsync(config, cancellationToken).ConfigureAwait(false);
+
         var slot = await TryBuildSlotAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (slot is null)
         {
@@ -145,6 +154,27 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         _loaded[name] = slot;
         LogAgentStarted(_logger, name);
+    }
+
+    private async Task DiscoverToolsAsync(AgentConfig config, CancellationToken cancellationToken)
+    {
+        var agentInfo = new AgentInfo(
+            AgentId: config.Id,
+            ModelId: config.Model.Id.Model,
+            ContextWindowSize: config.Model.ContextLength ?? 0);
+
+        using var scope = _currentAgent.BeginScope(agentInfo);
+        var toolsets = await _toolDiscovery
+            .DiscoverAsync(config.ModelContextProtocolServers, cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var set in toolsets)
+        {
+            foreach (var tool in set.Tools)
+            {
+                LogToolDiscovered(_logger, config.Id, set.ServerName, tool.Name);
+            }
+        }
     }
 
     private void SeedAgentWorkspace(AgentConfig config)
@@ -236,6 +266,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private static partial void LogBuildFailure(ILogger logger, string agentId, string message, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
+    private static partial void LogToolDiscovered(ILogger logger, string agentId, string serverName, string toolName);
 
     private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config);
 }
