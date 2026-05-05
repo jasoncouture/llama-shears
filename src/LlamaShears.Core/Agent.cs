@@ -232,7 +232,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
             prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
-            prompt = await InjectPromptContextAsync(prompt, batch[^1].Type.Id, cancellationToken).ConfigureAwait(false);
+            var importantMessage = isFinalIteration
+                ? "You have exceeded your turn limit. Respond in text — any further tool calls will be ignored. This is your final output before control returns to the user."
+                : null;
+            prompt = await InjectPromptContextAsync(prompt, batch[^1].Type.Id, importantMessage, cancellationToken).ConfigureAwait(false);
 
             var outcome = await _inferenceRunner.RunAsync(
                 eventId: Id,
@@ -351,14 +354,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ModelPrompt> InjectPromptContextAsync(ModelPrompt prompt, string? channelId, CancellationToken cancellationToken)
+    private async Task<ModelPrompt> InjectPromptContextAsync(ModelPrompt prompt, string? channelId, string? importantMessage, CancellationToken cancellationToken)
     {
         var now = _time.GetLocalNow();
         var parameters = new PromptContextParameters(
             Now: now.ToString("o", CultureInfo.InvariantCulture),
             Timezone: TimeZoneInfo.Local.Id,
             DayOfWeek: now.DayOfWeek.ToString(),
-            ChannelId: channelId);
+            ChannelId: channelId,
+            ImportantMessage: importantMessage);
         var body = await _promptContext.GetAsync(parameters, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(body))
         {
