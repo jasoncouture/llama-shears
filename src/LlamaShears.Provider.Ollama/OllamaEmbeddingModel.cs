@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Provider;
+using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models;
 
@@ -9,10 +10,15 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
     private readonly IOllamaApiClient _client;
     private readonly ModelConfiguration _configuration;
 
-    public OllamaEmbeddingModel(IOllamaApiClient client, ModelConfiguration configuration)
+    public OllamaEmbeddingModel(
+        IOllamaApiClientFactory clientFactory,
+        ModelConfiguration configuration,
+        IOptionsMonitor<OllamaProviderOptions> hostOptions)
     {
-        _client = client;
         _configuration = configuration;
+
+        var merged = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.AgentOptions);
+        _client = clientFactory.CreateClient(merged);
     }
 
     public async ValueTask<ReadOnlyMemory<float>> EmbedAsync(string text, CancellationToken cancellationToken)
