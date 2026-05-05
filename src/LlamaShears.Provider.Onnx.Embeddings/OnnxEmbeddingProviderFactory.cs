@@ -7,7 +7,7 @@ namespace LlamaShears.Provider.Onnx.Embeddings;
 
 public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, IDisposable
 {
-    public const string ProviderName = "ONNX";
+    public const string ProviderName = "onnx";
 
     private readonly IOptionsMonitor<OnnxEmbeddingsProviderOptions> _options;
     private readonly ConcurrentDictionary<string, OnnxEmbeddingModel> _models = new(StringComparer.Ordinal);

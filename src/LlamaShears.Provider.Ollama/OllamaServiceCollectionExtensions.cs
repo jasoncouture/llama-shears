@@ -2,8 +2,6 @@ using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.ObjectPool;
-using Microsoft.Extensions.Options;
-using OllamaSharp;
 
 namespace LlamaShears.Provider.Ollama;
 
@@ -25,14 +23,12 @@ public static class OllamaServiceCollectionExtensions
         services.TryAddSingleton(sp =>
             sp.GetRequiredService<ObjectPoolProvider>().Create(new MessageListPooledObjectPolicy()));
 
-        services
-            .AddHttpClient(nameof(OllamaApiClient), (sp, httpClient) =>
-            {
-                var options = sp.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
-                httpClient.BaseAddress = options.BaseUri;
-                httpClient.Timeout = options.RequestTimeout;
-            })
-            .AddTypedClient<IOllamaApiClient>(httpClient => new OllamaApiClient(httpClient));
+        // Per-call API-client factory: each provider-factory CreateModel
+        // call resolves its merged per-agent OllamaProviderOptions and
+        // hands them to IOllamaApiClientFactory, which news up an
+        // HttpClient + OllamaApiClient configured for that endpoint.
+        // No HttpClient pooling, no leaky abstractions through DI.
+        services.TryAddSingleton<IOllamaApiClientFactory, OllamaApiClientFactory>();
 
         services.AddSingleton<IProviderFactory, OllamaProviderFactory>();
         services.AddSingleton<IEmbeddingProviderFactory, OllamaEmbeddingProviderFactory>();

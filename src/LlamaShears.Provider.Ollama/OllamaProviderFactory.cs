@@ -1,27 +1,36 @@
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
-using OllamaSharp;
+using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Provider.Ollama;
 
 public class OllamaProviderFactory : IProviderFactory
 {
-    private readonly IOllamaApiClient _client;
+    public const string ProviderName = "ollama";
+
+    private readonly IOllamaApiClientFactory _clientFactory;
+    private readonly IOptionsMonitor<OllamaProviderOptions> _hostOptions;
     private readonly IServiceProvider _serviceProvider;
 
-    public OllamaProviderFactory(IOllamaApiClient client, IServiceProvider serviceProvider)
+    public OllamaProviderFactory(
+        IOllamaApiClientFactory clientFactory,
+        IOptionsMonitor<OllamaProviderOptions> hostOptions,
+        IServiceProvider serviceProvider)
     {
-        _client = client;
+        _clientFactory = clientFactory;
+        _hostOptions = hostOptions;
         _serviceProvider = serviceProvider;
     }
 
-    public string Name => "OLLAMA";
+    public string Name => ProviderName;
 
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var models = await _client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
+        // Listing has no agent context; use host defaults.
+        var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
+        var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var model in models)
         {
@@ -38,5 +47,9 @@ public class OllamaProviderFactory : IProviderFactory
     }
 
     public ILanguageModel CreateModel(ModelConfiguration configuration)
-        => ActivatorUtilities.CreateInstance<OllamaLanguageModel>(_serviceProvider, configuration);
+    {
+        var merged = AgentProviderOptions.Resolve(_hostOptions.CurrentValue, configuration.AgentOptions);
+        var client = _clientFactory.CreateClient(merged);
+        return ActivatorUtilities.CreateInstance<OllamaLanguageModel>(_serviceProvider, client, configuration);
+    }
 }

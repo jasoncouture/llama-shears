@@ -224,12 +224,13 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         var queryPrefix = config.Embedding?.QueryPrefix ?? _options.DefaultEmbeddingQueryPrefix ?? string.Empty;
         var documentPrefix = config.Embedding?.DocumentPrefix ?? _options.DefaultEmbeddingDocumentPrefix ?? string.Empty;
         var factory = _embeddingFactories.FirstOrDefault(f =>
-            string.Equals(f.Name, embeddingId.Provider, StringComparison.Ordinal))
+            string.Equals(f.Name, embeddingId.Provider, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
                 $"No embedding provider factory registered with name '{embeddingId.Provider}'.");
         var embedding = factory.CreateModel(new ModelConfiguration(
             ModelId: embeddingId.Model,
-            KeepAlive: keepAlive));
+            KeepAlive: keepAlive,
+            AgentOptions: config.Embedding?.Options));
 
         return new MemoryContext(workspace, indexPath, embedding, queryPrefix, documentPrefix);
     }

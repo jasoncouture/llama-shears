@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace LlamaShears.Core.Abstractions.Provider;
 
 public record ModelConfiguration(
@@ -6,5 +8,6 @@ public record ModelConfiguration(
     int? ContextLength = null,
     TimeSpan? KeepAlive = null,
     IReadOnlyDictionary<string, object>? Parameters = null,
-    int TokenLimit = 0
+    int TokenLimit = 0,
+    JsonElement? AgentOptions = null
 );

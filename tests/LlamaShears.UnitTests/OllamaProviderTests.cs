@@ -2,8 +2,8 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Provider.Ollama;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OllamaSharp;
 
 namespace LlamaShears.UnitTests;
 
@@ -16,6 +16,7 @@ public class OllamaProviderTests
             .AddInMemoryCollection(values ?? new Dictionary<string, string?>())
             .Build();
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddLogging();
         return services;
     }
 
@@ -33,16 +34,16 @@ public class OllamaProviderTests
     }
 
     [Test]
-    public async Task AddOllamaProviderRegistersOllamaApiClient()
+    public async Task AddOllamaProviderRegistersOllamaApiClientFactory()
     {
         var services = ServicesWithConfig();
 
         services.AddOllamaProvider();
 
         using var provider = services.BuildServiceProvider();
-        var client = provider.GetRequiredService<IOllamaApiClient>();
+        var clientFactory = provider.GetRequiredService<IOllamaApiClientFactory>();
 
-        await Assert.That(client).IsNotNull();
+        await Assert.That(clientFactory).IsNotNull();
     }
 
     [Test]
@@ -94,7 +95,7 @@ public class OllamaProviderTests
 
         var factory = provider.GetRequiredService<IProviderFactory>();
 
-        await Assert.That(factory.Name).IsEqualTo("OLLAMA");
+        await Assert.That(factory.Name).IsEqualTo("ollama");
     }
 
     [Test]
@@ -132,7 +133,7 @@ public class OllamaProviderTests
 
         var factory = provider.GetRequiredService<IEmbeddingProviderFactory>();
 
-        await Assert.That(factory.Name).IsEqualTo("OLLAMA");
+        await Assert.That(factory.Name).IsEqualTo("ollama");
     }
 
     [Test]
