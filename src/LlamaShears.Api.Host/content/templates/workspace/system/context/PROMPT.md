@@ -14,4 +14,18 @@
   - {{ memory.text }}
 {{- end }}
 {{- end }}
+{{- for file in files }}
+
+## {{ file.name }}
+
+{{ file.content }}
+{{- end }}
+{{- if additional_files.size > 0 }}
+
+## Additional workspace files
+
+{{- for name in additional_files }}
+- {{ name }}
+{{- end }}
+{{- end }}
 </system>
