@@ -90,17 +90,26 @@
 
 .bubble-markdown pre {
     margin: 0.5rem 0;
-    padding: 0.6rem 0.85rem;
-    background: var(--code-bg);
     border-radius: var(--radius-sm);
-    overflow-x: auto;
-    white-space: pre;
+    overflow: hidden;
+    background: var(--code-bg);
 }
 
 .bubble-markdown pre code {
+    display: block;
+    padding: 0.6rem 0.85rem;
+    overflow-x: auto;
+    white-space: pre;
     background: transparent;
-    padding: 0;
     border-radius: 0;
+}
+
+/* When highlight.js has stamped a code block (.hljs), let the theme
+   own the inside palette and drop our fallback pre background so the
+   theme color reaches edge-to-edge. Until hljs runs, the pre keeps
+   our --code-bg fallback so the block doesn't flash transparent. */
+.bubble-markdown pre:has(code.hljs) {
+    background: transparent;
 }
 
 .bubble-markdown blockquote {
