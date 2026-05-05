@@ -6,6 +6,7 @@ using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Provider.Ollama;
+using LlamaShears.Provider.Onnx.Embeddings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,7 @@ public static class WebApplicationBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.Services.AddOllamaProvider();
+        builder.Services.AddOnnxEmbeddingsProvider();
         builder.Services.AddEventingFramework();
         builder.Services.AddCore();
         builder.Services.AddAgentManager();
