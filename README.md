@@ -5,33 +5,36 @@
 
 An agentic hosting application for running unattended, automated agent tasks. The goal is a self-driving runtime where agents tick on a schedule, accumulate memory, retrieve relevant context, call external tools, and act without human intervention beyond initial configuration.
 
-**This is early-stage work.** Most of what's described below is scaffolding or aspiration; large parts aren't implemented yet. The status table calls out what is and isn't real.
+**This is early-stage work.** The substrate (event bus, persistence, memory, MCP, agent loop, Blazor chat UI) is real and exercised by tests. The autonomous side — heartbeat firing, RAG-driven recall on its own schedule, multi-provider support — is partially in place; the [Status](#status) table is the source of truth on what runs end-to-end today.
 
 ## Scope
 
-LlamaShears is intended to be a *host*, not an agent. It runs agents you configure and provides the surrounding infrastructure they need to operate continuously:
+LlamaShears is a *host*, not an agent. It runs agents you configure and provides the surrounding infrastructure they need to operate continuously:
 
-- **Heartbeat-driven execution** — agents are scheduled by a heartbeat tick rather than invoked imperatively. They decide whether to act on each tick.
-- **Persistent memory** — durable session/context storage so agents survive restarts and accumulate state across runs.
-- **Retrieval-augmented generation (RAG)** — vector storage and retrieval so agents can query their own past output, project documents, or external corpora.
-- **Model Context Protocol (MCP)** — tool access via MCP servers so agents can take action against external systems.
-- **Provider-agnostic LLM access** — Ollama-first, but every LLM provider is intended to be a first-class citizen.
-- **Configurable per-agent personalities and parameters** — model choice, system prompts, tool grants, and operational schedules.
-- **Cross-platform desktop UI** — likely Avalonia, with Linux treated as a first-class target rather than an afterthought.
+- **Heartbeat-driven execution.** Agents are scheduled by a heartbeat tick rather than invoked imperatively. The system tick is wired today; per-agent heartbeat firing from `HEARTBEAT.md` is not.
+- **Persistent context** — JSON-lines files on disk for conversation turns; archive on compaction is `mv current.json <unix-ms>.json`.
+- **Self-healing RAG memory** — agent-owned markdown under `memory/`, with a SQLite-backed vector index that reconciles against the filesystem on a schedule.
+- **Model Context Protocol (MCP) tools** — the host exposes its own MCP server (filesystem and memory tools) and dispatches outbound calls to user-configured MCP servers; tool names are source-prefixed (`server__tool`).
+- **Provider-agnostic LLM access** — Ollama is the only shipping provider; the abstraction is in `LlamaShears.Core.Abstractions.Provider`.
+- **Per-agent JSON config** — model, embedding model, MCP server allow-list, tool turn limit, heartbeat period.
+- **Server-rendered Blazor chat UI** — interactive turns over the same event bus the rest of the system speaks.
 
 ## Status
 
-| Area                          | State                                                                                |
-|-------------------------------|--------------------------------------------------------------------------------------|
-| System tick                   | Implemented. `SystemTickService` publishes `SystemTick` on MessagePipe every 30 s.     |
-| Heartbeat                     | Not yet implemented. Will be a per-agent dispatcher consuming `SystemTick` and firing agents at their configured cadence. |
-| Persistence                   | Not yet implemented. Direction is atomic, chunked JSON files on disk; conversation lifecycle is folder placement (active vs. archived). |
-| LLM providers                 | Ollama provider scaffolded. Provider abstraction in place.                           |
-| Memory                        | Not yet implemented. Vector storage will use `Microsoft.Extensions.VectorData`.      |
-| RAG                           | Not yet implemented.                                                                 |
-| MCP integration               | Scaffolded. Server mounted at `/mcp` behind agent bearer auth; only a `whoami` smoke-test tool so far. |
-| API host                      | Minimal ASP.NET surface in the `LlamaShears` host project.                          |
-| Desktop UI                    | Not yet implemented. Likely Avalonia, with Linux as a first-class target.            |
+| Area                          | State |
+|-------------------------------|-------|
+| System tick                   | **Implemented.** `SystemTickService` publishes `system:tick` on the event bus every 30s; `SystemTickOptions.Enabled` controls it. |
+| Heartbeat                     | **Config-only.** `AgentConfig.HeartbeatPeriod` exists; nothing reads it yet — `HEARTBEAT.md` is not delivered to the agent on tick. |
+| Agent loop                    | **Implemented.** Channel-fed, single-threaded per agent, with batching, parallel tool dispatch, per-batch memory enrichment, and a configurable tool turn limit. |
+| Persistence                   | **Implemented.** `JsonLineContextStore` writes turns to `<Context>/<agentId>/current.json`; archives are renamed to `<unix-ms>.json` on compaction. |
+| Context compaction            | **Implemented.** Auto-compacts when token estimate plus predict budget would exceed the model's context window; eager compactor force-compacts after 15 min of agent idle. |
+| LLM providers                 | **Ollama only.** Provider factory + embeddings; `IProviderFactory.Name` selects between providers. |
+| Memory & RAG                  | **Implemented (raw SQLite).** Markdown files under `<workspace>/memory/YYYY-MM-DD/<unix-seconds>.md`, SHA-256-keyed SQLite index at `<workspace>/system/.memory.db`. Cosine similarity is computed in-process; the move to `Microsoft.Extensions.VectorData` + sqlite-vec is still planned. |
+| Memory reconciliation         | **Implemented.** `MemoryIndexerBackgroundService` walks every agent on a configured interval (default 30 min) and reconciles the index against disk. |
+| MCP integration               | **Implemented.** Host MCP server mounted at `/mcp` with bearer auth; built-in tools cover filesystem and memory; user-configured outbound servers are dispatched via `LoopbackBearerHandler`. |
+| API host                      | **Implemented.** ASP.NET Core 10 host (`LlamaShears`) with Razor Components + interactive server render mode. |
+| Blazor chat UI                | **Implemented.** Server-rendered chat with streaming message/thought/tool fragments, scoped CSS, no inline JS where C# can do the job. |
+| Desktop UI                    | **Not implemented.** Blazor server is the only UI today. |
 
 ## Building and running
 
@@ -40,7 +43,18 @@ dotnet build
 dotnet test
 ```
 
-The project targets .NET 10.
+The project targets .NET 10. The shipping host is `src/LlamaShears` (`dotnet run --project src/LlamaShears` for a local Kestrel run); configuration lives in `src/LlamaShears/appsettings.json`. Default data root is `~/.llama-shears/` — override `Paths:DataRoot` (or any of `WorkspaceRoot`, `AgentsRoot`, `TemplatesRoot`, `ContextRoot`) in configuration to relocate it.
+
+Agents are configured by dropping `<agent-id>.json` into `<Data>/agents/`. Minimum schema:
+
+```json
+{
+  "model": { "id": "OLLAMA/llama3.1:latest" },
+  "mcpServers": ["llamashears"]
+}
+```
+
+See [docs/design/agent-config.md](docs/design/agent-config.md) for the full schema.
 
 ## Licensing
 
