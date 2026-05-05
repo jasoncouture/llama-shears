@@ -5,4 +5,6 @@ namespace LlamaShears.Core.Abstractions.Agent;
 
 public sealed record AgentEmbeddingConfig(
     [property: JsonRequired] ModelIdentity Id,
-    TimeSpan? KeepAlive = null);
+    TimeSpan? KeepAlive = null,
+    string? QueryPrefix = null,
+    string? DocumentPrefix = null);

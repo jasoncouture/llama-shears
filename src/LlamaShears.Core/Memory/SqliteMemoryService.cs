@@ -52,7 +52,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         try
         {
             var hash = ComputeHash(content);
-            var vector = await ctx.Embedding.EmbedAsync(content, EmbeddingPurpose.Document, cancellationToken).ConfigureAwait(false);
+            var vector = await ctx.Embedding.EmbedAsync(ctx.DocumentPrefix + content, cancellationToken).ConfigureAwait(false);
             await using var conn = OpenDb(ctx.IndexDbPath);
             EnsureSchema(conn);
             UpsertEntry(conn, relativePath, hash, vector);
@@ -89,7 +89,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
-        var queryVector = await ctx.Embedding.EmbedAsync(query, EmbeddingPurpose.Query, cancellationToken).ConfigureAwait(false);
+        var queryVector = await ctx.Embedding.EmbedAsync(ctx.QueryPrefix + query, cancellationToken).ConfigureAwait(false);
 
         await using var conn = OpenDb(ctx.IndexDbPath);
         EnsureSchema(conn);
@@ -176,7 +176,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 {
                     continue;
                 }
-                var vector = await ctx.Embedding.EmbedAsync(content, EmbeddingPurpose.Document, cancellationToken).ConfigureAwait(false);
+                var vector = await ctx.Embedding.EmbedAsync(ctx.DocumentPrefix + content, cancellationToken).ConfigureAwait(false);
                 UpsertEntry(conn, relativePath, hash, vector);
                 if (existingHash is null)
                 {
@@ -219,6 +219,8 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             ?? throw new InvalidOperationException(
                 $"Agent '{agentId}' has no embedding model and no host-level default is configured.");
         var keepAlive = config.Embedding?.KeepAlive ?? _options.DefaultEmbeddingKeepAlive;
+        var queryPrefix = config.Embedding?.QueryPrefix ?? _options.DefaultEmbeddingQueryPrefix ?? string.Empty;
+        var documentPrefix = config.Embedding?.DocumentPrefix ?? _options.DefaultEmbeddingDocumentPrefix ?? string.Empty;
         var factory = _embeddingFactories.FirstOrDefault(f =>
             string.Equals(f.Name, embeddingId.Provider, StringComparison.Ordinal))
             ?? throw new InvalidOperationException(
@@ -227,7 +229,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             ModelId: embeddingId.Model,
             KeepAlive: keepAlive));
 
-        return new MemoryContext(workspace, indexPath, embedding);
+        return new MemoryContext(workspace, indexPath, embedding, queryPrefix, documentPrefix);
     }
 
     private (string Relative, string Full) AllocateMemoryPath(string workspaceRoot)
@@ -353,7 +355,12 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         return rel.Replace(Path.DirectorySeparatorChar, '/');
     }
 
-    private readonly record struct MemoryContext(string WorkspaceRoot, string IndexDbPath, IEmbeddingModel Embedding);
+    private readonly record struct MemoryContext(
+        string WorkspaceRoot,
+        string IndexDbPath,
+        IEmbeddingModel Embedding,
+        string QueryPrefix,
+        string DocumentPrefix);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Stored memory for agent '{AgentId}' at '{Path}'.")]
     private static partial void LogStored(ILogger logger, string agentId, string path);
