@@ -21,10 +21,10 @@ internal sealed class EventBus : IEventBus, IEventPublisher
         using var loggerScope = _logger.BeginScope("{EventType} {EventCorrelationId}", eventType, correlationId);
         var publisher = _serviceProvider.GetRequiredService<IAsyncPublisher<IEventEnvelope<T>>>();
         var envelope = new EventEnvelope<T>(eventType, EventDeliveryMode.FireAndForget, correlationId, data);
-        _logger.LogInformation("Publishing fire and forget event: {Envelope}", envelope);
+        _logger.LogTrace("Publishing fire and forget event: {Envelope}", envelope);
         publisher.Publish(envelope, cancellationToken);
         envelope = envelope with { DeliveryMode = EventDeliveryMode.Awaited };
-        _logger.LogInformation("Publishing awaited event: {Envelope}", envelope);
+        _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
         await publisher.PublishAsync(envelope, cancellationToken);
         _logger.LogTrace("Event publishing complete");
     }

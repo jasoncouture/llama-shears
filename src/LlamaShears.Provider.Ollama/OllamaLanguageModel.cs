@@ -310,6 +310,6 @@ public partial class OllamaLanguageModel : ILanguageModel
     [LoggerMessage(Level = LogLevel.Debug, Message = "Thought from {ModelId}: {Content}")]
     private static partial void LogThoughtReceived(ILogger logger, string modelId, string content);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Tool call from {ModelId}: {Source}__{Name}")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Tool call from {ModelId}: {Source}__{Name}")]
     private static partial void LogToolCallReceived(ILogger logger, string modelId, string source, string name);
 }
