@@ -55,9 +55,18 @@
 .bubble-tool-result {
     background: var(--bubble-bg);
     border-color: var(--border-strong);
-    border-left: 3px solid var(--primary);
+    border-left: 3px solid var(--text-subtle);
     font-size: 0.9rem;
     align-self: flex-start;
+}
+
+.bubble-tool-inflight {
+    background: rgba(148, 163, 184, 0.08);
+    border-left-color: #94a3b8;
+}
+
+.bubble-tool-result {
+    border-left-color: #10b981;
 }
 
 .bubble-tool-error {
