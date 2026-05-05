@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using ModelContextProtocol.Server;
 
-namespace LlamaShears.Api.Mcp;
+namespace LlamaShears.Api.Tools.ModelContextProtocol;
 
 [McpServerToolType]
 public sealed class WhoamiTool

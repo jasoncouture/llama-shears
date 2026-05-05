@@ -1,5 +1,5 @@
 using LlamaShears.Api.Authentication;
-using LlamaShears.Api.Mcp;
+using LlamaShears.Api.Tools.ModelContextProtocol;
 using LlamaShears.Api.Web;
 using LlamaShears.Core;
 using LlamaShears.Core.Eventing;
@@ -24,7 +24,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddEventHandler<AgentTurnContextPersister>();
         builder.Services.AddEventHandler<AgentTurnLogger>();
         builder.Services.AddAgentBearerAuthentication();
-        builder.Services.AddMcp();
+        builder.Services.AddModelContextProtocol();
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.Services.AddWebUi();
 

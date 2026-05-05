@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using LlamaShears.Api.Mcp;
+using LlamaShears.Api.Tools.ModelContextProtocol;
 using Microsoft.AspNetCore.Http;
 
-namespace LlamaShears.UnitTests.Api.Mcp;
+namespace LlamaShears.UnitTests.Api.Tools.ModelContextProtocol;
 
 public sealed class WhoamiToolTests
 {
