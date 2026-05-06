@@ -11,3 +11,10 @@ Agents must:
 3. Make atomic commits—each commit should represent a single, self-contained change.
 
 For further documentation, see the memory index files in the respective directories.
+
+## C# Guidelines
+
+- Do not use primary constructors on regular classes or structs. Only records may use primary constructors. Disable the associated IDE analysis warnings.
+- Use dotnet CLI/tools to create projects, solutions, add packages, etc. Do not generate these items by hand.
+- Test framework: TUnit.
+- All code must have tests unless it is too difficult or cumbersome to do so.
