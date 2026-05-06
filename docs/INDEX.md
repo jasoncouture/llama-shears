@@ -1,10 +1,14 @@
 # Project Documentation Index
 
-Entry point for LlamaShears design docs. Each topic is a standalone page; ADRs are kept separate because their job is "the decision and why," not "how the system works today."
+Entry point for LlamaShears docs. Each topic is a standalone page; ADRs are kept separate because their job is "the decision and why," not "how the system works today."
+
+## Start here
+
+- [Quickstart](quickstart.md) — `git clone` to talking to an agent in five minutes.
 
 ## Map of the system
 
-Read in this order if you're new:
+Once you have it running, these four together explain how it works:
 
 1. [Architecture overview](design/architecture.md) — what the projects are, what depends on what, where state lives.
 2. [Agent loop](design/agent-loop.md) — what an agent actually does turn-by-turn.
