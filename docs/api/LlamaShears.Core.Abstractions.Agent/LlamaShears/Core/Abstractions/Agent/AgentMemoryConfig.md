@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentMemoryConfig
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Per-agent memory-subsystem options.
 

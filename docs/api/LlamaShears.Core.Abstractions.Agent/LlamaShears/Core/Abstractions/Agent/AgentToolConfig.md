@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentToolConfig
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Per-agent tool-loop guardrails.
 

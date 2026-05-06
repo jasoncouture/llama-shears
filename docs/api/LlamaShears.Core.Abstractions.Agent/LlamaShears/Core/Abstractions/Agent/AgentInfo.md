@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentInfo
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Catalog entry returned by [IAgentFactory](IAgentFactory.md).`ListAgentsAsync`:
 enough metadata to surface an agent in a list without loading it.

@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.IAgentFactory
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Surfaces the catalog of agents a host knows about and constructs
 [IAgent](IAgent.md) instances from [AgentConfiguration](AgentConfiguration.md).

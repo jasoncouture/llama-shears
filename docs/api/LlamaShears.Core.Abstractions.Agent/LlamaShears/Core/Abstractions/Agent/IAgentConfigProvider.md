@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.IAgentConfigProvider
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Source of truth for agent configuration. Reads from the configured
 agents directory (`<Data>/agents/<id>.json`) and is

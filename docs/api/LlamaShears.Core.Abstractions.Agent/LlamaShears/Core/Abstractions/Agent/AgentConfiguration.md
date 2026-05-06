@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentConfiguration
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Construction-time inputs for [IAgentFactory](IAgentFactory.md).`CreateAgent`.
 Carries the agent identifier and a free-form parameter bag so plugin

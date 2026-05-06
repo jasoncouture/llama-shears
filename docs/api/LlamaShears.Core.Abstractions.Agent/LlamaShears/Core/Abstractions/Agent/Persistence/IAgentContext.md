@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.Persistence.IAgentContext
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Live, mutable view of one agent's persisted conversation log.
 Backed by an [IContextStore](IContextStore.md); appending appends both

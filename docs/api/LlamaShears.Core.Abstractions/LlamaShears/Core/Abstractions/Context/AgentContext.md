@@ -50,7 +50,7 @@ Tool catalog visible to the agent for this snapshot.
 
 ## Methods
 
-### `AgentContext`(string AgentId, DateTimeOffset Now, [AgentConfig](../Agent/AgentConfig.md) Config, [LanguageModelContext](LanguageModelContext.md) LanguageModel, [SystemContext](SystemContext.md) System, [ToolContext](ToolContext.md) Tools, [PluginContext](PluginContext.md) Plugins)
+### `AgentContext`(string AgentId, DateTimeOffset Now, AgentConfig Config, [LanguageModelContext](LanguageModelContext.md) LanguageModel, [SystemContext](SystemContext.md) System, [ToolContext](ToolContext.md) Tools, [PluginContext](PluginContext.md) Plugins)
 
 Composed snapshot of everything a tool, compactor, or plugin needs
 to know about "the current agent right now". Built on demand by

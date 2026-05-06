@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.Persistence.ArchiveId
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Identifies a single archived (rotated-out) context file for an
 agent. The pair ([ArchiveId](ArchiveId.md).`AgentId`, [ArchiveId](ArchiveId.md).`UnixMillis`)

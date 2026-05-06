@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentConfig
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Immutable on-disk configuration snapshot for one agent. Loaded from
 `<Data>/agents/<id>.json` by [IAgentConfigProvider](IAgentConfigProvider.md)

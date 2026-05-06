@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.IAgentTokenStore
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 In-process store that issues opaque single-use bearer tokens bound to an
 [AgentInfo](AgentInfo.md). Tokens are valid until consumed (via

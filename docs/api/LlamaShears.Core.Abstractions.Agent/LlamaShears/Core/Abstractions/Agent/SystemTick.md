@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.SystemTick
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Periodic host heartbeat broadcast onto the event bus. Subscribers
 use it as a coarse "wall-clock advanced" signal — agent idle

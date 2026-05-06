@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.Persistence.IContextStore
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Storage seam for per-agent conversation logs. Implementations decide
 the backing format (today: append-only JSON-line files on disk) and

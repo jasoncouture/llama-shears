@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.IAgent
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 An autonomous component that ingests input turns, drives a model,
 and produces output turns. Identified by [IAgent](IAgent.md).`Id`; the

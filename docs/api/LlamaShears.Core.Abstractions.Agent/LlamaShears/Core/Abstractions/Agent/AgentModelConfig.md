@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentModelConfig
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Per-agent language-model selection and per-call options.
 

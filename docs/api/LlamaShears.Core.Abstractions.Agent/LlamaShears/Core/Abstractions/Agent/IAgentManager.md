@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.IAgentManager
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Read-only view onto the set of agents currently loaded by the
 host. Consumers can list agent ids and check whether a given id

@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Agent.AgentEmbeddingConfig
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Agent`
 
 Per-agent embedding-model selection used for memory search.
 Asymmetric prefixes are supplied here so the framework, not the
