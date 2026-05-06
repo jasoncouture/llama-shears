@@ -1,6 +1,6 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
 
@@ -11,15 +11,19 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IShearsPaths _paths;
+    private readonly IFileParserCache<AgentConfigProvider> _cache;
     private readonly ILogger<AgentConfigProvider> _logger;
-    private readonly ConcurrentDictionary<string, CacheEntry> _cache =
-        new(StringComparer.OrdinalIgnoreCase);
 
-    public AgentConfigProvider(IShearsPaths paths, ILogger<AgentConfigProvider> logger)
+    public AgentConfigProvider(
+        IShearsPaths paths,
+        IFileParserCache<AgentConfigProvider> cache,
+        ILogger<AgentConfigProvider> logger)
     {
         ArgumentNullException.ThrowIfNull(paths);
+        ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(logger);
         _paths = paths;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -41,40 +45,48 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
         var path = Path.Combine(_paths.GetPath(PathKind.Agents), agentId + ".json");
-        if (!File.Exists(path))
+        var state = new ParseState(agentId, path, _logger);
+
+        try
         {
-            _cache.TryRemove(agentId, out _);
+            return _cache.GetOrParseAsync<AgentConfig, ParseState>(
+                path,
+                state,
+                ParseAsync,
+                CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (IOException ex)
+        {
+            LogParseFailure(_logger, agentId, path, ex.Message, ex);
             return null;
         }
+    }
 
-        var info = new FileInfo(path);
-        var fingerprint = new Fingerprint(info.LastWriteTimeUtc, info.Length);
-
-        if (_cache.TryGetValue(agentId, out var entry) && entry.Fingerprint == fingerprint)
+    private static ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
+    {
+        if (stream is null)
         {
-            return entry.Config;
+            return ValueTask.FromResult<AgentConfig?>(null);
         }
 
         AgentConfig? config;
         try
         {
-            using var stream = File.OpenRead(path);
             config = JsonSerializer.Deserialize<AgentConfig>(stream, _jsonOptions);
         }
         catch (Exception ex) when (ex is IOException or JsonException)
         {
-            LogParseFailure(_logger, agentId, path, ex.Message, ex);
-            return null;
+            LogParseFailure(state.Logger, state.AgentId, state.Path, ex.Message, ex);
+            return ValueTask.FromResult<AgentConfig?>(null);
         }
 
         if (config is null)
         {
-            LogEmptyConfig(_logger, agentId, path);
-            return null;
+            LogEmptyConfig(state.Logger, state.AgentId, state.Path);
+            return ValueTask.FromResult<AgentConfig?>(null);
         }
 
-        _cache[agentId] = new CacheEntry(fingerprint, config);
-        return config;
+        return ValueTask.FromResult<AgentConfig?>(config);
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}' from {Path}: {Message}")]
@@ -83,7 +95,5 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}' from {Path}: empty document")]
     private static partial void LogEmptyConfig(ILogger logger, string agentId, string path);
 
-    private readonly record struct Fingerprint(DateTime LastWriteTimeUtc, long Length);
-
-    private sealed record CacheEntry(Fingerprint Fingerprint, AgentConfig Config);
+    private readonly record struct ParseState(string AgentId, string Path, ILogger Logger);
 }
