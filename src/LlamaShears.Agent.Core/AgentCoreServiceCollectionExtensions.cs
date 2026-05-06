@@ -36,6 +36,7 @@ public static class AgentCoreServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddHostStartupTaskRunner();
+        services.AddShearsPaths();
         services.TryAddSingleton<AgentManager>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IHostStartupTask, AgentManager>(
