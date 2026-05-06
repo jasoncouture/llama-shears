@@ -5,6 +5,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
+using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
@@ -137,7 +138,8 @@ public sealed class AgentEventPublishingTests
             inferenceRunner: new InferenceRunner(capturing, TimeProvider.System),
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
-            promptContext: Substitute.For<IPromptContextProvider>());
+            promptContext: Substitute.For<IPromptContextProvider>(),
+            memorySearcher: Substitute.For<IMemorySearcher>());
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

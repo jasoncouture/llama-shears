@@ -9,9 +9,16 @@
 - Channel: {{ channel_id }}
 {{- end }}
 {{- if memories.size > 0 }}
-- Memory search matches
+
+## Memory search matches
+
+The following memories were retrieved by similarity to your current turn ({{ memories.size }} hit{{ if memories.size != 1 }}s{{ end }}, ordered by score). Use what's useful, ignore what isn't.
+
 {{- for memory in memories }}
-  - {{ memory.text }}
+
+### {{ memory.relative_path }} (score: {{ memory.score }})
+
+{{ memory.content }}
 {{- end }}
 {{- end }}
 {{- for file in files }}
