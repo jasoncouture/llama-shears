@@ -212,6 +212,46 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
+    public async Task McpServersDefaultsToNullWhenAbsent()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.ModelContextProtocolServers).IsNull();
+    }
+
+    [Test]
+    public async Task McpServersDeserializesAsHashSetOfNames()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" }, "mcpServers": ["github", "linear"] }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.ModelContextProtocolServers).IsNotNull();
+        await Assert.That(config!.ModelContextProtocolServers!).IsEquivalentTo(["github", "linear"]);
+    }
+
+    [Test]
+    public async Task McpServersEmptyArrayDeserializesAsEmptyHashSet()
+    {
+        // Distinct from null: an explicit `[]` whitelists nothing,
+        // including the framework's internal MCP server.
+        const string json = """
+            { "model": { "id": "OLLAMA/x" }, "mcpServers": [] }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.ModelContextProtocolServers).IsNotNull();
+        await Assert.That(config!.ModelContextProtocolServers!.Count).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task ModelKeepAliveNegativeMeansNeverUnload()
     {
         // Convention: any negative TimeSpan means "never unload." STJ
