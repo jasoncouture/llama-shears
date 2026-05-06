@@ -35,4 +35,4 @@ MSG
   exit 1
 fi
 
-echo "=== Clean."
+echo "=== Documentation is up to date"
