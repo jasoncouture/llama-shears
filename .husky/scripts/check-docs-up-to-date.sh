@@ -1,8 +1,34 @@
 #!/usr/bin/env bash
 # Pre-push guard: rebuild from a clean slate and refuse to push if the
 # build regenerated docs/api/ in a way that doesn't match what's committed.
+#
+# Skipped when there are no source changes between the current branch
+# and its tracked upstream — pushing doc-only or CI-only commits doesn't
+# need a rebuild.
 
 set -euo pipefail
+
+# Paths that, if changed, can affect what tooling/LlamaShears.DocsBuild
+# emits under docs/api. Anything outside this set (docs/, tests/,
+# analyzers/, .github/, .husky/, top-level config, etc.) cannot.
+SOURCE_PATHS=(
+  'src/'
+  'tooling/'
+  'Directory.Build.props'
+  'Directory.Build.targets'
+)
+
+upstream=""
+if git rev-parse --verify --quiet '@{u}' >/dev/null 2>&1; then
+  upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}')"
+fi
+
+if [ -n "$upstream" ]; then
+  if git diff --quiet "$upstream"..HEAD -- "${SOURCE_PATHS[@]}"; then
+    echo "=== No source changes since $upstream — skipping doc rebuild"
+    exit 0
+  fi
+fi
 
 echo "=== Cleaning build artifacts"
 dotnet clean --nologo -v q
