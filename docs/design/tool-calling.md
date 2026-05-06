@@ -1,254 +1,205 @@
 # Tool calling
 
-Design doc for the LlamaShears tool-calling subsystem. Nothing in this document is implemented yet; it captures the decisions that came out of the design conversation and the open implementation choices that will be settled when the foundations land.
+How an agent's model invokes external work. The contract surface is in [`Core.Abstractions/Provider/`](../../src/LlamaShears.Core.Abstractions/Provider/) (`ToolCall`, `ToolGroup`, `ToolDescriptor`, `ToolParameter`); the dispatch path is in [`Core/Tools/ModelContextProtocol/`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/); the bundled tools live in [`Api/Tools/ModelContextProtocol/`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/).
 
 ## Goals
 
-- A single tool-calling abstraction that works equally well for in-process C# tools and tools exposed by remote MCP servers. MCP is a first-class citizen, not a follow-up.
-- A turn model that can represent text, tool-call requests, and tool results without polymorphic-class inheritance.
+- A single tool-calling abstraction that works equally well for tools hosted by the host's own MCP listener and tools exposed by remote MCP servers. MCP is the only mechanism — there's no separate "in-process direct-call" path.
+- A turn model that represents text, thoughts, tool-call requests, and tool results without polymorphic-class inheritance.
 - A streaming wire format that can carry tool-call deltas as the model produces them.
-- A deterministic agent loop with explicit termination, structured "what next" handoff to the next frame, and an iteration ceiling that no individual model can blow past.
+- A deterministic agent loop with a structural ceiling that no individual model can blow past.
 - A clean responsibility split between provider (wire format), framework (catalog, execution, loop), and tool author (the work itself).
-- Behavior that lands callers in the pit of success per [ADR-0007](../adr/0007-pit-of-success.md): obvious uses are correct uses; misuse is structurally inconvenient.
 
 ## Out of scope (for now)
 
-- Choice of MCP transport (`stdio`, HTTP, WebSocket) — to be picked when the MCP client lands.
-- Choice of JSON schema library / generator (`System.Text.Json` schema, `JsonSchema.Net`, source generator) — to be picked when internal-tool schema generation lands.
-- Default per-agent iteration ceilings and timeout values — to be set with real model traffic in hand.
-- Tool authorization / per-agent tool grants — eventually a real concern; deferred.
-- Tool result caching, idempotency, retries — out of scope for v1.
+- **Per-tool authorization.** Today the agent whitelists *MCP servers*; everything those servers expose is in. Per-tool grants are deferred until there's a real consumer.
+- **Tool result caching, idempotency, retries.** Out of scope for v1. The model decides what to retry.
+- **Tool timeouts.** Cancellation flows from the agent's `CancellationToken`; per-tool wall-clock budgets are deferred.
+- **Tool-call streaming UI.** The bus carries tool-call fragments (`agent:tool-call:<id>`) as they arrive, but the chat UI today renders them as a single block on completion. Streaming the arguments live is an open UX question, not an architecture one.
 
-## Architecture overview
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                            Agent loop                              │
 │  ┌────────────┐  prompt   ┌────────────────┐                       │
 │  │  Context   │──────────▶│ ILanguageModel │                       │
-│  │ (turns)    │           │   (provider)   │                       │
-│  └────────────┘           └───────┬────────┘                       │
-│        ▲                          │ fragments (text + tool calls)  │
-│        │                          ▼                                │
+│  │ + system   │           │   (provider)   │                       │
+│  │ + ephemera │           └───────┬────────┘                       │
+│  └────────────┘                   │ fragments (text + thought + tools)
+│        ▲                          ▼                                │
 │        │                 ┌────────────────┐                        │
-│        │                 │ Fragment       │                        │
-│        │                 │ accumulator    │                        │
+│        │                 │ InferenceRunner│ accumulates fragments, │
+│        │                 │                │ publishes events       │
 │        │                 └───────┬────────┘                        │
+│        │                         │ InferenceOutcome                │
+│        │                         ▼                                 │
+│        │              ┌──────────────────────┐                     │
+│        │              │ Tool calls present?  │ no  ─▶ done         │
+│        │              └──────────┬───────────┘                     │
+│        │                         │ yes                             │
+│        │                         ▼                                 │
+│        │            ┌─────────────────────────┐                    │
+│        │            │ IToolCallDispatcher     │ parallel fan-out;  │
+│        │            │  → MCP HTTP client      │ source-prefix      │
+│        │            └────────────┬────────────┘ routing            │
 │        │                         │                                 │
 │        │                         ▼                                 │
-│        │                 ┌────────────────┐                        │
-│        │                 │ ReportStatus?  │ yes ─▶ exit loop       │
-│        │                 └───────┬────────┘                        │
-│        │                         │ no                              │
-│        │                         ▼                                 │
-│        │                 ┌────────────────┐                        │
-│        │                 │  Tool runner   │ creates DI scope per   │
-│        │                 │   (parallel)   │ call, dispatches via   │
-│        │                 └───────┬────────┘ ToolCatalog (local +   │
-│        │                         │           MCP), captures result │
-│        │                         ▼                                 │
-│        │                 ┌────────────────┐                        │
-│        └─────────────────│  Tool result   │ appended to context    │
-│                          │     turns      │                        │
-│                          └────────────────┘                        │
+│        │             ┌─────────────────────┐                       │
+│        └─────────────│ Tool turns persist  │ in original call order│
+│                      └─────────────────────┘                       │
+│                                                                    │
+│            (loop again unless this was iteration N = TurnLimit)    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-The provider is a thin wire layer. The agent loop owns the tool catalog, decides when to run tools, runs them, and decides when to stop.
+The provider is a thin wire layer. The agent loop owns the catalog, decides when to dispatch, runs the dispatcher, and decides when to stop.
 
 ## Turn model
 
-The current `ModelTurn` is a record `(Role, Content, Timestamp)`. Tool calling needs richer structure than a single `Content` string carries.
-
-**Decision: polymorphic via interfaces, not class inheritance.**
-
-`ModelTurn` becomes an interface. Concrete records implement it. Each variant carries only the fields that variant needs.
+`ModelTurn` is a single record (no inheritance hierarchy) with optional fields that different roles use:
 
 ```csharp
-public interface IModelTurn
-{
-    ModelRole Role { get; }
-    DateTimeOffset Timestamp { get; }
-}
-
-public sealed record TextTurn(
+public record ModelTurn(
     ModelRole Role,
     string Content,
-    DateTimeOffset Timestamp) : IModelTurn;
-
-public sealed record ToolCallTurn(
-    ModelRole Role,             // Assistant or FrameworkAssistant
-    string CallId,              // provider-supplied correlation id
-    string ToolName,
-    string ArgumentsJson,       // raw JSON; not yet validated
-    DateTimeOffset Timestamp) : IModelTurn;
-
-public sealed record ToolResultTurn(
-    string CallId,              // matches the originating ToolCallTurn
-    string ResultJson,          // structured success or serialized error
-    bool IsError,
-    DateTimeOffset Timestamp) : IModelTurn
+    DateTimeOffset Timestamp,
+    string? ChannelId = null) : IContextEntry
 {
-    public ModelRole Role => ModelRole.Tool; // see below
+    public ImmutableArray<ToolCall> ToolCalls { get; init; } = [];   // assistant turns that emitted calls
+    public ToolCall? ToolCall { get; init; }                         // the call this Tool turn responds to
+    public bool IsError { get; init; }                               // true on a Tool turn whose dispatch failed
+    public ImmutableArray<Attachment> Attachments { get; init; } = [];
 }
 ```
 
-Names are placeholders pending implementation; the shape is what matters.
+`ModelRole` is the discriminator. The values that matter to tool calling:
 
-A new `ModelRole.Tool` value lands at the same time as the polymorphic refactor — tool-result turns need a role that providers can map to the model's tool/function-result wire role (OpenAI `tool`, Anthropic `tool_result`, Ollama follows OpenAI shape).
+- **`Assistant`** — the model's reply. May carry plain text in `Content`, may carry `ToolCalls`, may carry both.
+- **`Tool`** — a tool *result*. `Content` is the dispatcher's flattened text, `ToolCall` is the originating call (so re-prompting can correlate), `IsError` flags failures so the model gets to see the failure mode.
+- **`Thought`** — model reasoning where the provider exposes it (Ollama `think:` blocks, etc.). Persisted but not re-prompted.
+- **`SystemEphemeral`** — the per-turn ephemeral block injected before the user turn. Distinct from the persistent `System` role so providers can render it without confusing it with the system prompt; never persisted. See [prompt-context.md](prompt-context.md).
+- **`User` / `FrameworkUser`** — user input, with `FrameworkUser` reserved for turns the framework synthesized on the user's behalf (heartbeats will use this).
 
-`Content`-keyed APIs that exist today (e.g. anything that accesses `turn.Content`) get rewritten against the polymorphic shape. This is a breaking refactor across the provider layer; it lands in one commit so the solution is consistent.
+`ModelTurn` is the *single* turn type — there is no `TextTurn` / `ToolCallTurn` / `ToolResultTurn` hierarchy; an earlier draft of this design proposed that split, and it didn't survive the implementation.
 
 ## Tool catalog
 
-Tools are exposed via a single interface:
+Tools are descriptors + dispatch — never an interface that ties the two together.
 
 ```csharp
-public interface ITool
-{
-    string Name { get; }
-    string Description { get; }
-    JsonElement InputSchema { get; }   // JSON Schema describing arguments
-}
+public sealed record ToolGroup(string Source, IReadOnlyList<ToolDescriptor> Tools);
+public sealed record ToolDescriptor(string Name, string? Description, IReadOnlyList<ToolParameter> Parameters);
+public sealed record ToolParameter(string Name, string? Description, string Type, bool Required);
 ```
 
-Execution is a *separate* contract:
+The catalog is per-agent. `AgentManager` calls [`IModelContextProtocolToolDiscovery.DiscoverAsync`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/IModelContextProtocolToolDiscovery.cs) for each whitelisted MCP server (resolved through `IModelContextProtocolServerRegistry`), each returning a `ToolGroup` whose `Source` is the server's registered name. The grouped catalog is passed into the agent constructor as `ImmutableArray<ToolGroup>` and stays fixed for the life of the agent — a config reload rebuilds it.
+
+`AgentConfig.ModelContextProtocolServers` (JSON `mcpServers`) is the whitelist. Omit it (or set to `null`) and the agent sees every server the host knows about, including the host's own listener (`llamashears`). See [mcp.md](mcp.md).
+
+There is no separate "internal tool" path. Tools registered with `services.AddMcpServer().WithTools<T>()` (the bundled filesystem and memory tools) live behind the host's own MCP listener and are discovered through the same MCP protocol the agent would use to talk to any external server.
+
+## Tool name encoding (source prefix)
+
+Two facts to coexist:
+
+- A model emits a single tool name string (`name: "read_file"`).
+- The framework needs to know which server the call routes to.
+
+The convention: tool names are reported to the model as `<source>__<name>` (double underscore separator). The provider decodes the prefix when it builds the `ToolCall`:
 
 ```csharp
-public interface IToolHandler
-{
-    ValueTask<ToolResult> InvokeAsync(
-        JsonElement arguments,
-        CancellationToken cancellationToken);
-}
+public sealed record ToolCall(
+    string Source,           // server name; "" if the model emitted no prefix
+    string Name,             // bare tool name
+    string ArgumentsJson,
+    string? CallId = null);
 ```
 
-A tool's schema (`ITool`) and its execution (`IToolHandler`) are decoupled so that:
+`ModelContextProtocolToolCallDispatcher.DispatchAsync`:
 
-- Schema can be authored once and reused across multiple invocation paths (local synchronous, local async, remote-via-MCP).
-- The framework can list tools (catalog UI, debugging, status reports) without instantiating handlers.
-- Internal tools written in C# generate their schema from a typed parameter record; MCP-exposed tools carry their schema directly from the MCP server.
+- Empty `Source` → reject with an error result (`"Tool call '<name>' was rejected: the model emitted an unprefixed name"`). The model sees the failure on the next iteration and can try again.
+- `Source` not in the registry → reject with an error result (`"Tool call '<source>__<name>' was rejected: server '<source>' is not registered"`). Same recovery path.
+- Otherwise: open an MCP client to the server's URI, call the tool with the decoded JSON arguments, flatten the response's `TextContentBlock` entries into a single string, and return `ToolCallResult(Content, IsError)`.
 
-A `ToolCatalog` aggregates `ITool` from two sources:
-
-- **Local tools.** Registered in DI via an extension like `services.AddTool<TParameters, THandler>()` where `TParameters` is the typed parameter record; the handler accepts the record (deserialized from `JsonElement`) and returns a `ToolResult`. Schema is generated from `TParameters` at registration time.
-- **MCP tools.** A connected MCP client lists tools on connect; each surfaces as an `ITool` whose schema is whatever the MCP server reported, and whose handler is an MCP-RPC wrapper.
-
-The agent loop pulls from the catalog when constructing a `ModelPrompt`. The catalog can be filtered per agent if/when per-agent tool grants land.
-
-## Schema authoring
-
-- **Internal C# tools.** Schema is generated from a typed parameter record. The generator details are open (STJ schema, JsonSchema.Net, source generator); the contract is "give me a `Type`, get me a `JsonElement` describing it." Generated schemas are deterministic and versioned by parameter type.
-- **MCP tools.** Use the schema the server reports verbatim. Do not re-derive or reformat it.
-
-The `ITool.InputSchema` accessor exposes whichever path produced the schema; consumers don't need to know.
+The `__` separator is a soft convention — the dispatcher never *parses* the name, it relies on the provider's fragment-decode to have split it cleanly. If you add a provider, that's where to enforce the split.
 
 ## Streaming fragments
 
-`IModelResponseFragment` already carries text fragments. Tool calling adds:
+`ILanguageModel.PromptAsync(prompt, options)` returns `IAsyncEnumerable<IModelResponseFragment>`. The four kinds:
 
-```csharp
-public interface IToolCallFragment : IModelResponseFragment
-{
-    string CallId { get; }
-    string ToolName { get; }      // may arrive before arguments are complete
-    string ArgumentsDelta { get; } // appended to the in-progress arguments string
-    bool IsComplete { get; }       // true on the fragment that finalises the call
-}
-```
+- **`IModelTextResponse`** — appended to the assistant turn's `Content`.
+- **`IModelThoughtResponse`** — accumulated into the thought turn (rendered separately in the UI; see `agent:thought:<id>`).
+- **`IModelToolCallFragment`** — a fully-decoded `ToolCall` (the provider has already split the source prefix and parsed the arguments JSON). Models that emit tool calls one fragment at a time still surface as one `IModelToolCallFragment` per call once the call is complete; per-character argument streaming is an internal concern of the provider.
+- **`IModelCompletionResponse`** — final fragment carrying the token count.
 
-The fragment accumulator stitches deltas back into a `ToolCallTurn` once `IsComplete` arrives. Models that emit complete tool calls in one shot (no streaming) produce a single fragment with `IsComplete = true`.
+[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) consumes the stream, accumulates per-kind state, publishes a fragment event for each chunk (`agent:message`, `agent:thought`, `agent:tool-call`), and on completion publishes the final `agent:turn` events for the assistant turn (with text + tool calls) and any thought turn.
 
 ## Tool execution
 
 Per-call rules:
 
-1. **Each tool invocation gets its own DI scope.** Created when the tool runner picks the call up, disposed when the invocation returns. Tools may take scoped dependencies without captive-dependency hazards.
-2. **Cancellation is propagated.** The agent's cancellation token flows into every invocation. Tools are expected to honour it.
-3. **Failure surfaces to the model.** A throwing tool produces a `ToolResultTurn` with `IsError = true` and the exception serialised into `ResultJson` (type, message, possibly a sanitised stack-tail). The model sees the error in its next prompt and decides what to do — retry with different arguments, call a different tool, give up. The loop does not abort on tool failures.
-4. **Parallel execution is the default.** When a model emits N tool calls in one response, the runner dispatches them concurrently. Tools are responsible for their own concurrency (locking, transactional integrity, idempotency). A tool that cannot tolerate parallel invocation is a tool that needs to handle that internally; the framework does not provide serialization as a service.
-5. **No timeouts in v1.** Cancellation handles the host-shutdown case; per-tool timeouts are deferred until there's a clear demand.
+1. **Parallel by default.** When a model emits N tool calls in one response, `Agent.DispatchToolCallsAsync` launches N tasks via `Task.WhenAll`. Tools are responsible for their own concurrency (locking, transactional integrity, idempotency).
+2. **Cancellation propagates.** The agent's `CancellationToken` flows into every dispatch.
+3. **Failure is structured, not thrown.** A failed dispatch returns a `ToolCallResult(Content, IsError: true)`; the loop converts it to a `Tool` turn with `IsError = true`. The model sees the error in its next prompt and decides what to do.
+4. **No timeouts in v1.** Cancellation handles host shutdown; per-tool wall-clock budgets are deferred.
+5. **Bearer auth flows for loopback calls.** The MCP HTTP client is registered with `LoopbackBearerHandler` as a `DelegatingHandler`; for any request whose URI matches the host's own listener, the handler reads `ICurrentAgentAccessor.Current` and mints a fresh per-call bearer token. External MCP servers see no `Authorization` header from the framework — they're trusted on connect.
+6. **Tool turn order is deterministic.** Results are persisted in *original call order*, even though dispatch is parallel and `agent:tool-result:<id>` events fire in arrival order. Some providers pair tool calls and tool results positionally, not by id; deterministic order keeps re-prompting honest.
 
-## Loop termination: `ReportStatus` as required terminator
+## Loop termination
 
-The agent loop terminates when the model invokes a built-in `ReportStatus` tool. The tool is always in the catalog and is intercepted by the loop rather than dispatched through the normal tool runner.
+The agent loop terminates when:
 
-```jsonschema
-{
-  "name": "ReportStatus",
-  "description": "Hand control back to the host. Call when finished, or to escalate to the next frame.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "done":         { "type": "boolean" },
-      "instructions": { "type": "string"  }
-    },
-    "required": ["done", "instructions"]
-  }
-}
-```
+- The model produces an outcome with no tool calls (the assistant turn is the answer), **or**
+- The current iteration is the `Tools.TurnLimit`-th iteration (the *final iteration*, run with no tools available — see below), **or**
+- An exception propagates up that the loop doesn't catch (`CompactionFailedException`, `OperationCanceledException`).
 
-Semantics:
+There is no `ReportStatus` tool, despite older drafts of this design proposing one. The implemented loop reaches the same end state — *"the model gets a chance to wrap up in plain text before the loop exits"* — by running the final iteration without any tools. If the model still tries to emit tool calls on that turn, they're logged and dropped.
 
-- **`done: true`** — the agent considers its current work complete. The loop ends; the agent is idle until the next system tick.
-- **`done: false`** — the agent has more to do but is yielding to the host (typically because work is naturally chunked). `instructions` becomes the content of a `FrameworkUser` turn injected at the start of the next system tick.
-- **The `ReportStatus` invocation itself does not enter the persistent context.** When the agent's context is serialised for the next prompt, calls to `ReportStatus` are filtered out. The model never sees its own status reports in subsequent turns.
+This is structurally cheaper than `ReportStatus`: no extra round-trip on the happy path, no schema for the model to learn, no special-case interception inside the dispatcher. The loss is that the model has no explicit "I have more to do, hand control back to the host" signal — the design vocabulary calls that "yielding to the host." Today, "yielding" is implicit: hit the turn limit, write text, the next user input picks the conversation back up. If a real need surfaces for explicit yielding (e.g. autonomous run-to-completion on heartbeats), `ReportStatus` is worth revisiting.
 
-If the model produces a text-only assistant turn without calling `ReportStatus`, the loop sends a single `FrameworkUser` reminder ("call ReportStatus when done; do not produce final text without it") and re-prompts. One round-trip in the misuse case; zero in the happy path.
+## Iteration limit
 
-This pattern collapses the "are you done?" question into the model's existing tool-calling muscles, which models execute far more reliably than they execute freeform JSON or terminal-marker conventions.
+`AgentConfig.Tools.TurnLimit` (default `8`) caps how many model round-trips one batch can drive. The mechanic is:
 
-## Iteration limits
+- One iteration = one model prompt round, regardless of how many parallel tool calls fan out from it.
+- Iterations 1 to `N-1` see the full tool catalog.
+- Iteration `N` (the final one) sees an empty tool catalog and an `important_message` in the ephemeral block telling the model to wrap up in text. Any tool calls it still emits are dropped.
 
-Recursive tool-call cycles can run away regardless of which model is driving — the model gets stuck in a small set of tool calls it keeps re-issuing, never reaching `ReportStatus`. Per-agent iteration limits are a structural safeguard, not a per-model workaround.
+`N` is therefore the *total* iteration ceiling and `N-1` is the *tool-using* ceiling. This is intentional: the configured number is the number of model calls the agent will make, full stop. Setting `turnLimit: 1` is the degenerate case — one final-iteration call, no tools available.
 
-- Each agent has a configurable maximum loop iterations per frame (`MaxIterationsPerFrame`).
-- One iteration = one model prompt round (regardless of how many parallel tool calls fan out from it).
-- When the limit is hit before the model calls `ReportStatus`, the loop synthesises a status as if `ReportStatus(done: false, instructions: "Iteration limit reached. Consider whether your approach is converging; you may want to reduce scope or change tactics.")` had been called. The agent gets context on *why* it was cut off in the next frame.
-
-The default value is intentionally not specified here — it should be set against real model traffic. The right floor is "enough that healthy agents never hit it" and the right ceiling is "low enough that a runaway burns out within a frame."
+The default of 8 is a "tall enough that healthy agents don't notice, low enough that a confused model burns out within a batch" guess. Tune per-agent in the config when you have real evidence one way or the other.
 
 ## Provider responsibility split
 
-Provider implementations (Ollama, future OpenAI, future Anthropic, etc.) are responsible for:
+A provider implementation (`OllamaLanguageModel` today, future others) is responsible for:
 
-- Serialising the tool catalog (`IReadOnlyList<ITool>`) into the underlying API's wire format.
-- Translating `ModelTurn`s — including tool-call turns and tool-result turns — into the API's expected message shape.
-- Parsing streaming responses into `IModelResponseFragment` instances, including tool-call fragments.
-- Mapping `ModelRole` (including the new `Tool` value) onto the API's role vocabulary.
+- Translating `ModelPrompt` (a sequence of `ModelTurn`s) and the available tool catalog into the wire format the underlying API expects.
+- Streaming the API response back as `IModelResponseFragment`s, including parsing tool calls into `ToolCall(Source, Name, ArgumentsJson, CallId?)` with the source prefix split.
+- Mapping `ModelRole` (including `Tool` and `SystemEphemeral`) onto the API's role vocabulary.
 
-Provider implementations are explicitly **not** responsible for:
+A provider is explicitly **not** responsible for:
 
-- Choosing which tools are available.
-- Executing any tool.
-- Deciding when the agent loop ends.
-- Handling tool errors.
-- Knowing what `ReportStatus` does.
-
-`ReportStatus` is just another tool from the provider's perspective. The framework intercepts the call before dispatch.
-
-## Open implementation questions
-
-These will be resolved when the foundations land; recording here so the conversation doesn't have to re-derive them.
-
-- **Schema generator.** Source generator vs. STJ-runtime vs. JsonSchema.Net? Decide based on AOT compatibility, ergonomics for parameter records, and dependency weight.
-- **MCP client library.** Use the `Microsoft.Extensions.AI` MCP client, the `ModelContextProtocol` SDK, or roll a thin one? Hinges on transport support and lifecycle management.
-- **`ToolResult` shape.** A `record ToolResult(JsonElement Body, bool IsError)` is the obvious default; whether to model success/error as a discriminated result or a flag is open.
-- **Tool registration ergonomics.** `services.AddTool<TParams, THandler>()` is the proposed surface; whether handlers can be authored as static methods (lighter) or must be classes (DI-friendly) is open.
-- **Persistent vs. transient context.** Where exactly the "filter out `ReportStatus` calls when serialising context" rule lives — in the prompt builder, in the context store, or as a serialisation strategy — is open.
-- **Telemetry.** Tool-call counts, durations, and outcomes are obvious metrics; the wiring point (a logger? a `Meter`? structured events?) is open.
+- Choosing which tools are available (catalog is built by `AgentManager` from the agent's MCP server whitelist).
+- Executing any tool (that's the dispatcher).
+- Deciding when the agent loop ends (that's `Tools.TurnLimit`).
+- Handling tool errors (the framework wraps them into `Tool` turns).
+- Knowing about `<source>__<name>` (the framework decides the convention; the provider just needs to round-trip whatever name the catalog handed it).
 
 ## Anti-goals
 
-To make the boundaries explicit:
-
-- The framework will not introspect tool implementations to infer behaviour. Tools declare what they accept (schema) and what they return; the framework does not parse implementations.
-- The framework will not retry failed tool calls. Failures surface to the model and the model decides.
-- The framework will not serialise concurrent tool calls. Tools that need that serialise themselves.
-- The framework will not convert provider-specific role vocabularies into custom roles to "match" what the model produced. Providers map between `ModelRole` and the API's vocabulary; the rest of the system speaks `ModelRole`.
+- The framework will not introspect tool implementations to infer behavior. Tools declare their schema; the framework does not parse implementations.
+- The framework will not retry failed tool calls. Failures surface to the model.
+- The framework will not serialize concurrent tool calls. Tools that need that serialize themselves.
+- The framework will not synthesize provider-specific role vocabularies. Providers map between `ModelRole` and the API's roles.
 
 ## References
 
-- [ADR-0007: Pit of success](../adr/0007-pit-of-success.md) — the rationale lens.
-- [`Provider.Abstractions/ModelRole.cs`](../../src/LlamaShears.Provider.Abstractions/ModelRole.cs) — current role enum, gains `Tool`.
-- [`Provider.Abstractions/ModelTurn.cs`](../../src/LlamaShears.Provider.Abstractions/ModelTurn.cs) — current turn record, refactored to interface + variant records.
+- [agent-loop.md](agent-loop.md) — the loop that drives this.
+- [mcp.md](mcp.md) — the dispatch and authentication path.
+- [memory.md](memory.md) — the bundled memory tools (`store_memory`, `search_memory`, `index_memory`).
+- [`ToolCall`](../../src/LlamaShears.Core.Abstractions/Provider/ToolCall.cs)
+- [`ModelTurn`](../../src/LlamaShears.Core.Abstractions/Provider/ModelTurn.cs)
+- [`ModelRole`](../../src/LlamaShears.Core.Abstractions/Provider/ModelRole.cs)
+- [`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs)
+- [`Agent.DispatchToolCallsAsync`](../../src/LlamaShears.Core/Agent.cs)
