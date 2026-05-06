@@ -3,7 +3,7 @@
 @inject IAgentDirectory Directory
 @inject ChatSession Session
 
-<div class="agent-picker">
+<div class="chat-header">
     <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChangedAsync">
         <option value="">— select agent —</option>
         @foreach (var id in _agentIds)
@@ -13,15 +13,15 @@
     </select>
     @if (_agentIds.Count == 0)
     {
-        <span class="agent-picker-empty">No agents loaded yet.</span>
+        <span class="chat-header-empty">No agents loaded yet.</span>
     }
-    <div class="agent-picker-actions">
-        <button type="button" class="agent-picker-button" title="Refresh" aria-label="Refresh agents" @onclick="Refresh">
+    <div class="chat-header-actions">
+        <button type="button" class="chat-header-button" title="Refresh" aria-label="Refresh agents" @onclick="Refresh">
             <Icon Name="arrow-clockwise" />
         </button>
-        <span class="agent-picker-sep" aria-hidden="true"></span>
+        <span class="chat-header-sep" aria-hidden="true"></span>
         <button type="button"
-                class="agent-picker-button agent-picker-toggle @(Session.ShowThoughts ? "is-on" : null)"
+                class="chat-header-button chat-header-toggle @(Session.ShowThoughts ? "is-on" : null)"
                 title="@(Session.ShowThoughts ? "Hide thinking" : "Show thinking")"
                 aria-label="Toggle thinking visibility"
                 aria-pressed="@(Session.ShowThoughts ? "true" : "false")"
