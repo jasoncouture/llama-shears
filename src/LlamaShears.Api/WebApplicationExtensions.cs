@@ -8,6 +8,9 @@ public static class WebApplicationExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        app.UseAuthentication();
+        app.UseAuthorization();
+
         return app;
     }
 }
