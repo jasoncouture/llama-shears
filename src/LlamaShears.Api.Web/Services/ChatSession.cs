@@ -12,7 +12,8 @@ public sealed class ChatSession :
     IEventHandler<AgentMessageFragment>,
     IEventHandler<AgentThoughtFragment>,
     IEventHandler<AgentToolCallFragment>,
-    IEventHandler<AgentToolResultFragment>
+    IEventHandler<AgentToolResultFragment>,
+    IEventHandler<AgentCompactionMarker>
 {
     private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
@@ -25,10 +26,13 @@ public sealed class ChatSession :
     private IDisposable? _thoughtSubscription;
     private IDisposable? _toolCallSubscription;
     private IDisposable? _toolResultSubscription;
+    private IDisposable? _compactingStartedSubscription;
+    private IDisposable? _compactingFinishedSubscription;
     private string? _selectedAgentId;
     private bool _showThoughts = true;
     private bool _showStreaming = true;
     private bool _showTools = true;
+    private bool _isCompacting;
 
     public ChatSession(
         IEventBus bus,
@@ -151,14 +155,19 @@ public sealed class ChatSession :
             _bubbles.Clear();
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
+            _isCompacting = false;
             _messageSubscription?.Dispose();
             _thoughtSubscription?.Dispose();
             _toolCallSubscription?.Dispose();
             _toolResultSubscription?.Dispose();
+            _compactingStartedSubscription?.Dispose();
+            _compactingFinishedSubscription?.Dispose();
             _messageSubscription = null;
             _thoughtSubscription = null;
             _toolCallSubscription = null;
             _toolResultSubscription = null;
+            _compactingStartedSubscription = null;
+            _compactingFinishedSubscription = null;
             if (!string.IsNullOrWhiteSpace(agentId))
             {
                 foreach (var turn in history)
@@ -183,6 +192,14 @@ public sealed class ChatSession :
                     this);
                 _toolResultSubscription = _bus.Subscribe<AgentToolResultFragment>(
                     $"{Event.WellKnown.Agent.ToolResult}:{agentId}",
+                    EventDeliveryMode.Awaited,
+                    this);
+                _compactingStartedSubscription = _bus.Subscribe<AgentCompactionMarker>(
+                    $"{Event.WellKnown.Agent.CompactingStarted}:{agentId}",
+                    EventDeliveryMode.Awaited,
+                    this);
+                _compactingFinishedSubscription = _bus.Subscribe<AgentCompactionMarker>(
+                    $"{Event.WellKnown.Agent.CompactingFinished}:{agentId}",
                     EventDeliveryMode.Awaited,
                     this);
             }
@@ -235,6 +252,17 @@ public sealed class ChatSession :
             cancellationToken).ConfigureAwait(false);
     }
 
+    public bool IsCompacting
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _isCompacting;
+            }
+        }
+    }
+
     public void Dispose()
     {
         lock (_gate)
@@ -243,10 +271,14 @@ public sealed class ChatSession :
             _thoughtSubscription?.Dispose();
             _toolCallSubscription?.Dispose();
             _toolResultSubscription?.Dispose();
+            _compactingStartedSubscription?.Dispose();
+            _compactingFinishedSubscription?.Dispose();
             _messageSubscription = null;
             _thoughtSubscription = null;
             _toolCallSubscription = null;
             _toolResultSubscription = null;
+            _compactingStartedSubscription = null;
+            _compactingFinishedSubscription = null;
         }
     }
 
@@ -284,6 +316,38 @@ public sealed class ChatSession :
             ApplyToolResult(envelope.Type.Id, envelope.CorrelationId, fragment);
         }
         return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(IEventEnvelope<AgentCompactionMarker> envelope, CancellationToken cancellationToken)
+    {
+        var started = string.Equals(
+            envelope.Type.Component,
+            Event.WellKnown.Agent.CompactingStarted.Component,
+            StringComparison.Ordinal)
+            && string.Equals(
+                envelope.Type.EventName,
+                Event.WellKnown.Agent.CompactingStarted.EventName,
+                StringComparison.Ordinal);
+        ApplyCompactionState(envelope.Type.Id, started);
+        return ValueTask.CompletedTask;
+    }
+
+    private void ApplyCompactionState(string? agentId, bool active)
+    {
+        bool changed;
+        lock (_gate)
+        {
+            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            {
+                return;
+            }
+            changed = _isCompacting != active;
+            _isCompacting = active;
+        }
+        if (changed)
+        {
+            Changed?.Invoke();
+        }
     }
 
     private void ApplyToolCall(string? agentId, Guid correlationId, AgentToolCallFragment fragment)

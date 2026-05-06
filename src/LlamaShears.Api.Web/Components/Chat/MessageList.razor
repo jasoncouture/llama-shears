@@ -7,7 +7,7 @@
     {
         <p class="messages-empty">Pick an agent to start a conversation.</p>
     }
-    else if (Session.Bubbles.Count == 0)
+    else if (Session.Bubbles.Count == 0 && !Session.IsCompacting)
     {
         <p class="messages-empty">No messages yet. Send something below.</p>
     }
@@ -38,7 +38,19 @@
             }
             <ChatBubbleView Bubble="@bubble" AgentName="@Session.SelectedAgentId" />
         }
-        if (hiddenIndicatorKind is { } kind && !hasVisibleBusy)
+        // Compaction always anchors a busy indicator regardless of
+        // toggles — it's not part of the conversation, just framework
+        // bookkeeping the user should know is in progress.
+        if (Session.IsCompacting)
+        {
+            <div class="typing-indicator typing-indicator-thinking" role="status">
+                <div class="typing-indicator-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <small class="typing-indicator-label">compacting</small>
+            </div>
+        }
+        else if (hiddenIndicatorKind is { } kind && !hasVisibleBusy)
         {
             var (modifier, label) = kind switch
             {
