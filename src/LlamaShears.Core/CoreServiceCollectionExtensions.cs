@@ -69,6 +69,7 @@ public static class CoreServiceCollectionExtensions
         services.AddShearsPaths();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<AgentManager>();
+        services.TryAddSingleton<IAgentManager>(sp => sp.GetRequiredService<AgentManager>());
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IHostStartupTask, AgentManager>(
                 sp => sp.GetRequiredService<AgentManager>()));

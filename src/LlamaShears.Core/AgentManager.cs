@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class AgentManager : IHostStartupTask, IDisposable
+public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IDisposable
 {
     private readonly IAsyncSubscriber<SystemTick> _ticks;
     private readonly IEnumerable<IProviderFactory> _providers;
@@ -39,8 +39,14 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
         _services = services;
     }
 
-    public IReadOnlyDictionary<string, IAgent> Agents
-        => _loaded.ToDictionary(kv => kv.Key, kv => kv.Value.Agent, StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyList<string> AgentIds
+        => [.. _loaded.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)];
+
+    public bool Contains(string agentId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        return _loaded.ContainsKey(agentId);
+    }
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
