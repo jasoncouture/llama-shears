@@ -11,7 +11,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LlamaShears.Core.Abstractions\LlamaShears.Core.Abstractions.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Agent\LlamaShears.Core.Abstractions.Agent.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Caching\LlamaShears.Core.Abstractions.Caching.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Context\LlamaShears.Core.Abstractions.Context.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Events\LlamaShears.Core.Abstractions.Events.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Memory\LlamaShears.Core.Abstractions.Memory.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Paths\LlamaShears.Core.Abstractions.Paths.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.PromptContext\LlamaShears.Core.Abstractions.PromptContext.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Seeding\LlamaShears.Core.Abstractions.Seeding.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.SystemPrompt\LlamaShears.Core.Abstractions.SystemPrompt.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Templating\LlamaShears.Core.Abstractions.Templating.csproj" />
     <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
   </ItemGroup>
 
