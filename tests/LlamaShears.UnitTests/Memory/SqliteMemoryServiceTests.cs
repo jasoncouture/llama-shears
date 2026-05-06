@@ -136,6 +136,35 @@ public sealed class SqliteMemoryServiceTests
     }
 
     [Test]
+    public async Task ReconcileRebuildsIndexWhenEmbedderDimensionChanges()
+    {
+        // Index a memory at one dimension, then swap the embedder to a
+        // different dimension and reconcile. SqliteVec rejects the new
+        // upserts as a NOT NULL constraint failure on memories.vector;
+        // the service must catch that, blow away the index db, and
+        // rebuild from disk. force:true mirrors the host-side
+        // ForceOnStartup behaviour that triggers upserts even when file
+        // hashes are unchanged.
+        using var h = MemoryTestHarness.CreateWithVariableDimension(initialDimensions: 16);
+        var memory = await h.Service.StoreAsync(h.AgentId, "stable content", CancellationToken.None);
+
+        h.VariableDim!.Dimensions = 32;
+
+        var summary = await h.Service.ReconcileAsync(h.AgentId, force: true, CancellationToken.None);
+
+        // After the rebuild the file is the only source of truth: it
+        // re-appears as Added (the index started empty after reset) and
+        // Total = 1.
+        await Assert.That(summary.Added).IsEqualTo(1);
+        await Assert.That(summary.Total).IsEqualTo(1);
+
+        // And the rebuilt index is queryable at the new dimension.
+        var hits = await h.Service.SearchAsync(h.AgentId, "stable content", limit: 5, minScore: 0.0, CancellationToken.None);
+        await Assert.That(hits.Count).IsEqualTo(1);
+        await Assert.That(hits[0].RelativePath).IsEqualTo(memory.RelativePath);
+    }
+
+    [Test]
     public async Task SecondStoreInSameSecondGetsDistinctPath()
     {
         using var h = MemoryTestHarness.Create();

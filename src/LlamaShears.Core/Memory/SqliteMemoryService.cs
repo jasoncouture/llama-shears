@@ -5,6 +5,7 @@ using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.VectorData;
@@ -139,6 +140,29 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         var ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
         Directory.CreateDirectory(Path.GetDirectoryName(ctx.IndexDbPath)!);
 
+        try
+        {
+            return await ReconcileCoreAsync(agentId, force, ctx, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsVectorDimensionMismatch(ex))
+        {
+            // The agent's embedding model produces a different vector
+            // dimension than the existing index was built for. sqlite-vec
+            // surfaces this as a NOT NULL constraint failure on the
+            // vector column. Drop the index and rebuild from disk — the
+            // markdown files are the source of truth.
+            LogIndexSchemaMismatchRebuilding(_logger, agentId, ctx.IndexDbPath);
+            ResetIndex(ctx.IndexDbPath);
+            return await ReconcileCoreAsync(agentId, force: true, ctx, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async ValueTask<MemoryReconciliation> ReconcileCoreAsync(
+        string agentId,
+        bool force,
+        MemoryContext ctx,
+        CancellationToken cancellationToken)
+    {
         // Probe the embedder once so we know the dimension before
         // touching the collection — needed even when no on-disk files
         // exist (orphan-only reconcile case).
@@ -204,6 +228,54 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             LogIndexedRemoved(_logger, agentId, path);
         }
         return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count, Total: seen.Count);
+    }
+
+    private static bool IsVectorDimensionMismatch(Exception exception)
+    {
+        for (var ex = exception; ex is not null; ex = ex.InnerException!)
+        {
+            if (ex is SqliteException sqlite)
+            {
+                var msg = sqlite.Message;
+                // sqlite-vec's native dim check, fires on a properly-
+                // shaped vec0 table when an upsert vector size disagrees
+                // with the column's declared FLOAT[N]. Manifests as
+                // SQLITE_ERROR with a "Dimension mismatch" message.
+                if (msg.Contains("Dimension mismatch", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                // Legacy hand-rolled schema (pre-VectorData migration)
+                // being read by sqlite-vec. The underlying memories
+                // table doesn't match what vec0 expects, so the upsert
+                // surfaces as a NOT NULL violation on the vector column
+                // (SQLITE_CONSTRAINT, error code 19).
+                if (sqlite.SqliteErrorCode == 19
+                    && msg.Contains($"{CollectionName}.vector", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            if (ex.InnerException is null)
+            {
+                break;
+            }
+        }
+        return false;
+    }
+
+    private static void ResetIndex(string indexDbPath)
+    {
+        // Microsoft.Data.Sqlite caches connections per connection-string
+        // in a process-wide pool. Clear it before deleting the file or
+        // Windows refuses the unlink (Linux happily lets a held inode
+        // be unlinked, so this is mostly a Windows guard, but harmless
+        // either way).
+        SqliteConnection.ClearAllPools();
+        if (File.Exists(indexDbPath))
+        {
+            File.Delete(indexDbPath);
+        }
     }
 
     private async ValueTask<MemoryContext> ResolveAsync(string agentId, CancellationToken cancellationToken)
@@ -336,4 +408,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (removed orphan) for agent '{AgentId}': {Path}")]
     private static partial void LogIndexedRemoved(ILogger logger, string agentId, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Memory index for agent '{AgentId}' has a vector dimension mismatch (likely an embedding-model change); resetting '{Path}' and rebuilding from disk.")]
+    private static partial void LogIndexSchemaMismatchRebuilding(ILogger logger, string agentId, string path);
 }
