@@ -12,20 +12,22 @@ namespace LlamaShears.Agent.Abstractions;
 public interface IAgent
 {
     /// <summary>
-    /// Wall-clock time the agent's <see cref="HeartbeatAsync"/> last completed.
+    /// Wall-clock time the agent's last heartbeat completed.
     /// </summary>
     DateTimeOffset LastHeartbeatAt { get; }
 
     /// <summary>
-    /// Desired cadence between heartbeats. The heartbeat service polls at a
-    /// fixed one-minute granularity, so periods shorter than one minute will
-    /// effectively fire every minute.
+    /// Desired cadence between heartbeats. The heartbeat dispatcher
+    /// derives heartbeat firings from the host's <see cref="FrameTick"/>
+    /// (currently every 30 seconds), so periods shorter than the frame
+    /// interval effectively fire every frame.
     /// </summary>
     TimeSpan HeartbeatPeriod { get; }
 
     /// <summary>
-    /// Whether heartbeats are currently enabled for this agent. The heartbeat
-    /// service skips agents whose value is <see langword="false"/>.
+    /// Whether heartbeats are currently enabled for this agent. The
+    /// heartbeat dispatcher skips agents whose value is
+    /// <see langword="false"/>.
     /// </summary>
     bool HeartbeatEnabled { get; }
 
