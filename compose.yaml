@@ -14,6 +14,13 @@ services:
       - ./.data:/data
     environment:
       Paths__DataRoot: /data
+    env_file:
+      # Both optional. .env is shared defaults; .local.env is per-host
+      # overrides (secrets, alternate provider URIs, etc.).
+      - path: .env
+        required: false
+      - path: .local.env
+        required: false
     restart: unless-stopped
     # stdin/tty so Ctrl+C reaches the host cleanly when run with
     # `docker compose up` (no `-d`).
