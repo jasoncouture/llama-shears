@@ -52,7 +52,8 @@ public sealed class OneTypePerFileCodeFixProvider : CodeFixProvider
         context.RegisterCodeFix(
             CodeAction.Create(
                 title: $"Move '{typeName}' to its own file",
-                createChangedSolution: ct => MoveTypeAsync(context.Document, typeDecl, typeName, ct),
+                createChangedSolution: cancellationToken =>
+                    MoveTypeAsync(context.Document, typeDecl, typeName, cancellationToken),
                 equivalenceKey: nameof(OneTypePerFileCodeFixProvider)),
             diagnostic);
     }
