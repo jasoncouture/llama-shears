@@ -6,14 +6,12 @@
       IDE0301 = error) are advisory only and never fail the build.
     -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-
     <!--
       Default to non-packable. Only the projects we explicitly ship as
       NuGet packages opt in by setting <IsPackable>true</IsPackable> in
       their own .csproj.
     -->
     <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
-
     <!--
       Repo-root anchor for solution-relative paths (notably DocumentationRoot
       consumed by the LlamaShears.DocsBuild MSBuild task). This file lives
@@ -21,4 +19,10 @@
     -->
     <LlamaShearsRepoRoot>$(MSBuildThisFileDirectory)</LlamaShearsRepoRoot>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Condition="!Exists('packages.config')">
+      <PrivateAssets>all</PrivateAssets>
+      <Version>3.9.50</Version>
+    </PackageReference>
+  </ItemGroup>
 </Project>
