@@ -14,4 +14,8 @@
     <ProjectReference Include="..\LlamaShears.Core.Abstractions\LlamaShears.Core.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.42.0" />
+  </ItemGroup>
+
 </Project>

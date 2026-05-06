@@ -55,7 +55,14 @@ else
                 <span class="bubble-streaming">…</span>
             }
         </header>
-        <pre class="bubble-content">@Bubble.Content</pre>
+        @if (RendersAsMarkdown)
+        {
+            <div class="bubble-content bubble-markdown">@((MarkupString)MarkdownRenderer.ToHtml(Bubble.Content))</div>
+        }
+        else
+        {
+            <pre class="bubble-content">@Bubble.Content</pre>
+        }
     </article>
 }
 
@@ -79,6 +86,12 @@ else
         : Bubble.Kind.ToString();
 
     private string FullTimestamp => Bubble.At.ToLocalTime().ToString("F", System.Globalization.CultureInfo.CurrentCulture);
+
+    // Only User and Assistant content gets markdown-rendered. Thought
+    // bubbles stay raw — they're scratchpad text with mid-token line
+    // wraps that markdown would mangle into garbage.
+    private bool RendersAsMarkdown =>
+        Bubble.Kind is ChatBubbleKind.User or ChatBubbleKind.Assistant;
 
     // The Ollama provider flattens (source, name) to source__name on the
     // wire; that's a provider-specific transport detail and shouldn't

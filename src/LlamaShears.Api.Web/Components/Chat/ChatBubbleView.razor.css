@@ -31,6 +31,103 @@
     text-align: left;
 }
 
+/* Markdown-rendered content: stop pre-wrap so prose flows; the inner
+   <pre> blocks (code fences) re-enable whitespace preservation. */
+.bubble-markdown {
+    white-space: normal;
+}
+
+.bubble-markdown > :first-child {
+    margin-top: 0;
+}
+
+.bubble-markdown > :last-child {
+    margin-bottom: 0;
+}
+
+.bubble-markdown p {
+    margin: 0.5rem 0;
+}
+
+.bubble-markdown h1,
+.bubble-markdown h2,
+.bubble-markdown h3,
+.bubble-markdown h4,
+.bubble-markdown h5,
+.bubble-markdown h6 {
+    margin: 0.75rem 0 0.35rem;
+    line-height: 1.25;
+}
+
+.bubble-markdown h1 { font-size: 1.4em; }
+.bubble-markdown h2 { font-size: 1.25em; }
+.bubble-markdown h3 { font-size: 1.1em; }
+.bubble-markdown h4,
+.bubble-markdown h5,
+.bubble-markdown h6 { font-size: 1em; }
+
+.bubble-markdown ul,
+.bubble-markdown ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.bubble-markdown li {
+    margin: 0.15rem 0;
+}
+
+.bubble-markdown a {
+    color: var(--primary);
+}
+
+.bubble-markdown code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.05rem 0.3rem;
+    border-radius: var(--radius-sm);
+}
+
+.bubble-markdown pre {
+    margin: 0.5rem 0;
+    padding: 0.6rem 0.85rem;
+    background: var(--code-bg);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.bubble-markdown pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.bubble-markdown blockquote {
+    margin: 0.5rem 0;
+    padding: 0.1rem 0.85rem;
+    border-left: 3px solid var(--border-strong);
+    color: var(--text-muted);
+}
+
+.bubble-markdown table {
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+}
+
+.bubble-markdown th,
+.bubble-markdown td {
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+}
+
+.bubble-markdown hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 0.75rem 0;
+}
+
 .bubble-user {
     background: var(--bubble-user-bg);
     border-color: var(--bubble-user-border);
