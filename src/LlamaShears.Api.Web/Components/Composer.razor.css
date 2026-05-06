@@ -53,7 +53,7 @@
 }
 
 .composer button:disabled {
-    background: #9ca3af;
+    background: var(--button-disabled-bg);
     cursor: not-allowed;
 }
 
@@ -66,7 +66,7 @@
 
 .composer-hint code {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    background: #f3f4f6;
+    background: var(--code-bg);
     padding: 0.05rem 0.3rem;
     border-radius: 0.25rem;
     font-size: 0.75rem;
