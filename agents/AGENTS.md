@@ -1,3 +1,6 @@
+## .NET Solution Format
+
+This project uses a modern .NET SDK. The `.slnx` file is the default solution format and should be preferred by agents for all solution-related operations.
 # AGENTS.md
 
 ## Agent Instructions
