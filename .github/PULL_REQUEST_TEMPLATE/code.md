@@ -16,10 +16,6 @@ Comment blocks are for you — keep, edit, or delete them as you go.
 
 <!-- The "why" lives here, not in the diff. -->
 
-## Tests
-
-<!-- What was added or changed. If nothing, say why. -->
-
 ## Notes for review
 
 <!-- Optional. Anything reviewers should know that isn't obvious from the diff: known weaknesses, follow-up planned, areas you'd like extra eyes on. -->
