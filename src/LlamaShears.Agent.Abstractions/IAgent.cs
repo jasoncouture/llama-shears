@@ -4,7 +4,10 @@ namespace LlamaShears.Agent.Abstractions;
 
 /// <summary>
 /// An agent: an autonomous component that periodically heartbeats and
-/// can be conversed with via streaming chat.
+/// communicates via input and output channels rather than returning
+/// data to a caller. Inputs are accepted from any of
+/// <see cref="InputChannels"/> and outputs are sent to all of
+/// <see cref="OutputChannels"/>; both append to <see cref="Context"/>.
 /// </summary>
 public interface IAgent
 {
@@ -27,12 +30,29 @@ public interface IAgent
     bool HeartbeatEnabled { get; }
 
     /// <summary>
-    /// Performs the agent's periodic heartbeat tick.
+    /// The agent's current conversational context. Grows as turns arrive
+    /// from <see cref="InputChannels"/> and as the agent emits turns to
+    /// <see cref="OutputChannels"/>.
     /// </summary>
-    Task HeartbeatAsync(CancellationToken cancellationToken);
+    IReadOnlyList<ModelTurn> Context { get; }
 
     /// <summary>
-    /// Streams a chat response to the supplied prompt.
+    /// Sources the agent reads input turns from. Inputs from any channel
+    /// are accepted and appended to <see cref="Context"/>.
     /// </summary>
-    IAsyncEnumerable<IModelResponseFragment> ChatAsync(ModelPrompt prompt, CancellationToken cancellationToken);
+    IReadOnlyList<IInputChannel> InputChannels { get; }
+
+    /// <summary>
+    /// Destinations the agent sends produced turns to. Outputs are
+    /// fanned out to every channel in this list and appended to
+    /// <see cref="Context"/>.
+    /// </summary>
+    IReadOnlyList<IOutputChannel> OutputChannels { get; }
+
+    /// <summary>
+    /// Performs the agent's periodic heartbeat tick. Implementations
+    /// typically drain inputs, advance the model, and dispatch outputs
+    /// during this call.
+    /// </summary>
+    Task HeartbeatAsync(CancellationToken cancellationToken);
 }
