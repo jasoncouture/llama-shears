@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class ExtensionMethodOnThisAnalyzerTests
 {
     [Test]
-    public async Task This_extension_method_call_reports_LS0006_as_warning()
+    public async Task ThisExtensionMethodCallReportsLS0006AsWarning()
     {
         const string source =
             """
@@ -34,7 +34,7 @@ public sealed class ExtensionMethodOnThisAnalyzerTests
     }
 
     [Test]
-    public async Task Descriptor_is_configurable()
+    public async Task DescriptorIsConfigurable()
     {
         var analyzer = new ExtensionMethodOnThisAnalyzer();
         var descriptor = analyzer.SupportedDiagnostics[0];
@@ -43,7 +43,7 @@ public sealed class ExtensionMethodOnThisAnalyzerTests
     }
 
     [Test]
-    public async Task This_instance_method_call_does_not_report()
+    public async Task ThisInstanceMethodCallDoesNotReport()
     {
         const string source =
             """
@@ -62,7 +62,7 @@ public sealed class ExtensionMethodOnThisAnalyzerTests
     }
 
     [Test]
-    public async Task Extension_call_on_other_instance_does_not_report()
+    public async Task ExtensionCallOnOtherInstanceDoesNotReport()
     {
         const string source =
             """
@@ -87,7 +87,7 @@ public sealed class ExtensionMethodOnThisAnalyzerTests
     }
 
     [Test]
-    public async Task Bare_this_does_not_report()
+    public async Task BareThisDoesNotReport()
     {
         const string source =
             """
