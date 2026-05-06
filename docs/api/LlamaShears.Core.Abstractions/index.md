@@ -24,17 +24,6 @@ Public API surface, organized by namespace.
 - [IAgentContext](LlamaShears/Core/Abstractions/Agent/Persistence/IAgentContext.md)
 - [IContextStore](LlamaShears/Core/Abstractions/Agent/Persistence/IContextStore.md)
 
-## LlamaShears.Core.Abstractions.Caching
-
-- [CacheResult<T>](LlamaShears/Core/Abstractions/Caching/CacheResult-1.md)
-- [IFileParserCache<T>](LlamaShears/Core/Abstractions/Caching/IFileParserCache-1.md)
-- [IShearsCache<T>](LlamaShears/Core/Abstractions/Caching/IShearsCache-1.md)
-
-## LlamaShears.Core.Abstractions.Content
-
-- [Attachment](LlamaShears/Core/Abstractions/Content/Attachment.md)
-- [AttachmentKind](LlamaShears/Core/Abstractions/Content/AttachmentKind.md)
-
 ## LlamaShears.Core.Abstractions.Context
 
 - [AgentContext](LlamaShears/Core/Abstractions/Context/AgentContext.md)
@@ -46,20 +35,6 @@ Public API surface, organized by namespace.
 - [ToolDescriptor](LlamaShears/Core/Abstractions/Context/ToolDescriptor.md)
 - [ToolGroup](LlamaShears/Core/Abstractions/Context/ToolGroup.md)
 - [ToolParameter](LlamaShears/Core/Abstractions/Context/ToolParameter.md)
-
-## LlamaShears.Core.Abstractions.Events
-
-- [Event](LlamaShears/Core/Abstractions/Events/Event.md)
-- [EventBusExtensions](LlamaShears/Core/Abstractions/Events/EventBusExtensions.md)
-- [EventDeliveryMask](LlamaShears/Core/Abstractions/Events/EventDeliveryMask.md)
-- [EventDeliveryMode](LlamaShears/Core/Abstractions/Events/EventDeliveryMode.md)
-- [EventPublisherExtensions](LlamaShears/Core/Abstractions/Events/EventPublisherExtensions.md)
-- [EventType](LlamaShears/Core/Abstractions/Events/EventType.md)
-- [IEventBus](LlamaShears/Core/Abstractions/Events/IEventBus.md)
-- [IEventEnvelope<T>](LlamaShears/Core/Abstractions/Events/IEventEnvelope-1.md)
-- [IEventFilter](LlamaShears/Core/Abstractions/Events/IEventFilter.md)
-- [IEventHandler<T>](LlamaShears/Core/Abstractions/Events/IEventHandler-1.md)
-- [IEventPublisher](LlamaShears/Core/Abstractions/Events/IEventPublisher.md)
 
 ## LlamaShears.Core.Abstractions.Events.Agent
 
@@ -73,37 +48,6 @@ Public API surface, organized by namespace.
 ## LlamaShears.Core.Abstractions.Events.Channel
 
 - [ChannelMessage](LlamaShears/Core/Abstractions/Events/Channel/ChannelMessage.md)
-
-## LlamaShears.Core.Abstractions.Events.Event
-
-- [Sources](LlamaShears/Core/Abstractions/Events/Event/Sources.md)
-- [WellKnown](LlamaShears/Core/Abstractions/Events/Event/WellKnown.md)
-
-## LlamaShears.Core.Abstractions.Events.Event.WellKnown
-
-- [Agent](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Agent.md)
-- [Channel](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Channel.md)
-- [Host](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Host.md)
-
-## LlamaShears.Core.Abstractions.Memory
-
-- [IMemoryIndexer](LlamaShears/Core/Abstractions/Memory/IMemoryIndexer.md)
-- [IMemorySearcher](LlamaShears/Core/Abstractions/Memory/IMemorySearcher.md)
-- [IMemoryStore](LlamaShears/Core/Abstractions/Memory/IMemoryStore.md)
-- [MemoryReconciliation](LlamaShears/Core/Abstractions/Memory/MemoryReconciliation.md)
-- [MemoryRef](LlamaShears/Core/Abstractions/Memory/MemoryRef.md)
-- [MemorySearchResult](LlamaShears/Core/Abstractions/Memory/MemorySearchResult.md)
-
-## LlamaShears.Core.Abstractions.Paths
-
-- [IShearsPaths](LlamaShears/Core/Abstractions/Paths/IShearsPaths.md)
-- [PathKind](LlamaShears/Core/Abstractions/Paths/PathKind.md)
-
-## LlamaShears.Core.Abstractions.PromptContext
-
-- [IPromptContextProvider](LlamaShears/Core/Abstractions/PromptContext/IPromptContextProvider.md)
-- [PromptContextMemory](LlamaShears/Core/Abstractions/PromptContext/PromptContextMemory.md)
-- [PromptContextParameters](LlamaShears/Core/Abstractions/PromptContext/PromptContextParameters.md)
 
 ## LlamaShears.Core.Abstractions.Provider
 
@@ -136,18 +80,4 @@ Public API surface, organized by namespace.
 - [ThinkLevel](LlamaShears/Core/Abstractions/Provider/ThinkLevel.md)
 - [ToolCall](LlamaShears/Core/Abstractions/Provider/ToolCall.md)
 - [ToolCallResult](LlamaShears/Core/Abstractions/Provider/ToolCallResult.md)
-
-## LlamaShears.Core.Abstractions.Seeding
-
-- [IDirectorySeeder](LlamaShears/Core/Abstractions/Seeding/IDirectorySeeder.md)
-
-## LlamaShears.Core.Abstractions.SystemPrompt
-
-- [ISystemPromptProvider](LlamaShears/Core/Abstractions/SystemPrompt/ISystemPromptProvider.md)
-- [SystemPromptTemplateParameters](LlamaShears/Core/Abstractions/SystemPrompt/SystemPromptTemplateParameters.md)
-- [WorkspaceFile](LlamaShears/Core/Abstractions/SystemPrompt/WorkspaceFile.md)
-
-## LlamaShears.Core.Abstractions.Templating
-
-- [ITemplateRenderer](LlamaShears/Core/Abstractions/Templating/ITemplateRenderer.md)
 

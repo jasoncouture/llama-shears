@@ -10,6 +10,15 @@
     <Project Path="src/LlamaShears.Api.Web/LlamaShears.Api.Web.csproj" />
     <Project Path="src/LlamaShears.Api/LlamaShears.Api.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions/LlamaShears.Core.Abstractions.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Caching/LlamaShears.Core.Abstractions.Caching.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Content/LlamaShears.Core.Abstractions.Content.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Events/LlamaShears.Core.Abstractions.Events.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Memory/LlamaShears.Core.Abstractions.Memory.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Paths/LlamaShears.Core.Abstractions.Paths.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.PromptContext/LlamaShears.Core.Abstractions.PromptContext.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Seeding/LlamaShears.Core.Abstractions.Seeding.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.SystemPrompt/LlamaShears.Core.Abstractions.SystemPrompt.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Templating/LlamaShears.Core.Abstractions.Templating.csproj" />
     <Project Path="src/LlamaShears.Core.Eventing/LlamaShears.Core.Eventing.csproj" />
     <Project Path="src/LlamaShears.Core.Eventing.Extensions/LlamaShears.Core.Eventing.Extensions.csproj" />
     <Project Path="src/LlamaShears.Core/LlamaShears.Core.csproj" />
