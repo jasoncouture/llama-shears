@@ -97,28 +97,3 @@
     color: var(--primary);
 }
 
-.reconnect-reload {
-    font: inherit;
-    padding: 0.45rem 1.25rem;
-    background: var(--primary);
-    color: #fff;
-    border: 0;
-    border-radius: 0.625rem;
-    cursor: pointer;
-    transition: background 120ms;
-}
-
-.reconnect-reload:hover {
-    background: var(--primary-hover);
-}
-
-/* The Reload button is only meaningful once the user can act on the
-   failure — hide it while the framework is still retrying. */
-.reconnect-reload {
-    display: none;
-}
-
-.components-reconnect-failed .reconnect-reload,
-.components-reconnect-rejected .reconnect-reload {
-    display: inline-block;
-}

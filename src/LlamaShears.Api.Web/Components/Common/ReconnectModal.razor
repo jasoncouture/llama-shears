@@ -2,9 +2,10 @@
    (via id="components-reconnect-modal"). When this element is in the
    DOM the framework toggles the components-reconnect-{show, retrying,
    paused, failed, rejected, hide} class on it instead of injecting its
-   own default overlay/dialog tree. The button uses an inline DOM
-   event because the SignalR runtime is gone in this state — a Blazor
-   @onclick handler can't fire. *@
+   own default overlay/dialog tree. Once the framework gives up
+   (failed/rejected), reconnect-auto-reload.js triggers a full page
+   reload — the SignalR runtime is gone in those states, so the only
+   useful action is a fresh load. *@
 
 <div id="components-reconnect-modal" class="reconnect-modal">
     <div class="reconnect-card">
@@ -19,8 +20,7 @@
             <span id="components-reconnect-max-retries">8</span>.
         </p>
         <p class="reconnect-msg reconnect-msg-paused">Connection paused.</p>
-        <p class="reconnect-msg reconnect-msg-failed">Reconnection failed.</p>
-        <p class="reconnect-msg reconnect-msg-rejected">Could not reconnect to the server.</p>
-        <button type="button" class="reconnect-reload" onclick="location.reload()">Reload</button>
+        <p class="reconnect-msg reconnect-msg-failed">Reconnection failed — reloading…</p>
+        <p class="reconnect-msg reconnect-msg-rejected">Could not reconnect — reloading…</p>
     </div>
 </div>
