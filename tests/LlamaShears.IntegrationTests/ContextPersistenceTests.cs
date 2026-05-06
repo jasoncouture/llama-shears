@@ -1,12 +1,11 @@
 using System.Text.Json;
 using LlamaShears.Api.Web.Services;
-using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.IntegrationTests.Hosting;
-using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.IntegrationTests;
@@ -151,7 +150,7 @@ public sealed class ContextPersistenceTests
         IsolatedAppFactory factory,
         string content)
     {
-        var publisher = factory.Services.GetRequiredService<IAsyncPublisher<UserMessageSubmitted>>();
+        var publisher = factory.Services.GetRequiredService<IEventPublisher>();
         var bus = factory.Services.GetRequiredService<IEventBus>();
 
         var done = new TaskCompletionSource<ModelTurn>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -168,7 +167,8 @@ public sealed class ContextPersistenceTests
             });
 
         await publisher.PublishAsync(
-            new UserMessageSubmitted(AgentId, content, DateTimeOffset.UtcNow),
+            Event.WellKnown.Channel.Message with { Id = "test" },
+            new ChannelMessage(content, AgentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
         var winner = await Task.WhenAny(done.Task, Task.Delay(ResponseTimeout));

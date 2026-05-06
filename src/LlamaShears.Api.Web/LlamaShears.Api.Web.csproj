@@ -14,8 +14,4 @@
     <ProjectReference Include="..\LlamaShears.Core.Abstractions\LlamaShears.Core.Abstractions.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MessagePipe" Version="1.8.1" />
-  </ItemGroup>
-
 </Project>

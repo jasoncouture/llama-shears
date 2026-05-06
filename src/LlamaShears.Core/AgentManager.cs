@@ -2,7 +2,6 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Channels;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -191,18 +190,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
-        IReadOnlyList<IInputChannel> inputs =
-        [
-            ActivatorUtilities.CreateInstance<UiInputChannel>(_services, name),
-        ];
-
         return ActivatorUtilities.CreateInstance<Agent>(
             _services,
             name,
             config,
             model,
             agentContext,
-            inputs,
             modelConfig);
     }
 
