@@ -7,35 +7,35 @@ namespace LlamaShears.Agent.Core;
 
 /// <summary>
 /// Dependency-injection registration for the agent core: MessagePipe
-/// (the internal eventing system), heartbeat options, and the
-/// <see cref="AgentHeartbeatService"/> hosted service.
+/// (the internal eventing system), frame-tick options, and the
+/// <see cref="FrameTickService"/> hosted service.
 /// </summary>
 public static class AgentCoreServiceCollectionExtensions
 {
     /// <summary>
-    /// Default configuration section bound to <see cref="AgentHeartbeatOptions"/>.
+    /// Default configuration section bound to <see cref="FrameTickOptions"/>.
     /// </summary>
-    public const string DefaultHeartbeatConfigurationSection = "Agents:Heartbeat";
+    public const string DefaultFrameTickConfigurationSection = "Frame";
 
     /// <summary>
-    /// Registers MessagePipe and the agent heartbeat service. Heartbeat
-    /// options are bound from <paramref name="heartbeatConfigurationSection"/>
+    /// Registers MessagePipe and the frame-tick service. Frame-tick
+    /// options are bound from <paramref name="frameTickConfigurationSection"/>
     /// on the <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>
     /// resolved from DI.
     /// </summary>
     public static IServiceCollection AddAgentCore(
         this IServiceCollection services,
-        string heartbeatConfigurationSection = DefaultHeartbeatConfigurationSection)
+        string frameTickConfigurationSection = DefaultFrameTickConfigurationSection)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentException.ThrowIfNullOrWhiteSpace(heartbeatConfigurationSection);
+        ArgumentException.ThrowIfNullOrWhiteSpace(frameTickConfigurationSection);
 
         services.AddMessagePipe();
 
-        services.AddOptions<AgentHeartbeatOptions>()
-            .BindConfiguration(heartbeatConfigurationSection);
+        services.AddOptions<FrameTickOptions>()
+            .BindConfiguration(frameTickConfigurationSection);
 
-        services.AddHostedService<AgentHeartbeatService>();
+        services.AddHostedService<FrameTickService>();
 
         return services;
     }
