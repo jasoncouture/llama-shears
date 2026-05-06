@@ -1,15 +1,14 @@
 using System.Buffers;
-using System.Collections.Immutable;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.VectorData;
+using Microsoft.SemanticKernel.Connectors.SqliteVec;
 
 namespace LlamaShears.Core.Memory;
 
@@ -18,6 +17,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     private const string MemoryFolder = "memory";
     private const string IndexFolder = "system";
     private const string IndexFileName = ".memory.db";
+    private const string CollectionName = "memories";
 
     private readonly IAgentConfigProvider _configs;
     private readonly IEnumerable<IEmbeddingProviderFactory> _embeddingFactories;
@@ -53,12 +53,13 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         {
             var hash = ComputeHash(content);
             var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken).ConfigureAwait(false);
-            await using var conn = OpenDb(ctx.IndexDbPath);
-            EnsureSchema(conn);
-            UpsertEntry(conn, relativePath, hash, vector);
+            var collection = await OpenCollectionAsync(ctx, vector.Length, cancellationToken).ConfigureAwait(false);
+            await collection.UpsertAsync(
+                new MemoryVectorRecord { Path = relativePath, Hash = hash, Vector = vector },
+                cancellationToken).ConfigureAwait(false);
             LogStored(_logger, agentId, relativePath);
         }
-        catch (Exception ex) when (ex is SqliteException or InvalidOperationException or HttpRequestException)
+        catch (Exception ex) when (ex is VectorStoreException or InvalidOperationException or HttpRequestException)
         {
             // The file is the source of truth; the next reconcile picks
             // it up. Do not fail StoreAsync just because indexing didn't
@@ -89,57 +90,37 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
-        await using var conn = OpenDb(ctx.IndexDbPath);
-        EnsureSchema(conn);
-
-        // Short-circuit on an empty index — embedding a query that has
-        // nothing to match against is a wasted round-trip (and a fatal
-        // hang if the embedder is unreachable).
-        await using (var countCmd = conn.CreateCommand())
-        {
-            countCmd.CommandText = "SELECT COUNT(*) FROM memories";
-            var count = Convert.ToInt32(
-                await countCmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false),
-                System.Globalization.CultureInfo.InvariantCulture);
-            if (count == 0)
-            {
-                LogSearchScored(_logger, agentId, 0, 0, 0, minScore);
-                return [];
-            }
-        }
-
         var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken).ConfigureAwait(false);
+        var collection = await OpenCollectionAsync(ctx, queryVector.Length, cancellationToken).ConfigureAwait(false);
 
         var ranked = new List<MemorySearchResult>();
         var scanned = 0;
         var topRawScore = double.NegativeInfinity;
-        await using (var cmd = conn.CreateCommand())
+        await foreach (var hit in collection
+            .SearchAsync(queryVector, top: Math.Max(limit * 4, limit), cancellationToken: cancellationToken)
+            .ConfigureAwait(false))
         {
-            cmd.CommandText = "SELECT path, vector FROM memories";
-            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            scanned++;
+            // SqliteVec returns cosine *distance* (lower is better; 0 =
+            // identical) in VectorSearchResult.Score. Translate to the
+            // similarity scale callers expect (1.0 = identical).
+            var score = 1.0 - hit.Score ?? 0.0;
+            if (score > topRawScore)
             {
-                scanned++;
-                var relativePath = reader.GetString(0);
-                var bytes = (byte[])reader.GetValue(1);
-                var vector = MemoryMarshal.Cast<byte, float>(bytes);
-                var score = CosineSimilarity(queryVector.Span, vector);
-                if (score > topRawScore)
-                {
-                    topRawScore = score;
-                }
-                if (score < minScore)
-                {
-                    continue;
-                }
-                // Drop hits whose backing file is gone. Reconcile will
-                // GC the orphaned row later; the model never sees it.
-                if (!File.Exists(Path.Combine(ctx.WorkspaceRoot, relativePath)))
-                {
-                    continue;
-                }
-                ranked.Add(new MemorySearchResult(relativePath, score));
+                topRawScore = score;
             }
+            if (score < minScore)
+            {
+                continue;
+            }
+            // Drop hits whose backing file is gone. Reconcile will GC
+            // the orphaned row later; the model never sees it.
+            var relativePath = hit.Record.Path;
+            if (!File.Exists(Path.Combine(ctx.WorkspaceRoot, relativePath)))
+            {
+                continue;
+            }
+            ranked.Add(new MemorySearchResult(relativePath, score));
         }
 
         ranked.Sort(static (a, b) => b.Score.CompareTo(a.Score));
@@ -158,18 +139,18 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         var ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
         Directory.CreateDirectory(Path.GetDirectoryName(ctx.IndexDbPath)!);
 
-        await using var conn = OpenDb(ctx.IndexDbPath);
-        EnsureSchema(conn);
+        // Probe the embedder once so we know the dimension before
+        // touching the collection — needed even when no on-disk files
+        // exist (orphan-only reconcile case).
+        var dimension = await ProbeDimensionAsync(ctx, cancellationToken).ConfigureAwait(false);
+        var collection = await OpenCollectionAsync(ctx, dimension, cancellationToken).ConfigureAwait(false);
 
         var indexed = new Dictionary<string, string>(StringComparer.Ordinal);
-        await using (var cmd = conn.CreateCommand())
+        await foreach (var record in collection
+            .GetAsync(static _ => true, top: int.MaxValue, cancellationToken: cancellationToken)
+            .ConfigureAwait(false))
         {
-            cmd.CommandText = "SELECT path, hash FROM memories";
-            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                indexed[reader.GetString(0)] = reader.GetString(1);
-            }
+            indexed[record.Path] = record.Hash;
         }
 
         var memoryRoot = Path.Combine(ctx.WorkspaceRoot, MemoryFolder);
@@ -193,7 +174,9 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                     continue;
                 }
                 var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken).ConfigureAwait(false);
-                UpsertEntry(conn, relativePath, hash, vector);
+                await collection.UpsertAsync(
+                    new MemoryVectorRecord { Path = relativePath, Hash = hash, Vector = vector },
+                    cancellationToken).ConfigureAwait(false);
                 if (existingHash is null)
                 {
                     added++;
@@ -217,12 +200,9 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
         foreach (var path in orphans)
         {
-            DeleteEntry(conn, path);
+            await collection.DeleteAsync(path, cancellationToken).ConfigureAwait(false);
             LogIndexedRemoved(_logger, agentId, path);
         }
-        // After reconcile the index contains exactly what's on disk:
-        // every file we walked landed in `seen`, every orphan we found
-        // was deleted. seen.Count is the post-reconcile total.
         return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count, Total: seen.Count);
     }
 
@@ -254,6 +234,42 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         return new MemoryContext(workspace, indexPath, embedding, queryPrefix, documentPrefix);
     }
 
+    private async ValueTask<VectorStoreCollection<string, MemoryVectorRecord>> OpenCollectionAsync(
+        MemoryContext ctx,
+        int dimensions,
+        CancellationToken cancellationToken)
+    {
+        var dir = Path.GetDirectoryName(ctx.IndexDbPath);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        var connectionString = $"Data Source={ctx.IndexDbPath};Pooling=True";
+        var definition = new VectorStoreCollectionDefinition
+        {
+            Properties =
+            [
+                new VectorStoreKeyProperty(nameof(MemoryVectorRecord.Path), typeof(string)),
+                new VectorStoreDataProperty(nameof(MemoryVectorRecord.Hash), typeof(string)),
+                new VectorStoreVectorProperty(nameof(MemoryVectorRecord.Vector), typeof(ReadOnlyMemory<float>), dimensions)
+                {
+                    DistanceFunction = DistanceFunction.CosineDistance,
+                },
+            ],
+        };
+        var store = new SqliteVectorStore(connectionString);
+        var collection = store.GetCollection<string, MemoryVectorRecord>(CollectionName, definition);
+        await collection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
+        return collection;
+    }
+
+    private static async ValueTask<int> ProbeDimensionAsync(MemoryContext ctx, CancellationToken cancellationToken)
+    {
+        var probe = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}probe", cancellationToken).ConfigureAwait(false);
+        return probe.Length;
+    }
+
     private (string Relative, string Full) AllocateMemoryPath(string workspaceRoot)
     {
         var now = _time.GetUtcNow();
@@ -270,88 +286,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             counter++;
         }
         return (ToRelative(workspaceRoot, full), full);
-    }
-
-    private static SqliteConnection OpenDb(string path)
-    {
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir))
-        {
-            Directory.CreateDirectory(dir);
-        }
-        var connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = path,
-            Mode = SqliteOpenMode.ReadWriteCreate,
-            Pooling = true,
-        }.ToString();
-        var conn = new SqliteConnection(connectionString);
-        conn.Open();
-        return conn;
-    }
-
-    private static void EnsureSchema(SqliteConnection conn)
-    {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS memories (
-                path TEXT PRIMARY KEY,
-                hash TEXT NOT NULL,
-                vector BLOB NOT NULL
-            );
-            """;
-        cmd.ExecuteNonQuery();
-    }
-
-    private static void UpsertEntry(SqliteConnection conn, string path, string hash, ReadOnlyMemory<float> vector)
-    {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            INSERT INTO memories (path, hash, vector)
-            VALUES ($path, $hash, $vector)
-            ON CONFLICT(path) DO UPDATE SET hash = excluded.hash, vector = excluded.vector;
-            """;
-        cmd.Parameters.AddWithValue("$path", path);
-        cmd.Parameters.AddWithValue("$hash", hash);
-        cmd.Parameters.AddWithValue("$vector", VectorToBytes(vector));
-        cmd.ExecuteNonQuery();
-    }
-
-    private static void DeleteEntry(SqliteConnection conn, string path)
-    {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM memories WHERE path = $path";
-        cmd.Parameters.AddWithValue("$path", path);
-        cmd.ExecuteNonQuery();
-    }
-
-    private static byte[] VectorToBytes(ReadOnlyMemory<float> vector)
-    {
-        var bytes = new byte[vector.Length * sizeof(float)];
-        MemoryMarshal.AsBytes(vector.Span).CopyTo(bytes);
-        return bytes;
-    }
-
-    private static double CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-    {
-        if (a.Length != b.Length || a.Length == 0)
-        {
-            return 0;
-        }
-        double dot = 0;
-        double normA = 0;
-        double normB = 0;
-        for (var i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-        if (normA == 0 || normB == 0)
-        {
-            return 0;
-        }
-        return dot / (Math.Sqrt(normA) * Math.Sqrt(normB));
     }
 
     private static string ComputeHash(string content)
