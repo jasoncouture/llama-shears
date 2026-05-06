@@ -78,11 +78,21 @@ If a change is non-trivial:
 - Cross-reference any relevant ADRs or design docs.
 - Verify both `dotnet build` and `dotnet test` are green locally before opening the PR.
 
-**Size policy.** The actual standard is *complexity*, not line count. Line count is the easy-to-measure proxy and it tends to correlate, but the rule is not "PRs over N lines are rejected." Around 500 lines is where a maintainer will start expecting justification for the size; the larger the PR gets from there, the stronger that justification needs to be. There is no hard upper limit and no automatic rejection.
+**Size policy.** The actual standard is *complexity*. Line count is the easy-to-measure proxy and it tends to correlate, but the rule is not "PRs over N lines are rejected."
 
-Automated refactors — large mechanical changes from a tool, where the volume is in the tool's output rather than human decisions — are scored on the human-decision portion, not the line count. A 4000-line rename pass with a tight commit message is not a 4000-line review.
+This policy gates the *initial review triage* — the "is this reviewable at all, does it follow the rules" stage that runs before content review. Passing triage does not mean the PR will be merged; it means a maintainer is willing to read it. Failing triage means the PR comes back to you for restructuring before any reviewer engages with the content.
 
-The reason size matters at all is review surface, not commit count. A 1500-line PR composed of fifteen clean 100-line atomic commits is reviewable — one decision at a time, and large changes become tractable that way. A 600-line PR squashed into one commit, or split across commits that cross-cut concerns, is not, regardless of total size. If your change is large *and* the commits are not atomic, the path is to rebase the branch into atomic commits before requesting review. "It's all related" is not strong justification. "Splitting introduces a non-buildable intermediate state" might be, depending on the case.
+Rough calibration, assuming atomic commits and Conventional Commits throughout:
+
+- ~200 lines across 2+ commits — almost certainly passes triage.
+- ~500 lines across 5–10 commits — may pass, with questions about why it has to be that size.
+- ~1600 lines even with 10 clean commits — probably does not pass triage; expect a request to break it apart, regardless of commit hygiene.
+
+These are not hard limits. A larger PR with a strong reason can pass; a smaller PR with cross-cutting commits or unclear motivation can fail. The numbers are calibration, not gates.
+
+Automated refactors — large mechanical changes from a tool, where the volume is in the tool's output rather than human decisions — are scored on the human-decision portion. A 4000-line tool-driven rename pass with a tight commit message is not a 4000-line review.
+
+The reason size matters at all is review surface. A change broken into clean atomic commits is reviewable one decision at a time; the same change squashed, or split across commits that cross-cut concerns, is not, regardless of total size. If your change is large and the commits are not atomic, the path is to rebase the branch into atomic commits before requesting review. "It's all related" is not strong justification. "Splitting introduces a non-buildable intermediate state" might be, depending on the case.
 
 ## Adding a new ADR
 
