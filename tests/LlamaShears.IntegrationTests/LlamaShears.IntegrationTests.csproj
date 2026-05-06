@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LlamaShears.Api.Host\LlamaShears.Api.Host.csproj" />
+    <ProjectReference Include="..\..\src\LlamaShears\LlamaShears.csproj" />
   </ItemGroup>
 
 </Project>

@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LlamaShears.Api.Host\LlamaShears.Api.Host.csproj" />
+    <ProjectReference Include="..\..\src\LlamaShears\LlamaShears.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Core.Eventing\LlamaShears.Core.Eventing.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Provider.Ollama\LlamaShears.Provider.Ollama.csproj" />

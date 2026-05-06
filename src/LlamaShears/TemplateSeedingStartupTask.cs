@@ -2,7 +2,7 @@ using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Seeding;
 using LlamaShears.Hosting;
 
-namespace LlamaShears.Api.Host;
+namespace LlamaShears;
 
 public sealed class TemplateSeedingStartupTask : IHostStartupTask
 {
