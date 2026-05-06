@@ -13,7 +13,7 @@ XML doc comments are reflexively attached to every public symbol in many .NET co
 
 A doc block that does not tell the reader something the name doesn't is a cost — reading time, review time, drift risk — without the corresponding benefit.
 
-User-facing operational details and developer-facing contract details are different things for different audiences. They belong on different surfaces. A developer opening `DataRoot` in the IDE wants to know what to *use* the symbol for. An operator running the host wants to know where data actually goes and how to relocate it. Cramming both into one XML block serves neither audience well, drifts twice as fast, and bloats the file in the editor.
+User-facing operational details and developer-facing contract details are different things for different audiences. They belong on different surfaces. A developer opening `IShearsPaths.GetPath` in the IDE wants to know what to *use* the symbol for. An operator running the host wants to know where data actually goes and how to relocate it. Cramming both into one XML block serves neither audience well, drifts twice as fast, and bloats the file in the editor.
 
 ## Decision
 

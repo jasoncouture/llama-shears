@@ -19,7 +19,7 @@ public sealed partial class TemplateSeedingStartupTask : IHostStartupTask
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
-        var destination = _paths.TemplatesRoot;
+        var destination = _paths.GetPath(PathKind.Templates);
         var source = Path.Combine(AppContext.BaseDirectory, BundledContentSubpath);
 
         SeedIfEmpty(source, destination, _logger);

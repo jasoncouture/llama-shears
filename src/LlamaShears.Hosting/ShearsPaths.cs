@@ -27,14 +27,6 @@ public sealed class ShearsPaths : IShearsPaths
         };
     }
 
-    public string DataRoot => _roots[PathKind.Data];
-
-    public string WorkspaceRoot => _roots[PathKind.Workspace];
-
-    public string AgentsRoot => _roots[PathKind.Agents];
-
-    public string TemplatesRoot => _roots[PathKind.Templates];
-
     public string GetPath(PathKind kind, string? subpath = null)
     {
         if (!_roots.TryGetValue(kind, out var root))
@@ -43,12 +35,6 @@ public sealed class ShearsPaths : IShearsPaths
         }
 
         return string.IsNullOrWhiteSpace(subpath) ? root : Path.Combine(root, subpath);
-    }
-
-    public string GetAgentWorkspaceDefaultPath(string agentName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentName);
-        return GetPath(PathKind.Workspace, agentName);
     }
 
     private static string DefaultDataRoot() =>

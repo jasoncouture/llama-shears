@@ -10,36 +10,25 @@ public sealed class ShearsPathsTests
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
+        var dataRoot = paths.GetPath(PathKind.Data);
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        await Assert.That(Path.GetDirectoryName(paths.DataRoot)).IsEqualTo(userProfile);
-        await Assert.That(Path.GetFileName(paths.DataRoot)).IsEqualTo(".llama-shears");
+
+        await Assert.That(Path.GetDirectoryName(dataRoot)).IsEqualTo(userProfile);
+        await Assert.That(Path.GetFileName(dataRoot)).IsEqualTo(".llama-shears");
     }
 
     [Test]
-    public async Task TemplatesRoot_defaults_under_DataRoot()
+    [Arguments(PathKind.Workspace, "workspace")]
+    [Arguments(PathKind.Agents, "agents")]
+    [Arguments(PathKind.Templates, "templates")]
+    public async Task Subroot_defaults_under_DataRoot(PathKind kind, string folderName)
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
-        await Assert.That(Path.GetDirectoryName(paths.TemplatesRoot)).IsEqualTo(paths.DataRoot);
-        await Assert.That(Path.GetFileName(paths.TemplatesRoot)).IsEqualTo("templates");
-    }
+        var subroot = paths.GetPath(kind);
 
-    [Test]
-    public async Task WorkspaceRoot_defaults_under_DataRoot()
-    {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
-
-        await Assert.That(Path.GetDirectoryName(paths.WorkspaceRoot)).IsEqualTo(paths.DataRoot);
-        await Assert.That(Path.GetFileName(paths.WorkspaceRoot)).IsEqualTo("workspace");
-    }
-
-    [Test]
-    public async Task AgentsRoot_defaults_under_DataRoot()
-    {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
-
-        await Assert.That(Path.GetDirectoryName(paths.AgentsRoot)).IsEqualTo(paths.DataRoot);
-        await Assert.That(Path.GetFileName(paths.AgentsRoot)).IsEqualTo("agents");
+        await Assert.That(Path.GetDirectoryName(subroot)).IsEqualTo(paths.GetPath(PathKind.Data));
+        await Assert.That(Path.GetFileName(subroot)).IsEqualTo(folderName);
     }
 
     [Test]
@@ -48,10 +37,10 @@ public sealed class ShearsPathsTests
         using var fixture = new TempRoot();
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
 
-        await Assert.That(paths.DataRoot).IsEqualTo(fixture.Path);
-        await Assert.That(Path.GetDirectoryName(paths.WorkspaceRoot)).IsEqualTo(fixture.Path);
-        await Assert.That(Path.GetDirectoryName(paths.AgentsRoot)).IsEqualTo(fixture.Path);
-        await Assert.That(Path.GetDirectoryName(paths.TemplatesRoot)).IsEqualTo(fixture.Path);
+        await Assert.That(paths.GetPath(PathKind.Data)).IsEqualTo(fixture.Path);
+        await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Workspace))).IsEqualTo(fixture.Path);
+        await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Agents))).IsEqualTo(fixture.Path);
+        await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Templates))).IsEqualTo(fixture.Path);
     }
 
     [Test]
@@ -66,29 +55,8 @@ public sealed class ShearsPathsTests
             WorkspaceRoot = workspace.Path,
         }));
 
-        await Assert.That(paths.WorkspaceRoot).IsEqualTo(workspace.Path);
-        await Assert.That(Path.GetDirectoryName(paths.AgentsRoot)).IsEqualTo(data.Path);
-    }
-
-    [Test]
-    [Arguments(PathKind.Data)]
-    [Arguments(PathKind.Workspace)]
-    [Arguments(PathKind.Agents)]
-    [Arguments(PathKind.Templates)]
-    public async Task GetPath_with_no_subpath_returns_the_root_for_each_kind(PathKind kind)
-    {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
-
-        var expected = kind switch
-        {
-            PathKind.Data => paths.DataRoot,
-            PathKind.Workspace => paths.WorkspaceRoot,
-            PathKind.Agents => paths.AgentsRoot,
-            PathKind.Templates => paths.TemplatesRoot,
-            _ => throw new InvalidOperationException(),
-        };
-
-        await Assert.That(paths.GetPath(kind)).IsEqualTo(expected);
+        await Assert.That(paths.GetPath(PathKind.Workspace)).IsEqualTo(workspace.Path);
+        await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Agents))).IsEqualTo(data.Path);
     }
 
     [Test]
@@ -98,7 +66,7 @@ public sealed class ShearsPathsTests
 
         var combined = paths.GetPath(PathKind.Templates, "spec/v1");
 
-        await Assert.That(combined).IsEqualTo(Path.Combine(paths.TemplatesRoot, "spec/v1"));
+        await Assert.That(combined).IsEqualTo(Path.Combine(paths.GetPath(PathKind.Templates), "spec/v1"));
     }
 
     [Test]
@@ -109,7 +77,7 @@ public sealed class ShearsPathsTests
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
 
-        await Assert.That(paths.GetPath(PathKind.Agents, subpath)).IsEqualTo(paths.AgentsRoot);
+        await Assert.That(paths.GetPath(PathKind.Agents, subpath)).IsEqualTo(paths.GetPath(PathKind.Agents));
     }
 
     [Test]
@@ -130,38 +98,6 @@ public sealed class ShearsPathsTests
 
         await Assert.That(() => paths.GetPath((PathKind)999))
             .Throws<ArgumentOutOfRangeException>();
-    }
-
-    [Test]
-    public async Task GetAgentWorkspaceDefaultPath_returns_WorkspaceRoot_agentName()
-    {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
-
-        var path = paths.GetAgentWorkspaceDefaultPath("alpha");
-
-        await Assert.That(path).IsEqualTo(Path.Combine(paths.WorkspaceRoot, "alpha"));
-    }
-
-    [Test]
-    public async Task GetAgentWorkspaceDefaultPath_does_not_create_the_directory()
-    {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
-        var agentName = $"unit-test-{Guid.NewGuid():N}";
-
-        var path = paths.GetAgentWorkspaceDefaultPath(agentName);
-
-        await Assert.That(Directory.Exists(path)).IsFalse();
-    }
-
-    [Test]
-    public async Task GetAgentWorkspaceDefaultPath_rejects_blank_agent_name()
-    {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
-
-        await Assert.That(() => paths.GetAgentWorkspaceDefaultPath(""))
-            .Throws<ArgumentException>();
-        await Assert.That(() => paths.GetAgentWorkspaceDefaultPath("   "))
-            .Throws<ArgumentException>();
     }
 
     private sealed class TempRoot : IDisposable
