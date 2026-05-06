@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Provider.Ollama\LlamaShears.Provider.Ollama.csproj" />
   </ItemGroup>
 
