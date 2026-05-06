@@ -2,11 +2,15 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
 }
 
 .agent-picker label {
     font-size: 0.875rem;
     color: var(--text-muted);
+    margin-right: 0.25rem;
 }
 
 .agent-picker select,
@@ -17,6 +21,11 @@
     border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--text);
+}
+
+.agent-picker select {
+    flex: 1;
+    min-width: 0;
 }
 
 .agent-picker button {
@@ -31,4 +40,5 @@
 .agent-picker-empty {
     color: var(--text-subtle);
     font-size: 0.875rem;
+    margin-left: auto;
 }
