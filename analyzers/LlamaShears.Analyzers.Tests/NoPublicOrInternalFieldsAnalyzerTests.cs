@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class NoPublicOrInternalFieldsAnalyzerTests
 {
     [Test]
-    public async Task Public_field_reports_LS0002()
+    public async Task PublicFieldReportsLS0002()
     {
         const string source = "public class Foo { public int x; }";
 
@@ -21,7 +21,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Internal_field_reports_LS0002()
+    public async Task InternalFieldReportsLS0002()
     {
         const string source = "public class Foo { internal int x; }";
 
@@ -34,7 +34,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Protected_field_reports_LS0002()
+    public async Task ProtectedFieldReportsLS0002()
     {
         const string source = "public class Foo { protected int x; }";
 
@@ -47,7 +47,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Protected_internal_field_reports_LS0002()
+    public async Task ProtectedInternalFieldReportsLS0002()
     {
         const string source = "public class Foo { protected internal int x; }";
 
@@ -59,7 +59,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Private_protected_field_reports_LS0002()
+    public async Task PrivateProtectedFieldReportsLS0002()
     {
         const string source = "public class Foo { private protected int x; }";
 
@@ -71,7 +71,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Explicit_private_field_does_not_report()
+    public async Task ExplicitPrivateFieldDoesNotReport()
     {
         const string source = "public class Foo { private int x; }";
 
@@ -83,7 +83,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Default_unmodified_field_is_private_and_does_not_report()
+    public async Task DefaultUnmodifiedFieldIsPrivateAndDoesNotReport()
     {
         const string source = "public class Foo { int x; }";
 
@@ -95,7 +95,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Public_const_field_does_not_report()
+    public async Task PublicConstFieldDoesNotReport()
     {
         const string source = "public class Foo { public const int X = 1; }";
 
@@ -107,7 +107,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task Multi_declarator_field_reports_for_each_variable()
+    public async Task MultiDeclaratorFieldReportsForEachVariable()
     {
         const string source = "public class Foo { public int x, y; }";
 
