@@ -45,7 +45,7 @@ public sealed class ShearsPaths : IShearsPaths
 
     private static string ResolveAndCreate(string? configured, Func<string> defaultPathFactory)
     {
-        var path = string.IsNullOrWhiteSpace(configured) ? defaultPathFactory() : configured;
+        var path = string.IsNullOrWhiteSpace(configured) ? defaultPathFactory.Invoke() : configured;
         return Directory.CreateDirectory(path).FullName;
     }
 }

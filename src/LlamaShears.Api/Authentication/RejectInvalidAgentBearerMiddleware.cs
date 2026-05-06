@@ -17,6 +17,6 @@ public sealed class RejectInvalidAgentBearerMiddleware : IMiddleware
             return;
         }
 
-        await next(context);
+        await next.Invoke(context);
     }
 }
