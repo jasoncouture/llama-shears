@@ -183,11 +183,11 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     private IAgent BuildAgent(string name, AgentConfig config)
     {
         var providerFactory = _providers.FirstOrDefault(p =>
-            string.Equals(p.Name, config.ProviderName, StringComparison.Ordinal))
+            string.Equals(p.Name, config.Model.Provider, StringComparison.Ordinal))
             ?? throw new InvalidOperationException(
-                $"No provider factory registered with name '{config.ProviderName}'.");
+                $"No provider factory registered with name '{config.Model.Provider}'.");
 
-        var model = providerFactory.CreateModel(new ModelConfiguration(config.ModelId));
+        var model = providerFactory.CreateModel(new ModelConfiguration(config.Model.Model, config.Think));
 
         var seedContext = new List<ModelTurn>();
         if (!string.IsNullOrWhiteSpace(config.SystemPrompt))

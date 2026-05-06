@@ -51,7 +51,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                 Model = _configuration.ModelId,
                 Stream = true,
                 Messages = messages,
-                Think = ThinkValue.High,
+                Think = MapThinkLevel(_configuration.Think),
                 Options = new RequestOptions
                 {
                     Seed = Random.Shared.Next(),
@@ -91,6 +91,15 @@ public partial class OllamaLanguageModel : ILanguageModel
         ModelRole.FrameworkUser => ChatRole.User,
         ModelRole.FrameworkAssistant => ChatRole.Assistant,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported model role.")
+    };
+
+    private static ThinkValue? MapThinkLevel(ThinkLevel level) => level switch
+    {
+        ThinkLevel.None => null,
+        ThinkLevel.Low => ThinkValue.Low,
+        ThinkLevel.Medium => ThinkValue.Medium,
+        ThinkLevel.High => ThinkValue.High,
+        _ => null,
     };
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Token from {ModelId}: {Content}")]
