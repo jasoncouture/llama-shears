@@ -1,20 +1,20 @@
 {
    "$schema": "https://alirezanet.github.io/Husky.Net/schema.json",
    "tasks": [
-      {
-         "name": "dotnet-build-on-source-change",
-         "group": "pre-commit",
-         "include": [
-            "**/*.cs",
-            "**/*.razor",
-            "**/*.csproj",
-            "**/*.sln",
-            "**/*.slnx",
-            "**/*.props"
-         ],
-         "command": "bash",
-         "args": [ "-c", "dotnet clean && dotnet build", "_", "${staged}" ]
-      },
+//      {
+//         "name": "dotnet-build-on-source-change",
+//         "group": "pre-commit",
+//         "include": [
+//            "**/*.cs",
+//            "**/*.razor",
+//            "**/*.csproj",
+//            "**/*.sln",
+//            "**/*.slnx",
+//            "**/*.props"
+//         ],
+//         "command": "bash",
+//         "args": [ "-c", "dotnet clean && dotnet build", "_", "${staged}" ]
+//      },
       {
          "name": "dotnet-test-on-source-change",
          "group": "pre-commit",
@@ -27,7 +27,7 @@
             "**/*.props"
          ],
          "command": "bash",
-         "args": [ "-c", "dotnet test", "_", "${staged}" ]
+         "args": [ "-c", "dotnet clean && dotnet test", "_", "${staged}" ]
       }
    ]
 }
