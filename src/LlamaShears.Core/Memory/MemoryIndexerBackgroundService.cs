@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Memory;
 using Microsoft.Extensions.Hosting;
@@ -87,8 +88,10 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
             try
             {
                 LogReconcilingAgent(_logger, agentId, force);
+                var startedAt = Stopwatch.GetTimestamp();
                 var summary = await _indexer.ReconcileAsync(agentId, force, cancellationToken).ConfigureAwait(false);
-                LogReconciled(_logger, agentId, summary.Added, summary.Updated, summary.Removed, summary.Total);
+                var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
+                LogReconciled(_logger, agentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -112,8 +115,8 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconciling memory index for agent '{AgentId}' (force={Force})…")]
     private static partial void LogReconcilingAgent(ILogger logger, string agentId, bool force);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Added} added, {Updated} updated, {Removed} removed, {Total} total.")]
-    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Added} added, {Updated} updated, {Removed} removed, {Total} total, elapsed={ElapsedMs:F2}ms.")]
+    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total, double elapsedMs);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory indexer failed to reconcile agent '{AgentId}'.")]
     private static partial void LogReconcileFailed(ILogger logger, string agentId, Exception ex);

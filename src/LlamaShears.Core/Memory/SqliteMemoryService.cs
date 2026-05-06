@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -91,6 +92,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
+        var startedAt = Stopwatch.GetTimestamp();
         var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken).ConfigureAwait(false);
         var collection = await OpenCollectionAsync(ctx, queryVector.Length, cancellationToken).ConfigureAwait(false);
 
@@ -125,7 +127,8 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
 
         ranked.Sort(static (a, b) => b.Score.CompareTo(a.Score));
-        LogSearchScored(_logger, agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, minScore);
+        var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
+        LogSearchScored(_logger, agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, minScore, elapsedMs);
         if (ranked.Count > limit)
         {
             ranked.RemoveRange(limit, ranked.Count - limit);
@@ -405,8 +408,8 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     [LoggerMessage(Level = LogLevel.Warning, Message = "Indexing failed for agent '{AgentId}' memory '{Path}': {Message}")]
     private static partial void LogIndexingFailed(ILogger logger, string agentId, string path, string message, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Memory search for agent '{AgentId}': scanned={Scanned}, hits={Hits}, top-raw-score={TopScore:F4}, min-score={MinScore:F2}.")]
-    private static partial void LogSearchScored(ILogger logger, string agentId, int scanned, int hits, double topScore, double minScore);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Memory search for agent '{AgentId}': scanned={Scanned}, hits={Hits}, top-raw-score={TopScore:F4}, min-score={MinScore:F2}, elapsed={ElapsedMs:F2}ms.")]
+    private static partial void LogSearchScored(ILogger logger, string agentId, int scanned, int hits, double topScore, double minScore, double elapsedMs);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (added) for agent '{AgentId}': {Path}")]
     private static partial void LogIndexedAdded(ILogger logger, string agentId, string path);

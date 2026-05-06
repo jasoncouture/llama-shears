@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Core.Abstractions.Memory;
@@ -35,8 +36,10 @@ public sealed partial class IndexMemoryTool
 
         try
         {
+            var startedAt = Stopwatch.GetTimestamp();
             var summary = await _indexer.ReconcileAsync(workspace.AgentId, force, cancellationToken).ConfigureAwait(false);
-            LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed, summary.Total);
+            var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
+            LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
             return string.Format(
                 CultureInfo.InvariantCulture,
                 "Reconciled memory index: {0} added, {1} updated, {2} removed, {3} total.",
@@ -52,8 +55,8 @@ public sealed partial class IndexMemoryTool
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' reconciled memory index: +{Added} ~{Updated} -{Removed}, {Total} total.")]
-    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' reconciled memory index: +{Added} ~{Updated} -{Removed}, {Total} total, elapsed={ElapsedMs:F2}ms.")]
+    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total, double elapsedMs);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "index_memory failed for agent '{AgentId}': {Message}")]
     private static partial void LogReconcileFailed(ILogger logger, string agentId, string message, Exception ex);
