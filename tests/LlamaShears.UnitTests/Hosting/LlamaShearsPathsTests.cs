@@ -34,11 +34,11 @@ public sealed class LlamaShearsPathsTests
     }
 
     [Test]
-    public async Task GetAgentWorkspaceDefaultPath_returns_DataRoot_workspaces_agentName()
+    public async Task GetAgentWorkspaceDefaultPath_returns_WorkspaceRoot_agentName()
     {
         var path = LlamaShearsPaths.GetAgentWorkspaceDefaultPath("alpha");
 
-        var expected = Path.Combine(LlamaShearsPaths.DataRoot, "workspaces", "alpha");
+        var expected = Path.Combine(LlamaShearsPaths.WorkspaceRoot, "alpha");
         await Assert.That(path).IsEqualTo(expected);
     }
 
@@ -50,7 +50,7 @@ public sealed class LlamaShearsPathsTests
         var path = LlamaShearsPaths.GetAgentWorkspaceDefaultPath(agentName);
 
         // The agent-specific directory must not be auto-created. The parent
-        // `workspaces/` may exist from earlier runs; the contract is only
+        // (WorkspaceRoot) may exist from earlier runs; the contract is only
         // that *this call* doesn't materialize anything.
         await Assert.That(Directory.Exists(path)).IsFalse();
     }
