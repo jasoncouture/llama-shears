@@ -50,8 +50,13 @@ public sealed partial class EagerCompactor : BackgroundService,
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _messageSubscription?.Dispose();
-        _thoughtSubscription?.Dispose();
+        // Interlocked.Exchange so a second StopAsync (the host calls it
+        // during graceful shutdown and again on disposal in some test
+        // teardown paths) doesn't double-dispose the same subscription —
+        // MessagePipe's FreeList.Remove is not idempotent and throws
+        // KeyNotFoundException on the second remove.
+        Interlocked.Exchange(ref _messageSubscription, null)?.Dispose();
+        Interlocked.Exchange(ref _thoughtSubscription, null)?.Dispose();
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
