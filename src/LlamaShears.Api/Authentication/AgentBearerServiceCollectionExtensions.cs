@@ -13,6 +13,7 @@ public static class AgentBearerServiceCollectionExtensions
 
         services.AddAgentTokenStore();
         services.TryAddSingleton<IAgentClaimsProjector, DefaultAgentClaimsProjector>();
+        services.TryAddTransient<RejectInvalidAgentBearerMiddleware>();
 
         services.AddAuthentication(AgentBearerDefaults.AuthenticationScheme)
             .AddScheme<AgentBearerOptions, AgentBearerHandler>(
