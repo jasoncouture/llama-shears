@@ -1,3 +1,9 @@
+## Coding and Commit Requirements
+
+- Only one type (class, interface, enum, record, etc.) per file. Do NOT pack multiple types in a single file.
+- All commits must build successfully.
+- All tests must pass before commit, unless the commit message explicitly notes otherwise.
+- Always run `dotnet test` (all tests, not just a specific project) before committing.
 ## Proactive Memory and Instruction Updates
 
 - Agents must proactively update local memories, shared memories, and AGENTS.md with relevant workflow, architecture, and process notes as decisions or instructions are made.
