@@ -8,6 +8,7 @@
     <Project Path="src/LlamaShears.Agent.Abstractions/LlamaShears.Agent.Abstractions.csproj" />
     <Project Path="src/LlamaShears.Agent.Core/LlamaShears.Agent.Core.csproj" />
     <Project Path="src/LlamaShears.Api.Host/LlamaShears.Api.Host.csproj" />
+    <Project Path="src/LlamaShears.Api.Web/LlamaShears.Api.Web.csproj" />
     <Project Path="src/LlamaShears.Api/LlamaShears.Api.csproj" />
     <Project Path="src/LlamaShears.Hosting.Abstractions/LlamaShears.Hosting.Abstractions.csproj" />
     <Project Path="src/LlamaShears.Hosting/LlamaShears.Hosting.csproj" />
