@@ -8,12 +8,15 @@ A heartbeat is not the system tick. The system tick is a periodic housekeeping s
 
 ## When it fires
 
-Each agent has a heartbeat **period** (a `TimeSpan`). On every system tick, the agent compares `now - LastHeartbeatAt` against the period. If the elapsed time is at or past the period, the agent reads its heartbeat file. If the file has content, that content becomes the heartbeat turn (see *What the prompt is*) and `LastHeartbeatAt` resets. If the file is missing or empty at that moment, no heartbeat fires and `LastHeartbeatAt` does **not** reset — the next tick re-checks the file immediately, so a file appearing later produces a heartbeat at the next tick. The period clock then resumes from there.
+Each agent has a heartbeat **period** (a `TimeSpan`). On every system tick, the agent compares `now - LastHeartbeatAt` against the period. If the elapsed time is at or past the period, the agent reads its heartbeat file *and resets `LastHeartbeatAt` to now*. If the file has content, that content becomes the heartbeat turn (see *What the prompt is*). If the file is missing or empty at that moment, no heartbeat fires for this interval — but the timer still resets, so the next opportunity is one full period later.
+
+This is deliberate: the period is a throttle, not just a delay. A heartbeat fires *at most* every period, regardless of file state. An agent that wants faster wake-up granularity must shorten its period.
 
 Concretely, with a 30-minute period:
 
-- Tick at elapsed = 29m 58s → period not elapsed; file is not read.
-- 30 seconds later, next tick at elapsed = 30m 28s → period elapsed; file is read. If non-empty, heartbeat fires and elapsed resets to 0. If empty/missing, no heartbeat fires and elapsed stays at 30m 28s.
+- Tick at elapsed = 29m 58s → period not elapsed; nothing happens.
+- 30 seconds later, next tick at elapsed = 30m 28s → period elapsed; file is read; `LastHeartbeatAt` resets to now. If the file is non-empty, heartbeat fires. If empty/missing, no heartbeat — but the next opportunity is still ~30 minutes from this tick.
+- File appears 90 seconds after that reset → not picked up immediately; next pickup is ~30 minutes from the reset.
 
 The tick interval bounds the *granularity* of heartbeat firing, not its average rate. A heartbeat configured for "every 30 minutes" will, in practice, fire every "30 minutes plus up to one tick interval" — and only if the file has content at the moment of the check. That is an accepted trade for not running a per-agent timer.
 
@@ -37,9 +40,9 @@ A deliberate, static decision in the agent's JSON config. The framework records 
 
 ### Silent (period > 0, but the heartbeat file is missing or empty)
 
-When `HeartbeatPeriod > 0`, the heartbeat is *enabled*; whether it fires on any given interval depends on the file's state at the moment the period elapses. Missing/empty file at that moment → no heartbeat fires this interval — but this is a normal runtime state, not a configuration error, and is **not** logged per occurrence.
+When `HeartbeatPeriod > 0`, the heartbeat is *enabled*; whether it fires on any given interval depends on the file's state at the moment the period elapses. Missing/empty file at that moment → no heartbeat fires this interval. The timer still resets, so the next opportunity is one full period later. This is a normal runtime state, not a configuration error, and is **not** logged per occurrence.
 
-The heartbeat file is **expected to change at runtime**. The framework treats it as a live signal, not a configuration artifact. Agents may use it as a self-controlled wake-up mechanism: write content into it to schedule a future heartbeat, let the framework deliver that content on the next eligible tick, and then delete or empty the file as part of processing the heartbeat to "consume" the request — recreating it later when the agent next wants to be woken. The framework's only contract is *"if the file has content when the period has elapsed, deliver it."* What an agent does with the file beyond that is entirely the agent's prerogative.
+The heartbeat file is **expected to change at runtime**. The framework treats it as a live signal, not a configuration artifact. Agents may use it as a self-controlled wake-up mechanism: write content into it ahead of an upcoming check, let the framework deliver that content on the next eligible tick, and then delete or empty the file as part of processing the heartbeat to "consume" the request — recreating it later when the agent next wants to be woken. The framework's only contract is *"if the file has content when the period has elapsed, deliver it (once)."* The throttle still applies: writing content right after a missed check means waiting another full period for it to be seen. What an agent does with the file beyond that is entirely the agent's prerogative.
 
 There is intentionally no `enabled: true/false` field in the agent config. The two existing knobs (period value, file state) cover the two distinct intents: the period is for static, agent-author choices; the file is for dynamic, agent-runtime choices. Adding a third boolean would force a "which one wins" reconciliation with no satisfying answer.
 
