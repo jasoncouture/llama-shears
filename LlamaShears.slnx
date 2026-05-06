@@ -7,4 +7,7 @@
     <Project Path="src/LlamaShears.Provider.Abstractions/LlamaShears.Provider.Abstractions.csproj" />
     <Project Path="src/LlamaShears.Provider.Ollama/LlamaShears.Provider.Ollama.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LlamaShears.UnitTests/LlamaShears.UnitTests.csproj" />
+  </Folder>
 </Solution>
