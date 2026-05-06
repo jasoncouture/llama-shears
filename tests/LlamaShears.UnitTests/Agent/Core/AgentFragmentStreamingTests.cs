@@ -47,7 +47,7 @@ public sealed class AgentFragmentStreamingTests
             outputChannels: [captureChannel],
             logger: NullLogger.Instance,
             ticks: ticks,
-            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             fragments: fragmentPublisher);
 
@@ -106,7 +106,7 @@ public sealed class AgentFragmentStreamingTests
             outputChannels: [captureChannel],
             logger: NullLogger.Instance,
             ticks: ticks,
-            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             fragments: fragmentPublisher);
 
@@ -162,7 +162,7 @@ public sealed class AgentFragmentStreamingTests
             outputChannels: [captureChannel],
             logger: NullLogger.Instance,
             ticks: ticks,
-            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             fragments: fragmentPublisher);
 

@@ -1,4 +1,4 @@
-namespace LlamaShears.Core.Templating;
+namespace LlamaShears.Core.Abstractions.Templating;
 
 /// <summary>
 /// Renders a template file against an input object. Implementations

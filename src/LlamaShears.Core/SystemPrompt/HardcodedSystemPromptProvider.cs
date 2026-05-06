@@ -1,4 +1,5 @@
 using System.Globalization;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 
 namespace LlamaShears.Core.SystemPrompt;
 
@@ -12,13 +13,21 @@ public sealed class HardcodedSystemPromptProvider : ISystemPromptProvider
         "Do not invent tools, capabilities, or context that have not been " +
         "explicitly described to you.";
 
-    public string Build(string agentId, DateTimeOffset now)
+    private readonly TimeProvider _timeProvider;
+
+    public HardcodedSystemPromptProvider(TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        _timeProvider = timeProvider;
+    }
+
+    public string Build(string agentId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
         return string.Concat(
             Body,
             "\n\nCurrent UTC time: ",
-            now.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+            _timeProvider.GetUtcNow().ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
     }
 }
