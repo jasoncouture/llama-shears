@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/analyzers/">
     <Project Path="analyzers/LlamaShears.Analyzers/LlamaShears.Analyzers.csproj" />
+    <Project Path="analyzers/LlamaShears.Analyzers.CodeFixes/LlamaShears.Analyzers.CodeFixes.csproj" />
     <Project Path="analyzers/LlamaShears.Analyzers.Tests/LlamaShears.Analyzers.Tests.csproj" />
   </Folder>
   <Folder Name="/src/">
