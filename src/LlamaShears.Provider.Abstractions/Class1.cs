@@ -40,5 +40,5 @@ public interface IProviderFactory
 	/// <summary>
 	/// List all models surfaced by this provider, with metadata.
 	/// </summary>
-	IReadOnlyList<ModelInfo> ListModels();
+	IAsyncEnumerable<ModelInfo> ListModelsAsync(CancellationToken cancellationToken = default);
 }
