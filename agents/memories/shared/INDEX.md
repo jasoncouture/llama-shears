@@ -9,3 +9,4 @@
 - [Wait for approval after opinion questions](feedback_wait_on_opinion_questions.md) — "what do you think?" / "perhaps we should…" → give opinion and stop, even in auto mode
 - [Prefer collection expressions](feedback_collection_expressions.md) — use `[a, b]` over `ImmutableArray.Create`, `new List<>()`, `new[] { ... }`, etc.
 - [Vector store choice — Microsoft.Extensions.VectorData](project_vector_store.md) — when vector storage is added, use `Microsoft.Extensions.VectorData` with the SQLite (sqlite-vec) connector; not yet implemented
+- [Self-registering DI helpers](feedback_self_registering_di_helpers.md) — per-item registrations call their companion infrastructure registration so callers can't forget to wire the consumer
