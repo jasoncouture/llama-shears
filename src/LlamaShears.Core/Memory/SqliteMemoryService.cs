@@ -95,16 +95,23 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         EnsureSchema(conn);
 
         var ranked = new List<MemorySearchResult>();
+        var scanned = 0;
+        var topRawScore = double.NegativeInfinity;
         await using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "SELECT path, vector FROM memories";
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
+                scanned++;
                 var relativePath = reader.GetString(0);
                 var bytes = (byte[])reader.GetValue(1);
                 var vector = MemoryMarshal.Cast<byte, float>(bytes);
                 var score = CosineSimilarity(queryVector.Span, vector);
+                if (score > topRawScore)
+                {
+                    topRawScore = score;
+                }
                 if (score < minScore)
                 {
                     continue;
@@ -120,6 +127,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
 
         ranked.Sort(static (a, b) => b.Score.CompareTo(a.Score));
+        LogSearchScored(_logger, agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, minScore);
         if (ranked.Count > limit)
         {
             ranked.RemoveRange(limit, ranked.Count - limit);
@@ -352,4 +360,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Indexing failed for agent '{AgentId}' memory '{Path}': {Message}")]
     private static partial void LogIndexingFailed(ILogger logger, string agentId, string path, string message, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Memory search for agent '{AgentId}': scanned={Scanned}, hits={Hits}, top-raw-score={TopScore:F4}, min-score={MinScore:F2}.")]
+    private static partial void LogSearchScored(ILogger logger, string agentId, int scanned, int hits, double topScore, double minScore);
 }
