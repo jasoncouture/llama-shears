@@ -99,6 +99,86 @@ internal static class Descriptors
             "time. Per ADR-0017, names exist for human readers; intellisense costs nothing.",
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
+    public static readonly DiagnosticDescriptor XmlDocOnConcreteType = new(
+        id: DiagnosticIds.XmlDocOnConcreteType,
+        title: "XML doc comment on concrete type or member",
+        messageFormat: "'{0}' has an XML doc comment; XML doc comments on concrete types and their members are the exception, not the rule",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description:
+            "ADR-0012: XML doc comments on concrete types and their members are the exception, " +
+            "not the rule. If the target's name or signature is not self-describing, the preferred " +
+            "fix is to refactor it to be self-describing — not to add a doc comment. " +
+            "<inheritdoc/> on interface implementations is exempt.");
+
+    public static readonly DiagnosticDescriptor PublicInterfaceMissingXmlDoc = new(
+        id: DiagnosticIds.PublicInterfaceMissingXmlDoc,
+        title: "Public interface is missing an XML doc comment",
+        messageFormat: "Public interface '{0}' is missing an XML doc comment; public interface contracts must be documented",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "ADR-0012: XML doc comments are required on public interfaces. " +
+            "The interface is the contract; document it for callers and implementers.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    public static readonly DiagnosticDescriptor NonPublicInterfaceMissingXmlDoc = new(
+        id: DiagnosticIds.NonPublicInterfaceMissingXmlDoc,
+        title: "Non-public interface is missing an XML doc comment",
+        messageFormat: "Interface '{0}' is missing an XML doc comment; interface contracts should be documented",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description:
+            "ADR-0012: XML doc comments are expected on interfaces because the interface is the " +
+            "contract. Severity is reduced from error to warning for non-public interfaces because " +
+            "their audience is internal.");
+
+    public static readonly DiagnosticDescriptor PublicInterfaceMemberMissingXmlDoc = new(
+        id: DiagnosticIds.PublicInterfaceMemberMissingXmlDoc,
+        title: "Public interface member is missing an XML doc comment",
+        messageFormat: "Public interface member '{0}' is missing an XML doc comment; public interface contracts must be documented",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "ADR-0012: XML doc comments are required on members of public interfaces. " +
+            "The interface is the contract; document each member for callers and implementers.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
+    public static readonly DiagnosticDescriptor NonPublicInterfaceMemberMissingXmlDoc = new(
+        id: DiagnosticIds.NonPublicInterfaceMemberMissingXmlDoc,
+        title: "Non-public interface member is missing an XML doc comment",
+        messageFormat: "Interface member '{0}' is missing an XML doc comment; interface contracts should be documented",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description:
+            "ADR-0012: XML doc comments are expected on members of interfaces because the " +
+            "interface is the contract. Severity is reduced from error to warning for members of " +
+            "non-public interfaces because their audience is internal.");
+
+    public static readonly DiagnosticDescriptor DocumentationModeNotDiagnose = new(
+        id: DiagnosticIds.DocumentationModeNotDiagnose,
+        title: "DocumentationMode must be Diagnose for the XML doc analyzer to work",
+        messageFormat:
+            "C# DocumentationMode is not 'Diagnose'. Without it, Roslyn parses '///' as ordinary " +
+            "comments and the XML doc analyzer (LS0008/0009/0010/0011/0012) cannot detect doc " +
+            "comments. Add <GenerateDocumentationFile>true</GenerateDocumentationFile> to the " +
+            "project's .csproj.",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "Roslyn parses '///' as either DocumentationCommentTrivia or ordinary comment trivia " +
+            "depending on CSharpParseOptions.DocumentationMode. The XML doc analyzer relies on " +
+            "DocumentationMode = Diagnose, which the .NET SDK enables when " +
+            "<GenerateDocumentationFile> is true. Without it, the analyzer cannot reliably detect " +
+            "doc comments and would report false 'missing doc' errors on every documented type.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
     public static readonly SuppressionDescriptor SuppressIde0290 = new(
         id: DiagnosticIds.SuppressIde0290,
         suppressedDiagnosticId: "IDE0290",

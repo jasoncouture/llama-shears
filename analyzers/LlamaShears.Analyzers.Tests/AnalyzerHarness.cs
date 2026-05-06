@@ -22,12 +22,23 @@ internal static class AnalyzerHarness
     /// and returns every diagnostic the analyzer reported, sorted by
     /// span start.
     /// </summary>
-    public static async Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsAsync(
+    public static Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsAsync(
         DiagnosticAnalyzer analyzer,
         string source,
         CancellationToken cancellationToken = default)
+        => GetAnalyzerDiagnosticsAsync(
+            analyzer,
+            source,
+            DocumentationMode.Diagnose,
+            cancellationToken);
+
+    public static async Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsAsync(
+        DiagnosticAnalyzer analyzer,
+        string source,
+        DocumentationMode documentationMode,
+        CancellationToken cancellationToken = default)
     {
-        var compilation = CreateCompilation(source);
+        var compilation = CreateCompilation(source, documentationMode);
         var withAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create(analyzer));
         var diagnostics = await withAnalyzers.GetAnalyzerDiagnosticsAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -48,16 +59,16 @@ internal static class AnalyzerHarness
         string source,
         CancellationToken cancellationToken = default)
     {
-        var compilation = CreateCompilation(source);
+        var compilation = CreateCompilation(source, DocumentationMode.Diagnose);
         var withAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(suppressor));
         return await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static CSharpCompilation CreateCompilation(string source)
+    private static CSharpCompilation CreateCompilation(string source, DocumentationMode documentationMode)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(
             source,
-            new CSharpParseOptions(LanguageVersion.Latest));
+            new CSharpParseOptions(LanguageVersion.Latest, documentationMode));
         return CSharpCompilation.Create(
             assemblyName: "LlamaShears.Analyzers.Tests.Dynamic",
             syntaxTrees: new[] { syntaxTree },

@@ -16,5 +16,17 @@ internal static class DiagnosticIds
 
     public const string NoCancellationTokenAbbreviation = "LS0007";
 
+    public const string XmlDocOnConcreteType = "LS0008";
+
+    public const string PublicInterfaceMissingXmlDoc = "LS0009";
+
+    public const string NonPublicInterfaceMissingXmlDoc = "LS0010";
+
+    public const string PublicInterfaceMemberMissingXmlDoc = "LS0011";
+
+    public const string NonPublicInterfaceMemberMissingXmlDoc = "LS0012";
+
+    public const string DocumentationModeNotDiagnose = "LS0013";
+
     public const string SuppressIde0290 = "LSSPR0001";
 }
