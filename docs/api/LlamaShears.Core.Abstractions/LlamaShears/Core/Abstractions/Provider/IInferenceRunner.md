@@ -4,7 +4,7 @@ Assembly: `LlamaShears.Core.Abstractions`
 
 Streams a single model prompt, emits per-fragment events, and
 optionally emits the resulting Thought / Assistant turn events.
-Lifts the inference loop out of [IContextCompactor](IContextCompactor.md)
+Lifts the inference loop out of [IContextCompactor](../Context/IContextCompactor.md)
 and the agent so both can share it; the `eventId` parameter
 is the third segment of the published `EventType` and lets
 observers tell agent traffic apart from compaction traffic.

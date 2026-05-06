@@ -28,6 +28,7 @@ Public API surface, organized by namespace.
 
 - [AgentContext](LlamaShears/Core/Abstractions/Context/AgentContext.md)
 - [IAgentContextProvider](LlamaShears/Core/Abstractions/Context/IAgentContextProvider.md)
+- [IContextCompactor](LlamaShears/Core/Abstractions/Context/IContextCompactor.md)
 - [LanguageModelContext](LlamaShears/Core/Abstractions/Context/LanguageModelContext.md)
 - [PluginContext](LlamaShears/Core/Abstractions/Context/PluginContext.md)
 - [SystemContext](LlamaShears/Core/Abstractions/Context/SystemContext.md)
@@ -49,7 +50,6 @@ Public API surface, organized by namespace.
 ## LlamaShears.Core.Abstractions.Provider
 
 - [AgentProviderOptions](LlamaShears/Core/Abstractions/Provider/AgentProviderOptions.md)
-- [IContextCompactor](LlamaShears/Core/Abstractions/Provider/IContextCompactor.md)
 - [IContextEntry](LlamaShears/Core/Abstractions/Provider/IContextEntry.md)
 - [IEmbeddingModel](LlamaShears/Core/Abstractions/Provider/IEmbeddingModel.md)
 - [IEmbeddingProviderFactory](LlamaShears/Core/Abstractions/Provider/IEmbeddingProviderFactory.md)

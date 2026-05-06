@@ -1,6 +1,6 @@
-using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Provider;
 
-namespace LlamaShears.Core.Abstractions.Provider;
+namespace LlamaShears.Core.Abstractions.Context;
 
 /// <summary>
 /// Decides whether a <see cref="ModelPrompt"/> exceeds the model's
