@@ -21,18 +21,18 @@ non-turn entry types — in arrival order.
 ### `TokenCount`
 
 Last observed cumulative model token count for the conversation,
-taken from the most recent [ModelTokenInformationContextEntry](../../Provider/ModelTokenInformationContextEntry.md)
+taken from the most recent ModelTokenInformationContextEntry
 in [IAgentContext](IAgentContext.md).`Entries`. Zero when no completion has been recorded yet.
 
 ### `Turns`
 
-Snapshot of the conversation as [ModelTurn](../../Provider/ModelTurn.md) values,
+Snapshot of the conversation as ModelTurn values,
 filtered out of the polymorphic entry log. Stable for the duration
 of the call.
 
 ## Methods
 
-### `AppendAsync`([IContextEntry](../../Provider/IContextEntry.md) entry, CancellationToken cancellationToken)
+### `AppendAsync`(IContextEntry entry, CancellationToken cancellationToken)
 
 Appends `entry` to the live log and to the
 underlying store atomically. Subsequent reads of

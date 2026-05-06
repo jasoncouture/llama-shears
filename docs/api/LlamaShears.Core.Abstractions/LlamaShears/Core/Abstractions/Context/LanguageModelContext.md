@@ -28,7 +28,7 @@ Conversation turns in chronological order.
 
 ## Methods
 
-### `LanguageModelContext`(ImmutableArray<[ModelTurn](../Provider/ModelTurn.md)> Turns, ImmutableArray<[IContextEntry](../Provider/IContextEntry.md)> Entries, int ContextWindowTokenCount)
+### `LanguageModelContext`(ImmutableArray<ModelTurn> Turns, ImmutableArray<IContextEntry> Entries, int ContextWindowTokenCount)
 
 Conversation slice of an [AgentContext](AgentContext.md) snapshot:
 chronological turns, the polymorphic entry log they were drawn

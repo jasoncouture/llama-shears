@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Events\LlamaShears.Core.Abstractions.Events.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Tools\LlamaShears.Core.Abstractions.Tools.csproj" />
+  </ItemGroup>
+
+</Project>

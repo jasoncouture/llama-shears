@@ -16,6 +16,7 @@
     <Project Path="src/LlamaShears.Core.Abstractions.Memory/LlamaShears.Core.Abstractions.Memory.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions.Paths/LlamaShears.Core.Abstractions.Paths.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions.PromptContext/LlamaShears.Core.Abstractions.PromptContext.csproj" />
+    <Project Path="src/LlamaShears.Core.Abstractions.Provider/LlamaShears.Core.Abstractions.Provider.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions.Seeding/LlamaShears.Core.Abstractions.Seeding.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions.SystemPrompt/LlamaShears.Core.Abstractions.SystemPrompt.csproj" />
     <Project Path="src/LlamaShears.Core.Abstractions.Templating/LlamaShears.Core.Abstractions.Templating.csproj" />

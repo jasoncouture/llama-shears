@@ -7,7 +7,7 @@ Per-agent language-model selection and per-call options.
 ## Parameters
 
 - `Id` — Provider/model identifier of the language model.
-- `Think` — How aggressively a thinking-capable model should reason; [ThinkLevel](../Provider/ThinkLevel.md).`None` disables thinking.
+- `Think` — How aggressively a thinking-capable model should reason; ThinkLevel.`None` disables thinking.
 - `ContextLength` — Override for the model's context-window size; `null` uses provider default.
 - `KeepAlive` — Provider-specific keep-alive for the model; `null` uses provider default.
 - `TokenLimit` — Maximum tokens this agent is allowed to consume in a single response; `0` = unbounded.
@@ -33,7 +33,7 @@ Free-form provider/model JSON overrides merged on top of host defaults.
 
 ### `Think`
 
-How aggressively a thinking-capable model should reason; [ThinkLevel](../Provider/ThinkLevel.md).`None` disables thinking.
+How aggressively a thinking-capable model should reason; ThinkLevel.`None` disables thinking.
 
 ### `TokenLimit`
 
@@ -41,14 +41,14 @@ Maximum tokens this agent is allowed to consume in a single response; `0` = unbo
 
 ## Methods
 
-### `AgentModelConfig`([ModelIdentity](../Provider/ModelIdentity.md) Id, [ThinkLevel](../Provider/ThinkLevel.md) Think, Nullable<int> ContextLength, Nullable<TimeSpan> KeepAlive, int TokenLimit, Nullable<JsonElement> Options)
+### `AgentModelConfig`(ModelIdentity Id, ThinkLevel Think, Nullable<int> ContextLength, Nullable<TimeSpan> KeepAlive, int TokenLimit, Nullable<JsonElement> Options)
 
 Per-agent language-model selection and per-call options.
 
 #### Parameters
 
 - `Id` — Provider/model identifier of the language model.
-- `Think` — How aggressively a thinking-capable model should reason; [ThinkLevel](../Provider/ThinkLevel.md).`None` disables thinking.
+- `Think` — How aggressively a thinking-capable model should reason; ThinkLevel.`None` disables thinking.
 - `ContextLength` — Override for the model's context-window size; `null` uses provider default.
 - `KeepAlive` — Provider-specific keep-alive for the model; `null` uses provider default.
 - `TokenLimit` — Maximum tokens this agent is allowed to consume in a single response; `0` = unbounded.
