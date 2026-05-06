@@ -163,7 +163,7 @@ The fragment accumulator stitches deltas back into a `ToolCallTurn` once `IsComp
 
 Per-call rules:
 
-1. **Each tool invocation gets its own DI scope.** Created when the tool runner picks the call up, disposed when the invocation returns. Tools may take scoped dependencies (DbContext, etc.) without captive-dependency hazards.
+1. **Each tool invocation gets its own DI scope.** Created when the tool runner picks the call up, disposed when the invocation returns. Tools may take scoped dependencies without captive-dependency hazards.
 2. **Cancellation is propagated.** The agent's cancellation token flows into every invocation. Tools are expected to honour it.
 3. **Failure surfaces to the model.** A throwing tool produces a `ToolResultTurn` with `IsError = true` and the exception serialised into `ResultJson` (type, message, possibly a sanitised stack-tail). The model sees the error in its next prompt and decides what to do — retry with different arguments, call a different tool, give up. The loop does not abort on tool failures.
 4. **Parallel execution is the default.** When a model emits N tool calls in one response, the runner dispatches them concurrently. Tools are responsible for their own concurrency (locking, transactional integrity, idempotency). A tool that cannot tolerate parallel invocation is a tool that needs to handle that internally; the framework does not provide serialization as a service.
