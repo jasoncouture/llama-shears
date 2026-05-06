@@ -1,3 +1,5 @@
+using LlamaShears.Core.Abstractions.Context;
+
 namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
@@ -18,6 +20,7 @@ public interface IContextCompactor
     /// did not occur.
     /// </summary>
     ValueTask<ModelPrompt> CompactAsync(
+        AgentContext agentContext,
         ModelPrompt prompt,
         ILanguageModel model,
         ModelConfiguration configuration,

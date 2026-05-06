@@ -1,11 +1,14 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using NSubstitute;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
@@ -93,6 +96,17 @@ public sealed class AgentLoopTests
         IReadOnlyList<IOutputChannel> outputs,
         TimeSpan? heartbeatPeriod = null)
     {
+        var compactor = Substitute.For<IContextCompactor>();
+        compactor.CompactAsync(
+                Arg.Any<AgentContext>(),
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<ILanguageModel>(),
+                Arg.Any<ModelConfiguration>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
+        var contextProvider = Substitute.For<IAgentContextProvider>();
+        contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         return new global::LlamaShears.Core.Agent(
             id: id,
             config: TestAgentConfigs.WithHeartbeat(heartbeatPeriod ?? TimeSpan.Zero),
@@ -103,7 +117,11 @@ public sealed class AgentLoopTests
             loggerFactory: NullLoggerFactory.Instance,
             ticks: ticks,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
-            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch));
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
+            compactor: compactor,
+            modelConfiguration: new ModelConfiguration("test"),
+            agentContextProvider: contextProvider,
+            fragments: Substitute.For<IAsyncPublisher<AgentFragmentEmitted>>());
     }
 
     private static ServiceProvider BuildServices()

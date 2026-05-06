@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -14,4 +15,14 @@ internal static class TestAgentConfigs
             },
             HeartbeatPeriod = heartbeatPeriod,
         };
+
+    public static AgentContext BuildAgentContext(string agentId) =>
+        new(
+            AgentId: agentId,
+            Now: DateTimeOffset.UnixEpoch,
+            Config: WithHeartbeat(TimeSpan.Zero),
+            LanguageModel: new LanguageModelContext(Turns: [], Entries: [], ContextWindowTokenCount: 0),
+            System: new SystemContext(),
+            Tools: new ToolContext([]),
+            Plugins: new PluginContext([]));
 }

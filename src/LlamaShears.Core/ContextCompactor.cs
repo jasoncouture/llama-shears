@@ -1,9 +1,12 @@
 using System.Text;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
+using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed class ContextCompactor : IContextCompactor
+public sealed partial class ContextCompactor : IContextCompactor
 {
     // 1 system + 2 user + 2 assistant. Below this the trade-off (one model
     // call to produce a summary that wouldn't have been near the limit
@@ -31,8 +34,22 @@ public sealed class ContextCompactor : IContextCompactor
         "as concise notes — important context, decisions, user goals, and open threads. " +
         "Write it as you would write a note to yourself, since this summary will be your " +
         "only memory of what came before.";
+    private readonly IAgentContextProvider _agentContextProvider;
+    private readonly IContextStore _contextStore;
+    private readonly ILogger<ContextCompactor> _logger;
+
+    public ContextCompactor(
+        IAgentContextProvider agentContextProvider,
+        IContextStore contextStore,
+        ILogger<ContextCompactor> logger)
+    {
+        _agentContextProvider = agentContextProvider;
+        _contextStore = contextStore;
+        _logger = logger;
+    }
 
     public async ValueTask<ModelPrompt> CompactAsync(
+        AgentContext agentContext,
         ModelPrompt prompt,
         ILanguageModel model,
         ModelConfiguration configuration,
@@ -52,11 +69,7 @@ public sealed class ContextCompactor : IContextCompactor
             return prompt;
         }
 
-        var totalEstimate = 0;
-        foreach (var turn in prompt.Turns)
-        {
-            totalEstimate += await model.EstimateAsync(turn, cancellationToken).ConfigureAwait(false);
-        }
+        var totalEstimate = agentContext.LanguageModel.ContextWindowTokenCount;
 
         var predictBudget = ResolvePredictBudget(configuration, window);
         if (totalEstimate + predictBudget < window)
@@ -83,8 +96,27 @@ public sealed class ContextCompactor : IContextCompactor
         }
         rebuilt.Add(new ModelTurn(ModelRole.Assistant, summary, lastTurn.Timestamp));
         rebuilt.Add(lastTurn);
-        return new ModelPrompt(rebuilt);
+        var rebuiltPrompt = new ModelPrompt(rebuilt);
+
+        // Compaction succeeded: archive the old persisted context and
+        // re-seed it with the rebuilt non-system turns. The system turn
+        // is reconstructed per-call by the caller and never persisted.
+        LogContextCompacted(_logger, agentContext.AgentId);
+        await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken).ConfigureAwait(false);
+        var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken).ConfigureAwait(false);
+        foreach (var turn in rebuiltPrompt.Turns)
+        {
+            if (turn.Role == ModelRole.System)
+            {
+                continue;
+            }
+            await live.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
+        }
+        return rebuiltPrompt;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
+    private static partial void LogContextCompacted(ILogger logger, string agentId);
 
     private async ValueTask<string> SummarizeAsync(
         ModelPrompt prompt,
