@@ -362,8 +362,9 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             Timezone: TimeZoneInfo.Local.Id,
             DayOfWeek: now.DayOfWeek.ToString(),
             ChannelId: channelId,
-            ImportantMessage: importantMessage);
-        var body = await _promptContext.GetAsync(parameters, cancellationToken).ConfigureAwait(false);
+            ImportantMessage: importantMessage,
+            WorkspacePath: _config.WorkspacePath);
+        var body = await _promptContext.GetAsync(_config.PromptContext, parameters, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(body))
         {
             // No template (or rendered to empty). The system prompt

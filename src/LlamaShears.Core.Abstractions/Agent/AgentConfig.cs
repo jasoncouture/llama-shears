@@ -8,6 +8,7 @@ public sealed record AgentConfig(
     [property: JsonIgnore] string Id = "",
     string? WorkspacePath = null,
     string? SystemPrompt = null,
+    string? PromptContext = null,
     [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null)
 {
     public TimeSpan HeartbeatPeriod { get; init; } = TimeSpan.FromMinutes(30);
