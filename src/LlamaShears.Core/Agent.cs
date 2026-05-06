@@ -22,10 +22,14 @@ public sealed partial class Agent : IAgent
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
     private readonly Task[] _inputWaiters;
+    private readonly IReadOnlyList<IInputChannel> _inputChannels;
+    private readonly IReadOnlyList<IOutputChannel> _outputChannels;
+    private readonly TimeSpan _heartbeatPeriod;
     private readonly IAsyncPublisher<AgentFragmentEmitted>? _fragments;
     private readonly IContextCompactor? _compactor;
     private readonly ModelConfiguration? _modelConfiguration;
     private readonly IContextStore? _contextStore;
+    private DateTimeOffset _lastHeartbeatAt;
 
     public Agent(
         string id,
@@ -55,7 +59,6 @@ public sealed partial class Agent : IAgent
         ArgumentNullException.ThrowIfNull(timeProvider);
 
         Id = id;
-        Config = config;
         _model = model;
         _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{id}");
         _fragments = fragments;
@@ -65,8 +68,9 @@ public sealed partial class Agent : IAgent
         _compactor = compactor;
         _modelConfiguration = modelConfiguration;
         _contextStore = contextStore;
-        InputChannels = inputChannels;
-        OutputChannels = outputChannels;
+        _inputChannels = inputChannels;
+        _outputChannels = outputChannels;
+        _heartbeatPeriod = config.HeartbeatPeriod;
         _signal = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
         {
             FullMode = BoundedChannelFullMode.DropWrite,
@@ -79,20 +83,6 @@ public sealed partial class Agent : IAgent
     }
 
     public string Id { get; }
-
-    public AgentConfig Config { get; }
-
-    public DateTimeOffset LastHeartbeatAt { get; private set; }
-
-    public TimeSpan HeartbeatPeriod => Config.HeartbeatPeriod;
-
-    public bool HeartbeatEnabled { get; set; } = true;
-
-    public IReadOnlyList<ModelTurn> Context => _agentContext.Turns;
-
-    public IReadOnlyList<IInputChannel> InputChannels { get; }
-
-    public IReadOnlyList<IOutputChannel> OutputChannels { get; }
 
     public void Dispose()
     {
@@ -108,11 +98,11 @@ public sealed partial class Agent : IAgent
         }
         _shutdown.Dispose();
 
-        foreach (var input in InputChannels)
+        foreach (var input in _inputChannels)
         {
             (input as IDisposable)?.Dispose();
         }
-        foreach (var output in OutputChannels)
+        foreach (var output in _outputChannels)
         {
             (output as IDisposable)?.Dispose();
         }
@@ -120,17 +110,12 @@ public sealed partial class Agent : IAgent
 
     private ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
     {
-        if (!HeartbeatEnabled)
+        if (_lastHeartbeatAt != default && tick.At - _lastHeartbeatAt < _heartbeatPeriod)
         {
             return ValueTask.CompletedTask;
         }
 
-        if (LastHeartbeatAt != default && tick.At - LastHeartbeatAt < HeartbeatPeriod)
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        LastHeartbeatAt = tick.At;
+        _lastHeartbeatAt = tick.At;
         Pulse();
         return ValueTask.CompletedTask;
     }
@@ -181,7 +166,7 @@ public sealed partial class Agent : IAgent
     {
         var contextSizeBefore = _agentContext.Turns.Count;
 
-        foreach (var input in InputChannels)
+        foreach (var input in _inputChannels)
         {
             await foreach (var turn in input.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
@@ -256,7 +241,7 @@ public sealed partial class Agent : IAgent
         {
             var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
             await _agentContext.AppendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
-            foreach (var output in OutputChannels)
+            foreach (var output in _outputChannels)
             {
                 await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
             }
@@ -271,7 +256,7 @@ public sealed partial class Agent : IAgent
         var response = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
         await _agentContext.AppendAsync(response, cancellationToken).ConfigureAwait(false);
 
-        foreach (var output in OutputChannels)
+        foreach (var output in _outputChannels)
         {
             await output.SendAsync(response, cancellationToken).ConfigureAwait(false);
         }
