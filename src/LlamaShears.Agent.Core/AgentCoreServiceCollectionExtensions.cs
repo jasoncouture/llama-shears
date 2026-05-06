@@ -1,4 +1,5 @@
 using LlamaShears.Agent.Abstractions;
+using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Hosting;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,9 @@ public static class AgentCoreServiceCollectionExtensions
             .BindConfiguration(systemTickConfigurationSection);
 
         services.AddHostedService<SystemTickService>();
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
 
         return services;
     }
