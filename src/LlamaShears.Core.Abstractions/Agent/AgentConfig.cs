@@ -2,15 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace LlamaShears.Core.Abstractions.Agent;
 
-public sealed record AgentConfig
+public sealed record AgentConfig(
+    [property: JsonRequired] AgentModelConfig Model,
+    [property: JsonIgnore] string Id = "",
+    string? WorkspacePath = null,
+    string? SystemPrompt = null)
 {
-    [JsonIgnore]
-    public string Id { get; init; } = string.Empty;
-
-    public required AgentModelConfig Model { get; init; }
-    public string? WorkspacePath { get; init; } = null;
-
     public TimeSpan HeartbeatPeriod { get; init; } = TimeSpan.FromMinutes(30);
-
-    public string? SystemPrompt { get; init; }
 }
