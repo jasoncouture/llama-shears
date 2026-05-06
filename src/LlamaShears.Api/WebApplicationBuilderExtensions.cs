@@ -3,6 +3,7 @@ using LlamaShears.Api.Authentication;
 using LlamaShears.Api.Mcp;
 using LlamaShears.Provider.Ollama;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.Api;
 
@@ -17,6 +18,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddAgentManager();
         builder.Services.AddAgentBearerAuthentication();
         builder.Services.AddMcp();
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
         return builder;
     }
