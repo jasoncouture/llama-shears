@@ -25,6 +25,8 @@ Agents must:
 2. Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.
 3. Make atomic commits—each commit should represent a single, self-contained change.
 
+Memory index files are to be read at the start of any fresh context.
+
 ## Memory Storage Guidelines
 
 > **Note:** All paths in this section (and in the Agent Instructions section above) are **relative to this `agents/` folder**, not the repository root. The actual on-disk locations are `agents/memories/shared/` and `agents/memories/local/`.
