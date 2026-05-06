@@ -1,3 +1,4 @@
+using LlamaShears.Agent.Core;
 using LlamaShears.Provider.Ollama;
 using Microsoft.AspNetCore.Builder;
 
@@ -16,6 +17,7 @@ public static class WebApplicationBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.Services.AddOllamaProvider();
+        builder.Services.AddAgentCore();
 
         return builder;
     }
