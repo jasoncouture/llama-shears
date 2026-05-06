@@ -280,9 +280,10 @@ public sealed class ChatSession :
     {
         // Live turn-arrival is the source of truth for Assistant/Thought;
         // for history backfill we additionally render User turns so the
-        // user sees their side of the prior conversation. System and
-        // framework-injected turns stay hidden — they're prompt plumbing,
-        // not chat content.
+        // user sees their side of the prior conversation. System,
+        // framework-injected, and Tool turns stay hidden — they're prompt
+        // plumbing, not chat content. Tool calls and results have their
+        // own event channels for any future UI rendering.
         var kind = turn.Role switch
         {
             ModelRole.User => ChatBubbleKind.User,
@@ -290,7 +291,15 @@ public sealed class ChatSession :
             ModelRole.Thought => ChatBubbleKind.Thought,
             _ => (ChatBubbleKind?)null,
         };
-        return kind is null ? null : new ChatBubble(kind.Value, turn.Content, turn.Timestamp);
+        if (kind is null || string.IsNullOrEmpty(turn.Content))
+        {
+            // Empty-content assistant turns are real: a model that
+            // responds with only tool calls leaves Content empty and
+            // ToolCalls populated. The bubble would be a blank rectangle;
+            // skip it.
+            return null;
+        }
+        return new ChatBubble(kind.Value, turn.Content, turn.Timestamp);
     }
 
     private enum ChatCommand
