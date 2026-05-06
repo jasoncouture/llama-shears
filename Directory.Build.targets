@@ -1,0 +1,12 @@
+<Project>
+  <ItemGroup Condition=" '$(IsPackable)' == 'true' AND '$(MSBuildProjectName)' != 'LlamaShears.DocsBuild' ">
+    <ProjectReference Include="$(LlamaShearsRepoRoot)tooling\LlamaShears.DocsBuild\LlamaShears.DocsBuild.csproj"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+  <Import Project="$(LlamaShearsRepoRoot)tooling\LlamaShears.DocsBuild\build\LlamaShears.DocsBuild.targets"
+          Condition=" '$(IsPackable)' == 'true'
+                      AND '$(MSBuildProjectName)' != 'LlamaShears.DocsBuild'
+                      AND Exists('$(LlamaShearsRepoRoot)tooling\LlamaShears.DocsBuild\build\LlamaShears.DocsBuild.targets') " />
+</Project>

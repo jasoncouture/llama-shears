@@ -1,0 +1,39 @@
+<Project>
+
+  <PropertyGroup>
+    <_LlamaShearsDocsBuildAssembly Condition="'$(_LlamaShearsDocsBuildAssembly)' == ''">$(MSBuildThisFileDirectory)..\bin\$(Configuration)\netstandard2.0\LlamaShears.DocsBuild.dll</_LlamaShearsDocsBuildAssembly>
+  </PropertyGroup>
+
+  <UsingTask TaskName="LlamaShears.DocsBuild.XmlDocsToMarkdownTask"
+             AssemblyFile="$(_LlamaShearsDocsBuildAssembly)" />
+
+  <Target Name="LlamaShearsValidateDocsBuild"
+          BeforeTargets="CoreCompile"
+          Condition=" '$(IsPackable)' == 'true' ">
+    <Error Condition=" '$(GenerateDocumentationFile)' != 'true' "
+           Text="LlamaShears.DocsBuild: '$(MSBuildProjectName)' has IsPackable=true; GenerateDocumentationFile must also be true so the markdown task has an XML doc file to consume." />
+  </Target>
+
+  <Target Name="LlamaShearsGenerateMarkdownDocs"
+          AfterTargets="Build"
+          Condition=" '$(IsPackable)' == 'true' AND '$(DesignTimeBuild)' != 'true' "
+          Inputs="$(DocumentationFile)"
+          Outputs="$(IntermediateOutputPath)LlamaShears.DocsBuild.stamp">
+
+    <PropertyGroup>
+      <DocumentationRoot Condition="'$(DocumentationRoot)' == ''">$(LlamaShearsRepoRoot)docs/api</DocumentationRoot>
+      <_LlamaShearsDocsAssemblyOutputDir>$(DocumentationRoot)/$(AssemblyName)</_LlamaShearsDocsAssemblyOutputDir>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(_LlamaShearsDocsAssemblyOutputDir)" />
+
+    <XmlDocsToMarkdownTask
+        DocumentationFile="$(DocumentationFile)"
+        OutputDirectory="$(_LlamaShearsDocsAssemblyOutputDir)"
+        AssemblyName="$(AssemblyName)"
+        AssemblyPath="$(TargetPath)" />
+
+    <Touch Files="$(IntermediateOutputPath)LlamaShears.DocsBuild.stamp" AlwaysCreate="true" />
+  </Target>
+
+</Project>
