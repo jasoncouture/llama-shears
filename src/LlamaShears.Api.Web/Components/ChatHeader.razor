@@ -29,6 +29,14 @@
                 @onclick="ToggleThoughts">
             <Icon Name="lightbulb-fill" />
         </button>
+        <button type="button"
+                class="chat-header-button chat-header-toggle @(Session.ShowStreaming ? "is-on" : null)"
+                title="@(Session.ShowStreaming ? "Hide streaming output" : "Show streaming output")"
+                aria-label="Toggle streaming output"
+                aria-pressed="@(Session.ShowStreaming ? "true" : "false")"
+                @onclick="ToggleStreaming">
+            <Icon Name="broadcast" />
+        </button>
     </div>
 </div>
 
@@ -51,6 +59,11 @@
     private void ToggleThoughts()
     {
         Session.ShowThoughts = !Session.ShowThoughts;
+    }
+
+    private void ToggleStreaming()
+    {
+        Session.ShowStreaming = !Session.ShowStreaming;
     }
 
     private async Task OnSelectionChangedAsync(ChangeEventArgs e)

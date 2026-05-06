@@ -13,13 +13,25 @@
     }
     else
     {
+        var hasHiddenStreaming = false;
         foreach (var bubble in Session.Bubbles)
         {
             if (bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts)
             {
                 continue;
             }
+            if (bubble.IsStreaming && !Session.ShowStreaming)
+            {
+                hasHiddenStreaming = true;
+                continue;
+            }
             <ChatBubbleView Bubble="@bubble" />
+        }
+        if (hasHiddenStreaming)
+        {
+            <div class="typing-indicator" role="status" aria-label="Agent is typing">
+                <span></span><span></span><span></span>
+            </div>
         }
     }
 </section>
