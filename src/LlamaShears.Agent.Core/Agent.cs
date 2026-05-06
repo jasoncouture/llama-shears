@@ -13,7 +13,7 @@ namespace LlamaShears.Agent.Core;
 public sealed partial class Agent : IAgent
 {
     private readonly ILanguageModel _model;
-    private readonly ILogger<Agent> _logger;
+    private readonly ILogger _logger;
     private readonly IAgentContext _agentContext;
     private readonly ISystemPromptProvider _systemPrompt;
     private readonly TimeProvider _time;
@@ -26,23 +26,30 @@ public sealed partial class Agent : IAgent
 
     public Agent(
         string id,
-        TimeSpan heartbeatPeriod,
+        AgentConfig config,
         ILanguageModel model,
-        IAsyncSubscriber<SystemTick> ticks,
         IAgentContext agentContext,
         IReadOnlyList<IInputChannel> inputChannels,
         IReadOnlyList<IOutputChannel> outputChannels,
+        ILogger logger,
+        IAsyncSubscriber<SystemTick> ticks,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
-        ILogger<Agent> logger,
         IAsyncPublisher<AgentFragmentEmitted>? fragments = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(agentContext);
+        ArgumentNullException.ThrowIfNull(inputChannels);
+        ArgumentNullException.ThrowIfNull(outputChannels);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(ticks);
         ArgumentNullException.ThrowIfNull(systemPromptProvider);
         ArgumentNullException.ThrowIfNull(timeProvider);
 
         Id = id;
-        HeartbeatPeriod = heartbeatPeriod;
+        Config = config;
         _model = model;
         _logger = logger;
         _fragments = fragments;
@@ -64,9 +71,11 @@ public sealed partial class Agent : IAgent
 
     public string Id { get; }
 
+    public AgentConfig Config { get; }
+
     public DateTimeOffset LastHeartbeatAt { get; private set; }
 
-    public TimeSpan HeartbeatPeriod { get; }
+    public TimeSpan HeartbeatPeriod => Config.HeartbeatPeriod;
 
     public bool HeartbeatEnabled { get; set; } = true;
 
@@ -276,4 +285,17 @@ public sealed partial class Agent : IAgent
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
+
+    /// <summary>
+    /// Builds an <see cref="ILogger"/> for an agent with the discriminated
+    /// category <c>LlamaShears.Agent.Core.Agent:&lt;name&gt;</c>, so log
+    /// filtering can target a single agent without affecting others. Pair
+    /// this with <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance"/>.
+    /// </summary>
+    public static ILogger CreateLogger(ILoggerFactory loggerFactory, string agentId)
+    {
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        return loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{agentId}");
+    }
 }
