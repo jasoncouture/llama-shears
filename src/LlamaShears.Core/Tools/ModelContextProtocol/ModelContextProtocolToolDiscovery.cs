@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using LlamaShears.Core.Abstractions.Context;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Client;
@@ -81,7 +82,65 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
     }
 
     private static ToolDescriptor MapTool(McpClientTool tool) =>
-        new(tool.Name, tool.Description ?? string.Empty, []);
+        new(tool.Name, tool.Description ?? string.Empty, ParseSchema(tool.JsonSchema));
+
+    // Pull parameter names, types, descriptions, and required-set out of
+    // the MCP tool's JSON Schema so the model sees the same parameter
+    // names the C# server-side binder expects. Without this the model
+    // guesses arg names from the description text (often snake_case)
+    // and the binder silently falls through to defaults when the casing
+    // doesn't line up.
+    private static ImmutableArray<ToolParameter> ParseSchema(JsonElement schema)
+    {
+        if (schema.ValueKind != JsonValueKind.Object)
+        {
+            return [];
+        }
+        if (!schema.TryGetProperty("properties", out var properties)
+            || properties.ValueKind != JsonValueKind.Object)
+        {
+            return [];
+        }
+
+        var requiredSet = new HashSet<string>(StringComparer.Ordinal);
+        if (schema.TryGetProperty("required", out var required)
+            && required.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in required.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String && item.GetString() is { } name)
+                {
+                    requiredSet.Add(name);
+                }
+            }
+        }
+
+        var builder = ImmutableArray.CreateBuilder<ToolParameter>();
+        foreach (var property in properties.EnumerateObject())
+        {
+            var type = "object";
+            var description = string.Empty;
+            if (property.Value.ValueKind == JsonValueKind.Object)
+            {
+                if (property.Value.TryGetProperty("type", out var typeNode)
+                    && typeNode.ValueKind == JsonValueKind.String)
+                {
+                    type = typeNode.GetString() ?? "object";
+                }
+                if (property.Value.TryGetProperty("description", out var descriptionNode)
+                    && descriptionNode.ValueKind == JsonValueKind.String)
+                {
+                    description = descriptionNode.GetString() ?? string.Empty;
+                }
+            }
+            builder.Add(new ToolParameter(
+                property.Name,
+                description,
+                type,
+                requiredSet.Contains(property.Name)));
+        }
+        return builder.ToImmutable();
+    }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "MCP discovery failed for server '{ServerName}' at {ServerUri}: {Message}")]
     private static partial void LogServerDiscoveryFailed(ILogger logger, string serverName, Uri serverUri, string message, Exception ex);
