@@ -11,7 +11,7 @@ public interface IEventPublisher
     /// Publishes an event of the given <paramref name="eventType"/> carrying
     /// <paramref name="data"/>.
     /// </summary>
-    ValueTask PublishAsync<T>(EventType eventType, T? data, Guid? correlationId = null)
+    ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken)
         where T : class;
 }
 
