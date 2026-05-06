@@ -15,6 +15,10 @@
     {
         foreach (var bubble in Session.Bubbles)
         {
+            if (bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts)
+            {
+                continue;
+            }
             <ChatBubbleView Bubble="@bubble" />
         }
     }

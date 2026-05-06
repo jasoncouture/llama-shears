@@ -16,6 +16,7 @@ public sealed class ChatSession : IDisposable
     private IDisposable? _turnSubscription;
     private IDisposable? _fragmentSubscription;
     private string? _selectedAgentId;
+    private bool _showThoughts = true;
 
     public ChatSession(
         IAsyncSubscriber<AgentTurnEmitted> turns,
@@ -48,6 +49,29 @@ public sealed class ChatSession : IDisposable
             {
                 return [.._bubbles];
             }
+        }
+    }
+
+    public bool ShowThoughts
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _showThoughts;
+            }
+        }
+        set
+        {
+            lock (_gate)
+            {
+                if (_showThoughts == value)
+                {
+                    return;
+                }
+                _showThoughts = value;
+            }
+            Changed?.Invoke();
         }
     }
 
