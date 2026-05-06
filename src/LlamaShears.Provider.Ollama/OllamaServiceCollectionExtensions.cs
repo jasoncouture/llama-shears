@@ -11,25 +11,32 @@ namespace LlamaShears.Provider.Ollama;
 public static class OllamaServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Ollama provider, its <see cref="IOllamaApiClient"/>, and
-    /// <see cref="OllamaProviderOptions"/> with the given service collection.
+    /// Default configuration section bound to <see cref="OllamaProviderOptions"/>.
+    /// </summary>
+    public const string DefaultConfigurationSection = "Providers:Ollama";
+
+    /// <summary>
+    /// Registers the Ollama provider. <see cref="OllamaProviderOptions"/> are
+    /// bound from <paramref name="configurationSection"/> on the
+    /// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/> resolved
+    /// from DI. <see cref="IOllamaApiClient"/> is registered as a typed
+    /// <see cref="HttpClient"/>, so its underlying handler is pooled and
+    /// recycled by <see cref="IHttpClientFactory"/>.
     /// </summary>
     public static IServiceCollection AddOllamaProvider(
         this IServiceCollection services,
-        Action<OllamaProviderOptions>? configure = null)
+        string configurationSection = DefaultConfigurationSection)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configurationSection);
 
-        var optionsBuilder = services.AddOptions<OllamaProviderOptions>();
-        if (configure is not null)
-        {
-            optionsBuilder.Configure(configure);
-        }
+        services.AddOptions<OllamaProviderOptions>()
+            .BindConfiguration(configurationSection);
 
-        services.AddSingleton<IOllamaApiClient>(sp =>
+        services.AddHttpClient<IOllamaApiClient, OllamaApiClient>((sp, httpClient) =>
         {
             var options = sp.GetRequiredService<IOptions<OllamaProviderOptions>>().Value;
-            return new OllamaApiClient(options.BaseUri);
+            httpClient.BaseAddress = options.BaseUri;
         });
 
         services.AddSingleton<IProviderFactory, OllamaProviderFactory>();
