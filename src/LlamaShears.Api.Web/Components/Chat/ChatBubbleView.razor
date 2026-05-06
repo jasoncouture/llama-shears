@@ -11,7 +11,7 @@
         <ul class="bubble-tool-list">
             @foreach (var tool in Bubble.InFlightTools ?? [])
             {
-                <li><code>@tool.Source<span class="bubble-tool-sep">__</span>@tool.Name</code></li>
+                <li><code>@FormatToolName(tool.Source, tool.Name)</code></li>
             }
         </ul>
     </article>
@@ -20,9 +20,8 @@ else if (Bubble.Kind == ChatBubbleKind.ToolResult)
 {
     <article class="bubble bubble-tool-result @(Bubble.IsError ? "bubble-tool-error" : null)">
         <header class="bubble-header">
-            <span class="bubble-kind">
-                <code>@Bubble.CompletedCall!.Source<span class="bubble-tool-sep">__</span>@Bubble.CompletedCall!.Name</code>
-            </span>
+            <span class="bubble-kind">tool result</span>
+            <code class="bubble-tool-name">@FormatToolName(Bubble.CompletedCall!.Source, Bubble.CompletedCall!.Name)</code>
             <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
             @if (Bubble.IsError)
             {
@@ -31,12 +30,15 @@ else if (Bubble.Kind == ChatBubbleKind.ToolResult)
         </header>
         @if (HasArguments)
         {
-            <details class="bubble-tool-args">
+            <details class="bubble-tool-args" open>
                 <summary>arguments</summary>
                 <pre class="bubble-tool-args-body">@Bubble.CompletedCall!.ArgumentsJson</pre>
             </details>
         }
-        <pre class="bubble-content">@Bubble.Content</pre>
+        <details class="bubble-tool-body">
+            <summary>result</summary>
+            <pre class="bubble-content">@Bubble.Content</pre>
+        </details>
     </article>
 }
 else
@@ -77,6 +79,11 @@ else
         : Bubble.Kind.ToString();
 
     private string FullTimestamp => Bubble.At.ToLocalTime().ToString("F", System.Globalization.CultureInfo.CurrentCulture);
+
+    // The Ollama provider flattens (source, name) to source__name on the
+    // wire; that's a provider-specific transport detail and shouldn't
+    // leak into the UI. Render the pair with a dot separator instead.
+    private static string FormatToolName(string source, string name) => $"{source}.{name}";
 
     private bool HasArguments
     {
