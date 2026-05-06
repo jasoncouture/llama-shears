@@ -496,3 +496,7 @@ tmp/
 # Per-host compose override (auto-loaded alongside compose.yaml)
 compose.override.yaml
 compose.override.yml
+
+# Per-host bake override (auto-loaded alongside docker-bake.hcl)
+docker-bake.override.hcl
+docker-bake.override.json
