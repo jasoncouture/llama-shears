@@ -196,12 +196,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             ActivatorUtilities.CreateInstance<UiInputChannel>(_services, name),
         ];
 
-        IReadOnlyList<IOutputChannel> outputs =
-        [
-            ActivatorUtilities.CreateInstance<UiOutputChannel>(_services, name),
-            ActivatorUtilities.CreateInstance<LoggerOutputChannel>(_services, name),
-        ];
-
         return ActivatorUtilities.CreateInstance<Agent>(
             _services,
             name,
@@ -209,7 +203,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             model,
             agentContext,
             inputs,
-            outputs,
             modelConfig);
     }
 

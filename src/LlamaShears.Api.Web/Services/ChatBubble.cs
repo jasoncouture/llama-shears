@@ -20,20 +20,9 @@ public sealed class ChatBubble
 
     public bool IsStreaming { get; private set; }
 
-    public void AppendDelta(string delta)
-    {
-        Content += delta;
-        IsStreaming = true;
-    }
-
-    public void Replace(string content)
+    public void Update(string content, bool streaming)
     {
         Content = content;
-        IsStreaming = false;
-    }
-
-    public void Seal()
-    {
-        IsStreaming = false;
+        IsStreaming = streaming;
     }
 }
