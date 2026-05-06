@@ -1,20 +1,8 @@
 # Contributor License Agreement
 
-Thank you for your interest in The Apache Software Foundation (the
-"Foundation"). To clarify the intellectual property license
-granted with Contributions from any person or entity, the Foundation
-must have on file a signed Contributor License Agreement ("CLA")
-from each Contributor, indicating agreement with the license
-terms below. This agreement is for your protection as a Contributor
-as well as the protection of the Foundation and its users. It does not
-change your rights to use your own Contributions for any other purpose.
-Please complete and sign this Agreement, and then email a pdf copy
-to secretary@apache.org only (do not copy any other persons or lists).
-Read this document carefully before signing and keep a copy for your records.
-
 <APACHE FORM>
 
-ou accept and agree to the following terms and conditions for Your
+You accept and agree to the following terms and conditions for Your
 Contributions (present and future) that you submit to the Foundation. In
 return, the Foundation shall not use Your Contributions in a way that
 is contrary to the public benefit or inconsistent with its nonprofit
@@ -106,7 +94,3 @@ and interest in and to Your Contributions.
    inaccurate in any respect.
 
 <APACHE FORM>
-
-This is a legal contract containing Personally Identifiable Information.
-Please refer to https://s.apache.org/cla-privacy-policy for the policy
-governing how this information is used and shared.
