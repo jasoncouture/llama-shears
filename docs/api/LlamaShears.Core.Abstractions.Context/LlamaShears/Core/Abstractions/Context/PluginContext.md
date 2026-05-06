@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Context.PluginContext
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Context`
 
 Free-form key/value bag plugins use to surface state on an
 [AgentContext](AgentContext.md) snapshot. Keys are namespaced by the

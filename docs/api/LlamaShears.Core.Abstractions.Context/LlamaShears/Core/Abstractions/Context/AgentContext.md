@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Context.AgentContext
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Context`
 
 Composed snapshot of everything a tool, compactor, or plugin needs
 to know about "the current agent right now". Built on demand by

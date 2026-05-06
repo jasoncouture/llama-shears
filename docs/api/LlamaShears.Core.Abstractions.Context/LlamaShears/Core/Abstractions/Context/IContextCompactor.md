@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Context.IContextCompactor
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Context`
 
 Decides whether a ModelPrompt exceeds the model's
 context window and, if so, rewrites it so the next model call

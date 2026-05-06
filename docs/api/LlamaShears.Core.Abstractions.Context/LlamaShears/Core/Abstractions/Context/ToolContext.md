@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Context.ToolContext
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Context`
 
 The flat tool catalog visible to the agent on an
 [AgentContext](AgentContext.md) snapshot. The grouped form

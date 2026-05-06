@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Context.IAgentContextProvider
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Context`
 
 Composes [AgentContext](AgentContext.md) snapshots on demand from the
 host's authoritative sources (config, language model, plugins, etc.).

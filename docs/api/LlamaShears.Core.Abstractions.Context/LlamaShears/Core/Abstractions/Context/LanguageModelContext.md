@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Context.LanguageModelContext
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Context`
 
 Conversation slice of an [AgentContext](AgentContext.md) snapshot:
 chronological turns, the polymorphic entry log they were drawn
