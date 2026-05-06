@@ -87,6 +87,7 @@ public sealed class XmlDocsToMarkdownTask : Task
 
         ClearStaleMarkdown(OutputDirectory, byRelativePath.Keys);
 
+        var writtenTypes = new HashSet<string>(byType.Keys, StringComparer.Ordinal);
         var written = 0;
         foreach (var pair in byRelativePath)
         {
@@ -97,6 +98,7 @@ public sealed class XmlDocsToMarkdownTask : Task
                 pair.Value.Members,
                 AssemblyName,
                 filter,
+                writtenTypes,
                 ToForwardSlashRelativePath(pair.Key));
             File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
             written++;

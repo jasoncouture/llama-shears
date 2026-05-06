@@ -24,9 +24,10 @@ internal sealed class MarkdownRenderer
         IReadOnlyList<MemberDoc> members,
         string assemblyName,
         AccessibilityFilter filter,
+        HashSet<string> writtenTypes,
         string currentRelativePath)
     {
-        var formatter = new TypeReferenceFormatter(filter, currentRelativePath);
+        var formatter = new TypeReferenceFormatter(filter, writtenTypes, currentRelativePath);
         var renderer = new MarkdownRenderer(formatter, filter, typeFqn);
         return renderer.RenderInternal(members, assemblyName);
     }

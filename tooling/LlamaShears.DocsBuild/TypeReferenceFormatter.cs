@@ -29,11 +29,16 @@ internal sealed class TypeReferenceFormatter
     };
 
     private readonly AccessibilityFilter _filter;
+    private readonly HashSet<string> _writtenTypes;
     private readonly string _currentRelativePath;
 
-    public TypeReferenceFormatter(AccessibilityFilter filter, string currentRelativePath)
+    public TypeReferenceFormatter(
+        AccessibilityFilter filter,
+        HashSet<string> writtenTypes,
+        string currentRelativePath)
     {
         _filter = filter;
+        _writtenTypes = writtenTypes;
         _currentRelativePath = currentRelativePath;
     }
 
@@ -138,6 +143,10 @@ internal sealed class TypeReferenceFormatter
     private string FormatTypeNameWithLink(string fullName)
     {
         var simpleName = GetSimpleNameWithoutArity(GetLastSegment(fullName));
+        if (!_writtenTypes.Contains(fullName))
+        {
+            return simpleName;
+        }
         var targetRelative = _filter.GetMarkdownRelativePath(fullName);
         if (targetRelative is null)
         {
