@@ -69,7 +69,7 @@ public sealed class ContextPersistenceTests
         await SendUserMessageAndWaitForReplyAsync(factory, "hello");
 
         await using var scope = factory.Services.CreateAsyncScope();
-        var session = scope.ServiceProvider.GetRequiredService<ChatSession>();
+        var session = scope.ServiceProvider.GetRequiredService<IChatSession>();
         await session.SelectAgentAsync(AgentId, CancellationToken.None);
         await session.SendAsync("/clear", CancellationToken.None);
 
@@ -97,7 +97,7 @@ public sealed class ContextPersistenceTests
         await SendUserMessageAndWaitForReplyAsync(factory, "hello");
 
         await using var scope = factory.Services.CreateAsyncScope();
-        var session = scope.ServiceProvider.GetRequiredService<ChatSession>();
+        var session = scope.ServiceProvider.GetRequiredService<IChatSession>();
         await session.SelectAgentAsync(AgentId, CancellationToken.None);
         await session.SendAsync("/archive", CancellationToken.None);
 

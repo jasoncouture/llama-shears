@@ -1,6 +1,6 @@
 @using LlamaShears.Api.Web.Services
 @implements IDisposable
-@inject ChatSession Session
+@inject IChatSession Session
 
 <form class="composer" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
     <textarea

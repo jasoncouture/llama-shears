@@ -1,6 +1,6 @@
 @using LlamaShears.Api.Web.Services
 @implements IDisposable
-@inject ChatSession Session
+@inject IChatSession Session
 
 <section class="messages" data-auto-scroll data-agent="@(Session.SelectedAgentId ?? string.Empty)">
     @if (Session.SelectedAgentId is null)

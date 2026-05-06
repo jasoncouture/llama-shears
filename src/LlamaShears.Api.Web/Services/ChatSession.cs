@@ -4,7 +4,7 @@ using MessagePipe;
 
 namespace LlamaShears.Api.Web.Services;
 
-public sealed class ChatSession : IDisposable
+public sealed class ChatSession : IChatSession
 {
     private readonly IAsyncSubscriber<AgentTurnEmitted> _turns;
     private readonly IAsyncSubscriber<AgentFragmentEmitted> _fragments;
