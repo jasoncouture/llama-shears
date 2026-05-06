@@ -3,7 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: sjc.vultrcr.com/strangesoft/llama-shears:next
+    # Default is a local-only tag; override via LLAMASHEARS_IMAGE in
+    # .env (auto-loaded for interpolation) or by invoking compose with
+    # `--env-file .local.env` to point the build at a registry.
+    image: ${LLAMASHEARS_IMAGE:-llama-shears:dev}
     container_name: llamashears
     user: root
     ports:
