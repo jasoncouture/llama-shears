@@ -1,6 +1,6 @@
 using Scriban;
 
-namespace LlamaShears.Agent.Core.SystemPrompt;
+namespace LlamaShears.Agent.Core.Templating;
 
 public sealed class TemplateRenderer : ITemplateRenderer
 {

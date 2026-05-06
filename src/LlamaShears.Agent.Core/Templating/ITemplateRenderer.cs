@@ -1,4 +1,4 @@
-namespace LlamaShears.Agent.Core.SystemPrompt;
+namespace LlamaShears.Agent.Core.Templating;
 
 public interface ITemplateRenderer
 {
