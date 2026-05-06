@@ -7,7 +7,7 @@ namespace LlamaShears.UnitTests.Hosting;
 public sealed class HostStartupTaskRunnerTests
 {
     [Test]
-    public async Task Runs_every_registered_task_in_registration_order()
+    public async Task RunsEveryRegisteredTaskInRegistrationOrder()
     {
         var order = new List<string>();
         var services = new ServiceCollection()
@@ -28,7 +28,7 @@ public sealed class HostStartupTaskRunnerTests
     }
 
     [Test]
-    public async Task Tasks_resolve_from_a_fresh_scope_each_run()
+    public async Task TasksResolveFromAFreshScopeEachRun()
     {
         var services = new ServiceCollection()
             .AddScoped<ScopedDependency>()
@@ -54,7 +54,7 @@ public sealed class HostStartupTaskRunnerTests
     }
 
     [Test]
-    public async Task Throwing_task_aborts_subsequent_tasks()
+    public async Task ThrowingTaskAbortsSubsequentTasks()
     {
         var order = new List<string>();
         var services = new ServiceCollection()
@@ -76,7 +76,7 @@ public sealed class HostStartupTaskRunnerTests
     }
 
     [Test]
-    public async Task Pre_cancelled_token_skips_all_tasks()
+    public async Task PreCancelledTokenSkipsAllTasks()
     {
         var order = new List<string>();
         var services = new ServiceCollection()
@@ -99,7 +99,7 @@ public sealed class HostStartupTaskRunnerTests
     }
 
     [Test]
-    public async Task StopAsync_is_a_no_op()
+    public async Task StopAsyncIsANoOp()
     {
         var services = new ServiceCollection()
             .AddHostStartupTaskRunner()
