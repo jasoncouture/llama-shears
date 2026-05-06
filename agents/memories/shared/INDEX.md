@@ -1,6 +1,6 @@
 # Shared memory index
 
-- [Atomic commits and full-solution build/test](feedback_build_and_commit.md) — commit each logical change; always run `dotnet build` and `dotnet test` with no params
+- [Atomic commits and Husky-driven pre-commit verification](feedback_build_and_commit.md) — commit each logical change; trust the Husky pre-commit hook to verify; manual `dotnet test`/`dotnet build` is optional, never with `--filter` or project args
 - [Never accept IConfiguration as a parameter](feedback_iconfiguration_parameter.md) — use `AddOptions<T>().BindConfiguration("Section")`; expose only the section name (defaulted, last)
 - ["SDK reference" means FrameworkReference, not the Sdk attribute](feedback_sdk_reference.md) — add `<FrameworkReference Include="..." />`, never swap the project's `Sdk=`
 - [Wait for approval after opinion questions](feedback_wait_on_opinion_questions.md) — "what do you think?" / "perhaps we should…" → give opinion and stop, even in auto mode
