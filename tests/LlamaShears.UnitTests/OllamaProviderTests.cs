@@ -109,4 +109,42 @@ public class OllamaProviderTests
 
         await Assert.That(model).IsTypeOf<OllamaLanguageModel>();
     }
+
+    [Test]
+    public async Task AddOllamaProviderRegistersEmbeddingProviderFactory()
+    {
+        var services = ServicesWithConfig();
+
+        services.AddOllamaProvider();
+
+        using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IEmbeddingProviderFactory>();
+
+        await Assert.That(factory).IsTypeOf<OllamaEmbeddingProviderFactory>();
+    }
+
+    [Test]
+    public async Task EmbeddingFactoryNameIsOllama()
+    {
+        var services = ServicesWithConfig();
+        services.AddOllamaProvider();
+        using var provider = services.BuildServiceProvider();
+
+        var factory = provider.GetRequiredService<IEmbeddingProviderFactory>();
+
+        await Assert.That(factory.Name).IsEqualTo("OLLAMA");
+    }
+
+    [Test]
+    public async Task EmbeddingFactoryCreateModelReturnsOllamaEmbeddingModel()
+    {
+        var services = ServicesWithConfig();
+        services.AddOllamaProvider();
+        using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IEmbeddingProviderFactory>();
+
+        var model = factory.CreateModel(new ModelConfiguration("embeddinggemma:latest"));
+
+        await Assert.That(model).IsTypeOf<OllamaEmbeddingModel>();
+    }
 }
