@@ -12,7 +12,7 @@ namespace LlamaShears.UnitTests.Api.Authentication;
 public sealed class AgentBearerAuthenticationTests
 {
     [Test]
-    public async Task Missing_authorization_header_yields_no_result()
+    public async Task MissingAuthorizationHeaderYieldsNoResult()
     {
         var (root, _) = BuildPipeline();
 
@@ -22,7 +22,7 @@ public sealed class AgentBearerAuthenticationTests
     }
 
     [Test]
-    public async Task Non_bearer_authorization_header_yields_no_result()
+    public async Task NonBearerAuthorizationHeaderYieldsNoResult()
     {
         var (root, _) = BuildPipeline();
 
@@ -32,7 +32,7 @@ public sealed class AgentBearerAuthenticationTests
     }
 
     [Test]
-    public async Task Bearer_header_with_empty_token_fails_authentication()
+    public async Task BearerHeaderWithEmptyTokenFailsAuthentication()
     {
         var (root, _) = BuildPipeline();
 
@@ -43,7 +43,7 @@ public sealed class AgentBearerAuthenticationTests
     }
 
     [Test]
-    public async Task Bearer_header_with_unknown_token_fails_authentication()
+    public async Task BearerHeaderWithUnknownTokenFailsAuthentication()
     {
         var (root, _) = BuildPipeline();
 
@@ -54,7 +54,7 @@ public sealed class AgentBearerAuthenticationTests
     }
 
     [Test]
-    public async Task Bearer_header_with_a_valid_token_authenticates_with_the_agent_identity()
+    public async Task BearerHeaderWithAValidTokenAuthenticatesWithTheAgentIdentity()
     {
         var (root, store) = BuildPipeline();
         var token = store.Issue(SampleAgent("alice"));
@@ -70,7 +70,7 @@ public sealed class AgentBearerAuthenticationTests
     }
 
     [Test]
-    public async Task A_valid_token_can_only_be_used_once()
+    public async Task AValidTokenCanOnlyBeUsedOnce()
     {
         var (root, store) = BuildPipeline();
         var token = store.Issue(SampleAgent("alice"));
