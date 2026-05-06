@@ -3,6 +3,7 @@
 @inject IAgentDirectory Directory
 @inject ChatSession Session
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <div class="chat-header">
     <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChangedAsync">
@@ -45,11 +46,32 @@
 
 @code {
     private IReadOnlyList<string> _agentIds = [];
+    private string? _loadedPrefsAgentId;
 
     protected override void OnInitialized()
     {
         Session.Changed += HandleChanged;
         Refresh();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var current = Session.SelectedAgentId;
+        if (current is null || string.Equals(current, _loadedPrefsAgentId, StringComparison.Ordinal))
+        {
+            return;
+        }
+        _loadedPrefsAgentId = current;
+        var thoughts = await ReadBoolAsync(ThoughtsKey(current)).ConfigureAwait(false);
+        var streaming = await ReadBoolAsync(StreamingKey(current)).ConfigureAwait(false);
+        if (thoughts is bool t)
+        {
+            Session.ShowThoughts = t;
+        }
+        if (streaming is bool s)
+        {
+            Session.ShowStreaming = s;
+        }
     }
 
     private void HandleChanged() => _ = InvokeAsync(StateHasChanged);
@@ -59,14 +81,22 @@
         _agentIds = Directory.ListAgentIds();
     }
 
-    private void ToggleThoughts()
+    private async Task ToggleThoughts()
     {
         Session.ShowThoughts = !Session.ShowThoughts;
+        if (Session.SelectedAgentId is { } id)
+        {
+            await WriteBoolAsync(ThoughtsKey(id), Session.ShowThoughts).ConfigureAwait(false);
+        }
     }
 
-    private void ToggleStreaming()
+    private async Task ToggleStreaming()
     {
         Session.ShowStreaming = !Session.ShowStreaming;
+        if (Session.SelectedAgentId is { } id)
+        {
+            await WriteBoolAsync(StreamingKey(id), Session.ShowStreaming).ConfigureAwait(false);
+        }
     }
 
     private async Task OnSelectionChangedAsync(ChangeEventArgs e)
@@ -76,6 +106,19 @@
         await Session.SelectAgentAsync(normalized, CancellationToken.None);
         Nav.NavigateTo(normalized is null ? "/chat" : $"/chat/{Uri.EscapeDataString(normalized)}", replace: true);
     }
+
+    private async ValueTask<bool?> ReadBoolAsync(string key)
+    {
+        var raw = await JS.InvokeAsync<string?>("localStorage.getItem", key).ConfigureAwait(false);
+        return bool.TryParse(raw, out var v) ? v : null;
+    }
+
+    private ValueTask WriteBoolAsync(string key, bool value)
+        => JS.InvokeVoidAsync("localStorage.setItem", key, value ? "true" : "false");
+
+    private static string ThoughtsKey(string agentId) => $"llamashears:agent:{agentId}:showThoughts";
+
+    private static string StreamingKey(string agentId) => $"llamashears:agent:{agentId}:showStreaming";
 
     public void Dispose()
     {
