@@ -1,31 +1,11 @@
 .chat {
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100dvh;
+    grid-template-rows: 1fr auto;
+    height: 100%;
     max-width: 960px;
     margin: 0 auto;
     padding: 1rem;
     gap: 1rem;
-}
-
-.chat-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 1.25rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-}
-
-.chat-header h1 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.01em;
 }
 
 .conversation {
