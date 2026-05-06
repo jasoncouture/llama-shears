@@ -15,18 +15,20 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
         _cache = cache;
     }
 
+    private static string ToScopedCacheKey(string key) => $"{_keyPrefix}{key}";
+
     public CacheResult<TItem> TryGet<TItem>(string cacheKey) where TItem : class
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
 
-        if (!_cache.TryGetValue($"{_keyPrefix}{cacheKey}", out var raw))
+        if (!_cache.TryGetValue(ToScopedCacheKey(cacheKey), out var raw))
         {
             return new CacheResult<TItem>(Present: false);
         }
 
         if (raw is null)
         {
-            return new CacheResult<TItem>(Present: true, TypeMismatch: false, Value: null);
+            return new CacheResult<TItem>(Present: true, TypeMismatch: false);
         }
 
         if (raw is not TItem typed)
@@ -37,10 +39,12 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
         return new CacheResult<TItem>(Present: true, TypeMismatch: false, Value: typed);
     }
 
+    
+
     public void Invalidate(string cacheKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
-        _cache.Remove($"{_keyPrefix}{cacheKey}");
+        _cache.Remove(ToScopedCacheKey(cacheKey));
     }
 
     public void Set<TItem>(string cacheKey, TItem? value, TimeSpan timeToLive) where TItem : class
@@ -55,7 +59,7 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
         }
 
         _cache.Set(
-            $"{_keyPrefix}{cacheKey}",
+            ToScopedCacheKey(cacheKey),
             value,
             new MemoryCacheEntryOptions
             {
