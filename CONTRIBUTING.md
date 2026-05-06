@@ -2,7 +2,15 @@
 
 Thanks for working on LlamaShears. This document captures the conventions and expectations for changes to the codebase. Most of them are encoded in tooling — analyzers, the build, the editor config — so following them mostly means letting the tools do their job and not fighting them. The parts that aren't tool-enforced are listed here.
 
-The guiding principle behind everything below is [ADR-0007 — Pit of success](docs/adr/0007-pit-of-success.md): the easy path should be the correct path, and doing the wrong thing should be inconvenient enough that the inconvenience itself is a signal.
+## Before you start: read [PRINCIPLES.md](PRINCIPLES.md)
+
+The rules in this document and the ADRs in [docs/adr/](docs/adr/) are concrete applications of two underlying principles: **mechanism over memory** and **bound aggregate cost, not per-decision cost**. Both are spelled out in [PRINCIPLES.md](PRINCIPLES.md), along with the tension between them ("never form over function").
+
+Read it before contributing, and make sure your proposed change aligns with it. The principles are not aspirational — they are how decisions on this project actually get made. A change that fights the principles is unlikely to land, regardless of how well it works locally. A change that reinforces the principles is likely to land even when the diff is awkward.
+
+If your change requires deviating from a principle (it happens — the principles are heuristics in service of outcomes, not laws), name the deviation explicitly in the PR description and explain why the case clears the bar. The deviation will be reviewed against the principle, not against personal taste, and the discussion goes faster when the trade is named up front rather than discovered during review.
+
+[ADR-0007 (Pit of success)](docs/adr/0007-pit-of-success.md) and [ADR-0009 (Pragmatism over technical purity)](docs/adr/0009-pragmatism-over-technical-purity.md) are the canonical instances of these principles in the ADR sequence. Reading those alongside PRINCIPLES.md is the fastest way to internalize how the project thinks.
 
 ## Repository layout
 
