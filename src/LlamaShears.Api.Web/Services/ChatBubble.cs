@@ -2,13 +2,54 @@ namespace LlamaShears.Api.Web.Services;
 
 public sealed class ChatBubble
 {
-    public ChatBubble(ChatBubbleKind kind, string content, DateTimeOffset at, Guid? streamId = null)
+    private readonly List<ToolCallView>? _inFlightTools;
+
+    private ChatBubble(
+        ChatBubbleKind kind,
+        string content,
+        DateTimeOffset at,
+        Guid? streamId,
+        bool isStreaming,
+        List<ToolCallView>? inFlightTools,
+        ToolCallView? completedCall,
+        bool isError)
     {
         Kind = kind;
         Content = content;
         At = at;
         StreamId = streamId;
+        IsStreaming = isStreaming;
+        _inFlightTools = inFlightTools;
+        CompletedCall = completedCall;
+        IsError = isError;
     }
+
+    public ChatBubble(ChatBubbleKind kind, string content, DateTimeOffset at, Guid? streamId = null)
+        : this(kind, content, at, streamId, isStreaming: false, inFlightTools: null, completedCall: null, isError: false)
+    {
+    }
+
+    public static ChatBubble ToolInFlight(Guid correlationId, DateTimeOffset at)
+        => new(
+            ChatBubbleKind.ToolInFlight,
+            string.Empty,
+            at,
+            streamId: correlationId,
+            isStreaming: true,
+            inFlightTools: [],
+            completedCall: null,
+            isError: false);
+
+    public static ChatBubble ToolResult(ToolCallView call, string result, bool isError, DateTimeOffset at)
+        => new(
+            ChatBubbleKind.ToolResult,
+            result,
+            at,
+            streamId: null,
+            isStreaming: false,
+            inFlightTools: null,
+            completedCall: call,
+            isError: isError);
 
     public ChatBubbleKind Kind { get; }
 
@@ -20,9 +61,39 @@ public sealed class ChatBubble
 
     public bool IsStreaming { get; private set; }
 
+    public IReadOnlyList<ToolCallView>? InFlightTools => _inFlightTools;
+
+    public ToolCallView? CompletedCall { get; }
+
+    public bool IsError { get; }
+
     public void Update(string content, bool streaming)
     {
         Content = content;
         IsStreaming = streaming;
     }
+
+    public void AddInFlight(ToolCallView call)
+    {
+        _inFlightTools?.Add(call);
+    }
+
+    public bool RemoveInFlight(string callId)
+    {
+        if (_inFlightTools is null)
+        {
+            return false;
+        }
+        for (var i = 0; i < _inFlightTools.Count; i++)
+        {
+            if (string.Equals(_inFlightTools[i].CallId, callId, StringComparison.Ordinal))
+            {
+                _inFlightTools.RemoveAt(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int InFlightCount => _inFlightTools?.Count ?? 0;
 }

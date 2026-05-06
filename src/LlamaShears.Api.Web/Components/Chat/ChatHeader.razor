@@ -41,6 +41,14 @@
                 @onclick="ToggleStreaming">
             <Icon Name="broadcast" />
         </button>
+        <button type="button"
+                class="chat-header-button chat-header-toggle @(Session.ShowTools ? "is-on" : null)"
+                title="@(Session.ShowTools ? "Hide tool activity" : "Show tool activity")"
+                aria-label="Toggle tool activity"
+                aria-pressed="@(Session.ShowTools ? "true" : "false")"
+                @onclick="ToggleTools">
+            <Icon Name="tools" />
+        </button>
     </div>
 </div>
 
@@ -64,6 +72,7 @@
         _loadedPrefsAgentId = current;
         var thoughts = await ReadBoolAsync(ThoughtsKey(current)).ConfigureAwait(false);
         var streaming = await ReadBoolAsync(StreamingKey(current)).ConfigureAwait(false);
+        var tools = await ReadBoolAsync(ToolsKey(current)).ConfigureAwait(false);
         if (thoughts is bool t)
         {
             Session.ShowThoughts = t;
@@ -71,6 +80,10 @@
         if (streaming is bool s)
         {
             Session.ShowStreaming = s;
+        }
+        if (tools is bool to)
+        {
+            Session.ShowTools = to;
         }
     }
 
@@ -99,6 +112,15 @@
         }
     }
 
+    private async Task ToggleTools()
+    {
+        Session.ShowTools = !Session.ShowTools;
+        if (Session.SelectedAgentId is { } id)
+        {
+            await WriteBoolAsync(ToolsKey(id), Session.ShowTools).ConfigureAwait(false);
+        }
+    }
+
     private async Task OnSelectionChangedAsync(ChangeEventArgs e)
     {
         var id = e.Value as string;
@@ -119,6 +141,8 @@
     private static string ThoughtsKey(string agentId) => $"llamashears:agent:{agentId}:showThoughts";
 
     private static string StreamingKey(string agentId) => $"llamashears:agent:{agentId}:showStreaming";
+
+    private static string ToolsKey(string agentId) => $"llamashears:agent:{agentId}:showTools";
 
     public void Dispose()
     {

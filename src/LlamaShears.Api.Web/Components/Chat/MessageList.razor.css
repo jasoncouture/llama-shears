@@ -82,6 +82,19 @@
     opacity: 0.85;
 }
 
+.typing-indicator-tooling {
+    border-left: 3px solid var(--primary);
+}
+
+.typing-indicator-tooling .typing-indicator-dots span {
+    background: var(--primary);
+}
+
+.typing-indicator-tooling .typing-indicator-label {
+    color: var(--primary);
+    opacity: 0.85;
+}
+
 @keyframes typing-pulse {
     0%, 100% {
         transform: scale(0.7);

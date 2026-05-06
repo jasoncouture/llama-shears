@@ -13,30 +13,39 @@
     }
     else
     {
-        ChatBubbleKind? hiddenStreamingKind = null;
-        var hasVisibleStreaming = false;
+        ChatBubbleKind? hiddenIndicatorKind = null;
+        var hasVisibleBusy = false;
         foreach (var bubble in Session.Bubbles)
         {
             var hideAsThought = bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts;
-            var hideAsStreaming = bubble.IsStreaming && !Session.ShowStreaming;
-            if (hideAsThought || hideAsStreaming)
+            var hideAsTool = (bubble.Kind == ChatBubbleKind.ToolInFlight || bubble.Kind == ChatBubbleKind.ToolResult) && !Session.ShowTools;
+            // ToolInFlight bubbles are governed by the tool toggle; the
+            // streaming toggle only applies to thought/assistant streams.
+            var hideAsStreaming = bubble.IsStreaming
+                && !Session.ShowStreaming
+                && bubble.Kind != ChatBubbleKind.ToolInFlight;
+            if (hideAsThought || hideAsTool || hideAsStreaming)
             {
                 if (bubble.IsStreaming)
                 {
-                    hiddenStreamingKind = bubble.Kind;
+                    hiddenIndicatorKind = bubble.Kind;
                 }
                 continue;
             }
             if (bubble.IsStreaming)
             {
-                hasVisibleStreaming = true;
+                hasVisibleBusy = true;
             }
             <ChatBubbleView Bubble="@bubble" AgentName="@Session.SelectedAgentId" />
         }
-        if (hiddenStreamingKind is { } kind && !hasVisibleStreaming)
+        if (hiddenIndicatorKind is { } kind && !hasVisibleBusy)
         {
-            var modifier = kind == ChatBubbleKind.Thought ? "thinking" : "responding";
-            var label = kind == ChatBubbleKind.Thought ? "thinking" : "typing";
+            var (modifier, label) = kind switch
+            {
+                ChatBubbleKind.Thought => ("thinking", "thinking"),
+                ChatBubbleKind.ToolInFlight => ("tooling", "running tools"),
+                _ => ("responding", "typing"),
+            };
             <div class="typing-indicator typing-indicator-@modifier" role="status">
                 <div class="typing-indicator-dots">
                     <span></span><span></span><span></span>
