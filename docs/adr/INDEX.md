@@ -18,6 +18,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 10. [Exception handling requires explicit justification](0010-exception-handling-requires-justification.md)
 11. [Config root lives in the user profile](0011-config-root-location.md)
 12. [XML doc comments default to absent](0012-xml-doc-comments-default-absent.md)
+13. [`DateTime` requires explicit justification](0013-datetime-requires-justification.md)
 
 ## Format
 

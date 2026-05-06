@@ -8,5 +8,6 @@
 - [No logic in entity property setters](feedback_no_logic_in_entity_properties.md) — entity properties stay plain; validation and normalization live in `ISaveChangesHook` implementations
 - [Wait for approval after opinion questions](feedback_wait_on_opinion_questions.md) — "what do you think?" / "perhaps we should…" → give opinion and stop, even in auto mode
 - [Prefer collection expressions](feedback_collection_expressions.md) — use `[a, b]` over `ImmutableArray.Create`, `new List<>()`, `new[] { ... }`, etc.
+- [Always use DateTimeOffset](feedback_always_datetimeoffset.md) — every timestamp is `DateTimeOffset`; convert at the boundary when an API returns `DateTime`
 - [Vector store choice — Microsoft.Extensions.VectorData](project_vector_store.md) — when vector storage is added, use `Microsoft.Extensions.VectorData` with the SQLite (sqlite-vec) connector; not yet implemented
 - [Self-registering DI helpers](feedback_self_registering_di_helpers.md) — per-item registrations call their companion infrastructure registration so callers can't forget to wire the consumer
