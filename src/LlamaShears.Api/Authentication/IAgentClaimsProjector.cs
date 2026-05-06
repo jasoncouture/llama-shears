@@ -10,5 +10,10 @@ namespace LlamaShears.Api.Authentication;
 /// </summary>
 public interface IAgentClaimsProjector
 {
+    /// <summary>
+    /// Builds the <see cref="ClaimsPrincipal"/> that represents
+    /// <paramref name="agent"/> for downstream authorization, scoped to
+    /// <paramref name="authenticationScheme"/>.
+    /// </summary>
     ClaimsPrincipal Project(AgentInfo agent, string authenticationScheme);
 }

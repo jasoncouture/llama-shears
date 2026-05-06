@@ -1,5 +1,10 @@
 namespace LlamaShears.Core.Abstractions.Provider;
 
+/// <summary>
+/// Streaming fragment carrying user-visible text. Aggregating every
+/// fragment's <see cref="Content"/> in arrival order yields the model's
+/// final response.
+/// </summary>
 public interface IModelTextResponse : IModelResponseFragment
 {
     /// <summary>
