@@ -1,8 +1,10 @@
 using LlamaShears.Api;
+using LlamaShears.Data;
 using LlamaShears.Provider.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddApi();
+builder.Services.AddLlamaShearsData();
 
 var app = builder.Build();
 app.UseApi();
