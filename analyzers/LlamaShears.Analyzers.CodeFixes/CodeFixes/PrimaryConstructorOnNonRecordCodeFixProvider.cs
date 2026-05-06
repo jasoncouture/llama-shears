@@ -21,7 +21,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProvider : CodeFixProvid
         "Convert primary constructor to readonly fields and explicit constructor";
 
     public override ImmutableArray<string> FixableDiagnosticIds
-        => ImmutableArray.Create(DiagnosticIds.PrimaryConstructorOnNonRecord);
+        => [DiagnosticIds.PrimaryConstructorOnNonRecord];
 
     public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 

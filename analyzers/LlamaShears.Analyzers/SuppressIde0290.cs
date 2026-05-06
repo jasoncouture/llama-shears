@@ -9,7 +9,7 @@ namespace LlamaShears.Analyzers;
 public sealed class SuppressIde0290 : DiagnosticSuppressor
 {
     public override ImmutableArray<SuppressionDescriptor> SupportedSuppressions
-        => ImmutableArray.Create(Descriptors.SuppressIde0290);
+        => [Descriptors.SuppressIde0290];
 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
