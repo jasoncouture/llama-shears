@@ -122,8 +122,7 @@ internal static class Descriptors
         isEnabledByDefault: true,
         description:
             "ADR-0012: XML doc comments are required on public interfaces. " +
-            "The interface is the contract; document it for callers and implementers.",
-        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+            "The interface is the contract; document it for callers and implementers.");
 
     public static readonly DiagnosticDescriptor NonPublicInterfaceMissingXmlDoc = new(
         id: DiagnosticIds.NonPublicInterfaceMissingXmlDoc,
@@ -146,8 +145,7 @@ internal static class Descriptors
         isEnabledByDefault: true,
         description:
             "ADR-0012: XML doc comments are required on members of public interfaces. " +
-            "The interface is the contract; document each member for callers and implementers.",
-        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+            "The interface is the contract; document each member for callers and implementers.");
 
     public static readonly DiagnosticDescriptor NonPublicInterfaceMemberMissingXmlDoc = new(
         id: DiagnosticIds.NonPublicInterfaceMemberMissingXmlDoc,
@@ -178,7 +176,7 @@ internal static class Descriptors
             "DocumentationMode = Diagnose, which the .NET SDK enables when " +
             "<GenerateDocumentationFile> is true. Without it, the analyzer cannot reliably detect " +
             "doc comments and would report false 'missing doc' errors on every documented type.",
-        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
     public static readonly DiagnosticDescriptor ExplicitDelegateInvocation = new(
         id: DiagnosticIds.ExplicitDelegateInvocation,
