@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
@@ -54,6 +56,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                 Messages = messages,
                 Think = MapThinkLevel(_configuration.Think),
                 KeepAlive = MapKeepAlive(_configuration.KeepAlive),
+                Tools = BuildTools(options),
                 Options = new RequestOptions
                 {
                     Seed = Random.Shared.Next(),
@@ -88,6 +91,76 @@ public partial class OllamaLanguageModel : ILanguageModel
         {
             _messageListPool.Return(messages);
         }
+    }
+
+    // Ollama's chat API takes a flat tool list, so we collapse the
+    // (source, name) pair the abstraction layer hands us into a single
+    // wire name as `source__name`. The reverse split happens when we
+    // ingest tool calls coming back from the model.
+    internal const string ToolNameSeparator = "__";
+
+    private static IEnumerable<object>? BuildTools(PromptOptions? options)
+    {
+        if (options?.Tools is not { IsDefaultOrEmpty: false } groups)
+        {
+            return null;
+        }
+
+        var tools = new List<object>();
+        foreach (var group in groups)
+        {
+            if (group.Tools.IsDefaultOrEmpty)
+            {
+                continue;
+            }
+            foreach (var descriptor in group.Tools)
+            {
+                tools.Add(ToOllamaTool(group.Source, descriptor));
+            }
+        }
+        return tools.Count == 0 ? null : tools;
+    }
+
+    private static Tool ToOllamaTool(string source, ToolDescriptor descriptor) => new()
+    {
+        Type = "function",
+        Function = new Function
+        {
+            Name = $"{source}{ToolNameSeparator}{descriptor.Name}",
+            Description = descriptor.Description,
+            Parameters = ToOllamaParameters(descriptor.Parameters),
+        },
+    };
+
+    private static Parameters? ToOllamaParameters(ImmutableArray<ToolParameter> parameters)
+    {
+        if (parameters.IsDefaultOrEmpty)
+        {
+            return null;
+        }
+
+        var properties = new Dictionary<string, Property>(StringComparer.Ordinal);
+        List<string>? required = null;
+        foreach (var p in parameters)
+        {
+            properties[p.Name] = new Property
+            {
+                Type = p.Type,
+                Description = p.Description,
+            };
+            if (p.Required)
+            {
+                required ??= [];
+                required.Add(p.Name);
+            }
+        }
+
+        return new Parameters
+        {
+            Type = "object",
+            Properties = properties,
+            Required = required,
+        };
     }
 
     // Per-call options.TokenLimit overrides config.TokenLimit; both must be

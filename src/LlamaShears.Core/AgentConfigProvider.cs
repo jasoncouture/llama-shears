@@ -1,9 +1,7 @@
-using System.Collections.Immutable;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Paths;
-using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -12,23 +10,18 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
 {
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-    private const string InternalServerName = "llamashears";
-
     private readonly IShearsPaths _paths;
     private readonly IFileParserCache<AgentConfigProvider> _cache;
     private readonly ILogger<AgentConfigProvider> _logger;
-    private readonly IInternalModelContextProtocolServer _internalMcpServer;
 
     public AgentConfigProvider(
         IShearsPaths paths,
         IFileParserCache<AgentConfigProvider> cache,
-        ILogger<AgentConfigProvider> logger,
-        IInternalModelContextProtocolServer internalMcpServer)
+        ILogger<AgentConfigProvider> logger)
     {
         _paths = paths;
         _cache = cache;
         _logger = logger;
-        _internalMcpServer = internalMcpServer;
     }
 
     public IReadOnlyList<string> ListAgentIds()
@@ -69,21 +62,12 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         return raw is null ? null : Stamp(raw, agentId);
     }
 
-    private AgentConfig Stamp(AgentConfig raw, string agentId)
-    {
-        var userServers = raw.ModelContextProtocolServers ?? [];
-        var internalUri = _internalMcpServer.Uri;
-        var servers = internalUri is null
-            ? userServers
-            : userServers.SetItem(InternalServerName, internalUri);
-
-        return raw with
+    private AgentConfig Stamp(AgentConfig raw, string agentId) =>
+        raw with
         {
             Id = agentId,
             WorkspacePath = ResolveWorkspacePath(raw.WorkspacePath, agentId),
-            ModelContextProtocolServers = servers,
         };
-    }
 
     private static ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
     {

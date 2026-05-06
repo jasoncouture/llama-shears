@@ -33,14 +33,18 @@ public static class CoreServiceCollectionExtensions
 
     public const string DefaultFileParserCacheConfigurationSection = "FileParserCache";
 
+    public const string DefaultModelContextProtocolConfigurationSection = "ModelContextProtocol";
+
     public static IServiceCollection AddCore(
         this IServiceCollection services,
         string systemTickConfigurationSection = DefaultSystemTickConfigurationSection,
-        string fileParserCacheConfigurationSection = DefaultFileParserCacheConfigurationSection)
+        string fileParserCacheConfigurationSection = DefaultFileParserCacheConfigurationSection,
+        string modelContextProtocolConfigurationSection = DefaultModelContextProtocolConfigurationSection)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(systemTickConfigurationSection);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileParserCacheConfigurationSection);
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelContextProtocolConfigurationSection);
 
         services.AddMemoryCache();
         services.AddShearsPaths();
@@ -69,11 +73,15 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();
 
+        services.AddOptions<ModelContextProtocolOptions>()
+            .BindConfiguration(modelContextProtocolConfigurationSection);
+
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();
         services.AddHttpClient(ModelContextProtocolToolDiscovery.HttpClientName)
             .AddHttpMessageHandler<LoopbackBearerHandler>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
+        services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
 
         return services;
     }

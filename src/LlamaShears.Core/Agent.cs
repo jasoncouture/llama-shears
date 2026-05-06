@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using System.Threading.Channels;
@@ -30,6 +31,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
+    private readonly ImmutableArray<ToolGroup> _tools;
 
     public Agent(
         AgentConfig config,
@@ -43,7 +45,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         ModelConfiguration modelConfiguration,
         IAgentContextProvider agentContextProvider,
         IEventPublisher eventPublisher,
-        IInferenceRunner inferenceRunner)
+        IInferenceRunner inferenceRunner,
+        ImmutableArray<ToolGroup> tools = default)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentException.ThrowIfNullOrWhiteSpace(config.Id);
@@ -59,6 +62,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
+        _tools = tools.IsDefault ? [] : tools;
         _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -209,7 +213,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             eventId: Id,
             model: _model,
             prompt: prompt,
-            options: null,
+            options: new PromptOptions(Tools: _tools),
             emitTurns: true,
             correlationId: correlationId,
             cancellationToken: cancellationToken).ConfigureAwait(false);

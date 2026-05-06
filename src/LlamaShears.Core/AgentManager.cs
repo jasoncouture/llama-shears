@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
@@ -26,6 +28,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
+    private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IHostApplicationLifetime _appLifetime;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
@@ -43,6 +46,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IShearsPaths paths,
         IDirectorySeeder seeder,
         IModelContextProtocolToolDiscovery toolDiscovery,
+        IModelContextProtocolServerRegistry serverRegistry,
         ICurrentAgentAccessor currentAgent,
         IHostApplicationLifetime appLifetime)
     {
@@ -56,6 +60,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _paths = paths;
         _seeder = seeder;
         _toolDiscovery = toolDiscovery;
+        _serverRegistry = serverRegistry;
         _currentAgent = currentAgent;
         _appLifetime = appLifetime;
     }
@@ -179,9 +184,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         SeedAgentWorkspace(config);
 
-        await DiscoverToolsAsync(config, cancellationToken).ConfigureAwait(false);
+        var tools = await DiscoverToolsAsync(config, cancellationToken).ConfigureAwait(false);
 
-        var slot = await TryBuildSlotAsync(name, config, cancellationToken).ConfigureAwait(false);
+        var slot = await TryBuildSlotAsync(name, config, tools, cancellationToken).ConfigureAwait(false);
         if (slot is null)
         {
             return;
@@ -191,7 +196,15 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         LogAgentStarted(_logger, name);
     }
 
-    private async Task DiscoverToolsAsync(AgentConfig config, CancellationToken cancellationToken)
+    private async Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config, CancellationToken cancellationToken)
+    {
+        var tools = await DiscoverToolsAsync(config, cancellationToken).ConfigureAwait(false);
+        return await TryBuildSlotAsync(name, config, tools, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ImmutableArray<ToolGroup>> DiscoverToolsAsync(
+        AgentConfig config,
+        CancellationToken cancellationToken)
     {
         var agentInfo = new AgentInfo(
             AgentId: config.Id,
@@ -199,17 +212,19 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             ContextWindowSize: config.Model.ContextLength ?? 0);
 
         using var scope = _currentAgent.BeginScope(agentInfo);
-        var toolsets = await _toolDiscovery
-            .DiscoverAsync(config.ModelContextProtocolServers, cancellationToken)
+        var servers = _serverRegistry.Resolve(config.ModelContextProtocolServers);
+        var groups = await _toolDiscovery
+            .DiscoverAsync(servers, cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var set in toolsets)
+        foreach (var group in groups)
         {
-            foreach (var tool in set.Tools)
+            foreach (var tool in group.Tools)
             {
-                LogToolDiscovered(_logger, config.Id, set.ServerName, tool.Name);
+                LogToolDiscovered(_logger, config.Id, group.Source, tool.Name);
             }
         }
+        return groups;
     }
 
     private void SeedAgentWorkspace(AgentConfig config)
@@ -223,7 +238,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private async Task ReloadAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
-        var newSlot = await TryBuildSlotAsync(name, config, cancellationToken).ConfigureAwait(false);
+        var newSlot = await ReloadBuildAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (newSlot is null)
         {
             // Keep the previous slot intact: a build failure shouldn't
@@ -249,12 +264,16 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
     }
 
-    private async Task<AgentSlot?> TryBuildSlotAsync(string name, AgentConfig config, CancellationToken cancellationToken)
+    private async Task<AgentSlot?> TryBuildSlotAsync(
+        string name,
+        AgentConfig config,
+        ImmutableArray<ToolGroup> tools,
+        CancellationToken cancellationToken)
     {
         IAgent agent;
         try
         {
-            agent = await BuildAgentAsync(name, config, cancellationToken).ConfigureAwait(false);
+            agent = await BuildAgentAsync(name, config, tools, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
@@ -265,7 +284,11 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         return new AgentSlot(name, agent, config);
     }
 
-    private async Task<IAgent> BuildAgentAsync(string name, AgentConfig config, CancellationToken cancellationToken)
+    private async Task<IAgent> BuildAgentAsync(
+        string name,
+        AgentConfig config,
+        ImmutableArray<ToolGroup> tools,
+        CancellationToken cancellationToken)
     {
         var providerFactory = _providers.FirstOrDefault(p =>
             string.Equals(p.Name, config.Model.Id.Provider, StringComparison.Ordinal))
@@ -287,7 +310,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             config,
             model,
             agentContext,
-            modelConfig);
+            modelConfig,
+            tools);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
