@@ -81,6 +81,8 @@ internal static class Descriptors
             "behavior belongs on the type itself. Suppress this warning where the external extension " +
             "is intentional.");
 
+    // This one only exists because claude, even on opus 4.7, cannot for whatever reason, fatom this instruction.
+    // So now it's a build error, to get it to knock it the fuck off.
     public static readonly DiagnosticDescriptor NoCancellationTokenAbbreviation = new(
         id: DiagnosticIds.NoCancellationTokenAbbreviation,
         title: "Do not abbreviate identifiers as 'ct'",
