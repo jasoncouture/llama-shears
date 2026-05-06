@@ -23,9 +23,7 @@ public sealed class AgentConfigSerializationTests
                 "id": "OLLAMA/gemma4:26b",
                 "think": "High"
               },
-              "heartbeatPeriod": "00:00:30",
-              "systemPrompt": "You are a helpful assistant. Keep replies short.",
-              "seedTurn": "Tell me a one-sentence joke."
+              "heartbeatPeriod": "00:00:30"
             }
             """;
 
