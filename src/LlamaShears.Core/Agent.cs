@@ -531,8 +531,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 {
                     continue;
                 }
-                var content = await File.ReadAllTextAsync(fullPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-                results.Add(new PromptContextMemory(hit.RelativePath, content, hit.Score));
+                var summary = await ReadFirstLineAsync(fullPath, cancellationToken).ConfigureAwait(false);
+                results.Add(new PromptContextMemory(hit.RelativePath, summary, hit.Score));
             }
             return results;
         }
@@ -541,6 +541,24 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             LogMemorySearchFailed(_logger, Id, ex.Message, ex);
             return [];
         }
+    }
+
+    // Surfaces only the first line of each memory file into the per-turn
+    // ephemeral block. Authors are expected to write a meaningful first
+    // line (typically a markdown H1 title); the model can pull the full
+    // body on demand via file_read.
+    private static async ValueTask<string> ReadFirstLineAsync(string path, CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 4096,
+            useAsync: true);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+        return line ?? string.Empty;
     }
 
     private string BuildMemoryQuery(ModelTurn userTurn)

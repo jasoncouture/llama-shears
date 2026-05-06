@@ -62,7 +62,7 @@ This block is the framework's single coherent place to inject *everything that's
 - The current channel id.
 - An `important_message` (used today for the final-iteration "tools are gone, write text" notice).
 - The conventional workspace files: `BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md` — in that order.
-- Memory hits (path, content, score) returned by the per-batch RAG search.
+- Memory hits (path, first-line summary, score) returned by the per-batch RAG search. The agent reads only the first line of each matched file — authors are expected to lead the file with a meaningful one-line summary; the model can pull the full body on demand via `file_read`.
 - A name-only listing of every other root-level `.md` in the workspace, so the model knows what's there without paying token cost for the bodies.
 
 ### Template parameters

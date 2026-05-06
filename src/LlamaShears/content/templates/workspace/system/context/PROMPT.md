@@ -12,13 +12,10 @@
 
 ## Memory search matches
 
-The following memories were retrieved by similarity to your current turn ({{ memories.size }} hit{{ if memories.size != 1 }}s{{ end }}, ordered by score). Use what's useful, ignore what isn't.
+The following memories were retrieved by similarity to your current turn ({{ memories.size }} hit{{ if memories.size != 1 }}s{{ end }}, ordered by score). Each row is `path — first-line summary (score)`; read the full body on demand with file_read. Use what's useful, ignore what isn't.
 
 {{- for memory in memories }}
-
-### {{ memory.relative_path }} (score: {{ memory.score }})
-
-{{ memory.content }}
+- `{{ memory.relative_path }}` — {{ memory.summary }} _(score: {{ memory.score }})_
 {{- end }}
 {{- end }}
 {{- for file in files }}
