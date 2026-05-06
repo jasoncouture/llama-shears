@@ -27,7 +27,7 @@
             "**/*.props"
          ],
          "command": "bash",
-         "args": [ "-c", "dotnet clean && dotnet test", "_", "${staged}" ]
+         "args": [ "-c", "dotnet clean -v quiet && dotnet test", "_", "${staged}" ]
       }
    ]
 }
