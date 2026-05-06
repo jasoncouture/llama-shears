@@ -13,6 +13,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 5. [One top-level type per file](0005-one-type-per-file.md) — Analysis ID LS0005
 6. [Extension method invoked on `this` is a smell](0006-extension-method-on-this-is-a-smell.md) — Analysis ID LS0006 (configurable warning)
 7. [Pit of success](0007-pit-of-success.md)
+8. [No per-model workarounds](0008-no-per-model-workarounds.md)
 
 ## Format
 
