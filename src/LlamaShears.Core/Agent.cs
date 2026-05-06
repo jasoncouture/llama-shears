@@ -40,7 +40,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IPromptContextProvider _promptContext;
     private readonly ImmutableArray<ToolGroup> _tools;
 
-    private const int MaxToolIterations = 8;
 
     public Agent(
         AgentConfig config,
@@ -220,14 +219,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
         for (var iteration = 0; iteration < _config.Tools.TurnLimit; iteration++)
         {
-            var promptOptions = new PromptOptions(Tools: _tools);
-            if(iteration == _config.Tools.TurnLimit - 1)
-            {
-                // this is the last turn, don't allow any tool calls.
-                promptOptions = new PromptOptions(Tools: []);
-            }
+            // The final iteration runs with no tools so the model has
+            // to produce text (or nothing) — TurnLimit=N means N-1
+            // tool-calling turns followed by one tools-less wrap-up.
+            var isFinalIteration = iteration == _config.Tools.TurnLimit - 1;
+            var promptOptions = isFinalIteration
+                ? new PromptOptions(Tools: [])
+                : new PromptOptions(Tools: _tools);
+
             var turns = _agentContext.Turns;
-            
             var prompt = new ModelPrompt([systemTurn, .. turns]);
             var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
@@ -248,6 +248,24 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), cancellationToken).ConfigureAwait(false);
             }
 
+            if (isFinalIteration)
+            {
+                // Some chat templates confabulate tool calls even when
+                // the schema is empty. Drop them on the floor — this
+                // turn's contract is "produce text or stop" — and log
+                // for diagnostics. Whatever text the model produced is
+                // the answer; empty content gets the standard log.
+                if (!outcome.ToolCalls.IsDefaultOrEmpty)
+                {
+                    LogFinalTurnToolCallsDropped(_logger, Id, outcome.ToolCalls.Length);
+                }
+                if (outcome.Content.Length == 0)
+                {
+                    LogEmptyResponse(_logger, Id);
+                }
+                return;
+            }
+
             if (outcome.ToolCalls.IsDefaultOrEmpty)
             {
                 if (outcome.Content.Length == 0)
@@ -259,8 +277,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
             await DispatchToolCallsAsync(outcome.ToolCalls, correlationId, cancellationToken).ConfigureAwait(false);
         }
-
-        LogToolLoopExceeded(_logger, Id, MaxToolIterations);
     }
 
     private async Task DispatchToolCallsAsync(
@@ -439,6 +455,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
     private partial void LogProcessOnceFailed(string agentId, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' tool-call loop exceeded {Iterations} iterations; bailing out for this turn.")]
-    private static partial void LogToolLoopExceeded(ILogger logger, string agentId, int iterations);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' produced {Count} tool call(s) on the final tools-less turn; dropped.")]
+    private static partial void LogFinalTurnToolCallsDropped(ILogger logger, string agentId, int count);
 }
