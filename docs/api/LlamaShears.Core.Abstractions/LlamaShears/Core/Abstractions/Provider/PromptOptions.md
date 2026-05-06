@@ -23,7 +23,7 @@ Tool groups visible to the model for this call; default = no tools.
 
 ## Methods
 
-### `PromptOptions`(Nullable<int> TokenLimit, ImmutableArray<[ToolGroup](../Context/ToolGroup.md)> Tools)
+### `PromptOptions`(Nullable<int> TokenLimit, ImmutableArray<ToolGroup> Tools)
 
 Per-call overrides passed to [ILanguageModel](ILanguageModel.md).`PromptAsync`.
 `null` options means "use the model's configured

@@ -12,3 +12,4 @@ Generated from XML doc comments. One entry per shipped assembly.
 - [LlamaShears.Core.Abstractions.Seeding](LlamaShears.Core.Abstractions.Seeding/index.md)
 - [LlamaShears.Core.Abstractions.SystemPrompt](LlamaShears.Core.Abstractions.SystemPrompt/index.md)
 - [LlamaShears.Core.Abstractions.Templating](LlamaShears.Core.Abstractions.Templating/index.md)
+- [LlamaShears.Core.Abstractions.Tools](LlamaShears.Core.Abstractions.Tools/index.md)

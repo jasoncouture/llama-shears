@@ -29,6 +29,4 @@
 - [PromptOptions](PromptOptions.md) — Per-call overrides passed to [ILanguageModel](ILanguageModel.md).`PromptAsync`. `null` options means "use the model's configured defaults verbatim".
 - [SupportedInputType](SupportedInputType.md) — Bit-set describing the modalities a model accepts as input. Used by the catalog ([ModelInfo](ModelInfo.md).`SupportedInputs`) so callers can route prompts containing attachments to the right model without round-tripping the provider.
 - [ThinkLevel](ThinkLevel.md) — Hint to a thinking-capable provider for how aggressively the model should reason before answering. Providers that do not support configurable thinking ignore non-[ThinkLevel](ThinkLevel.md).`None` values.
-- [ToolCall](ToolCall.md) — One tool the model is asking the host to invoke. The host pairs [ToolCall](ToolCall.md).`Source` + [ToolCall](ToolCall.md).`Name` against the registered tool catalog to find the right handler.
-- [ToolCallResult](ToolCallResult.md) — Output of dispatching a single [ToolCall](ToolCall.md) back to the model.
 

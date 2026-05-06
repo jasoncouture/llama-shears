@@ -32,9 +32,6 @@ Public API surface, organized by namespace.
 - [PluginContext](LlamaShears/Core/Abstractions/Context/PluginContext.md)
 - [SystemContext](LlamaShears/Core/Abstractions/Context/SystemContext.md)
 - [ToolContext](LlamaShears/Core/Abstractions/Context/ToolContext.md)
-- [ToolDescriptor](LlamaShears/Core/Abstractions/Context/ToolDescriptor.md)
-- [ToolGroup](LlamaShears/Core/Abstractions/Context/ToolGroup.md)
-- [ToolParameter](LlamaShears/Core/Abstractions/Context/ToolParameter.md)
 
 ## LlamaShears.Core.Abstractions.Events.Agent
 
@@ -78,6 +75,4 @@ Public API surface, organized by namespace.
 - [PromptOptions](LlamaShears/Core/Abstractions/Provider/PromptOptions.md)
 - [SupportedInputType](LlamaShears/Core/Abstractions/Provider/SupportedInputType.md)
 - [ThinkLevel](LlamaShears/Core/Abstractions/Provider/ThinkLevel.md)
-- [ToolCall](LlamaShears/Core/Abstractions/Provider/ToolCall.md)
-- [ToolCallResult](LlamaShears/Core/Abstractions/Provider/ToolCallResult.md)
 

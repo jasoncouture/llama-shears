@@ -4,7 +4,7 @@ Assembly: `LlamaShears.Core.Abstractions`
 
 The flat tool catalog visible to the agent on an
 [AgentContext](AgentContext.md) snapshot. The grouped form
-([ToolGroup](ToolGroup.md)) is for prompts; this flat form is what
+(ToolGroup) is for prompts; this flat form is what
 templates and tools iterate over.
 
 ## Parameters
@@ -19,11 +19,11 @@ Tools available, in registration order.
 
 ## Methods
 
-### `ToolContext`(ImmutableArray<[ToolDescriptor](ToolDescriptor.md)> Items)
+### `ToolContext`(ImmutableArray<ToolDescriptor> Items)
 
 The flat tool catalog visible to the agent on an
 [AgentContext](AgentContext.md) snapshot. The grouped form
-([ToolGroup](ToolGroup.md)) is for prompts; this flat form is what
+(ToolGroup) is for prompts; this flat form is what
 templates and tools iterate over.
 
 #### Parameters
