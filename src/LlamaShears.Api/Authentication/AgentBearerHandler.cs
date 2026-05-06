@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Encodings.Web;
-using LlamaShears.Agent.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

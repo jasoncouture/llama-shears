@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
-using LlamaShears.Agent.Abstractions;
-using LlamaShears.Agent.Abstractions.Events;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Provider;
 using MessagePipe;
 
 namespace LlamaShears.Agent.Core.Channels;

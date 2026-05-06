@@ -1,7 +1,7 @@
-using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Agent.Core;
 using LlamaShears.Api.Web.Services;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Api.Web;
 

@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using LlamaShears.Agent.Abstractions.Persistence;
-using LlamaShears.Hosting;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Agent.Core.Persistence;
 

@@ -1,5 +1,5 @@
-using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;

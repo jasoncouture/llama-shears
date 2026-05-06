@@ -1,6 +1,6 @@
-using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Core;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Provider;
 using MessagePipe;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

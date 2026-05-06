@@ -1,4 +1,4 @@
-using LlamaShears.Agent.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
 using MessagePipe;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

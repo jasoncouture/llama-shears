@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
 using OllamaSharp;

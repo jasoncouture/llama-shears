@@ -1,6 +1,6 @@
 using System.Text.Json;
 using LlamaShears.Agent.Core;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Serialization;
 

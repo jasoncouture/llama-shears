@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Hosting;

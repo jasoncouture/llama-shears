@@ -1,10 +1,10 @@
 using System.Text;
 using System.Threading.Channels;
-using LlamaShears.Agent.Abstractions;
-using LlamaShears.Agent.Abstractions.Events;
-using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Agent.Core.SystemPrompt;
-using LlamaShears.Provider.Abstractions;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Events;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Provider;
 using MessagePipe;
 using Microsoft.Extensions.Logging;
 
