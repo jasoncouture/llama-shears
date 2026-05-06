@@ -17,6 +17,7 @@ LlamaShears is intended to be a *host*, not an agent. It runs agents you configu
 - **Model Context Protocol (MCP)** — tool access via MCP servers so agents can take action against external systems.
 - **Provider-agnostic LLM access** — Ollama-first, but every LLM provider is intended to be a first-class citizen.
 - **Configurable per-agent personalities and parameters** — model choice, system prompts, tool grants, and operational schedules.
+- **Cross-platform desktop UI** — likely Avalonia, with Linux treated as a first-class target rather than an afterthought.
 
 ## Status
 
@@ -29,6 +30,7 @@ LlamaShears is intended to be a *host*, not an agent. It runs agents you configu
 | RAG                           | Not yet implemented.                                                                 |
 | MCP integration               | Not yet implemented.                                                                 |
 | API host                      | Minimal ASP.NET surface in `LlamaShears.Api.Host`.                                   |
+| Desktop UI                    | Not yet implemented. Likely Avalonia, with Linux as a first-class target.            |
 
 ## Building and running
 
