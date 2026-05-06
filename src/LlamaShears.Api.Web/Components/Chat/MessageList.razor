@@ -13,23 +13,26 @@
     }
     else
     {
-        var hasHiddenStreaming = false;
+        ChatBubbleKind? hiddenStreamingKind = null;
         foreach (var bubble in Session.Bubbles)
         {
-            if (bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts)
+            var hideAsThought = bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts;
+            var hideAsStreaming = bubble.IsStreaming && !Session.ShowStreaming;
+            if (hideAsThought || hideAsStreaming)
             {
-                continue;
-            }
-            if (bubble.IsStreaming && !Session.ShowStreaming)
-            {
-                hasHiddenStreaming = true;
+                if (bubble.IsStreaming)
+                {
+                    hiddenStreamingKind = bubble.Kind;
+                }
                 continue;
             }
             <ChatBubbleView Bubble="@bubble" />
         }
-        if (hasHiddenStreaming)
+        if (hiddenStreamingKind is { } kind)
         {
-            <div class="typing-indicator" role="status" aria-label="Agent is typing">
+            var modifier = kind == ChatBubbleKind.Thought ? "thinking" : "responding";
+            var label = kind == ChatBubbleKind.Thought ? "Agent is thinking" : "Agent is typing";
+            <div class="typing-indicator typing-indicator-@modifier" role="status" aria-label="@label">
                 <span></span><span></span><span></span>
             </div>
         }

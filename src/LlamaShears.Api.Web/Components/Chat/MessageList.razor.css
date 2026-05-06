@@ -51,6 +51,28 @@
     }
 }
 
+.typing-indicator-thinking {
+    background: var(--bubble-thought-bg);
+    border-color: var(--bubble-thought-border);
+}
+
+.typing-indicator-thinking span {
+    background: var(--bubble-thought-text);
+    animation-name: typing-pulse;
+    animation-duration: 1.6s;
+}
+
+@keyframes typing-pulse {
+    0%, 100% {
+        transform: scale(0.7);
+        opacity: 0.35;
+    }
+    50% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .typing-indicator span {
         animation: none;
