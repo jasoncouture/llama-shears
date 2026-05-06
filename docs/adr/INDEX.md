@@ -13,6 +13,7 @@ ADRs are immutable once accepted: if a decision changes, write a new ADR that su
 | 0003 | [Field names must start with `_`](0003-underscore-prefix-for-fields.md) | Accepted | LS0003 |
 | 0004 | [No primary constructors on non-record types](0004-no-primary-constructors-on-non-record-types.md) | Accepted | LS0001 |
 | 0005 | [One top-level type per file](0005-one-type-per-file.md)    | Accepted  | LS0005      |
+| 0006 | [Extension method invoked on `this` is a smell](0006-extension-method-on-this-is-a-smell.md) | Accepted | LS0006 (configurable warning) |
 
 ## Format
 
