@@ -55,6 +55,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                 Options = new RequestOptions
                 {
                     Seed = Random.Shared.Next(),
+                    NumCtx = _configuration.ContextLength,
                 },
             };
 
