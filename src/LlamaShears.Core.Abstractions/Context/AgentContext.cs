@@ -14,7 +14,7 @@ namespace LlamaShears.Core.Abstractions.Context;
 /// consumer. Everything else lives under a typed child slice. Scope
 /// (turn/agent/global) is a writer-side concern: by the time a snapshot
 /// is composed, the appropriate plugin items and tools for the moment
-/// have already been folded into <see cref="PluginContext.Items"/> and
+/// have already been folded into <see cref="PluginContext.Data"/> and
 /// <see cref="ToolContext.Items"/>.
 /// </para>
 /// </summary>
