@@ -3,6 +3,7 @@ using LlamaShears.Provider.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
 using OllamaSharp;
+using OllamaSharp.Models;
 using OllamaSharp.Models.Chat;
 
 namespace LlamaShears.Provider.Ollama;
@@ -39,7 +40,11 @@ public partial class OllamaLanguageModel : ILanguageModel
             {
                 Model = _configuration.ModelId,
                 Stream = true,
-                Messages = messages
+                Messages = messages,
+                Options = new RequestOptions
+                {
+                    Seed = Random.Shared.Next(),
+                },
             };
 
             await foreach (var chunk in _client.ChatAsync(request, cancellationToken).ConfigureAwait(false))
