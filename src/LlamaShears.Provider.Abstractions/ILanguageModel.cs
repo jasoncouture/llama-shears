@@ -5,5 +5,5 @@ namespace LlamaShears.Provider.Abstractions;
 /// </summary>
 public interface ILanguageModel
 {
-    // The core interface for all model interactions will be defined here.
+    IAsyncEnumerable<IModelResponseFragment> PromptAsync(ModelPrompt prompt, CancellationToken cancellationToken);
 }
