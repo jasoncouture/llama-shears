@@ -27,7 +27,7 @@ This is deliberate. The point is to align on changes to the project's thinking *
 | `src/`           | Production code. Every project here picks up the analyzer ruleset automatically. |
 | `tests/`         | Cross-project unit tests (TUnit).                                                |
 | `analyzers/`     | The local Roslyn analyzer assembly, its code-fix sibling, and analyzer tests.    |
-| `docs/`          | Project documentation. See `docs/INDEX.md`.                                      |
+| `docs/`          | Project documentation. See `docs/index.md`.                                      |
 | `docs/adr/`      | Architectural Decision Records. See `docs/adr/INDEX.md`.                         |
 | `docs/design/`   | Design notes for in-flight or recently-landed subsystems.                        |
 | `agents/`        | Agent-facing instructions and shared/local memory for AI collaborators.          |

@@ -77,6 +77,6 @@ Most style and policy is enforced as hard compile errors by the in-tree analyzer
 ## Documentation
 
 - [PRINCIPLES.md](PRINCIPLES.md) — the two principles that generate the project's concrete rules.
-- [docs/INDEX.md](docs/INDEX.md) — documentation entry point.
+- [docs/index.md](docs/index.md) — documentation entry point.
 - [docs/adr/INDEX.md](docs/adr/INDEX.md) — Architectural Decision Records.
 - [docs/design/](docs/design/) — design notes for in-flight or recently-landed subsystems.
