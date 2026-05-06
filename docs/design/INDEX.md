@@ -1,3 +1,10 @@
+## Provider Factory
+
+To support model instantiation and management, a provider factory interface will be introduced:
+
+- The factory interface is responsible for creating model instances.
+- The main provider interface is actually a model interface, representing a single model instance that the API and clients interact with.
+- This separation allows for flexible model management and supports scenarios where a provider can surface multiple models.
 # Design Overview
 
 This project is a heartbeat-based agentic host, structured in two main layers:
