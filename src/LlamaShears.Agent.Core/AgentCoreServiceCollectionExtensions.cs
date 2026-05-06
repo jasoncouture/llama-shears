@@ -1,3 +1,4 @@
+using LlamaShears.Agent.Abstractions;
 using LlamaShears.Hosting;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,8 @@ namespace LlamaShears.Agent.Core;
 public static class AgentCoreServiceCollectionExtensions
 {
     public const string DefaultSystemTickConfigurationSection = "Frame";
+
+    public const string DefaultAgentTokenStoreConfigurationSection = "AgentTokenStore";
 
     public static IServiceCollection AddAgentCore(
         this IServiceCollection services,
@@ -37,6 +40,25 @@ public static class AgentCoreServiceCollectionExtensions
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IHostStartupTask, AgentManager>(
                 sp => sp.GetRequiredService<AgentManager>()));
+
+        return services;
+    }
+
+    public static IServiceCollection AddAgentTokenStore(
+        this IServiceCollection services,
+        string configurationSection = DefaultAgentTokenStoreConfigurationSection)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configurationSection);
+
+        services.AddOptions<AgentTokenStoreOptions>()
+            .BindConfiguration(configurationSection);
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<InMemoryAgentTokenStore>();
+        services.TryAddSingleton<IAgentTokenStore>(
+            sp => sp.GetRequiredService<InMemoryAgentTokenStore>());
+        services.AddHostedService<AgentTokenStoreSweeper>();
 
         return services;
     }
