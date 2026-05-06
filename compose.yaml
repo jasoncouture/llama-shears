@@ -20,8 +20,6 @@ services:
       # mount wherever you want. Defaults to ./.data when unset. Compose
       # does not expand `~` in interpolated values — use absolute paths.
       - ${LLAMASHEARS_DATA_DIR:-./.data}:/data
-    environment:
-      Paths__DataRoot: /data
     env_file:
       # Both optional. .env is shared defaults; .local.env is per-host
       # overrides (secrets, alternate provider URIs, etc.).
