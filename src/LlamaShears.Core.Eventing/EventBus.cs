@@ -62,7 +62,7 @@ internal sealed class EventBus : IEventBus, IEventPublisher
         {
             cancellationToken.ThrowIfCancellationRequested();
             if(envelope.DeliveryMode != _deliveryMode) return;
-            if(!string.IsNullOrWhiteSpace(_pattern) && _patternMatcher.IsMatch(_pattern, envelope.Type)) return;
+            if(!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
             await _handler.HandleAsync(envelope, cancellationToken);
         }
     }
