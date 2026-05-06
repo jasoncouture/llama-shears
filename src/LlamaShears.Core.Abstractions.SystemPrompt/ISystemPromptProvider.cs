@@ -3,10 +3,9 @@ namespace LlamaShears.Core.Abstractions.SystemPrompt;
 /// <summary>
 /// Resolves a named system prompt template, renders it against
 /// <see cref="SystemPromptTemplateParameters"/>, and returns the body
-/// to feed into the model's
-/// <see cref="LlamaShears.Core.Abstractions.Provider.ModelRole.System"/>
-/// turn. Bodies are stable for the agent's lifetime so the model's
-/// prompt-cache prefix stays warm across turns.
+/// to feed into the model's system turn. Bodies are stable for the
+/// agent's lifetime so the model's prompt-cache prefix stays warm
+/// across turns.
 /// </summary>
 public interface ISystemPromptProvider
 {

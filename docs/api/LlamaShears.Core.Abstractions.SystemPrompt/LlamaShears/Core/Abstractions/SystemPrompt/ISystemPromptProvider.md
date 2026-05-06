@@ -4,10 +4,9 @@ Assembly: `LlamaShears.Core.Abstractions.SystemPrompt`
 
 Resolves a named system prompt template, renders it against
 [SystemPromptTemplateParameters](SystemPromptTemplateParameters.md), and returns the body
-to feed into the model's
-ModelRole.`System`
-turn. Bodies are stable for the agent's lifetime so the model's
-prompt-cache prefix stays warm across turns.
+to feed into the model's system turn. Bodies are stable for the
+agent's lifetime so the model's prompt-cache prefix stays warm
+across turns.
 
 ## Methods
 

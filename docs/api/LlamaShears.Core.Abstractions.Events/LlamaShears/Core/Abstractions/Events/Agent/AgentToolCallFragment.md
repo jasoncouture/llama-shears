@@ -3,9 +3,9 @@
 Assembly: `LlamaShears.Core.Abstractions.Events`
 
 Event-bus payload describing a single tool call the agent is about
-to dispatch. Mirrors Provider.`ToolCall`;
-kept distinct so consumers of the event bus don't have to depend on
-the provider layer.
+to dispatch. Mirrors the provider-layer ToolCall record; kept
+distinct so consumers of the event bus don't have to depend on the
+provider layer.
 
 ## Parameters
 
@@ -37,9 +37,9 @@ Logical owner of the tool (e.g. an MCP server slug).
 ### `AgentToolCallFragment`(string Source, string Name, string ArgumentsJson, string CallId)
 
 Event-bus payload describing a single tool call the agent is about
-to dispatch. Mirrors Provider.`ToolCall`;
-kept distinct so consumers of the event bus don't have to depend on
-the provider layer.
+to dispatch. Mirrors the provider-layer ToolCall record; kept
+distinct so consumers of the event bus don't have to depend on the
+provider layer.
 
 #### Parameters
 

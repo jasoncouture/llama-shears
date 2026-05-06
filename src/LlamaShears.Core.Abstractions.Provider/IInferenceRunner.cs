@@ -1,13 +1,11 @@
-using LlamaShears.Core.Abstractions.Context;
-
 namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
 /// Streams a single model prompt, emits per-fragment events, and
 /// optionally emits the resulting Thought / Assistant turn events.
-/// Lifts the inference loop out of <see cref="IContextCompactor"/>
-/// and the agent so both can share it; the <c>eventId</c> parameter
-/// is the third segment of the published <c>EventType</c> and lets
+/// Lifts the inference loop out of the context compactor and the
+/// agent so both can share it; the <c>eventId</c> parameter is the
+/// third segment of the published <c>EventType</c> and lets
 /// observers tell agent traffic apart from compaction traffic.
 /// </summary>
 public interface IInferenceRunner

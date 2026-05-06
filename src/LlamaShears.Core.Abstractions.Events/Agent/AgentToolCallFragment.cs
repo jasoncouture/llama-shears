@@ -2,9 +2,9 @@ namespace LlamaShears.Core.Abstractions.Events.Agent;
 
 /// <summary>
 /// Event-bus payload describing a single tool call the agent is about
-/// to dispatch. Mirrors <see cref="LlamaShears.Core.Abstractions.Provider.ToolCall"/>;
-/// kept distinct so consumers of the event bus don't have to depend on
-/// the provider layer.
+/// to dispatch. Mirrors the provider-layer ToolCall record; kept
+/// distinct so consumers of the event bus don't have to depend on the
+/// provider layer.
 /// </summary>
 /// <param name="Source">Logical owner of the tool (e.g. an MCP server slug).</param>
 /// <param name="Name">Tool name within <paramref name="Source"/>.</param>
