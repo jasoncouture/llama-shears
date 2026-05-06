@@ -1,8 +1,6 @@
 # ADR-0001: No `this.` qualifier
 
-## Status
-
-Accepted (2026-04-27). Enforced by `LS0004` (`NoThisQualifierAnalyzer`).
+Accepted 2026-04-27. Enforced by `LS0004` (`NoThisQualifierAnalyzer`).
 
 ## Context
 

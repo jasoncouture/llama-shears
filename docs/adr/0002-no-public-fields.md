@@ -1,8 +1,6 @@
 # ADR-0002: No public or internal fields
 
-## Status
-
-Accepted (2026-04-27). Enforced by `LS0002` (`NoPublicOrInternalFieldsAnalyzer`).
+Accepted 2026-04-27. Enforced by `LS0002` (`NoPublicOrInternalFieldsAnalyzer`).
 
 ## Context
 

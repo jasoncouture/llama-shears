@@ -1,8 +1,6 @@
 # ADR-0004: No primary constructors on non-record types
 
-## Status
-
-Accepted (2026-04-27). Enforced by `LS0001` (`PrimaryConstructorOnNonRecordAnalyzer`), with code fix `PrimaryConstructorOnNonRecordCodeFixProvider`. The companion suppressor `LSSPR0001` (`SuppressIde0290`) silences the IDE's "use primary constructor" suggestion that pushes in the opposite direction.
+Accepted 2026-04-27. Enforced by `LS0001` (`PrimaryConstructorOnNonRecordAnalyzer`), with code fix `PrimaryConstructorOnNonRecordCodeFixProvider`. The companion suppressor `LSSPR0001` (`SuppressIde0290`) silences the IDE's "use primary constructor" suggestion that pushes in the opposite direction.
 
 ## Context
 

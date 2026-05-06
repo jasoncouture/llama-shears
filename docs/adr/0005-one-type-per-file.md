@@ -1,8 +1,6 @@
 # ADR-0005: One top-level type per file
 
-## Status
-
-Accepted (2026-04-27). Enforced by `LS0005` (`OneTypePerFileAnalyzer`), with code fix `OneTypePerFileCodeFixProvider`.
+Accepted 2026-04-27. Enforced by `LS0005` (`OneTypePerFileAnalyzer`), with code fix `OneTypePerFileCodeFixProvider`.
 
 ## Context
 

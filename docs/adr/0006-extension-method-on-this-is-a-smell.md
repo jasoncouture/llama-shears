@@ -1,8 +1,6 @@
 # ADR-0006: Extension method invoked on `this` is a smell
 
-## Status
-
-Accepted (2026-04-27). Surfaced by `LS0006` (`ExtensionMethodOnThisAnalyzer`) as a configurable warning.
+Accepted 2026-04-27. Surfaced by `LS0006` (`ExtensionMethodOnThisAnalyzer`) as a configurable warning.
 
 ## Context
 
