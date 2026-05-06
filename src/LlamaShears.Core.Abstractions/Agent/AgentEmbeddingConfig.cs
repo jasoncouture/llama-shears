@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Provider;
 
@@ -7,4 +8,5 @@ public sealed record AgentEmbeddingConfig(
     [property: JsonRequired] ModelIdentity Id,
     TimeSpan? KeepAlive = null,
     string? QueryPrefix = null,
-    string? DocumentPrefix = null);
+    string? DocumentPrefix = null,
+    JsonElement? Options = null);

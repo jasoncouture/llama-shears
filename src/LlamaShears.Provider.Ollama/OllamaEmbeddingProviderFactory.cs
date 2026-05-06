@@ -1,22 +1,27 @@
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
-using OllamaSharp;
+using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Provider.Ollama;
 
 public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
 {
-    private readonly IOllamaApiClient _client;
+    private readonly IOllamaApiClientFactory _clientFactory;
+    private readonly IOptionsMonitor<OllamaProviderOptions> _hostOptions;
     private readonly IServiceProvider _serviceProvider;
 
-    public OllamaEmbeddingProviderFactory(IOllamaApiClient client, IServiceProvider serviceProvider)
+    public OllamaEmbeddingProviderFactory(
+        IOllamaApiClientFactory clientFactory,
+        IOptionsMonitor<OllamaProviderOptions> hostOptions,
+        IServiceProvider serviceProvider)
     {
-        _client = client;
+        _clientFactory = clientFactory;
+        _hostOptions = hostOptions;
         _serviceProvider = serviceProvider;
     }
 
-    public string Name => "OLLAMA";
+    public string Name => OllamaProviderFactory.ProviderName;
 
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -26,7 +31,8 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
         // ShowModelAsync's Capabilities) can come later when we have a
         // reason to discriminate beyond what the operator picks via
         // config.
-        var models = await _client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
+        var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
+        var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var model in models)
         {
@@ -43,5 +49,9 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
     }
 
     public IEmbeddingModel CreateModel(ModelConfiguration configuration)
-        => ActivatorUtilities.CreateInstance<OllamaEmbeddingModel>(_serviceProvider, configuration);
+    {
+        var merged = AgentProviderOptions.Resolve(_hostOptions.CurrentValue, configuration.AgentOptions);
+        var client = _clientFactory.CreateClient(merged);
+        return ActivatorUtilities.CreateInstance<OllamaEmbeddingModel>(_serviceProvider, client, configuration);
+    }
 }

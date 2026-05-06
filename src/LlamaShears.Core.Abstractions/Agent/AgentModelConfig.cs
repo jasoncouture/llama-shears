@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Provider;
 
@@ -8,4 +9,5 @@ public sealed record AgentModelConfig(
     ThinkLevel Think = ThinkLevel.None,
     int? ContextLength = null,
     TimeSpan? KeepAlive = null,
-    int TokenLimit = 0);
+    int TokenLimit = 0,
+    JsonElement? Options = null);

@@ -291,7 +291,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         CancellationToken cancellationToken)
     {
         var providerFactory = _providers.FirstOrDefault(p =>
-            string.Equals(p.Name, config.Model.Id.Provider, StringComparison.Ordinal))
+            string.Equals(p.Name, config.Model.Id.Provider, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
@@ -300,7 +300,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             Think: config.Model.Think,
             ContextLength: config.Model.ContextLength,
             KeepAlive: config.Model.KeepAlive,
-            TokenLimit: config.Model.TokenLimit);
+            TokenLimit: config.Model.TokenLimit,
+            AgentOptions: config.Model.Options);
         var model = providerFactory.CreateModel(modelConfig);
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
