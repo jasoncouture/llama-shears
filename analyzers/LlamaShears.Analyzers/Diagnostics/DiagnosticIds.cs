@@ -23,5 +23,7 @@ internal static class DiagnosticIds
 
     public const string ExtensionMethodOnThis = "LS0006";
 
+    public const string NoCancellationTokenAbbreviation = "LS0007";
+
     public const string SuppressIde0290 = "LSSPR0001";
 }
