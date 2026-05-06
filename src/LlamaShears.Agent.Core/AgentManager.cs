@@ -1,23 +1,40 @@
 using System.Diagnostics;
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using LlamaShears.Agent.Abstractions;
+using LlamaShears.Agent.Core.Channels;
 using LlamaShears.Hosting;
 using LlamaShears.Hosting.Abstractions;
+using LlamaShears.Provider.Abstractions;
 using MessagePipe;
+using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Agent.Core;
 
 public sealed class AgentManager : IHostStartupTask, IDisposable
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly IAsyncSubscriber<SystemTick> _ticks;
+    private readonly IEnumerable<IProviderFactory> _providers;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger<AgentManager> _logger;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private int _reconciling;
 
-    public AgentManager(IAsyncSubscriber<SystemTick> ticks)
+    public AgentManager(
+        IAsyncSubscriber<SystemTick> ticks,
+        IEnumerable<IProviderFactory> providers,
+        ILoggerFactory loggerFactory)
     {
         _ticks = ticks;
+        _providers = providers;
+        _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<AgentManager>();
     }
+
+    public IReadOnlyDictionary<string, IAgent> Agents
+        => _loaded.ToDictionary(kv => kv.Key, kv => kv.Value.Agent, StringComparer.OrdinalIgnoreCase);
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
@@ -98,58 +115,111 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
 
         _loaded[name] = slot;
-        Debug.WriteLine($"AgentManager: started agent '{name}' from {file.Path}");
+        _logger.LogInformation("Started agent '{AgentId}' from {Path}", name, file.Path);
     }
 
     private void Reload(string name, FilePresence file)
     {
-        var slot = TryLoad(name, file);
-        if (slot is null)
+        var newSlot = TryLoad(name, file);
+        if (newSlot is null)
         {
             // Keep the previous slot intact: a half-saved or syntactically
             // broken file shouldn't blow away a working agent.
             return;
         }
 
-        _loaded[name] = slot;
-        Debug.WriteLine($"AgentManager: reloaded agent '{name}' from {file.Path}");
+        if (_loaded.Remove(name, out var oldSlot))
+        {
+            oldSlot.Agent.Dispose();
+        }
+
+        _loaded[name] = newSlot;
+        _logger.LogInformation("Reloaded agent '{AgentId}' from {Path}", name, file.Path);
     }
 
     private void Stop(string name)
     {
         if (_loaded.Remove(name, out var slot))
         {
-            Debug.WriteLine($"AgentManager: stopped agent '{slot.Name}'");
+            slot.Agent.Dispose();
+            _logger.LogInformation("Stopped agent '{AgentId}'", slot.Name);
         }
     }
 
-    private static AgentSlot? TryLoad(string name, FilePresence file)
+    private AgentSlot? TryLoad(string name, FilePresence file)
     {
-        JsonNode? config;
+        AgentConfig? config;
         try
         {
             using var stream = File.OpenRead(file.Path);
-            config = JsonNode.Parse(stream);
+            config = JsonSerializer.Deserialize<AgentConfig>(stream, _jsonOptions);
         }
-        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException)
+        catch (Exception ex) when (ex is IOException or JsonException)
         {
-            Debug.WriteLine($"AgentManager: skipping agent '{name}' from {file.Path}: {ex.Message}");
+            _logger.LogWarning(ex, "Skipping agent '{AgentId}' from {Path}: {Message}", name, file.Path, ex.Message);
             return null;
         }
 
         if (config is null)
         {
-            Debug.WriteLine($"AgentManager: skipping agent '{name}' from {file.Path}: empty document");
+            _logger.LogWarning("Skipping agent '{AgentId}' from {Path}: empty document", name, file.Path);
             return null;
         }
 
-        return new AgentSlot(name, file.Path, config, file.Fingerprint);
+        IAgent agent;
+        try
+        {
+            agent = BuildAgent(name, config);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            _logger.LogWarning(ex, "Skipping agent '{AgentId}' from {Path}: {Message}", name, file.Path, ex.Message);
+            return null;
+        }
+
+        return new AgentSlot(name, file.Path, agent, file.Fingerprint);
     }
 
-    // Treat Config as immutable: parsed once on load and never mutated,
-    // so a snapshot handed to an in-flight interaction stays valid even
-    // when Reload swaps the slot for a newer version.
-    private sealed record AgentSlot(string Name, string Path, JsonNode Config, FileFingerprint Fingerprint);
+    private IAgent BuildAgent(string name, AgentConfig config)
+    {
+        var providerFactory = _providers.FirstOrDefault(p =>
+            string.Equals(p.Name, config.ProviderName, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException(
+                $"No provider factory registered with name '{config.ProviderName}'.");
+
+        var model = providerFactory.CreateModel(new ModelConfiguration(config.ModelId));
+
+        var seedContext = new List<ModelTurn>();
+        if (!string.IsNullOrWhiteSpace(config.SystemPrompt))
+        {
+            seedContext.Add(new ModelTurn(ModelRole.System, config.SystemPrompt, DateTimeOffset.UtcNow));
+        }
+
+        var inputs = new List<IInputChannel>();
+        if (!string.IsNullOrWhiteSpace(config.SeedTurn))
+        {
+            inputs.Add(new SeedInputChannel([
+                new ModelTurn(ModelRole.User, config.SeedTurn, DateTimeOffset.UtcNow),
+            ]));
+        }
+
+        var outputs = new List<IOutputChannel>
+        {
+            new LoggerOutputChannel(_loggerFactory.CreateLogger<LoggerOutputChannel>(), name),
+        };
+
+        return new Agent(
+            id: name,
+            heartbeatPeriod: config.HeartbeatPeriod,
+            model: model,
+            ticks: _ticks,
+            seedContext: seedContext,
+            inputChannels: inputs,
+            outputChannels: outputs,
+            logger: _loggerFactory.CreateLogger<Agent>());
+    }
+
+    private sealed record AgentSlot(string Name, string Path, IAgent Agent, FileFingerprint Fingerprint);
 
     private readonly record struct FilePresence(string Path, FileFingerprint Fingerprint);
 
