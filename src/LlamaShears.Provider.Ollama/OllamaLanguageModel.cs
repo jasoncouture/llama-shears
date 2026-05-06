@@ -29,6 +29,7 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
         ModelPrompt prompt,
+        PromptOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var messages = _messageListPool.Get();
@@ -57,6 +58,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                 {
                     Seed = Random.Shared.Next(),
                     NumCtx = _configuration.ContextLength,
+                    NumPredict = ResolveTokenLimit(options),
                 },
             };
 
@@ -86,6 +88,22 @@ public partial class OllamaLanguageModel : ILanguageModel
         {
             _messageListPool.Return(messages);
         }
+    }
+
+    // Per-call options.TokenLimit overrides config.TokenLimit; both must be
+    // > 0 to be meaningful, otherwise we hand null to OllamaSharp and let
+    // the server pick its default.
+    private int? ResolveTokenLimit(PromptOptions? options)
+    {
+        if (options?.TokenLimit is { } overrideLimit && overrideLimit > 0)
+        {
+            return overrideLimit;
+        }
+        if (_configuration.TokenLimit > 0)
+        {
+            return _configuration.TokenLimit;
+        }
+        return null;
     }
 
     private static Message ToMessage(ModelTurn turn) => new(MapRole(turn.Role), turn.Content);

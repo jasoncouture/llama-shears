@@ -176,7 +176,8 @@ public sealed partial class AgentManager : IHostStartupTask, IDisposable
             ModelId: config.Model.Id.Model,
             Think: config.Model.Think,
             ContextLength: config.Model.ContextLength,
-            KeepAlive: config.Model.KeepAlive));
+            KeepAlive: config.Model.KeepAlive,
+            TokenLimit: config.Model.TokenLimit));
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
