@@ -11,7 +11,7 @@ services:
       # bookmarks keep working. Container always serves on 8080.
       - "5125:8080"
     volumes:
-      - ./data:/data
+      - ./.data:/data
     environment:
       Paths__DataRoot: /data
     restart: unless-stopped

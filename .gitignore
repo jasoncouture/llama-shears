@@ -488,3 +488,6 @@ agents/memories/local/*
 
 # Throwaway spike workspace
 tmp/
+
+# Compose-mounted container data root (./.data:/data in compose.yaml)
+.data/

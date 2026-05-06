@@ -9,7 +9,7 @@
 .idea
 
 # Local mount target — never copy host data into the build context.
-data
+.data
 
 # Editor / OS noise.
 **/.DS_Store
