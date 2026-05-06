@@ -213,9 +213,16 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
-        for (var iteration = 0; iteration < MaxToolIterations; iteration++)
+        for (var iteration = 0; iteration < _config.Tools.TurnLimit; iteration++)
         {
+            var promptOptions = new PromptOptions(Tools: _tools);
+            if(iteration == _config.Tools.TurnLimit - 1)
+            {
+                // this is the last turn, don't allow any tool calls.
+                promptOptions = new PromptOptions(Tools: []);
+            }
             var turns = _agentContext.Turns;
+            
             var prompt = new ModelPrompt([systemTurn, .. turns]);
             var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
@@ -225,7 +232,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 eventId: Id,
                 model: _model,
                 prompt: prompt,
-                options: new PromptOptions(Tools: _tools),
+                options: promptOptions,
                 emitTurns: true,
                 correlationId: correlationId,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -321,7 +328,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
         new(
             AgentId: _config.Id,
-            WorkspacePath: _config.WorkspacePath);
+            WorkspacePath: _config.WorkspacePath,
+            ToolCallTurns: _config.Tools.TurnLimit);
 
     private static ModelTurn BuildUserTurn(IReadOnlyList<IEventEnvelope<ChannelMessage>> batch)
     {

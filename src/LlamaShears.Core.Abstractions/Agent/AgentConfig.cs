@@ -11,4 +11,5 @@ public sealed record AgentConfig(
     [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null)
 {
     public TimeSpan HeartbeatPeriod { get; init; } = TimeSpan.FromMinutes(30);
+    public AgentToolConfig Tools { get; init; } = new AgentToolConfig();
 }
