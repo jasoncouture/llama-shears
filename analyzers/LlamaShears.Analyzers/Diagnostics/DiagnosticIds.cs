@@ -13,5 +13,7 @@ internal static class DiagnosticIds
 {
     public const string PrimaryConstructorOnNonRecord = "LS0001";
 
+    public const string NoPublicOrInternalFields = "LS0002";
+
     public const string SuppressIde0290 = "LSSPR0001";
 }
