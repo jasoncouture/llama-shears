@@ -19,7 +19,7 @@ public sealed class AgentContextProviderTests
         var contextStore = new StubContextStore { Contexts = { ["alpha"] = new StubAgentContext("alpha", [turn]) } };
         var provider = new AgentContextProvider(configProvider, contextStore, time);
 
-        var context = provider.CreateAgentContext("alpha");
+        var context = await provider.CreateAgentContextAsync("alpha", CancellationToken.None);
 
         await Assert.That(context).IsNotNull();
         await Assert.That(context!.AgentId).IsEqualTo("alpha");
@@ -39,7 +39,7 @@ public sealed class AgentContextProviderTests
         var configProvider = new StubAgentConfigProvider();
         var provider = new AgentContextProvider(configProvider, new StubContextStore(), new FakeTimeProvider());
 
-        var context = provider.CreateAgentContext("missing");
+        var context = await provider.CreateAgentContextAsync("missing", CancellationToken.None);
 
         await Assert.That(context).IsNull();
     }
@@ -55,7 +55,7 @@ public sealed class AgentContextProviderTests
             new StubContextStore(),
             new FakeTimeProvider());
 
-        await Assert.That(() => provider.CreateAgentContext(agentId!))
+        await Assert.That(() => provider.CreateAgentContextAsync(agentId!, CancellationToken.None).AsTask())
             .Throws<ArgumentException>();
     }
 
@@ -67,7 +67,7 @@ public sealed class AgentContextProviderTests
             new StubContextStore(),
             new FakeTimeProvider());
 
-        await Assert.That(() => provider.CreateAgentContext())
+        await Assert.That(() => provider.CreateAgentContextAsync(CancellationToken.None).AsTask())
             .Throws<NotImplementedException>();
     }
 
@@ -77,8 +77,8 @@ public sealed class AgentContextProviderTests
 
         public IReadOnlyList<string> ListAgentIds() => [.. Configs.Keys];
 
-        public AgentConfig? GetConfig(string agentId) =>
-            Configs.TryGetValue(agentId, out var config) ? config : null;
+        public ValueTask<AgentConfig?> GetConfigAsync(string agentId, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(Configs.TryGetValue(agentId, out var config) ? config : null);
     }
 
     private sealed class StubContextStore : IContextStore

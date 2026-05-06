@@ -40,7 +40,7 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
             .OrderBy(static name => name, StringComparer.Ordinal)];
     }
 
-    public AgentConfig? GetConfig(string agentId)
+    public async ValueTask<AgentConfig?> GetConfigAsync(string agentId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
@@ -49,11 +49,11 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
 
         try
         {
-            return _cache.GetOrParseAsync<AgentConfig, ParseState>(
+            return await _cache.GetOrParseAsync<AgentConfig, ParseState>(
                 path,
                 state,
                 ParseAsync,
-                CancellationToken.None).GetAwaiter().GetResult();
+                cancellationToken).ConfigureAwait(false);
         }
         catch (IOException ex)
         {

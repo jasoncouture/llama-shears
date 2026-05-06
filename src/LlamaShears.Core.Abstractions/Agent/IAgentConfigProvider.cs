@@ -21,5 +21,5 @@ public interface IAgentConfigProvider
     /// config file exists for that id or the existing file fails to
     /// parse.
     /// </summary>
-    AgentConfig? GetConfig(string agentId);
+    ValueTask<AgentConfig?> GetConfigAsync(string agentId, CancellationToken cancellationToken);
 }
