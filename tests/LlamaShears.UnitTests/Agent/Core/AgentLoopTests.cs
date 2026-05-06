@@ -8,6 +8,7 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
@@ -129,7 +130,8 @@ public sealed class AgentLoopTests
             eventPublisher: publisher,
             inferenceRunner: new InferenceRunner(publisher, TimeProvider.System),
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
-            currentAgent: Substitute.For<ICurrentAgentAccessor>());
+            currentAgent: Substitute.For<ICurrentAgentAccessor>(),
+            promptContext: Substitute.For<IPromptContextProvider>());
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()

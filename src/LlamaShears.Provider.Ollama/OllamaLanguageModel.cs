@@ -276,6 +276,7 @@ public partial class OllamaLanguageModel : ILanguageModel
         ModelRole.FrameworkUser => ChatRole.User,
         ModelRole.FrameworkAssistant => ChatRole.Assistant,
         ModelRole.Tool => ChatRole.Tool,
+        ModelRole.SystemEphemeral => ChatRole.User,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported model role.")
     };
 
