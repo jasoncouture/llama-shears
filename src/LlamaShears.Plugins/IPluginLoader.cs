@@ -16,5 +16,5 @@ public interface IPluginLoader
     /// (feature flag off, host runtime mismatch, etc.); the host
     /// treats it as a successful no-op rather than an error.
     /// </summary>
-    public ValueTask<ImmutableArray<IPlugin>> LoadAsync(CancellationToken cancellationToken);
+    public Task<ImmutableArray<IPlugin>> LoadAsync(CancellationToken cancellationToken);
 }

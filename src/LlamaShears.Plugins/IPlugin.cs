@@ -38,14 +38,14 @@ public interface IPlugin
     /// Asynchronous one-shot initialization, run after the service
     /// provider has been built. Default is a completed value task.
     /// </summary>
-    public ValueTask InitializeAsync(IServiceProvider services, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    public Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     /// <summary>
     /// Called when the plugin is being unloaded — graceful cleanup of
     /// state the plugin owns outside the DI container. Default is a
     /// completed value task.
     /// </summary>
-    public ValueTask UnloadingAsync(IServiceProvider services, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    public Task UnloadingAsync(IServiceProvider services, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }
