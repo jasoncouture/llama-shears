@@ -92,6 +92,28 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
+    public async Task GetPath_with_ensureExists_creates_the_subpath_directory()
+    {
+        using var fixture = new TempRoot();
+        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        var subpath = $"unit-test-{Guid.NewGuid():N}";
+
+        var path = paths.GetPath(PathKind.Workspace, subpath, ensureExists: true);
+
+        try
+        {
+            await Assert.That(Directory.Exists(path)).IsTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+    }
+
+    [Test]
     public async Task GetPath_throws_for_unknown_kind()
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));

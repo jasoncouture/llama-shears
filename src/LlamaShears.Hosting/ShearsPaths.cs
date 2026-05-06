@@ -27,14 +27,12 @@ public sealed class ShearsPaths : IShearsPaths
         };
     }
 
-    public string GetPath(PathKind kind, string? subpath = null)
+    public string GetPath(PathKind kind, string? subpath = null, bool ensureExists = false)
     {
-        if (!_roots.TryGetValue(kind, out var root))
-        {
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown path kind.");
-        }
-
-        return string.IsNullOrWhiteSpace(subpath) ? root : Path.Combine(root, subpath);
+        if (!_roots.TryGetValue(kind, out var path)) throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown path kind.");
+        if (!string.IsNullOrWhiteSpace(subpath)) path = Path.Combine(path, subpath);
+        if (ensureExists) path = Directory.CreateDirectory(path).FullName;
+        return path;
     }
 
     private static string DefaultDataRoot() =>
