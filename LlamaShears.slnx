@@ -25,6 +25,7 @@
     <Project Path="src/LlamaShears.Core.Abstractions.Tools/LlamaShears.Core.Abstractions.Tools.csproj" />
     <Project Path="src/LlamaShears.Core.Eventing/LlamaShears.Core.Eventing.csproj" />
     <Project Path="src/LlamaShears.Core.Eventing.Extensions/LlamaShears.Core.Eventing.Extensions.csproj" />
+    <Project Path="src/LlamaShears.Host.Plugins/LlamaShears.Host.Plugins.csproj" />
     <Project Path="src/LlamaShears.Plugins/LlamaShears.Plugins.csproj" />
     <Project Path="src/LlamaShears.Core/LlamaShears.Core.csproj" />
     <Project Path="src/LlamaShears.Hosting/LlamaShears.Hosting.csproj" />
