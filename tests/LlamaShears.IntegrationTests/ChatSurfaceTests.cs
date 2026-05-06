@@ -15,7 +15,9 @@ public sealed class ChatSurfaceTests
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(html).Contains("<h1>LlamaShears</h1>");
+        // h1 may carry a Blazor scoped-CSS attribute (e.g. `b-xxxx`); just
+        // assert the visible text is present inside an h1 element.
+        await Assert.That(html).Contains(">LlamaShears</h1>");
         await Assert.That(html).Contains("agent-select");
         await Assert.That(html).Contains("class=\"composer\"");
     }
@@ -89,7 +91,10 @@ public sealed class ChatSurfaceTests
         using var response = await client.GetAsync("/", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
-        await Assert.That(html).Contains("<option value=\"alpha\">alpha</option>");
+        // The <option> may carry a Blazor scoped-CSS attribute between
+        // `value="alpha"` and the closing tag; assert on the two anchors.
+        await Assert.That(html).Contains("value=\"alpha\"");
+        await Assert.That(html).Contains(">alpha</option>");
     }
 
     [Test]

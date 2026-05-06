@@ -4,14 +4,98 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <link rel="stylesheet" href="_content/LlamaShears.Api.Web/site.css" />
     <link rel="stylesheet" href="@Assets["LlamaShears.Api.Host.styles.css"]" />
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --border-strong: #d1d5db;
+            --text: #1f2937;
+            --text-muted: #6b7280;
+            --text-subtle: #9ca3af;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-ring: rgba(37, 99, 235, 0.15);
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body { margin: 0; height: 100%; }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        main { height: 100%; }
+
+        :focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+    </style>
     <ImportMap />
     <HeadOutlet />
 </head>
 <body>
     <Routes />
-    <script src="_content/LlamaShears.Api.Web/composer.js"></script>
+    <script>
+        // Enter sends, Shift+Enter inserts newline, IME composition is left alone.
+        document.addEventListener('keydown', function (e) {
+            var t = e.target;
+            if (!(t instanceof HTMLTextAreaElement)) return;
+            if (!t.matches('[data-composer-submit]')) return;
+            if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+            e.preventDefault();
+            if (t.form && typeof t.form.requestSubmit === 'function') t.form.requestSubmit();
+        });
+
+        // Auto-scroll for [data-auto-scroll] containers: stick to the bottom
+        // while the user is already near it; force a scroll-to-bottom when
+        // [data-agent] flips. Self-attaches to elements added by Blazor.
+        (function () {
+            var EPSILON = 32;
+
+            function attach(el) {
+                if (el.__autoScrollAttached) return;
+                el.__autoScrollAttached = true;
+                var lastAgent = el.dataset.agent || '';
+                var stick = true;
+                el.addEventListener('scroll', function () {
+                    stick = (el.scrollHeight - el.scrollTop - el.clientHeight) <= EPSILON;
+                });
+                new MutationObserver(function () {
+                    var current = el.dataset.agent || '';
+                    var agentChanged = current !== lastAgent;
+                    lastAgent = current;
+                    if (agentChanged || stick) {
+                        el.scrollTop = el.scrollHeight;
+                        stick = true;
+                    }
+                }).observe(el, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                    attributes: true,
+                    attributeFilter: ['data-agent'],
+                });
+                el.scrollTop = el.scrollHeight;
+            }
+
+            function scan() {
+                document.querySelectorAll('[data-auto-scroll]').forEach(attach);
+            }
+
+            new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
+            scan();
+        })();
+    </script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 </html>
