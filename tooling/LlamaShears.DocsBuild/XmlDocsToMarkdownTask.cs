@@ -23,6 +23,8 @@ public sealed class XmlDocsToMarkdownTask : Task
     [Required]
     public string AssemblyPath { get; set; } = "";
 
+    public string ReadmeFile { get; set; } = "";
+
     public override bool Execute()
     {
         if (!File.Exists(DocumentationFile))
@@ -112,7 +114,13 @@ public sealed class XmlDocsToMarkdownTask : Task
             written++;
         }
 
-        var indexContent = AssemblyIndexRenderer.Render(AssemblyName, byType.Keys);
+        string? readmeContent = null;
+        if (!string.IsNullOrEmpty(ReadmeFile) && File.Exists(ReadmeFile))
+        {
+            readmeContent = File.ReadAllText(ReadmeFile);
+        }
+
+        var indexContent = AssemblyIndexRenderer.Render(AssemblyName, byType.Keys, readmeContent);
         File.WriteAllText(
             Path.Combine(OutputDirectory, assemblyIndexRelativePath),
             indexContent,

@@ -7,7 +7,7 @@ namespace LlamaShears.DocsBuild;
 
 internal static class AssemblyIndexRenderer
 {
-    public static string Render(string assemblyName, IEnumerable<string> typeFqns)
+    public static string Render(string assemblyName, IEnumerable<string> typeFqns, string? readmeContent = null)
     {
         var grouped = typeFqns
             .Select(fqn => (Fqn: fqn, NamespaceName: SplitNamespace(fqn), TypeName: SplitTypeName(fqn)))
@@ -15,10 +15,20 @@ internal static class AssemblyIndexRenderer
             .OrderBy(static group => group.Key, StringComparer.Ordinal);
 
         var output = new StringBuilder();
-        output.Append("# ").AppendLine(assemblyName);
-        output.AppendLine();
-        output.AppendLine("Public API surface, organized by namespace.");
-        output.AppendLine();
+        if (!string.IsNullOrWhiteSpace(readmeContent))
+        {
+            output.AppendLine(readmeContent!.TrimEnd());
+            output.AppendLine();
+            output.AppendLine("---");
+            output.AppendLine();
+        }
+        else
+        {
+            output.Append("# ").AppendLine(assemblyName);
+            output.AppendLine();
+            output.AppendLine("Public API surface, organized by namespace.");
+            output.AppendLine();
+        }
 
         foreach (var group in grouped)
         {

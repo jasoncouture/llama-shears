@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <_LlamaShearsDocsBuildAssembly Condition="'$(_LlamaShearsDocsBuildAssembly)' == ''">$(MSBuildThisFileDirectory)..\bin\$(Configuration)\netstandard2.0\LlamaShears.DocsBuild.dll</_LlamaShearsDocsBuildAssembly>
+    <_LlamaShearsAssemblyReadme Condition="Exists('$(MSBuildProjectDirectory)\README.md')">$(MSBuildProjectDirectory)\README.md</_LlamaShearsAssemblyReadme>
   </PropertyGroup>
 
   <UsingTask TaskName="LlamaShears.DocsBuild.XmlDocsToMarkdownTask"
@@ -17,7 +18,7 @@
   <Target Name="LlamaShearsGenerateMarkdownDocs"
           AfterTargets="Build"
           Condition=" '$(IsPackable)' == 'true' AND '$(DesignTimeBuild)' != 'true' "
-          Inputs="$(DocumentationFile)"
+          Inputs="$(DocumentationFile);$(_LlamaShearsAssemblyReadme)"
           Outputs="$(IntermediateOutputPath)LlamaShears.DocsBuild.stamp">
 
     <PropertyGroup>
@@ -31,7 +32,8 @@
         DocumentationFile="$(DocumentationFile)"
         OutputDirectory="$(_LlamaShearsDocsAssemblyOutputDir)"
         AssemblyName="$(AssemblyName)"
-        AssemblyPath="$(TargetPath)" />
+        AssemblyPath="$(TargetPath)"
+        ReadmeFile="$(_LlamaShearsAssemblyReadme)" />
 
     <Touch Files="$(IntermediateOutputPath)LlamaShears.DocsBuild.stamp" AlwaysCreate="true" />
   </Target>
