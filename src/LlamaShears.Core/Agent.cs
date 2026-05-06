@@ -42,6 +42,14 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IMemorySearcher _memorySearcher;
     private readonly ImmutableArray<ToolGroup> _tools;
 
+    // When Memory.Prefetch is enabled, a search task is installed by
+    // HandleAsync the moment a ChannelMessage is observed and consumed
+    // by ProcessBatchAsync once the batch is being processed. Only one
+    // is in flight at a time — if more messages arrive during the same
+    // batch window they coalesce onto the existing task rather than
+    // racing fresh embeddings.
+    private Task<IReadOnlyList<PromptContextMemory>>? _prefetchTask;
+
 
     public Agent(
         AgentConfig config,
@@ -153,7 +161,32 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         {
             return;
         }
+        if (_config.Memory.Prefetch && !string.IsNullOrWhiteSpace(data.Text))
+        {
+            TryStartPrefetch(data.Text);
+        }
         await _inbound.Writer.WriteAsync(envelope, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void TryStartPrefetch(string text)
+    {
+        // CompareExchange so the first message in a batch wins; later
+        // messages don't fire redundant embedding round-trips. The
+        // prefetch's lifetime is tied to agent shutdown, not to whatever
+        // CT delivered the channel event.
+        var task = RunPrefetchAsync(text, _shutdown.Token);
+        if (Interlocked.CompareExchange(ref _prefetchTask, task, null) is not null)
+        {
+            // Another prefetch is already in flight. Observe to avoid
+            // an UnobservedTaskException if it faults.
+            _ = task.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+        }
+    }
+
+    private async Task<IReadOnlyList<PromptContextMemory>> RunPrefetchAsync(string text, CancellationToken cancellationToken)
+    {
+        var stub = new ModelTurn(ModelRole.User, text, _time.GetLocalNow());
+        return await SearchMemoriesAsync(stub, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
@@ -224,7 +257,9 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         // Memories don't change inside the tool loop — the user input
         // and the prior assistant turn are both fixed for the duration
         // of this batch — so search once and reuse across iterations.
-        var memories = await SearchMemoriesAsync(userTurn, cancellationToken).ConfigureAwait(false);
+        // If Memory.Prefetch installed a task at HandleAsync time,
+        // consume it instead of issuing a fresh search.
+        var memories = await ConsumePrefetchOrSearchAsync(userTurn, cancellationToken).ConfigureAwait(false);
 
         for (var iteration = 0; iteration < _config.Tools.TurnLimit; iteration++)
         {
@@ -427,6 +462,31 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     // Threshold sits comfortably in the gap; short queries occasionally
     // skim 0.40, so anything above 0.30 is conservative-but-safe.
     private const double MemorySearchMinScore = 0.30;
+
+    private async ValueTask<IReadOnlyList<PromptContextMemory>> ConsumePrefetchOrSearchAsync(
+        ModelTurn userTurn,
+        CancellationToken cancellationToken)
+    {
+        var pending = Interlocked.Exchange(ref _prefetchTask, null);
+        if (pending is not null)
+        {
+            // Best-effort: if the prefetch faulted, fall through to the
+            // inline search rather than deny memories for this turn.
+            try
+            {
+                return await pending.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogMemorySearchFailed(_logger, Id, ex.Message, ex);
+            }
+        }
+        return await SearchMemoriesAsync(userTurn, cancellationToken).ConfigureAwait(false);
+    }
 
     // Build a query out of the last assistant turn (if any) plus the
     // freshly-coalesced user turn, then surface the matching memory

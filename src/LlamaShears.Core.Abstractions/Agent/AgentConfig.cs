@@ -14,4 +14,5 @@ public sealed record AgentConfig(
 {
     public TimeSpan HeartbeatPeriod { get; init; } = TimeSpan.FromMinutes(30);
     public AgentToolConfig Tools { get; init; } = new AgentToolConfig();
+    public AgentMemoryConfig Memory { get; init; } = new AgentMemoryConfig();
 }
