@@ -33,7 +33,6 @@ No `RuntimeInformation.IsOSPlatform` branch. No per-OS string. The single expres
 ## Consequences
 
 - Users find the config directory by reflex — `cd ~/.llama-shears` works on every platform the project targets.
-- Path resolution is one expression, callable from anywhere. There is no `IConfigPathResolver` indirection because there is no decision left to indirect.
 - Windows users see a Unix-style dotfile directory in their user profile. The project accepts this as a deliberate consequence of treating discoverability as more load-bearing than per-platform aesthetic consistency.
 - If a future Windows-targeted port becomes a priority, this ADR is revised, not patched around. ADR-0009 explicitly anticipates that revising an accepted ADR is normal.
 - The decision is independent of *what* lives under the config root. Any subsystem that needs a writable per-user location uses this root and structures itself underneath it.
