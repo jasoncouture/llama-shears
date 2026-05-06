@@ -10,7 +10,7 @@ namespace LlamaShears.UnitTests.Api.Authentication;
 public sealed class RejectInvalidAgentBearerMiddlewareTests
 {
     [Test]
-    public async Task Passes_through_when_no_authorization_header_is_supplied()
+    public async Task PassesThroughWhenNoAuthorizationHeaderIsSupplied()
     {
         var (root, _) = BuildPipeline();
 
@@ -21,7 +21,7 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
     }
 
     [Test]
-    public async Task Passes_through_when_a_non_bearer_authorization_header_is_supplied()
+    public async Task PassesThroughWhenANonBearerAuthorizationHeaderIsSupplied()
     {
         var (root, _) = BuildPipeline();
 
@@ -32,7 +32,7 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
     }
 
     [Test]
-    public async Task Passes_through_when_a_valid_bearer_token_is_supplied()
+    public async Task PassesThroughWhenAValidBearerTokenIsSupplied()
     {
         var (root, store) = BuildPipeline();
         var token = store.Issue(SampleAgent("alice"));
@@ -44,7 +44,7 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
     }
 
     [Test]
-    public async Task Returns_403_when_an_unknown_bearer_token_is_supplied()
+    public async Task Returns403WhenAnUnknownBearerTokenIsSupplied()
     {
         var (root, _) = BuildPipeline();
 
@@ -55,7 +55,7 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
     }
 
     [Test]
-    public async Task Returns_403_when_an_empty_bearer_token_is_supplied()
+    public async Task Returns403WhenAnEmptyBearerTokenIsSupplied()
     {
         var (root, _) = BuildPipeline();
 
