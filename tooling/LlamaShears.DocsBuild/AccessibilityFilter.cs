@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
@@ -10,6 +11,7 @@ internal sealed class AccessibilityFilter
 {
     private readonly HashSet<string> _exposedTypes = new(System.StringComparer.Ordinal);
     private readonly Dictionary<string, HashSet<string>> _exposedMembers = new(System.StringComparer.Ordinal);
+    private readonly Dictionary<string, string[]> _parameterNames = new(System.StringComparer.Ordinal);
 
     public static AccessibilityFilter Build(string assemblyPath)
     {
@@ -60,6 +62,17 @@ internal sealed class AccessibilityFilter
                     name = "#cctor";
                 }
                 memberNames.Add(name);
+
+                var parameterNames = method.GetParameters()
+                    .Select(reader.GetParameter)
+                    .Where(static p => p.SequenceNumber > 0)
+                    .OrderBy(static p => p.SequenceNumber)
+                    .Select(p => reader.GetString(p.Name))
+                    .ToArray();
+                if (parameterNames.Length > 0)
+                {
+                    filter._parameterNames[$"{fqn}|{name}|{parameterNames.Length}"] = parameterNames;
+                }
             }
 
             foreach (var fieldHandle in typeDef.GetFields())
@@ -119,6 +132,11 @@ internal sealed class AccessibilityFilter
         }
         return _exposedMembers.TryGetValue(member.OwningType, out var names)
             && names.Contains(member.MemberName);
+    }
+
+    public string[]? GetParameterNames(string typeFqn, string memberName, int arity)
+    {
+        return _parameterNames.TryGetValue($"{typeFqn}|{memberName}|{arity}", out var names) ? names : null;
     }
 
     public string? GetMarkdownRelativePath(string typeFqn)

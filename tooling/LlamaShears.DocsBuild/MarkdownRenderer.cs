@@ -9,11 +9,13 @@ namespace LlamaShears.DocsBuild;
 internal sealed class MarkdownRenderer
 {
     private readonly TypeReferenceFormatter _formatter;
+    private readonly AccessibilityFilter _filter;
     private readonly string _typeFqn;
 
-    private MarkdownRenderer(TypeReferenceFormatter formatter, string typeFqn)
+    private MarkdownRenderer(TypeReferenceFormatter formatter, AccessibilityFilter filter, string typeFqn)
     {
         _formatter = formatter;
+        _filter = filter;
         _typeFqn = typeFqn;
     }
 
@@ -25,7 +27,7 @@ internal sealed class MarkdownRenderer
         string currentRelativePath)
     {
         var formatter = new TypeReferenceFormatter(filter, currentRelativePath);
-        var renderer = new MarkdownRenderer(formatter, typeFqn);
+        var renderer = new MarkdownRenderer(formatter, filter, typeFqn);
         return renderer.RenderInternal(members, assemblyName);
     }
 
@@ -92,8 +94,27 @@ internal sealed class MarkdownRenderer
             return $"`{displayName}`";
         }
 
-        var parameterList = _formatter.FormatParameterList(member.ParameterSignature);
-        return $"`{displayName}`{parameterList}";
+        var types = XmlDocSignatureParser.ParseParameterList(member.ParameterSignature);
+        if (types.Count == 0)
+        {
+            return $"`{displayName}`()";
+        }
+
+        var names = _filter.GetParameterNames(member.OwningType, member.MemberName, types.Count);
+        var parts = new List<string>(types.Count);
+        for (var index = 0; index < types.Count; index++)
+        {
+            var typeText = _formatter.Format(types[index]);
+            if (names is not null && index < names.Length && !string.IsNullOrEmpty(names[index]))
+            {
+                parts.Add($"{typeText} {names[index]}");
+            }
+            else
+            {
+                parts.Add(typeText);
+            }
+        }
+        return $"`{displayName}`({string.Join(", ", parts)})";
     }
 
     private static string GetSimpleTypeName(string fqn)
