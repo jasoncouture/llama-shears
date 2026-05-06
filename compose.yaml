@@ -3,10 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # Default is a local-only tag; override via LLAMASHEARS_IMAGE in
-    # .env (auto-loaded for interpolation) or by invoking compose with
-    # `--env-file .local.env` to point the build at a registry.
-    image: ${LLAMASHEARS_IMAGE:-llama-shears:dev}
+    # Local-only tag by default. To push to a registry, drop a
+    # gitignored `compose.override.yaml` next to this file with an
+    # alternate `image:` value — compose auto-loads the override.
+    image: llama-shears:dev
     container_name: llamashears
     user: root
     ports:

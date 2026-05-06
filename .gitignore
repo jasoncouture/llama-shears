@@ -492,3 +492,7 @@ tmp/
 
 # Compose-mounted container data root (./.data:/data in compose.yaml)
 .data/
+
+# Per-host compose override (auto-loaded alongside compose.yaml)
+compose.override.yaml
+compose.override.yml
