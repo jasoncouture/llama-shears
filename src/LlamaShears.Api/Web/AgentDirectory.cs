@@ -30,4 +30,12 @@ internal sealed class AgentDirectory : IAgentDirectory
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         return _contextStore.ClearAsync(agentId, archive, cancellationToken);
     }
+
+    public Task RequestCompactionAsync(string agentId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        var agent = _manager.Get(agentId)
+            ?? throw new InvalidOperationException($"Agent '{agentId}' is not loaded.");
+        return agent.RequestCompactionAsync(cancellationToken);
+    }
 }

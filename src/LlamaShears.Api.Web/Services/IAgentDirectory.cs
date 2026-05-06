@@ -30,4 +30,12 @@ public interface IAgentDirectory
     /// either way.
     /// </summary>
     Task ClearAsync(string agentId, bool archive, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Forces an immediate context compaction on the agent regardless
+    /// of token-budget pressure. The agent's processing gate is
+    /// acquired for the duration so this serializes naturally with
+    /// in-flight turn handling.
+    /// </summary>
+    Task RequestCompactionAsync(string agentId, CancellationToken cancellationToken);
 }

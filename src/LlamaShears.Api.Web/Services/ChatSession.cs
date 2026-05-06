@@ -489,6 +489,9 @@ public sealed class ChatSession :
                 await _directory.ClearAsync(agentId, archive: true, cancellationToken).ConfigureAwait(false);
                 ResetBubbles();
                 break;
+            case ChatCommand.Compact:
+                await _directory.RequestCompactionAsync(agentId, cancellationToken).ConfigureAwait(false);
+                break;
         }
     }
 
@@ -518,6 +521,11 @@ public sealed class ChatSession :
         if (string.Equals(trimmedContent, "/archive", StringComparison.OrdinalIgnoreCase))
         {
             command = ChatCommand.Archive;
+            return true;
+        }
+        if (string.Equals(trimmedContent, "/compact", StringComparison.OrdinalIgnoreCase))
+        {
+            command = ChatCommand.Compact;
             return true;
         }
         return false;
@@ -579,5 +587,6 @@ public sealed class ChatSession :
     {
         Clear,
         Archive,
+        Compact,
     }
 }
