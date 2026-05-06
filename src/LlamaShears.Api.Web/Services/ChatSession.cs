@@ -173,7 +173,7 @@ public sealed class ChatSession :
         Changed?.Invoke();
         await _publisher.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "webui" },
-            new ChannelMessage(content, agentId, DateTimeOffset.UtcNow),
+            new ChannelMessage(content, agentId, DateTimeOffset.Now),
             cancellationToken).ConfigureAwait(false);
     }
 

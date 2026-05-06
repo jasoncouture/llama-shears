@@ -155,7 +155,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             cancellationToken).ConfigureAwait(false);
 
         var turns = _agentContext.Turns;
-        var now = _time.GetUtcNow();
+        var now = _time.GetLocalNow();
         var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), now);
         var prompt = new ModelPrompt([systemTurn, .. turns]);
         var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
