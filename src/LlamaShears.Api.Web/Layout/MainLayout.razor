@@ -1,11 +1,14 @@
 @inherits LayoutComponentBase
 
 <div class="app-shell">
-    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="@_navOpen" @onclick="ToggleNav">
-        <span class="nav-toggle-bar"></span>
-        <span class="nav-toggle-bar"></span>
-        <span class="nav-toggle-bar"></span>
-    </button>
+    <header class="app-header">
+        <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="@_navOpen" @onclick="ToggleNav">
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+        </button>
+        <h1 class="app-title">LlamaShears</h1>
+    </header>
 
     <nav class="nav @(_navOpen ? "nav-open" : null)">
         <NavLink class="nav-item" ActiveClass="nav-item-active" href="/" Match="NavLinkMatch.All" @onclick="CloseNav">
