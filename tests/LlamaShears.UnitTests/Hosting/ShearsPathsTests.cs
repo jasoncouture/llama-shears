@@ -1,5 +1,5 @@
 using LlamaShears.Core.Abstractions.Paths;
-using LlamaShears.Hosting;
+using LlamaShears.Core.Paths;
 using Microsoft.Extensions.Options;
 
 namespace LlamaShears.UnitTests.Hosting;

@@ -11,13 +11,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LlamaShears.Provider.Ollama\LlamaShears.Provider.Ollama.csproj" />
-    <ProjectReference Include="..\LlamaShears.Core\LlamaShears.Core.csproj" />
-    <ProjectReference Include="..\LlamaShears.Api.Web\LlamaShears.Api.Web.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions\LlamaShears.Core.Abstractions.csproj" />
+    <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.2.0" />
+    <PackageReference Include="MessagePipe" Version="1.8.1" />
+    <PackageReference Include="Scriban" Version="7.1.0" />
   </ItemGroup>
 
 </Project>

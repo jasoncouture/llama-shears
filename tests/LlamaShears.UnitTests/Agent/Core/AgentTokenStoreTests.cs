@@ -1,4 +1,4 @@
-using LlamaShears.Agent.Core;
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,4 +1,4 @@
-using LlamaShears.Agent.Core;
+using LlamaShears.Core;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
