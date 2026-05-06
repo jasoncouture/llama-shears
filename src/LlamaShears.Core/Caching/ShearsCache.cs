@@ -5,7 +5,7 @@ namespace LlamaShears.Core.Caching;
 
 public sealed class ShearsCache<T> : IShearsCache<T> where T : class
 {
-    private static readonly string _keyPrefix = (typeof(T).FullName ?? typeof(T).Name) + ":";
+    private static readonly string _keyPrefix = $"{typeof(T).FullName ?? typeof(T).Name}:";
 
     private readonly IMemoryCache _cache;
 
@@ -19,7 +19,7 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
 
-        if (!_cache.TryGetValue(_keyPrefix + cacheKey, out var raw))
+        if (!_cache.TryGetValue($"{_keyPrefix}{cacheKey}", out var raw))
         {
             return new CacheResult<TItem>(Present: false);
         }
@@ -40,7 +40,7 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
     public void Invalidate(string cacheKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
-        _cache.Remove(_keyPrefix + cacheKey);
+        _cache.Remove($"{_keyPrefix}{cacheKey}");
     }
 
     public void Set<TItem>(string cacheKey, TItem? value, TimeSpan timeToLive) where TItem : class
@@ -55,7 +55,7 @@ public sealed class ShearsCache<T> : IShearsCache<T> where T : class
         }
 
         _cache.Set(
-            _keyPrefix + cacheKey,
+            $"{_keyPrefix}{cacheKey}",
             value,
             new MemoryCacheEntryOptions
             {
