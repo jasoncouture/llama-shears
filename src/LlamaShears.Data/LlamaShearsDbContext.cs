@@ -17,13 +17,9 @@ public class LlamaShearsDbContext : DbContext
     {
     }
 
-    public DbSet<Agent> Agents => Set<Agent>();
-
     public DbSet<Session> Sessions => Set<Session>();
 
     public DbSet<SessionMessage> SessionMessages => Set<SessionMessage>();
-
-    public DbSet<AgentSession> AgentSessions => Set<AgentSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
