@@ -20,6 +20,12 @@ namespace LlamaShears.Provider.Abstractions;
 ///   responds to a <see cref="FrameworkUser"/> message. Sent under
 ///   the model's standard "assistant" role; the framework prefixes
 ///   the content as needed.</item>
+///   <item><see cref="Thought"/> — reasoning content emitted by a
+///   thinking-capable model. Stored alongside other turns so the
+///   framework and operators can see what the model considered, but
+///   provider implementations must filter <see cref="Thought"/> turns
+///   out when sending context back to the model — thoughts are not
+///   resubmitted as part of the prompt.</item>
 /// </list>
 /// </summary>
 public enum ModelRole
@@ -29,4 +35,5 @@ public enum ModelRole
     Assistant,
     FrameworkUser,
     FrameworkAssistant,
+    Thought,
 }
