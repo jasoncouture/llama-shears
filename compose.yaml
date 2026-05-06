@@ -11,7 +11,12 @@ services:
       # bookmarks keep working. Container always serves on 8080.
       - "5125:8080"
     volumes:
-      - ./.data:/data
+      # Bind-mount source is overridable via the LLAMASHEARS_DATA_DIR
+      # var. Compose auto-reads the project-root .env for interpolation,
+      # so dropping `LLAMASHEARS_DATA_DIR=/abs/path` into .env points the
+      # mount wherever you want. Defaults to ./.data when unset. Compose
+      # does not expand `~` in interpolated values — use absolute paths.
+      - ${LLAMASHEARS_DATA_DIR:-./.data}:/data
     environment:
       Paths__DataRoot: /data
     env_file:
