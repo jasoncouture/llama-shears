@@ -1,7 +1,7 @@
 using System.Text.Json;
 using LlamaShears.Provider.Abstractions;
 
-namespace LlamaShears.UnitTests;
+namespace LlamaShears.UnitTests.Serialization;
 
 public sealed class ModelIdentityJsonConverterTests
 {
