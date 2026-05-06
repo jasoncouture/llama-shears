@@ -14,8 +14,8 @@ public sealed class FileParserCache<T> : IFileParserCache<T>, IDisposable where 
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(options);
         _cache = cache;
-        Apply(options.CurrentValue);
         _monitorRegistration = options.OnChange(Apply);
+        Apply(options.CurrentValue);
     }
 
     public async ValueTask<TItem?> GetOrParseAsync<TItem, TState>(
