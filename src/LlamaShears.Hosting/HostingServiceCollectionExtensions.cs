@@ -13,7 +13,7 @@ public static class HostingServiceCollectionExtensions
     public static IServiceCollection AddHostStartupTaskRunner(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HostStartupTaskRunner>());
+        services.AddHostedService<HostStartupTaskRunner>();
         return services;
     }
 
