@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Eventing;
 
-internal sealed class EventBus : IEventBus, IEventPublisher
+internal sealed partial class EventBus : IEventBus, IEventPublisher
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger _logger;
@@ -51,8 +51,40 @@ internal sealed class EventBus : IEventBus, IEventPublisher
         var handlerWrapper = ActivatorUtilities.CreateInstance<EventHandlerWrapper<T>>(_serviceProvider, handler, new EventHandlerWrapperOptions(pattern, mode));
         var asyncSubscriber = _serviceProvider.GetRequiredService<IAsyncSubscriber<IEventEnvelope<T>>>();
         var subscription = asyncSubscriber.Subscribe(handlerWrapper);
-        _logger.LogInformation("Subscribed {EventHandlerType} to {EventType} with filter pattern {EventTypePattern}", handler.GetType(), typeof(T), pattern);
-        return subscription;
+        LogSubscribed(_logger, handler.GetType(), typeof(T), pattern);
+        return new SubscriptionHandle(subscription, _logger, handler.GetType(), typeof(T), pattern);
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Subscribed {EventHandlerType} to {EventType} with filter pattern {EventTypePattern}")]
+    private static partial void LogSubscribed(ILogger logger, Type eventHandlerType, Type eventType, string? eventTypePattern);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Unsubscribed {EventHandlerType} from {EventType} with filter pattern {EventTypePattern}")]
+    private static partial void LogUnsubscribed(ILogger logger, Type eventHandlerType, Type eventType, string? eventTypePattern);
+
+    private sealed class SubscriptionHandle : IDisposable
+    {
+        private readonly IDisposable _inner;
+        private readonly ILogger _logger;
+        private readonly Type _handlerType;
+        private readonly Type _eventType;
+        private readonly string? _pattern;
+        private int _disposed;
+
+        public SubscriptionHandle(IDisposable inner, ILogger logger, Type handlerType, Type eventType, string? pattern)
+        {
+            _inner = inner;
+            _logger = logger;
+            _handlerType = handlerType;
+            _eventType = eventType;
+            _pattern = pattern;
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            _inner.Dispose();
+            LogUnsubscribed(_logger, _handlerType, _eventType, _pattern);
+        }
     }
 
     sealed record EventHandlerWrapperOptions(string? Pattern, EventDeliveryMode DeliveryMode);
