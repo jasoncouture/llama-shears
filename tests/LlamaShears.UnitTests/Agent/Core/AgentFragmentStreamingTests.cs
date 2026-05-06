@@ -1,10 +1,12 @@
 using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Abstractions.Events;
 using LlamaShears.Agent.Core.Channels;
+using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
@@ -41,9 +43,11 @@ public sealed class AgentFragmentStreamingTests
             heartbeatPeriod: TimeSpan.Zero,
             model: model,
             ticks: ticks,
-            seedContext: [],
+            agentContext: new FakeAgentContext("alice"),
             inputChannels: [seed],
             outputChannels: [captureChannel],
+            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance,
             fragments: fragmentPublisher);
 
@@ -98,9 +102,11 @@ public sealed class AgentFragmentStreamingTests
             heartbeatPeriod: TimeSpan.Zero,
             model: model,
             ticks: ticks,
-            seedContext: [],
+            agentContext: new FakeAgentContext("alice"),
             inputChannels: [seed],
             outputChannels: [captureChannel],
+            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance,
             fragments: fragmentPublisher);
 
@@ -152,9 +158,11 @@ public sealed class AgentFragmentStreamingTests
             heartbeatPeriod: TimeSpan.Zero,
             model: model,
             ticks: ticks,
-            seedContext: [],
+            agentContext: new FakeAgentContext("alice"),
             inputChannels: [seed],
             outputChannels: [captureChannel],
+            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance,
             fragments: fragmentPublisher);
 

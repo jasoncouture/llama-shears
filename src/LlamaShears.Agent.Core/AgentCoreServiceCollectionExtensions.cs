@@ -1,4 +1,6 @@
 using LlamaShears.Agent.Abstractions;
+using LlamaShears.Agent.Abstractions.Persistence;
+using LlamaShears.Agent.Core.Persistence;
 using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Hosting;
 using MessagePipe;
@@ -23,6 +25,7 @@ public static class AgentCoreServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(systemTickConfigurationSection);
 
         services.AddMessagePipe();
+        services.AddShearsPaths();
 
         services.AddOptions<SystemTickOptions>()
             .BindConfiguration(systemTickConfigurationSection);
@@ -31,6 +34,7 @@ public static class AgentCoreServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
+        services.TryAddSingleton<IContextStore, JsonLineContextStore>();
 
         return services;
     }

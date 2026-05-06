@@ -9,7 +9,7 @@ public sealed class ShearsPaths : IShearsPaths
     private const string DefaultWorkspaceFolderName = "workspace";
     private const string DefaultAgentsFolderName = "agents";
     private const string DefaultTemplatesFolderName = "templates";
-    private const string DefaultConversationsFolderName = "conversations";
+    private const string DefaultContextFolderName = "context";
 
     private readonly ConcurrentDictionary<PathKind, string> _roots;
 
@@ -25,7 +25,7 @@ public sealed class ShearsPaths : IShearsPaths
             [PathKind.Workspace] = ResolveAndCreate(values.WorkspaceRoot, () => Path.Combine(dataRoot, DefaultWorkspaceFolderName)),
             [PathKind.Agents] = ResolveAndCreate(values.AgentsRoot, () => Path.Combine(dataRoot, DefaultAgentsFolderName)),
             [PathKind.Templates] = ResolveAndCreate(values.TemplatesRoot, () => Path.Combine(dataRoot, DefaultTemplatesFolderName)),
-            [PathKind.Conversations] = ResolveAndCreate(values.ConversationsRoot, () => Path.Combine(dataRoot, DefaultConversationsFolderName)),
+            [PathKind.Context] = ResolveAndCreate(values.ContextRoot, () => Path.Combine(dataRoot, DefaultContextFolderName)),
         };
     }
 

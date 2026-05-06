@@ -1,10 +1,11 @@
 using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Core;
-using LlamaShears.Agent.Core.Channels;
+using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
@@ -18,20 +19,12 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var captured = new CapturingOutputChannel();
-        var seed = new SeedInputChannel([
+        var seed = new global::LlamaShears.Agent.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
         ]);
         var model = new ScriptedLanguageModel("hi back");
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
-            id: "alice",
-            heartbeatPeriod: TimeSpan.Zero,
-            model: model,
-            ticks: subscriber,
-            seedContext: [],
-            inputChannels: [seed],
-            outputChannels: [captured],
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance);
+        using var agent = BuildAgent("alice", subscriber, model, [seed], [captured]);
 
         await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
 
@@ -52,15 +45,7 @@ public sealed class AgentLoopTests
         var captured = new CapturingOutputChannel();
         var model = new ScriptedLanguageModel("should not appear");
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
-            id: "alice",
-            heartbeatPeriod: TimeSpan.Zero,
-            model: model,
-            ticks: subscriber,
-            seedContext: [],
-            inputChannels: [],
-            outputChannels: [captured],
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance);
+        using var agent = BuildAgent("alice", subscriber, model, [], [captured]);
 
         await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
         await Task.Delay(150, CancellationToken.None);
@@ -77,23 +62,13 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var captured = new CapturingOutputChannel();
-        var seed = new SeedInputChannel([
+        var seed = new global::LlamaShears.Agent.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
         ]);
         var model = new ScriptedLanguageModel("nope");
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
-            id: "alice",
-            heartbeatPeriod: TimeSpan.Zero,
-            model: model,
-            ticks: subscriber,
-            seedContext: [],
-            inputChannels: [seed],
-            outputChannels: [captured],
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance)
-        {
-            HeartbeatEnabled = false,
-        };
+        using var agent = BuildAgent("alice", subscriber, model, [seed], [captured]);
+        agent.HeartbeatEnabled = false;
 
         await publisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
         await Task.Delay(150, CancellationToken.None);
@@ -110,21 +85,19 @@ public sealed class AgentLoopTests
         var subscriber = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
 
         var captured = new CapturingOutputChannel();
-        var seed = new SeedInputChannel([
+        var seed = new global::LlamaShears.Agent.Core.Channels.SeedInputChannel([
             new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UtcNow),
             new ModelTurn(ModelRole.User, "again", DateTimeOffset.UtcNow.AddSeconds(1)),
         ]);
         var model = new ScriptedLanguageModel("first response");
 
-        using var agent = new global::LlamaShears.Agent.Core.Agent(
-            id: "alice",
-            heartbeatPeriod: TimeSpan.FromHours(1),
-            model: model,
-            ticks: subscriber,
-            seedContext: [],
-            inputChannels: [seed],
-            outputChannels: [captured],
-            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance);
+        using var agent = BuildAgent(
+            "alice",
+            subscriber,
+            model,
+            [seed],
+            [captured],
+            heartbeatPeriod: TimeSpan.FromHours(1));
 
         var first = DateTimeOffset.UtcNow;
         await publisher.PublishAsync(new SystemTick(first), CancellationToken.None);
@@ -133,6 +106,27 @@ public sealed class AgentLoopTests
         await Task.Delay(150, CancellationToken.None);
 
         await Assert.That(model.PromptInvocations).IsEqualTo(1);
+    }
+
+    private static global::LlamaShears.Agent.Core.Agent BuildAgent(
+        string id,
+        IAsyncSubscriber<SystemTick> ticks,
+        ILanguageModel model,
+        IReadOnlyList<IInputChannel> inputs,
+        IReadOnlyList<IOutputChannel> outputs,
+        TimeSpan? heartbeatPeriod = null)
+    {
+        return new global::LlamaShears.Agent.Core.Agent(
+            id: id,
+            heartbeatPeriod: heartbeatPeriod ?? TimeSpan.Zero,
+            model: model,
+            ticks: ticks,
+            agentContext: new FakeAgentContext(id),
+            inputChannels: inputs,
+            outputChannels: outputs,
+            systemPromptProvider: new HardcodedSystemPromptProvider(),
+            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
+            logger: NullLogger<global::LlamaShears.Agent.Core.Agent>.Instance);
     }
 
     private static ServiceProvider BuildServices()

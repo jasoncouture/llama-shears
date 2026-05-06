@@ -8,14 +8,14 @@ namespace LlamaShears.Agent.Core.Persistence;
 internal sealed class AgentContext : IAgentContext
 {
     private readonly Lock _lock = new();
-    private readonly List<IConversationEntry> _entries;
+    private readonly List<IContextEntry> _entries;
     private readonly string _currentPath;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public AgentContext(
         string agentId,
         string currentPath,
-        IEnumerable<IConversationEntry> seed,
+        IEnumerable<IContextEntry> seed,
         JsonSerializerOptions jsonOptions)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
@@ -42,7 +42,7 @@ internal sealed class AgentContext : IAgentContext
         }
     }
 
-    public IReadOnlyList<IConversationEntry> Entries
+    public IReadOnlyList<IContextEntry> Entries
     {
         get
         {
@@ -55,7 +55,7 @@ internal sealed class AgentContext : IAgentContext
 
     public event EventHandler? Cleared;
 
-    public async Task AppendAsync(IConversationEntry entry, CancellationToken cancellationToken)
+    public async Task AppendAsync(IContextEntry entry, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(entry);
 

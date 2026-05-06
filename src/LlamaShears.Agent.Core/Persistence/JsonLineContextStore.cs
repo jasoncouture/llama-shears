@@ -8,7 +8,7 @@ using LlamaShears.Provider.Abstractions;
 
 namespace LlamaShears.Agent.Core.Persistence;
 
-public sealed class JsonLineConversationStore : IConversationStore
+public sealed class JsonLineContextStore : IContextStore
 {
     private const string CurrentFileName = "current.json";
 
@@ -18,7 +18,7 @@ public sealed class JsonLineConversationStore : IConversationStore
     private readonly TimeProvider _time;
     private readonly ConcurrentDictionary<string, AgentContext> _contexts = new(StringComparer.Ordinal);
 
-    public JsonLineConversationStore(IShearsPaths paths, TimeProvider time)
+    public JsonLineContextStore(IShearsPaths paths, TimeProvider time)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(time);
@@ -36,10 +36,10 @@ public sealed class JsonLineConversationStore : IConversationStore
             return existing;
         }
 
-        var folder = _paths.GetPath(PathKind.Conversations, agentId, ensureExists: true);
+        var folder = _paths.GetPath(PathKind.Context, agentId, ensureExists: true);
         var currentPath = Path.Combine(folder, CurrentFileName);
 
-        var seed = new List<IConversationEntry>();
+        var seed = new List<IContextEntry>();
         await foreach (var entry in ReadJsonLinesAsync(currentPath, cancellationToken).ConfigureAwait(false))
         {
             seed.Add(entry);
@@ -49,25 +49,25 @@ public sealed class JsonLineConversationStore : IConversationStore
         return _contexts.GetOrAdd(agentId, fresh);
     }
 
-    public IAsyncEnumerable<IConversationEntry> ReadCurrentAsync(string agentId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var folder = _paths.GetPath(PathKind.Conversations, agentId);
+        var folder = _paths.GetPath(PathKind.Context, agentId);
         var currentPath = Path.Combine(folder, CurrentFileName);
         return ReadJsonLinesAsync(currentPath, cancellationToken);
     }
 
-    public IAsyncEnumerable<IConversationEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<IContextEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(archiveId.AgentId);
-        var folder = _paths.GetPath(PathKind.Conversations, archiveId.AgentId);
+        var folder = _paths.GetPath(PathKind.Context, archiveId.AgentId);
         var archivePath = Path.Combine(folder, $"{archiveId.UnixMillis}.json");
         return ReadJsonLinesAsync(archivePath, cancellationToken);
     }
 
     public Task<IReadOnlyList<string>> ListAgentsAsync(CancellationToken cancellationToken)
     {
-        var root = _paths.GetPath(PathKind.Conversations);
+        var root = _paths.GetPath(PathKind.Context);
         if (!Directory.Exists(root))
         {
             return Task.FromResult<IReadOnlyList<string>>([]);
@@ -86,7 +86,7 @@ public sealed class JsonLineConversationStore : IConversationStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var folder = _paths.GetPath(PathKind.Conversations, agentId);
+        var folder = _paths.GetPath(PathKind.Context, agentId);
         if (!Directory.Exists(folder))
         {
             return Task.FromResult<IReadOnlyList<ArchiveId>>([]);
@@ -114,7 +114,7 @@ public sealed class JsonLineConversationStore : IConversationStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var folder = _paths.GetPath(PathKind.Conversations, agentId, ensureExists: true);
+        var folder = _paths.GetPath(PathKind.Context, agentId, ensureExists: true);
         var currentPath = Path.Combine(folder, CurrentFileName);
 
         if (File.Exists(currentPath))
@@ -142,7 +142,7 @@ public sealed class JsonLineConversationStore : IConversationStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(archiveId.AgentId);
 
-        var folder = _paths.GetPath(PathKind.Conversations, archiveId.AgentId);
+        var folder = _paths.GetPath(PathKind.Context, archiveId.AgentId);
         var archivePath = Path.Combine(folder, $"{archiveId.UnixMillis}.json");
         if (File.Exists(archivePath))
         {
@@ -151,7 +151,7 @@ public sealed class JsonLineConversationStore : IConversationStore
         return Task.CompletedTask;
     }
 
-    private static async IAsyncEnumerable<IConversationEntry> ReadJsonLinesAsync(
+    private static async IAsyncEnumerable<IContextEntry> ReadJsonLinesAsync(
         string path,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -176,10 +176,10 @@ public sealed class JsonLineConversationStore : IConversationStore
                 continue;
             }
 
-            IConversationEntry? entry;
+            IContextEntry? entry;
             try
             {
-                entry = JsonSerializer.Deserialize<IConversationEntry>(line, _jsonOptions);
+                entry = JsonSerializer.Deserialize<IContextEntry>(line, _jsonOptions);
             }
             catch (JsonException)
             {

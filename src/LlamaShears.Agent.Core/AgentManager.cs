@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Abstractions.Events;
+using LlamaShears.Agent.Abstractions.Persistence;
 using LlamaShears.Agent.Core.Channels;
 using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Hosting;
@@ -22,6 +23,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
     private readonly ILogger<AgentManager> _logger;
     private readonly ISystemPromptProvider _systemPromptProvider;
     private readonly TimeProvider _timeProvider;
+    private readonly IContextStore _contextStore;
     private readonly IAsyncSubscriber<UserMessageSubmitted> _userMessages;
     private readonly IAsyncPublisher<AgentTurnEmitted> _turnPublisher;
     private readonly IAsyncPublisher<AgentFragmentEmitted> _fragmentPublisher;
@@ -36,6 +38,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         ILoggerFactory loggerFactory,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
+        IContextStore contextStore,
         IAsyncSubscriber<UserMessageSubmitted> userMessages,
         IAsyncPublisher<AgentTurnEmitted> turnPublisher,
         IAsyncPublisher<AgentFragmentEmitted> fragmentPublisher)
@@ -47,6 +50,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         _logger = loggerFactory.CreateLogger<AgentManager>();
         _systemPromptProvider = systemPromptProvider;
         _timeProvider = timeProvider;
+        _contextStore = contextStore;
         _userMessages = userMessages;
         _turnPublisher = turnPublisher;
         _fragmentPublisher = fragmentPublisher;
@@ -72,29 +76,27 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
     }
 
-    private ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
+    private async ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
     {
         // Skip if a previous tick is still reconciling. Disk I/O on a
         // 30s tick should never overlap, but a slow filesystem could
         // queue up handlers; collapsing the backlog is correct.
         if (Interlocked.CompareExchange(ref _reconciling, 1, 0) != 0)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
 
         try
         {
-            Reconcile();
+            await ReconcileAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             Interlocked.Exchange(ref _reconciling, 0);
         }
-
-        return ValueTask.CompletedTask;
     }
 
-    private void Reconcile()
+    private async Task ReconcileAsync(CancellationToken cancellationToken)
     {
         var present = new Dictionary<string, FilePresence>(StringComparer.OrdinalIgnoreCase);
 
@@ -111,11 +113,11 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         {
             if (!_loaded.TryGetValue(name, out var slot))
             {
-                Start(name, file);
+                await StartAsync(name, file, cancellationToken).ConfigureAwait(false);
             }
             else if (slot.Fingerprint != file.Fingerprint)
             {
-                Reload(name, file);
+                await ReloadAsync(name, file, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -125,9 +127,9 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
     }
 
-    private void Start(string name, FilePresence file)
+    private async Task StartAsync(string name, FilePresence file, CancellationToken cancellationToken)
     {
-        var slot = TryLoad(name, file);
+        var slot = await TryLoadAsync(name, file, cancellationToken).ConfigureAwait(false);
         if (slot is null)
         {
             return;
@@ -137,9 +139,9 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         _logger.LogInformation("Started agent '{AgentId}' from {Path}", name, file.Path);
     }
 
-    private void Reload(string name, FilePresence file)
+    private async Task ReloadAsync(string name, FilePresence file, CancellationToken cancellationToken)
     {
-        var newSlot = TryLoad(name, file);
+        var newSlot = await TryLoadAsync(name, file, cancellationToken).ConfigureAwait(false);
         if (newSlot is null)
         {
             // Keep the previous slot intact: a half-saved or syntactically
@@ -165,7 +167,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         }
     }
 
-    private AgentSlot? TryLoad(string name, FilePresence file)
+    private async Task<AgentSlot?> TryLoadAsync(string name, FilePresence file, CancellationToken cancellationToken)
     {
         AgentConfig? config;
         try
@@ -188,7 +190,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         IAgent agent;
         try
         {
-            agent = BuildAgent(name, config);
+            agent = await BuildAgentAsync(name, config, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
@@ -199,7 +201,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
         return new AgentSlot(name, file.Path, agent, file.Fingerprint);
     }
 
-    private IAgent BuildAgent(string name, AgentConfig config)
+    private async Task<IAgent> BuildAgentAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
         var providerFactory = _providers.FirstOrDefault(p =>
             string.Equals(p.Name, config.Model.Id.Provider, StringComparison.Ordinal))
@@ -212,12 +214,7 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
             ContextLength: config.Model.ContextLength,
             KeepAlive: config.Model.KeepAlive));
 
-        var now = _timeProvider.GetUtcNow();
-        var systemPrompt = _systemPromptProvider.Build(name, now);
-        var seedContext = new List<ModelTurn>
-        {
-            new(ModelRole.System, systemPrompt, now),
-        };
+        var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
         var inputs = new List<IInputChannel>
         {
@@ -235,9 +232,11 @@ public sealed class AgentManager : IHostStartupTask, IDisposable
             heartbeatPeriod: config.HeartbeatPeriod,
             model: model,
             ticks: _ticks,
-            seedContext: seedContext,
+            agentContext: agentContext,
             inputChannels: inputs,
             outputChannels: outputs,
+            systemPromptProvider: _systemPromptProvider,
+            timeProvider: _timeProvider,
             logger: _loggerFactory.CreateLogger<Agent>(),
             fragments: _fragmentPublisher);
     }

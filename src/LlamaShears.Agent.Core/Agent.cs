@@ -2,6 +2,8 @@ using System.Text;
 using System.Threading.Channels;
 using LlamaShears.Agent.Abstractions;
 using LlamaShears.Agent.Abstractions.Events;
+using LlamaShears.Agent.Abstractions.Persistence;
+using LlamaShears.Agent.Core.SystemPrompt;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
 using Microsoft.Extensions.Logging;
@@ -12,7 +14,9 @@ public sealed partial class Agent : IAgent
 {
     private readonly ILanguageModel _model;
     private readonly ILogger<Agent> _logger;
-    private readonly List<ModelTurn> _context;
+    private readonly IAgentContext _agentContext;
+    private readonly ISystemPromptProvider _systemPrompt;
+    private readonly TimeProvider _time;
     private readonly IDisposable _subscription;
     private readonly Channel<bool> _signal;
     private readonly CancellationTokenSource _shutdown;
@@ -25,18 +29,26 @@ public sealed partial class Agent : IAgent
         TimeSpan heartbeatPeriod,
         ILanguageModel model,
         IAsyncSubscriber<SystemTick> ticks,
-        IEnumerable<ModelTurn> seedContext,
+        IAgentContext agentContext,
         IReadOnlyList<IInputChannel> inputChannels,
         IReadOnlyList<IOutputChannel> outputChannels,
+        ISystemPromptProvider systemPromptProvider,
+        TimeProvider timeProvider,
         ILogger<Agent> logger,
         IAsyncPublisher<AgentFragmentEmitted>? fragments = null)
     {
+        ArgumentNullException.ThrowIfNull(agentContext);
+        ArgumentNullException.ThrowIfNull(systemPromptProvider);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         Id = id;
         HeartbeatPeriod = heartbeatPeriod;
         _model = model;
         _logger = logger;
         _fragments = fragments;
-        _context = [..seedContext];
+        _agentContext = agentContext;
+        _systemPrompt = systemPromptProvider;
+        _time = timeProvider;
         InputChannels = inputChannels;
         OutputChannels = outputChannels;
         _signal = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
@@ -58,7 +70,7 @@ public sealed partial class Agent : IAgent
 
     public bool HeartbeatEnabled { get; set; } = true;
 
-    public IReadOnlyList<ModelTurn> Context => _context;
+    public IReadOnlyList<ModelTurn> Context => _agentContext.Turns;
 
     public IReadOnlyList<IInputChannel> InputChannels { get; }
 
@@ -149,22 +161,25 @@ public sealed partial class Agent : IAgent
 
     private async Task ProcessOnceAsync(CancellationToken cancellationToken)
     {
-        var contextSizeBefore = _context.Count;
+        var contextSizeBefore = _agentContext.Turns.Count;
 
         foreach (var input in InputChannels)
         {
             await foreach (var turn in input.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                _context.Add(turn);
+                await _agentContext.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        if (_context.Count == contextSizeBefore)
+        var turns = _agentContext.Turns;
+        if (turns.Count == contextSizeBefore)
         {
             return;
         }
 
-        var prompt = new ModelPrompt([.._context]);
+        var now = _time.GetUtcNow();
+        var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id, now), now);
+        var prompt = new ModelPrompt([systemTurn, .. turns]);
         var thinking = new StringBuilder();
         var content = new StringBuilder();
         var thoughtStreamId = Guid.NewGuid();
@@ -220,8 +235,8 @@ public sealed partial class Agent : IAgent
 
         if (thinking.Length > 0)
         {
-            var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), DateTimeOffset.UtcNow);
-            _context.Add(thoughtTurn);
+            var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
+            await _agentContext.AppendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
             foreach (var output in OutputChannels)
             {
                 await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
@@ -234,8 +249,8 @@ public sealed partial class Agent : IAgent
             return;
         }
 
-        var response = new ModelTurn(ModelRole.Assistant, content.ToString(), DateTimeOffset.UtcNow);
-        _context.Add(response);
+        var response = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
+        await _agentContext.AppendAsync(response, cancellationToken).ConfigureAwait(false);
 
         foreach (var output in OutputChannels)
         {
