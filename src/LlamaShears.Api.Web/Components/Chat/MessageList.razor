@@ -31,9 +31,12 @@
         if (hiddenStreamingKind is { } kind)
         {
             var modifier = kind == ChatBubbleKind.Thought ? "thinking" : "responding";
-            var label = kind == ChatBubbleKind.Thought ? "Agent is thinking" : "Agent is typing";
-            <div class="typing-indicator typing-indicator-@modifier" role="status" aria-label="@label">
-                <span></span><span></span><span></span>
+            var label = kind == ChatBubbleKind.Thought ? "thinking" : "typing";
+            <div class="typing-indicator typing-indicator-@modifier" role="status">
+                <div class="typing-indicator-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <small class="typing-indicator-label">@label</small>
             </div>
         }
     }

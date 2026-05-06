@@ -16,6 +16,7 @@
 .typing-indicator {
     align-self: flex-start;
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.25rem;
     padding: 0.6rem 0.9rem;
@@ -24,7 +25,13 @@
     border-radius: 0.75rem;
 }
 
-.typing-indicator span {
+.typing-indicator-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.typing-indicator-dots span {
     width: 0.4rem;
     height: 0.4rem;
     border-radius: 50%;
@@ -32,12 +39,20 @@
     animation: typing-bounce 1.2s ease-in-out infinite;
 }
 
-.typing-indicator span:nth-child(2) {
+.typing-indicator-dots span:nth-child(2) {
     animation-delay: 0.15s;
 }
 
-.typing-indicator span:nth-child(3) {
+.typing-indicator-dots span:nth-child(3) {
     animation-delay: 0.3s;
+}
+
+.typing-indicator-label {
+    font-size: 0.7rem;
+    color: var(--text-subtle);
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
 }
 
 @keyframes typing-bounce {
@@ -56,10 +71,15 @@
     border-color: var(--bubble-thought-border);
 }
 
-.typing-indicator-thinking span {
+.typing-indicator-thinking .typing-indicator-dots span {
     background: var(--bubble-thought-text);
     animation-name: typing-pulse;
     animation-duration: 1.6s;
+}
+
+.typing-indicator-thinking .typing-indicator-label {
+    color: var(--bubble-thought-text);
+    opacity: 0.85;
 }
 
 @keyframes typing-pulse {
@@ -74,7 +94,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .typing-indicator span {
+    .typing-indicator-dots span {
         animation: none;
         opacity: 0.7;
     }
