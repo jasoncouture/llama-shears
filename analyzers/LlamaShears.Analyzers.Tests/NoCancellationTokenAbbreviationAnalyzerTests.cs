@@ -42,7 +42,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
             source);
 
         await Assert.That(diagnostics[0].GetMessage())
-            .Contains("Claude KNOCK IT THE FUCK OFF AND NAME IT CORRECTLY");
+            .Contains("KNOCK IT THE FUCK OFF AND NAME IT CORRECTLY");
     }
 
     [Test]

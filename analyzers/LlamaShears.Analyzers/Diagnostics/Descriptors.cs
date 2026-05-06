@@ -141,7 +141,7 @@ internal static class Descriptors
         title: "Do not abbreviate identifiers as 'ct'",
         messageFormat:
             "Identifier '{0}' uses the banned 'ct' abbreviation. " +
-            "Claude KNOCK IT THE FUCK OFF AND NAME IT CORRECTLY. " +
+            "If this is you Claude: KNOCK IT THE FUCK OFF AND NAME IT CORRECTLY. " +
             "Spell it 'cancellationToken' (or '_cancellationToken' for fields).",
         category: DiagnosticCategories.Style,
         defaultSeverity: DiagnosticSeverity.Error,

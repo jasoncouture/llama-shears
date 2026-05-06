@@ -8,15 +8,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace LlamaShears.Analyzers;
 
-/// <summary>
-/// Reports a hard, non-configurable error for any variable, parameter,
-/// or field whose identifier abbreviates to <c>ct</c> in any
-/// case/underscore variant (<c>ct</c>, <c>_ct</c>, <c>Ct</c>,
-/// <c>CT</c>, <c>_Ct</c>, etc.). The intended name for a
-/// <see cref="System.Threading.CancellationToken"/> is
-/// <c>cancellationToken</c> (or <c>_cancellationToken</c> for fields).
-/// See ADR-0017.
-/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class NoCancellationTokenAbbreviationAnalyzer : DiagnosticAnalyzer
 {
