@@ -1,0 +1,124 @@
+.reconnect-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    font-family: inherit;
+}
+
+.reconnect-modal.components-reconnect-show,
+.reconnect-modal.components-reconnect-retrying,
+.reconnect-modal.components-reconnect-paused,
+.reconnect-modal.components-reconnect-failed,
+.reconnect-modal.components-reconnect-rejected {
+    display: flex;
+}
+
+.reconnect-card {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    padding: 1.5rem 2rem;
+    max-width: 28rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.reconnect-spinner {
+    position: relative;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.reconnect-spinner div {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    opacity: 0;
+    animation: reconnect-pulse 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.reconnect-spinner div:nth-child(2) {
+    animation-delay: -0.5s;
+}
+
+@keyframes reconnect-pulse {
+    0% { transform: scale(0); opacity: 0; }
+    5% { opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reconnect-spinner div {
+        animation: none;
+        opacity: 0.5;
+        transform: scale(1);
+    }
+}
+
+/* Show only the message that matches the current state class. */
+.reconnect-msg {
+    margin: 0;
+    color: var(--text-muted);
+    display: none;
+}
+
+.components-reconnect-show .reconnect-msg-show,
+.components-reconnect-retrying .reconnect-msg-show {
+    display: block;
+}
+
+.components-reconnect-paused .reconnect-msg-paused {
+    display: block;
+}
+
+.components-reconnect-failed .reconnect-msg-failed {
+    display: block;
+}
+
+.components-reconnect-rejected .reconnect-msg-rejected {
+    display: block;
+}
+
+#components-reconnect-current-attempt,
+#components-reconnect-max-retries,
+#components-seconds-to-next-attempt {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.reconnect-reload {
+    font: inherit;
+    padding: 0.45rem 1.25rem;
+    background: var(--primary);
+    color: #fff;
+    border: 0;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: background 120ms;
+}
+
+.reconnect-reload:hover {
+    background: var(--primary-hover);
+}
+
+/* The Reload button is only meaningful once the user can act on the
+   failure — hide it while the framework is still retrying. */
+.reconnect-reload {
+    display: none;
+}
+
+.components-reconnect-failed .reconnect-reload,
+.components-reconnect-rejected .reconnect-reload {
+    display: inline-block;
+}
