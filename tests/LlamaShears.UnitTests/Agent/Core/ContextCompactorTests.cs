@@ -3,6 +3,7 @@ using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -163,7 +164,9 @@ public sealed class ContextCompactorTests
         var liveContext = Substitute.For<IAgentContext>();
         store.OpenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(liveContext));
-        return new ContextCompactor(provider, store, NullLogger<ContextCompactor>.Instance);
+        var publisher = Substitute.For<IEventPublisher>();
+        var runner = new InferenceRunner(publisher, TimeProvider.System);
+        return new ContextCompactor(provider, store, runner, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

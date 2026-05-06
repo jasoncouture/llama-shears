@@ -5,7 +5,6 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
@@ -28,6 +27,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
+    private readonly IInferenceRunner _inferenceRunner;
 
     public Agent(
         string id,
@@ -40,7 +40,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IContextCompactor compactor,
         ModelConfiguration modelConfiguration,
         IAgentContextProvider agentContextProvider,
-        IEventPublisher eventPublisher)
+        IEventPublisher eventPublisher,
+        IInferenceRunner inferenceRunner)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
@@ -54,6 +55,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _compactor = compactor;
         _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
+        _inferenceRunner = inferenceRunner;
         _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -159,78 +161,25 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, cancellationToken).ConfigureAwait(false);
-        var thinking = new StringBuilder();
-        var content = new StringBuilder();
-        var thoughtStreamSeen = false;
-        var textStreamSeen = false;
 
-        await foreach (var fragment in _model.PromptAsync(prompt, cancellationToken).ConfigureAwait(false))
+        var outcome = await _inferenceRunner.RunAsync(
+            eventId: Id,
+            model: _model,
+            prompt: prompt,
+            options: null,
+            emitTurns: true,
+            correlationId: correlationId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        if (outcome.TokenCount is { } tokens)
         {
-            switch (fragment)
-            {
-                case IModelThoughtResponse thought:
-                    thinking.Append(thought.Content);
-                    thoughtStreamSeen = true;
-                    await _eventPublisher.PublishAsync(
-                        Event.WellKnown.Agent.Thought with { Id = Id },
-                        new AgentThoughtFragment(thinking.ToString(), Final: false),
-                        correlationId,
-                        cancellationToken).ConfigureAwait(false);
-                    break;
-                case IModelTextResponse text:
-                    content.Append(text.Content);
-                    textStreamSeen = true;
-                    await _eventPublisher.PublishAsync(
-                        Event.WellKnown.Agent.Message with { Id = Id },
-                        new AgentMessageFragment(content.ToString(), Final: false),
-                        correlationId,
-                        cancellationToken).ConfigureAwait(false);
-                    break;
-                case IModelCompletionResponse completion:
-                    await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(completion.TokenCount), cancellationToken).ConfigureAwait(false);
-                    break;
-            }
+            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), cancellationToken).ConfigureAwait(false);
         }
 
-        if (thoughtStreamSeen)
-        {
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Thought with { Id = Id },
-                new AgentThoughtFragment(thinking.ToString(), Final: true),
-                correlationId,
-                cancellationToken).ConfigureAwait(false);
-        }
-        if (textStreamSeen)
-        {
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Message with { Id = Id },
-                new AgentMessageFragment(content.ToString(), Final: true),
-                correlationId,
-                cancellationToken).ConfigureAwait(false);
-        }
-
-        if (thinking.Length > 0)
-        {
-            var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = Id },
-                thoughtTurn,
-                correlationId,
-                cancellationToken).ConfigureAwait(false);
-        }
-
-        if (content.Length == 0)
+        if (outcome.Content.Length == 0)
         {
             LogEmptyResponse(_logger, Id);
-            return;
         }
-
-        var response = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
-        await _eventPublisher.PublishAsync(
-            Event.WellKnown.Agent.Turn with { Id = Id },
-            response,
-            correlationId,
-            cancellationToken).ConfigureAwait(false);
     }
 
     private static ModelTurn BuildUserTurn(IReadOnlyList<IEventEnvelope<ChannelMessage>> batch)
