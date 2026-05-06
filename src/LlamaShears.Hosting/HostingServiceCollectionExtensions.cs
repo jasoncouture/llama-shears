@@ -4,15 +4,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace LlamaShears.Hosting;
 
-/// <summary>
-/// Dependency-injection helpers for the host startup-task framework.
-/// </summary>
 public static class HostingServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="HostStartupTaskRunner"/> as the
-    /// <see cref="IHostedService"/> that drives
-    /// <see cref="IHostStartupTask"/> execution at host startup. Idempotent.
+    /// Idempotent. Registers the runner that drives
+    /// <see cref="IHostStartupTask"/> execution at host startup.
     /// </summary>
     public static IServiceCollection AddHostStartupTaskRunner(this IServiceCollection services)
     {
@@ -24,7 +20,7 @@ public static class HostingServiceCollectionExtensions
     /// <summary>
     /// Registers <typeparamref name="TTask"/> as an
     /// <see cref="IHostStartupTask"/>. Multiple registrations of the
-    /// same task type are kept (each one runs).
+    /// same task type are kept; each one runs.
     /// </summary>
     public static IServiceCollection AddHostStartupTask<TTask>(this IServiceCollection services)
         where TTask : class, IHostStartupTask

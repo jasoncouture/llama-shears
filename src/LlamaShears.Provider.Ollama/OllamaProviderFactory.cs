@@ -5,9 +5,6 @@ using OllamaSharp;
 
 namespace LlamaShears.Provider.Ollama;
 
-/// <summary>
-/// <see cref="IProviderFactory"/> for Ollama-hosted models.
-/// </summary>
 public class OllamaProviderFactory : IProviderFactory
 {
     private readonly IOllamaApiClient _client;

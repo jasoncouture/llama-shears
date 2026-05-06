@@ -4,13 +4,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace LlamaShears.Data.Entities;
 
-/// <summary>
-/// The persistent header for an LLM conversation context. Inbound
-/// relationships are declared here on the referenced (principal)
-/// side: by convention, every entity that references a
-/// <see cref="Session"/> appears in <see cref="ConfigureModel"/>, so
-/// the full picture of "who points at me" lives in one place.
-/// </summary>
 public class Session : IDataObject, ICreated, ILastModified, IModelConfigurable<Session>
 {
     /// <inheritdoc />

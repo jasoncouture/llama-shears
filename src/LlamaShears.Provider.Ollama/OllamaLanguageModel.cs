@@ -6,9 +6,6 @@ using OllamaSharp.Models.Chat;
 
 namespace LlamaShears.Provider.Ollama;
 
-/// <summary>
-/// <see cref="ILanguageModel"/> implementation backed by an Ollama server.
-/// </summary>
 public class OllamaLanguageModel : ILanguageModel
 {
     private readonly IOllamaApiClient _client;

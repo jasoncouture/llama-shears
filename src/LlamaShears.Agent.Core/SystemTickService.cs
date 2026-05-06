@@ -6,15 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Agent.Core;
 
-/// <summary>
-/// Hosted service that publishes a <see cref="SystemTick"/> on the
-/// MessagePipe bus once every 30 seconds (when
-/// <see cref="SystemTickOptions.Enabled"/> is true). The system tick is
-/// the lower-level clock signal of the host: it is not itself a
-/// heartbeat, but is intended to be consumed by higher-level
-/// dispatchers (such as a per-agent heartbeat dispatcher) that decide
-/// what work to do on each tick.
-/// </summary>
 public class SystemTickService : BackgroundService
 {
     private static readonly TimeSpan _tickInterval = TimeSpan.FromSeconds(30);

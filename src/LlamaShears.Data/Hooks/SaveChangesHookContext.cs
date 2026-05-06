@@ -10,16 +10,11 @@ namespace LlamaShears.Data.Hooks;
 /// </summary>
 public sealed class SaveChangesHookContext
 {
-    /// <summary>
-    /// The <see cref="DbContext"/> the save is running against.
-    /// </summary>
     public required DbContext DbContext { get; init; }
 
     /// <summary>
-    /// A single <c>UtcNow</c> snapshot taken at the start of the save.
-    /// Hooks that need a "current time" should use this rather than
-    /// calling <see cref="DateTimeOffset.UtcNow"/> directly, so all
-    /// timestamps written within one save are consistent.
+    /// A single <c>UtcNow</c> snapshot taken at the start of the save,
+    /// shared by every hook so timestamps within one save are consistent.
     /// </summary>
     public required DateTimeOffset UtcNow { get; init; }
 }
