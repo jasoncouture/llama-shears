@@ -11,5 +11,5 @@ public interface ITemplateRenderer
     /// Reads the template at <paramref name="templatePath"/>, binds it
     /// to <paramref name="input"/>, and returns the rendered output.
     /// </summary>
-    string Render(string templatePath, object input);
+    ValueTask<string> RenderAsync(string templatePath, object input, CancellationToken cancellationToken);
 }
