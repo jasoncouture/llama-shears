@@ -1,4 +1,4 @@
 namespace LlamaShears.Core.Abstractions.Events.Channel
 {
-    public record ChannelMessage(string Text, DateTimeOffset Timestamp);
+    public record ChannelMessage(string Text, string AgentId, DateTimeOffset Timestamp);
 }
