@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class NoThisQualifierAnalyzerTests
 {
     [Test]
-    public async Task This_field_access_reports_LS0004()
+    public async Task ThisFieldAccessReportsLS0004()
     {
         const string source =
             """
@@ -27,7 +27,7 @@ public sealed class NoThisQualifierAnalyzerTests
     }
 
     [Test]
-    public async Task This_property_access_reports_LS0004()
+    public async Task ThisPropertyAccessReportsLS0004()
     {
         const string source =
             """
@@ -46,7 +46,7 @@ public sealed class NoThisQualifierAnalyzerTests
     }
 
     [Test]
-    public async Task This_instance_method_call_reports_LS0004()
+    public async Task ThisInstanceMethodCallReportsLS0004()
     {
         const string source =
             """
@@ -65,7 +65,7 @@ public sealed class NoThisQualifierAnalyzerTests
     }
 
     [Test]
-    public async Task This_extension_method_call_does_not_report()
+    public async Task ThisExtensionMethodCallDoesNotReport()
     {
         const string source =
             """
@@ -90,7 +90,7 @@ public sealed class NoThisQualifierAnalyzerTests
     }
 
     [Test]
-    public async Task Bare_this_in_return_does_not_report()
+    public async Task BareThisInReturnDoesNotReport()
     {
         const string source =
             """
@@ -108,7 +108,7 @@ public sealed class NoThisQualifierAnalyzerTests
     }
 
     [Test]
-    public async Task Bare_this_passed_as_argument_does_not_report()
+    public async Task BareThisPassedAsArgumentDoesNotReport()
     {
         const string source =
             """
