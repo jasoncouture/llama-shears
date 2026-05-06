@@ -9,6 +9,4 @@ public sealed record PromptContextParameters(
     string? WorkspacePath = null)
 {
     public IReadOnlyList<PromptContextMemory> Memories { get; init; } = [];
-    public IReadOnlyList<PromptContextFile> Files { get; init; } = [];
-    public IReadOnlyList<string> AdditionalFiles { get; init; } = [];
 }

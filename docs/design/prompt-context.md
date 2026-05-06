@@ -19,12 +19,15 @@ Both are Scriban templates. The renderer is [`TemplateRenderer`](../../src/Llama
 
 ```csharp
 public sealed record SystemPromptTemplateParameters(
-    string AgentId,
-    string? WorkspacePath,
-    int ToolCallTurns);     // == AgentConfig.Tools.TurnLimit
+    string? AgentId = null,
+    string? WorkspacePath = null,
+    int ToolCallTurns = 0)             // == AgentConfig.Tools.TurnLimit
+{
+    public IReadOnlyList<WorkspaceFile> Files { get; init; } = [];
+}
 ```
 
-These surface in Scriban as `agent_id`, `workspace_path`, `tool_call_turns`.
+These surface in Scriban as `agent_id`, `workspace_path`, `tool_call_turns`, and `files`. `Files` is populated by the provider from the workspace root in this order: `BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md`. Missing files are silently skipped; the template iterates whatever's present. The provider reads file bodies in full and hands them to Scriban as `(name, content)` pairs — composition (where to render, under what heading, with what surrounding text) belongs to the template, not the provider.
 
 ### Fallback chain
 
@@ -61,28 +64,26 @@ This block is the framework's single coherent place to inject *everything that's
 - Wall-clock time (so the model knows what "now" is on this turn).
 - The current channel id.
 - An `important_message` (used today for the final-iteration "tools are gone, write text" notice).
-- The conventional workspace files: `BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md` — in that order.
 - Memory hits (path, first-line summary, score) returned by the per-batch RAG search. The agent reads only the first line of each matched file — authors are expected to lead the file with a meaningful one-line summary; the model can pull the full body on demand via `file_read`.
-- A name-only listing of every other root-level `.md` in the workspace, so the model knows what's there without paying token cost for the bodies.
+
+Persona/identity content (`BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md`) lives in the **system prompt**, not the ephemeral block — those files are stable across iterations within a batch, so they belong in the cache-stable preamble rather than being re-emitted every turn.
 
 ### Template parameters
 
 ```csharp
 public sealed record PromptContextParameters(
-    string Now,                       // ISO-8601 local time
-    string Timezone,                  // TimeZoneInfo.Local.Id
-    string DayOfWeek,                 // e.g. "Tuesday"
-    string? ChannelId,
-    string? ImportantMessage,
-    string? WorkspacePath)
+    string? Now = null,                // ISO-8601 local time
+    string? Timezone = null,           // TimeZoneInfo.Local.Id
+    string? DayOfWeek = null,          // e.g. "Tuesday"
+    string? ChannelId = null,
+    string? ImportantMessage = null,
+    string? WorkspacePath = null)
 {
-    public IReadOnlyList<PromptContextFile> Files { get; init; } = [];
-    public IReadOnlyList<string> AdditionalFiles { get; init; } = [];
     public IReadOnlyList<PromptContextMemory> Memories { get; init; } = [];
 }
 ```
 
-`Files` is populated by the provider (the conventional file list); `AdditionalFiles` is the name-only listing of other `.md`s in the workspace root; `Memories` is set by the agent's per-batch search.
+`Memories` is set by the agent's per-batch search.
 
 ### Fallback chain
 
@@ -117,20 +118,6 @@ Default name is `PROMPT`. Unlike the system prompt provider, the prompt-context 
 ## Memory search matches
 ...
 {{- end }}
-{{- for file in files }}
-
-## {{ file.name }}
-
-{{ file.content }}
-{{- end }}
-{{- if additional_files.size > 0 }}
-
-## Additional workspace files
-
-{{- for name in additional_files }}
-- {{ name }}
-{{- end }}
-{{- end }}
 </system>
 ```
 
@@ -145,17 +132,15 @@ The ephemeral turn is a distinct `ModelRole` for two reasons:
 
 `SystemEphemeral` is rendered as a system-class message (not a user message) because it's harness-authored context, not human input. The convention of injecting it *immediately before* the most recent user turn is what makes it function as a per-turn preface.
 
-## Workspace files surfaced into the block
+## Workspace files surfaced into the system prompt
 
-`FilesystemPromptContextProvider` reads three conventional files in this order:
+`FilesystemSystemPromptProvider` reads three conventional files from the agent's workspace root in this order:
 
 ```csharp
 "BOOTSTRAP.md", "IDENTITY.md", "SOUL.md"
 ```
 
-Each is read in full and added to `Files` as `(Name, Content)`. Missing files are silently skipped; the template iterates whatever's present.
-
-The `AdditionalFiles` listing is every other `*.md` in the workspace root that *isn't* in the conventional set. The model gets file names only — it can issue a `file_read` tool call when it actually needs the body. This trades token cost for a discovery hop and lands on the right side of "models are good at deciding what to read; they're terrible at being told to read everything."
+Each is read in full and added to `Files` as `(Name, Content)`. Missing files are silently skipped; the template iterates whatever's present. These files live in the system prompt — not the per-iteration ephemeral block — because their contents define the agent's persona and operating bias and are stable across the iterations of a batch. Re-emitting them every turn was duplication that defeated cache locality without buying anything.
 
 ## Bus events from the renderer
 
@@ -174,4 +159,4 @@ A few things you might expect:
 - **Tool descriptions.** The provider serializes the available tool catalog into the wire format directly; the system prompt and ephemeral block don't enumerate tool schemas.
 - **The conversation summary on a compaction.** That's a real `Assistant`-roled turn ([compaction.md](compaction.md)) — not a system block.
 - **Per-channel memory.** Memory search is per-agent, not per-channel. The channel id surfaces as context but is not used as a memory filter.
-- **`USER.md` / `TOOLS.md` / `MEMORY.md` / `HEARTBEAT.md`.** The agent reads these through tools when it wants to. Pulling them into the ephemeral block by default would defeat the "agent decides what's relevant" model. (The bundled `system/DEFAULT.md` does point the model at them by name.)
+- **`USER.md` / `TOOLS.md` / `MEMORY.md` / `HEARTBEAT.md`.** The agent reads these through tools when it wants to. Pulling them into the ephemeral block by default would defeat the "agent decides what's relevant" model.

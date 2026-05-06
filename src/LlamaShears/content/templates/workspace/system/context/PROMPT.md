@@ -18,18 +18,4 @@ The following memories were retrieved by similarity to your current turn ({{ mem
 - `{{ memory.relative_path }}` — {{ memory.summary }} _(score: {{ memory.score }})_
 {{- end }}
 {{- end }}
-{{- for file in files }}
-
-## {{ file.name }}
-
-{{ file.content }}
-{{- end }}
-{{- if additional_files.size > 0 }}
-
-## Additional workspace files
-
-{{- for name in additional_files }}
-- {{ name }}
-{{- end }}
-{{- end }}
 </system>

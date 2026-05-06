@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Abstractions.Templating;
@@ -11,6 +12,17 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
     private const string TemplateExtension = ".md";
     private const string WorkspaceSystemSubpath = "workspace/system";
     private const string DefaultBundledSubpath = "content/templates/workspace/system";
+
+    // Conventional workspace files surfaced into the system prompt as
+    // `files`. Order matters: the template renders Files in this order,
+    // so BOOTSTRAP comes first when present (a one-shot the agent acts
+    // on), then identity, then soul.
+    private static readonly ImmutableArray<string> _workspaceFileNames =
+    [
+        "BOOTSTRAP.md",
+        "IDENTITY.md",
+        "SOUL.md",
+    ];
 
     private readonly IShearsPaths _paths;
     private readonly ITemplateRenderer _renderer;
@@ -44,6 +56,12 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
                 nameof(templateName));
         }
 
+        var enriched = parameters with
+        {
+            Files = await ReadWorkspaceFilesAsync(parameters.WorkspacePath, cancellationToken)
+                .ConfigureAwait(false),
+        };
+
         var workspaceRoot = _paths.GetPath(PathKind.Templates, WorkspaceSystemSubpath);
         var fileName = $"{name}{TemplateExtension}";
         var defaultFileName = $"{DefaultName}{TemplateExtension}";
@@ -58,7 +76,7 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
 
         foreach (var path in candidates)
         {
-            var rendered = await _renderer.RenderAsync(path, parameters, cancellationToken).ConfigureAwait(false);
+            var rendered = await _renderer.RenderAsync(path, enriched, cancellationToken).ConfigureAwait(false);
             if (rendered is not null)
             {
                 return rendered;
@@ -67,5 +85,28 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
 
         throw new FileNotFoundException(
             $"No system prompt template found for '{name}'. Looked under '{workspaceRoot}' and '{_bundledRoot}'.");
+    }
+
+    private static async ValueTask<IReadOnlyList<WorkspaceFile>> ReadWorkspaceFilesAsync(
+        string? workspacePath,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(workspacePath))
+        {
+            return [];
+        }
+
+        var files = ImmutableArray.CreateBuilder<WorkspaceFile>(_workspaceFileNames.Length);
+        foreach (var name in _workspaceFileNames)
+        {
+            var path = Path.Combine(workspacePath, name);
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+            var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+            files.Add(new WorkspaceFile(name, content));
+        }
+        return files.ToImmutable();
     }
 }
