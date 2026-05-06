@@ -1,4 +1,4 @@
-# LlamaShears.Core.Abstractions.Events.IEventEnvelope`1
+# LlamaShears.Core.Abstractions.Events.IEventEnvelope<T>
 
 Assembly: `LlamaShears.Core.Abstractions`
 
@@ -12,7 +12,7 @@ untyped envelope.
 
 ## Type Parameters
 
-- `T` — The payload type carried by [IEventEnvelope](IEventEnvelope`1.md).`Data`.
+- `T` — The payload type carried by [IEventEnvelope](IEventEnvelope-1.md).`Data`.
 
 ## Properties
 

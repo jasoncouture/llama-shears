@@ -139,22 +139,6 @@ internal sealed class AccessibilityFilter
         return _parameterNames.TryGetValue($"{typeFqn}|{memberName}|{arity}", out var names) ? names : null;
     }
 
-    public string? GetMarkdownRelativePath(string typeFqn)
-    {
-        if (!_exposedTypes.Contains(typeFqn))
-        {
-            return null;
-        }
-        var lastDot = typeFqn.LastIndexOf('.');
-        if (lastDot < 0)
-        {
-            return $"{typeFqn}.md";
-        }
-        var folders = typeFqn.Substring(0, lastDot).Replace('.', '/');
-        var name = typeFqn.Substring(lastDot + 1);
-        return $"{folders}/{name}.md";
-    }
-
     private static bool IsTypeExposed(MetadataReader reader, TypeDefinition typeDef)
     {
         var visibility = typeDef.Attributes & TypeAttributes.VisibilityMask;

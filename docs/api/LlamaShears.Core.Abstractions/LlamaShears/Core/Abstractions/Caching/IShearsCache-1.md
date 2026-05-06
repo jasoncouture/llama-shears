@@ -1,4 +1,4 @@
-# LlamaShears.Core.Abstractions.Caching.IShearsCache`1
+# LlamaShears.Core.Abstractions.Caching.IShearsCache<T>
 
 Assembly: `LlamaShears.Core.Abstractions`
 
@@ -21,9 +21,9 @@ express "not present" cleanly.
 
 
 Time-to-live is absolute: an entry stored with a TTL of `X` is
-evicted `X` after [IShearsCache](IShearsCache`1.md).`Set``1` returns, regardless of
+evicted `X` after [IShearsCache](IShearsCache-1.md).`Set``1` returns, regardless of
 reads. Sliding behaviour is up to the caller — re-call
-[IShearsCache](IShearsCache`1.md).`Set``1` on hit to refresh.
+[IShearsCache](IShearsCache-1.md).`Set``1` on hit to refresh.
 
 ## Type Parameters
 

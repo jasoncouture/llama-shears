@@ -26,9 +26,9 @@ Public API surface, organized by namespace.
 
 ## LlamaShears.Core.Abstractions.Caching
 
-- [CacheResult](LlamaShears/Core/Abstractions/Caching/CacheResult`1.md)
-- [IFileParserCache](LlamaShears/Core/Abstractions/Caching/IFileParserCache`1.md)
-- [IShearsCache](LlamaShears/Core/Abstractions/Caching/IShearsCache`1.md)
+- [CacheResult<T>](LlamaShears/Core/Abstractions/Caching/CacheResult-1.md)
+- [IFileParserCache<T>](LlamaShears/Core/Abstractions/Caching/IFileParserCache-1.md)
+- [IShearsCache<T>](LlamaShears/Core/Abstractions/Caching/IShearsCache-1.md)
 
 ## LlamaShears.Core.Abstractions.Content
 
@@ -56,9 +56,9 @@ Public API surface, organized by namespace.
 - [EventPublisherExtensions](LlamaShears/Core/Abstractions/Events/EventPublisherExtensions.md)
 - [EventType](LlamaShears/Core/Abstractions/Events/EventType.md)
 - [IEventBus](LlamaShears/Core/Abstractions/Events/IEventBus.md)
-- [IEventEnvelope](LlamaShears/Core/Abstractions/Events/IEventEnvelope`1.md)
+- [IEventEnvelope<T>](LlamaShears/Core/Abstractions/Events/IEventEnvelope-1.md)
 - [IEventFilter](LlamaShears/Core/Abstractions/Events/IEventFilter.md)
-- [IEventHandler](LlamaShears/Core/Abstractions/Events/IEventHandler`1.md)
+- [IEventHandler<T>](LlamaShears/Core/Abstractions/Events/IEventHandler-1.md)
 - [IEventPublisher](LlamaShears/Core/Abstractions/Events/IEventPublisher.md)
 
 ## LlamaShears.Core.Abstractions.Events.Agent

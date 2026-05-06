@@ -38,8 +38,8 @@ internal static class AssemblyIndexRenderer
 
             foreach (var entry in group.OrderBy(static t => t.TypeName, StringComparer.Ordinal))
             {
-                var displayName = StripArity(entry.TypeName);
-                var relativePath = ToRelativeMarkdownLink(entry.Fqn);
+                var displayName = TypePathLayout.FormatTypeDisplay(entry.TypeName);
+                var relativePath = TypePathLayout.GetMarkdownRelativePath(entry.Fqn);
                 output.Append("- [").Append(displayName).Append("](").Append(relativePath).AppendLine(")");
             }
             output.AppendLine();
@@ -58,23 +58,5 @@ internal static class AssemblyIndexRenderer
     {
         var lastDot = fqn.LastIndexOf('.');
         return lastDot < 0 ? fqn : fqn.Substring(lastDot + 1);
-    }
-
-    private static string StripArity(string typeName)
-    {
-        var backtick = typeName.IndexOf('`');
-        return backtick < 0 ? typeName : typeName.Substring(0, backtick);
-    }
-
-    private static string ToRelativeMarkdownLink(string fqn)
-    {
-        var lastDot = fqn.LastIndexOf('.');
-        if (lastDot < 0)
-        {
-            return $"{fqn}.md";
-        }
-        var folders = fqn.Substring(0, lastDot).Replace('.', '/');
-        var typeName = fqn.Substring(lastDot + 1);
-        return $"{folders}/{typeName}.md";
     }
 }

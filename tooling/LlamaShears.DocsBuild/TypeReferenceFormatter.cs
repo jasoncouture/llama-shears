@@ -28,7 +28,6 @@ internal sealed class TypeReferenceFormatter
         { "System.Void", "void" },
     };
 
-    private readonly AccessibilityFilter _filter;
     private readonly HashSet<string> _writtenTypes;
     private readonly string _currentRelativePath;
 
@@ -37,7 +36,7 @@ internal sealed class TypeReferenceFormatter
         HashSet<string> writtenTypes,
         string currentRelativePath)
     {
-        _filter = filter;
+        _ = filter;
         _writtenTypes = writtenTypes;
         _currentRelativePath = currentRelativePath;
     }
@@ -147,11 +146,7 @@ internal sealed class TypeReferenceFormatter
         {
             return simpleName;
         }
-        var targetRelative = _filter.GetMarkdownRelativePath(fullName);
-        if (targetRelative is null)
-        {
-            return simpleName;
-        }
+        var targetRelative = TypePathLayout.GetMarkdownRelativePath(fullName);
         var link = ComputeRelativeLink(_currentRelativePath, targetRelative);
         return $"[{simpleName}]({link})";
     }

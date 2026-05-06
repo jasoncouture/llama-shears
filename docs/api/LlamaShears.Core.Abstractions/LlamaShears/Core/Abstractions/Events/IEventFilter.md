@@ -12,8 +12,8 @@ allow — a filter that does not care about an event returns
 
 
 Filters see every event regardless of payload type via the covariant
-[IEventEnvelope](IEventEnvelope`1.md) upcast to `object`. Pattern-match on
-[IEventEnvelope](IEventEnvelope`1.md).`Data` to scope behaviour to specific
+[IEventEnvelope](IEventEnvelope-1.md) upcast to `object`. Pattern-match on
+[IEventEnvelope](IEventEnvelope-1.md).`Data` to scope behaviour to specific
 payloads.
 
 

@@ -73,11 +73,12 @@ internal static class NamespaceIndexRenderer
             foreach (var pair in typesInNamespace)
             {
                 var typeName = GetTypeName(pair.Key);
-                var displayName = StripArity(typeName);
+                var displayName = TypePathLayout.FormatTypeDisplay(typeName);
+                var fileBase = TypePathLayout.GetFileBaseName(typeName);
                 var typeMember = pair.Value.FirstOrDefault(static m => m.Kind == MemberKind.Type);
                 var summary = typeMember is null ? "" : RenderSummary(typeMember.Element, formatter);
 
-                output.Append("- [").Append(displayName).Append("](").Append(typeName).Append(".md)");
+                output.Append("- [").Append(displayName).Append("](").Append(fileBase).Append(".md)");
                 if (!string.IsNullOrEmpty(summary))
                 {
                     output.Append(" — ").Append(summary);
@@ -212,9 +213,4 @@ internal static class NamespaceIndexRenderer
         return lastDot < 0 ? typeFqn : typeFqn.Substring(lastDot + 1);
     }
 
-    private static string StripArity(string typeName)
-    {
-        var backtick = typeName.IndexOf('`');
-        return backtick < 0 ? typeName : typeName.Substring(0, backtick);
-    }
 }

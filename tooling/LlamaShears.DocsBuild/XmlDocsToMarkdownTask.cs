@@ -84,7 +84,7 @@ public sealed class XmlDocsToMarkdownTask : Task
         var byRelativePath = new Dictionary<string, (string TypeFqn, List<MemberDoc> Members)>(StringComparer.Ordinal);
         foreach (var pair in byType)
         {
-            byRelativePath[ToRelativeMarkdownPath(pair.Key)] = (pair.Key, pair.Value);
+            byRelativePath[TypePathLayout.GetMarkdownRelativePath(pair.Key)] = (pair.Key, pair.Value);
         }
 
         var writtenTypes = new HashSet<string>(byType.Keys, StringComparer.Ordinal);
@@ -170,18 +170,6 @@ public sealed class XmlDocsToMarkdownTask : Task
             Path.Combine(apiRoot, "index.md"),
             output.ToString(),
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-    }
-
-    private static string ToRelativeMarkdownPath(string typeFqn)
-    {
-        var lastDot = typeFqn.LastIndexOf('.');
-        if (lastDot < 0)
-        {
-            return $"{typeFqn}.md";
-        }
-        var namespacePath = typeFqn.Substring(0, lastDot).Replace('.', Path.DirectorySeparatorChar);
-        var typeName = typeFqn.Substring(lastDot + 1);
-        return Path.Combine(namespacePath, $"{typeName}.md");
     }
 
     private static string ToForwardSlashRelativePath(string platformPath)

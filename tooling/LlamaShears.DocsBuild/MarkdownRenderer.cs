@@ -37,7 +37,7 @@ internal sealed class MarkdownRenderer
         var output = new StringBuilder();
         var typeMember = members.FirstOrDefault(static m => m.Kind == MemberKind.Type);
 
-        output.Append("# ").AppendLine(_typeFqn);
+        output.Append("# ").AppendLine(TypePathLayout.FormatFqnDisplay(_typeFqn));
         output.AppendLine();
         output.Append("Assembly: `").Append(assemblyName).AppendLine("`");
         output.AppendLine();
@@ -122,8 +122,7 @@ internal sealed class MarkdownRenderer
     {
         var lastDot = fqn.LastIndexOf('.');
         var name = lastDot < 0 ? fqn : fqn.Substring(lastDot + 1);
-        var backtick = name.IndexOf('`');
-        return backtick < 0 ? name : name.Substring(0, backtick);
+        return TypePathLayout.FormatTypeDisplay(name);
     }
 
     private void RenderMemberBody(MemberDoc member, StringBuilder output, int headingLevel)

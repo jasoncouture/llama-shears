@@ -1,8 +1,8 @@
-# LlamaShears.Core.Abstractions.Caching.CacheResult`1
+# LlamaShears.Core.Abstractions.Caching.CacheResult<T>
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Outcome of [IShearsCache](IShearsCache`1.md).`TryGet``1`: distinguishes
+Outcome of [IShearsCache](IShearsCache-1.md).`TryGet``1`: distinguishes
 "no entry", "entry exists under a different type", and "entry hit"
 so callers can branch without exception handling.
 
@@ -32,9 +32,9 @@ The cached value when `Present` is `true`; otherwise `default`.
 
 ## Methods
 
-### `CacheResult`(bool Present, bool TypeMismatch, _0 Value)
+### `CacheResult<T>`(bool Present, bool TypeMismatch, _0 Value)
 
-Outcome of [IShearsCache](IShearsCache`1.md).`TryGet``1`: distinguishes
+Outcome of [IShearsCache](IShearsCache-1.md).`TryGet``1`: distinguishes
 "no entry", "entry exists under a different type", and "entry hit"
 so callers can branch without exception handling.
 

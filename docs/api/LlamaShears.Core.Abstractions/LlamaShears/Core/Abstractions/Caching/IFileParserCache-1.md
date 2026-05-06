@@ -1,9 +1,9 @@
-# LlamaShears.Core.Abstractions.Caching.IFileParserCache`1
+# LlamaShears.Core.Abstractions.Caching.IFileParserCache<T>
 
 Assembly: `LlamaShears.Core.Abstractions`
 
 Read-through cache for parsing on-disk files. Wraps an
-[IShearsCache](IShearsCache`1.md) so the owning `T`
+[IShearsCache](IShearsCache-1.md) so the owning `T`
 scopes the keyspace exactly as it does for direct cache use.
 
 

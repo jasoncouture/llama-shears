@@ -1,4 +1,4 @@
-# LlamaShears.Core.Abstractions.Events.IEventHandler`1
+# LlamaShears.Core.Abstractions.Events.IEventHandler<T>
 
 Assembly: `LlamaShears.Core.Abstractions`
 
