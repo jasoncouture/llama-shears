@@ -120,7 +120,9 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     private static ThinkValue? MapThinkLevel(ThinkLevel level) => level switch
     {
-        ThinkLevel.None => null,
+        // Explicit false disables thinking; null would let the model's default
+        // through, which still emits thought tokens for reasoning-capable models.
+        ThinkLevel.None => false,
         ThinkLevel.Low => ThinkValue.Low,
         ThinkLevel.Medium => ThinkValue.Medium,
         ThinkLevel.High => ThinkValue.High,
