@@ -2,6 +2,17 @@
 
 Each agent has a workspace — its own directory on disk that the agent uses as a home directory. The framework recognizes a small set of conventional files; everything else in the workspace is the agent's to use as it sees fit.
 
+## Self-contained agents
+
+An agent is self-contained: everything that defines it — identity, persona, system prompts, memories, scratch state — lives inside its workspace. The framework supplies a starting template (see *Template seeding* below) and reads files at conventional paths, but it places no demands on the workspace's structure beyond those paths. Anything outside the conventions is the agent's own.
+
+The conventional paths follow one consistent rule:
+
+- **Present** → the framework loads it and uses it.
+- **Absent** → either nothing is added (for files that are pure agent context, like `IDENTITY.md`), or the framework's built-in default is used (for files that drive framework behavior, like the system prompts under `system/`).
+
+Either way, absence is never an error.
+
 ## Conventional files
 
 The framework looks for these specific filenames, in the workspace root:
@@ -16,8 +27,10 @@ The framework looks for these specific filenames, in the workspace root:
 | `TOOLS.md`        | The agent's own reference notes about how its tools work.                    |
 | `MEMORY.md`       | Short-term memory storage.                                                   |
 | `memories/**/*.md`| Long-term memories. Eventually backed by RAG; for now, a flat tree of markdown files (modeled on openclaw). |
+| `system/DEFAULT.md` | Top-level system prompt template for the agent's primary loop. |
+| `system/SUBAGENT.md` | System prompt template used when the agent spawns a sub-agent. |
 
-All conventional files are optional — every one of them may be missing, and the framework treats absence as "nothing to inject" rather than as an error.
+All conventional files are optional — every one of them may be missing, and the framework treats absence as "nothing to inject" or "fall back to the framework default," depending on the file (see *Self-contained agents*).
 
 ## What the framework does with these files
 
@@ -29,6 +42,7 @@ The framework's job is to deliver the right file content into the agent's prompt
 | `IDENTITY.md`, `SOUL.md` | If present, **always** sent as part of the agent's prompt context — every cycle, every heartbeat, every input. These are the persistent "who am I" preamble. |
 | `HEARTBEAT.md`         | Read on every heartbeat firing (see [heartbeat.md](heartbeat.md)). Empty/missing → no heartbeat that interval. |
 | `MEMORY.md`            | System-managed periodically. The exact lifecycle (when the framework writes/reads/compacts) is **TBD**. |
+| `system/DEFAULT.md`, `system/SUBAGENT.md` | Rendered (Scriban) and used as the system prompt for the relevant loop. Missing → the framework's bundled default for that loop is used. The format is the framework's, but the file lives in the workspace so the agent (or operator) can override it without touching the host. |
 | `USER.md`, `TOOLS.md`, `memories/`, anything else | Not read by the framework. Available to the agent through its tool surface; the agent decides when to consult them. |
 
 ## Agent-as-author
