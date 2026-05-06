@@ -1,3 +1,7 @@
+## Proactive Memory and Instruction Updates
+
+- Agents must proactively update local memories, shared memories, and AGENTS.md with relevant workflow, architecture, and process notes as decisions or instructions are made.
+- If a decision or instruction is ambiguous, ask the user for clarification before saving.
 ## .NET Solution Format
 
 This project uses a modern .NET SDK. The `.slnx` file is the default solution format and should be preferred by agents for all solution-related operations.
