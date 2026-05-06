@@ -18,13 +18,11 @@ Treat this directory as the single global workspace for file operations unless e
 
 # Project Context
 
-{{ context.stable_files }}
-
-<!-- LLAMASHEARS_CACHE_BOUNDARY -->
+{{ context.files }}
 
 ## Tooling
 
-Tool availability is filtered by policy. Tool names are case-sensitive — call tools exactly as listed.
+Tool names are case-sensitive — call tools exactly as listed.
 
 {{ tools.list }}
 

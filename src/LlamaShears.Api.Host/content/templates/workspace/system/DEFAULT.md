@@ -43,25 +43,13 @@ Treat this directory as the single global workspace for file operations unless e
 
 # Project Context
 
-The following project context files have been loaded. If SOUL.md is present, embody its persona and tone; follow its guidance unless higher-priority instructions override it.
-
-{{ context.stable_files }}
-
-<!-- LLAMASHEARS_CACHE_BOUNDARY -->
-
-# Dynamic Project Context
-
-The following frequently-changing project context files are kept below the cache boundary so the stable prefix above can be reused across turns.
-
-{{ context.dynamic_files }}
+{{ context.files }}
 
 ## Tooling
 
-Tool availability is filtered by policy. Tool names are case-sensitive — call tools exactly as listed.
+Tool names are case-sensitive — call tools exactly as listed.
 
 {{ tools.list }}
-
-TOOLS.md does not control tool availability; it is user guidance for how to use the tools that are available.
 
 {{ section.heartbeat }}
 
