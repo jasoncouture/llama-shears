@@ -181,10 +181,12 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 if (existingHash is null)
                 {
                     added++;
+                    LogIndexedAdded(_logger, agentId, relativePath);
                 }
                 else
                 {
                     updated++;
+                    LogIndexedUpdated(_logger, agentId, relativePath, force);
                 }
             }
         }
@@ -200,6 +202,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         foreach (var path in orphans)
         {
             DeleteEntry(conn, path);
+            LogIndexedRemoved(_logger, agentId, path);
         }
         return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count);
     }
@@ -370,4 +373,13 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory search for agent '{AgentId}': scanned={Scanned}, hits={Hits}, top-raw-score={TopScore:F4}, min-score={MinScore:F2}.")]
     private static partial void LogSearchScored(ILogger logger, string agentId, int scanned, int hits, double topScore, double minScore);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (added) for agent '{AgentId}': {Path}")]
+    private static partial void LogIndexedAdded(ILogger logger, string agentId, string path);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (updated, force={Force}) for agent '{AgentId}': {Path}")]
+    private static partial void LogIndexedUpdated(ILogger logger, string agentId, string path, bool force);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (removed orphan) for agent '{AgentId}': {Path}")]
+    private static partial void LogIndexedRemoved(ILogger logger, string agentId, string path);
 }
