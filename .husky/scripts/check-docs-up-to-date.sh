@@ -4,9 +4,13 @@
 
 set -euo pipefail
 
-dotnet clean
-dotnet build
+echo "=== Cleaning build artifacts"
+dotnet clean --nologo -v q
 
+echo "=== Building"
+dotnet build --nologo -v q
+
+echo "=== Checking for changes"
 dirty="$(git status --porcelain -- docs/api)"
 
 if [ -n "$dirty" ]; then
@@ -30,3 +34,5 @@ MSG
   echo "$dirty" >&2
   exit 1
 fi
+
+echo "=== Clean."
