@@ -318,7 +318,15 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             Directory.CreateDirectory(dir);
         }
 
-        var connectionString = $"Data Source={ctx.IndexDbPath};Pooling=True";
+        // Pooling=False: SqliteConnection.ClearAllPools (called from
+        // ResetIndex on dim-mismatch rebuild) is process-wide. With
+        // pooling on, a clear in one agent's reconcile can dispose
+        // pooled handles held by an in-flight call for a different
+        // agent, surfacing as ObjectDisposedException inside
+        // SqliteVec's LoadExtension. Memory ops are infrequent and
+        // dominated by embedding latency, so the per-call open cost
+        // is well below the noise floor.
+        var connectionString = $"Data Source={ctx.IndexDbPath};Pooling=False";
         var definition = new VectorStoreCollectionDefinition
         {
             Properties =
