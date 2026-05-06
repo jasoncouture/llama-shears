@@ -6,12 +6,14 @@ using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.Seeding;
 using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Abstractions.Templating;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Context;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Seeding;
 using LlamaShears.Core.SystemPrompt;
+using LlamaShears.Core.Templating;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -56,7 +58,9 @@ public static class CoreServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
-        services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
+        services.TryAddSingleton<ITemplateRenderer, TemplateRenderer>();
+        services.AddOptions<FilesystemSystemPromptOptions>();
+        services.TryAddSingleton<ISystemPromptProvider, FilesystemSystemPromptProvider>();
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();

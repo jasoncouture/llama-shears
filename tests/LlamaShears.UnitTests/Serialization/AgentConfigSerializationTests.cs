@@ -188,6 +188,30 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
+    public async Task SystemPromptDefaultsToNullWhenAbsent()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" } }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.SystemPrompt).IsNull();
+    }
+
+    [Test]
+    public async Task SystemPromptRoundTripsAsString()
+    {
+        const string json = """
+            { "model": { "id": "OLLAMA/x" }, "systemPrompt": "MINIMAL" }
+            """;
+
+        var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
+
+        await Assert.That(config!.SystemPrompt).IsEqualTo("MINIMAL");
+    }
+
+    [Test]
     public async Task ModelKeepAliveNegativeMeansNeverUnload()
     {
         // Convention: any negative TimeSpan means "never unload." STJ

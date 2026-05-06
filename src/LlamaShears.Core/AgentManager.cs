@@ -1,7 +1,9 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.Seeding;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,8 @@ namespace LlamaShears.Core;
 
 public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEventHandler<SystemTick>, IDisposable
 {
+    private const string WorkspaceTemplateSubpath = "workspace";
+
     private readonly IEventBus _bus;
     private readonly IEnumerable<IProviderFactory> _providers;
     private readonly IAgentConfigProvider _configs;
@@ -17,6 +21,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly ILogger<AgentManager> _logger;
     private readonly IContextStore _contextStore;
     private readonly IServiceProvider _services;
+    private readonly IShearsPaths _paths;
+    private readonly IDirectorySeeder _seeder;
     private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private int _reconciling;
@@ -27,7 +33,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
         IContextStore contextStore,
-        IServiceProvider services)
+        IServiceProvider services,
+        IShearsPaths paths,
+        IDirectorySeeder seeder)
     {
         _bus = bus;
         _providers = providers;
@@ -36,6 +44,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _logger = loggerFactory.CreateLogger<AgentManager>();
         _contextStore = contextStore;
         _services = services;
+        _paths = paths;
+        _seeder = seeder;
     }
 
     public IReadOnlyList<string> AgentIds
@@ -125,6 +135,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private async Task StartAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
+        SeedAgentWorkspace(config);
+
         var slot = await TryBuildSlotAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (slot is null)
         {
@@ -133,6 +145,15 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         _loaded[name] = slot;
         LogAgentStarted(_logger, name);
+    }
+
+    private void SeedAgentWorkspace(AgentConfig config)
+    {
+        var source = _paths.GetPath(PathKind.Templates, WorkspaceTemplateSubpath);
+        var destination = string.IsNullOrWhiteSpace(config.WorkspacePath)
+            ? _paths.GetPath(PathKind.Workspace, config.Id)
+            : config.WorkspacePath;
+        _seeder.SeedIfEmpty(source, destination);
     }
 
     private async Task ReloadAsync(string name, AgentConfig config, CancellationToken cancellationToken)
@@ -198,7 +219,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         return ActivatorUtilities.CreateInstance<Agent>(
             _services,
-            name,
+            config,
             model,
             agentContext,
             modelConfig);

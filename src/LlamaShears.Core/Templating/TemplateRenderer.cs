@@ -14,7 +14,7 @@ public sealed class TemplateRenderer : ITemplateRenderer
         _cache = cache;
     }
 
-    public async ValueTask<string> RenderAsync(string templatePath, object input, CancellationToken cancellationToken)
+    public async ValueTask<string?> RenderAsync(string templatePath, object input, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(templatePath);
         ArgumentNullException.ThrowIfNull(input);
@@ -23,9 +23,11 @@ public sealed class TemplateRenderer : ITemplateRenderer
             templatePath,
             templatePath,
             ParseAsync,
-            cancellationToken).ConfigureAwait(false)
-            ?? throw new FileNotFoundException(
-                $"Template not found: {templatePath}", templatePath);
+            cancellationToken).ConfigureAwait(false);
+        if (template is null)
+        {
+            return null;
+        }
 
         return template.Render(input);
     }

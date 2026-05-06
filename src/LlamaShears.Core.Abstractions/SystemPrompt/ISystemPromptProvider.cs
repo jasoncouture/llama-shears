@@ -1,18 +1,26 @@
 namespace LlamaShears.Core.Abstractions.SystemPrompt;
 
 /// <summary>
-/// Builds the system-prompt body that the agent prepends to every
-/// prompt cycle. Implementations decide how the body is assembled
-/// (hard-coded, template-driven, plugin-contributed) and where any
-/// time-dependent content comes from.
+/// Resolves a named system prompt template, renders it against
+/// <see cref="SystemPromptTemplateParameters"/>, and returns the body
+/// to feed into the model's
+/// <see cref="LlamaShears.Core.Abstractions.Provider.ModelRole.System"/>
+/// turn. Bodies are stable for the agent's lifetime so the model's
+/// prompt-cache prefix stays warm across turns.
 /// </summary>
 public interface ISystemPromptProvider
 {
     /// <summary>
-    /// Builds the system-prompt body for <paramref name="agentId"/>.
-    /// The string returned is fed to the model as the prompt's
-    /// <see cref="LlamaShears.Core.Abstractions.Provider.ModelRole.System"/>
-    /// turn.
+    /// Resolves <paramref name="templateName"/> to its system-prompt
+    /// body, rendered against <paramref name="parameters"/>.
+    /// <see langword="null"/>, empty, or whitespace names default to
+    /// the framework's <c>DEFAULT</c> template. The name must not
+    /// contain path separators. Implementations may search multiple
+    /// roots and fall back to the framework's bundled default; throw
+    /// when no candidate exists.
     /// </summary>
-    string Build(string agentId);
+    ValueTask<string> GetAsync(
+        string? templateName,
+        SystemPromptTemplateParameters parameters,
+        CancellationToken cancellationToken);
 }
