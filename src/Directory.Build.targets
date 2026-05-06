@@ -1,0 +1,19 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Packable (NuGet-shipped) projects switch from the LlamaShears LS XML-doc
+    heuristics to the compiler's strict CS1591 gate. See packable.editorconfig
+    for the analyzer-side half; this is the MSBuild-side WarningsAsErrors that
+    promotes CS1591 to a build error on shipped surface only.
+  -->
+  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <EditorConfigFiles Include="$(MSBuildThisFileDirectory)packable.editorconfig" />
+  </ItemGroup>
+
+</Project>

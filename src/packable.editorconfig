@@ -1,0 +1,21 @@
+# Applied to projects with IsPackable=true via src/Directory.Build.targets.
+#
+# For shipped (NuGet-public) surface, the LlamaShears LS0008..LS0013 family
+# (ADR-0012 heuristics about XML docs on concrete types) is too noisy and the
+# wrong gate. The compiler's CS1591 ("missing XML doc on publicly visible
+# member") is the strict, well-understood policy. So:
+#   - silence the LS XML-doc family
+#   - disable LSSPR0002, the suppressor that hides CS1591 in non-packable code
+# Combined with `<WarningsAsErrors>CS1591</WarningsAsErrors>` in
+# Directory.Build.targets, this turns missing public XML docs into a build
+# error on every packable project.
+
+is_global = true
+
+dotnet_diagnostic.LS0008.severity = none
+dotnet_diagnostic.LS0009.severity = none
+dotnet_diagnostic.LS0010.severity = none
+dotnet_diagnostic.LS0011.severity = none
+dotnet_diagnostic.LS0012.severity = none
+dotnet_diagnostic.LS0013.severity = none
+dotnet_diagnostic.LSSPR0002.severity = none
