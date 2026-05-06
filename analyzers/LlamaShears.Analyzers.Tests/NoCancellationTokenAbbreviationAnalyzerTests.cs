@@ -27,6 +27,82 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
+    public async Task ParameterNamedCtsReportsLS0007()
+    {
+        const string source = """
+            using System.Threading;
+            public class Foo
+            {
+                public void Bar(CancellationTokenSource cts) { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness.GetAnalyzerDiagnosticsAsync(
+            new NoCancellationTokenAbbreviationAnalyzer(),
+            source);
+
+        await Assert.That(diagnostics).HasSingleItem();
+        await Assert.That(diagnostics[0].Id).IsEqualTo(DiagnosticIds.NoCancellationTokenAbbreviation);
+        await Assert.That(diagnostics[0].GetMessage()).Contains("'cts'");
+    }
+
+    [Test]
+    public async Task PropertyNamedCtsReportsLS0007()
+    {
+        const string source = """
+            using System.Threading;
+            public class Foo
+            {
+                public CancellationTokenSource Cts { get; } = new();
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness.GetAnalyzerDiagnosticsAsync(
+            new NoCancellationTokenAbbreviationAnalyzer(),
+            source);
+
+        await Assert.That(diagnostics).HasSingleItem();
+        await Assert.That(diagnostics[0].GetMessage()).Contains("'Cts'");
+    }
+
+    [Test]
+    public async Task PropertyNamedCtReportsLS0007()
+    {
+        const string source = """
+            using System.Threading;
+            public class Foo
+            {
+                public CancellationToken Ct { get; }
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness.GetAnalyzerDiagnosticsAsync(
+            new NoCancellationTokenAbbreviationAnalyzer(),
+            source);
+
+        await Assert.That(diagnostics).HasSingleItem();
+    }
+
+    [Test]
+    public async Task FieldNamedUnderscoreCtsReportsLS0007()
+    {
+        const string source = """
+            using System.Threading;
+            public class Foo
+            {
+                private CancellationTokenSource _cts = new();
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness.GetAnalyzerDiagnosticsAsync(
+            new NoCancellationTokenAbbreviationAnalyzer(),
+            source);
+
+        await Assert.That(diagnostics).HasSingleItem();
+        await Assert.That(diagnostics[0].GetMessage()).Contains("'_cts'");
+    }
+
+    [Test]
     public async Task ErrorMessageContainsTheUserApprovedRebuke()
     {
         const string source = """
@@ -126,12 +202,13 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     public async Task UnrelatedNameContainingTheLettersCtDoesNotReport()
     {
         // We strip leading underscores and compare the remainder to "ct"
-        // case-insensitively. Identifiers that merely contain those
-        // letters (e.g. "context", "connect") are unaffected.
+        // or "cts" case-insensitively. Identifiers that merely contain
+        // those letters (e.g. "context", "connect", "contents") are
+        // unaffected.
         const string source = """
             public class Foo
             {
-                public void Bar(int context, int connect) { }
+                public void Bar(int context, int connect, int contents) { }
             }
             """;
 

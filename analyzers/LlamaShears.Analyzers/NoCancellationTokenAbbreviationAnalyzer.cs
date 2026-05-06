@@ -20,6 +20,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.RegisterSyntaxNodeAction(AnalyzeParameter, SyntaxKind.Parameter);
         context.RegisterSyntaxNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
+        context.RegisterSyntaxNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
         context.RegisterSyntaxNodeAction(AnalyzeLocal, SyntaxKind.LocalDeclarationStatement);
         context.RegisterSyntaxNodeAction(AnalyzeForEach, SyntaxKind.ForEachStatement);
         context.RegisterSyntaxNodeAction(AnalyzeCatchDeclaration, SyntaxKind.CatchDeclaration);
@@ -39,6 +40,12 @@ public sealed class NoCancellationTokenAbbreviationAnalyzer : DiagnosticAnalyzer
         {
             ReportIfBanned(context, variable.Identifier);
         }
+    }
+
+    private static void AnalyzeProperty(SyntaxNodeAnalysisContext context)
+    {
+        var property = (PropertyDeclarationSyntax)context.Node;
+        ReportIfBanned(context, property.Identifier);
     }
 
     private static void AnalyzeLocal(SyntaxNodeAnalysisContext context)
@@ -91,6 +98,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzer : DiagnosticAnalyzer
     private static bool IsBannedAbbreviation(string name)
     {
         var trimmed = name.TrimStart('_');
-        return string.Equals(trimmed, "ct", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(trimmed, "ct", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(trimmed, "cts", StringComparison.OrdinalIgnoreCase);
     }
 }
