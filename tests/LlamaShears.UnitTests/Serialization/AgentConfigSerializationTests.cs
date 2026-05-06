@@ -11,7 +11,7 @@ public sealed class AgentConfigSerializationTests
     private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
 
     [Test]
-    public async Task Regression_think_accepts_string_value_in_agent_json()
+    public async Task RegressionThinkAcceptsStringValueInAgentJson()
     {
         // Regression for the JsonException seen on agent load:
         //   "The JSON value could not be converted to ... ThinkLevel"
@@ -34,7 +34,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_think_is_case_insensitive()
+    public async Task ModelThinkIsCaseInsensitive()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "think": "low" } }
@@ -46,7 +46,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_think_defaults_to_None_when_absent()
+    public async Task ModelThinkDefaultsToNoneWhenAbsent()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x" } }
@@ -58,7 +58,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_id_deserializes_via_ModelIdentity_converter()
+    public async Task ModelIdDeserializesViaModelIdentityConverter()
     {
         const string json = """
             { "model": { "id": "OLLAMA/owner/repo:tag" } }
@@ -71,7 +71,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_contextLength_round_trips_as_integer()
+    public async Task ModelContextLengthRoundTripsAsInteger()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "contextLength": 262144 } }
@@ -83,7 +83,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_contextLength_defaults_to_null_when_absent()
+    public async Task ModelContextLengthDefaultsToNullWhenAbsent()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x" } }
@@ -95,7 +95,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task HeartbeatPeriod_round_trips_as_TimeSpan_string()
+    public async Task HeartbeatPeriodRoundTripsAsTimeSpanString()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x" }, "heartbeatPeriod": "00:01:30" }
@@ -107,7 +107,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task HeartbeatPeriod_defaults_to_30_minutes_when_absent()
+    public async Task HeartbeatPeriodDefaultsTo30MinutesWhenAbsent()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x" } }
@@ -119,7 +119,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Missing_required_model_throws()
+    public async Task MissingRequiredModelThrows()
     {
         const string json = """
             { "heartbeatPeriod": "00:00:30" }
@@ -130,7 +130,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Missing_required_model_id_throws()
+    public async Task MissingRequiredModelIdThrows()
     {
         const string json = """
             { "model": { "think": "High" } }
@@ -141,7 +141,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Invalid_think_string_throws()
+    public async Task InvalidThinkStringThrows()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "think": "Extreme" } }
@@ -152,7 +152,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_keepAlive_defaults_to_null_when_absent()
+    public async Task ModelKeepAliveDefaultsToNullWhenAbsent()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x" } }
@@ -164,7 +164,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_keepAlive_round_trips_as_TimeSpan_string()
+    public async Task ModelKeepAliveRoundTripsAsTimeSpanString()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "keepAlive": "01:00:00" } }
@@ -176,7 +176,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_keepAlive_zero_means_unload_immediately()
+    public async Task ModelKeepAliveZeroMeansUnloadImmediately()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "keepAlive": "00:00:00" } }
@@ -188,7 +188,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task Model_keepAlive_negative_means_never_unload()
+    public async Task ModelKeepAliveNegativeMeansNeverUnload()
     {
         // Convention: any negative TimeSpan means "never unload." STJ
         // parses "-00:00:01" into a negative TimeSpan via the standard
