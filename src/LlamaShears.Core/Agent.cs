@@ -31,7 +31,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
     public Agent(
         string id,
-        AgentConfig config,
         ILanguageModel model,
         IAgentContext agentContext,
         ILoggerFactory loggerFactory,
@@ -44,7 +43,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IEventPublisher eventPublisher)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        _ = config;
 
         Id = id;
         _model = model;
@@ -61,7 +59,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             SingleReader = true,
         });
         _shutdown = new CancellationTokenSource();
-        _subscription = bus.Subscribe<ChannelMessage>(
+        _subscription = bus.Subscribe(
             $"{Event.WellKnown.Channel.Message}:+",
             EventDeliveryMode.Awaited,
             this);
