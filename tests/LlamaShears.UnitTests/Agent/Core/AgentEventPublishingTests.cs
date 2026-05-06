@@ -10,6 +10,7 @@ using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Persistence;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -132,7 +133,9 @@ public sealed class AgentEventPublishingTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
-            inferenceRunner: new InferenceRunner(capturing, TimeProvider.System));
+            inferenceRunner: new InferenceRunner(capturing, TimeProvider.System),
+            toolDispatcher: Substitute.For<IToolCallDispatcher>(),
+            currentAgent: Substitute.For<ICurrentAgentAccessor>());
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

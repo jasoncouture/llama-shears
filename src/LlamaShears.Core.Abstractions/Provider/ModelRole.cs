@@ -11,4 +11,5 @@ public enum ModelRole
     FrameworkUser,
     FrameworkAssistant,
     Thought,
+    Tool,
 }

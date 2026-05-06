@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.ObjectPool;
 using OllamaSharp;
 using OllamaSharp.Models;
 using OllamaSharp.Models.Chat;
+using ToolCall = LlamaShears.Core.Abstractions.Provider.ToolCall;
 
 namespace LlamaShears.Provider.Ollama;
 
@@ -81,6 +83,24 @@ public partial class OllamaLanguageModel : ILanguageModel
                     yield return new OllamaResponseFragment(content);
                 }
 
+                var toolCalls = chunk?.Message?.ToolCalls;
+                if (toolCalls is not null)
+                {
+                    foreach (var ollamaCall in toolCalls)
+                    {
+                        if (ollamaCall?.Function?.Name is not { } flatName)
+                        {
+                            continue;
+                        }
+
+                        var (source, name) = SplitToolName(flatName);
+                        var argumentsJson = SerializeArguments(ollamaCall.Function.Arguments);
+                        LogToolCallReceived(_logger, _configuration.ModelId, source, name);
+                        yield return new OllamaToolCallFragment(
+                            new ToolCall(source, name, argumentsJson));
+                    }
+                }
+
                 if (chunk is ChatDoneResponseStream done)
                 {
                     yield return new OllamaCompletionFragment(done.PromptEvalCount + done.EvalCount);
@@ -95,9 +115,34 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     // Ollama's chat API takes a flat tool list, so we collapse the
     // (source, name) pair the abstraction layer hands us into a single
-    // wire name as `source__name`. The reverse split happens when we
-    // ingest tool calls coming back from the model.
+    // wire name as `source__name`, and split the same way when the
+    // model echoes a function name back in a tool call.
     internal const string ToolNameSeparator = "__";
+
+    private static (string Source, string Name) SplitToolName(string flatName)
+    {
+        var separatorIndex = flatName.IndexOf(ToolNameSeparator, StringComparison.Ordinal);
+        if (separatorIndex < 0)
+        {
+            // No prefix — the model emitted a name that doesn't follow
+            // our flattening convention. Surface it with an empty source
+            // so downstream dispatch can refuse loudly rather than
+            // guessing which server it belongs to.
+            return (string.Empty, flatName);
+        }
+        return (
+            flatName[..separatorIndex],
+            flatName[(separatorIndex + ToolNameSeparator.Length)..]);
+    }
+
+    private static string SerializeArguments(IDictionary<string, object?>? arguments)
+    {
+        if (arguments is null || arguments.Count == 0)
+        {
+            return "{}";
+        }
+        return JsonSerializer.Serialize(arguments);
+    }
 
     private static IEnumerable<object>? BuildTools(PromptOptions? options)
     {
@@ -179,7 +224,42 @@ public partial class OllamaLanguageModel : ILanguageModel
         return null;
     }
 
-    private static Message ToMessage(ModelTurn turn) => new(MapRole(turn.Role), turn.Content);
+    private static Message ToMessage(ModelTurn turn)
+    {
+        var message = new Message(MapRole(turn.Role), turn.Content);
+        if (!turn.ToolCalls.IsDefaultOrEmpty)
+        {
+            message.ToolCalls = ToOllamaToolCalls(turn.ToolCalls);
+        }
+        return message;
+    }
+
+    private static List<Message.ToolCall> ToOllamaToolCalls(ImmutableArray<ToolCall> calls)
+    {
+        var list = new List<Message.ToolCall>();
+        foreach (var call in calls)
+        {
+            list.Add(new Message.ToolCall
+            {
+                Id = call.CallId,
+                Function = new Message.Function
+                {
+                    Name = $"{call.Source}{ToolNameSeparator}{call.Name}",
+                    Arguments = DeserializeArguments(call.ArgumentsJson),
+                },
+            });
+        }
+        return list;
+    }
+
+    private static Dictionary<string, object?>? DeserializeArguments(string argumentsJson)
+    {
+        if (string.IsNullOrWhiteSpace(argumentsJson))
+        {
+            return null;
+        }
+        return JsonSerializer.Deserialize<Dictionary<string, object?>>(argumentsJson);
+    }
 
     private static ChatRole MapRole(ModelRole role) => role switch
     {
@@ -188,6 +268,7 @@ public partial class OllamaLanguageModel : ILanguageModel
         ModelRole.Assistant => ChatRole.Assistant,
         ModelRole.FrameworkUser => ChatRole.User,
         ModelRole.FrameworkAssistant => ChatRole.Assistant,
+        ModelRole.Tool => ChatRole.Tool,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported model role.")
     };
 
@@ -228,4 +309,7 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Thought from {ModelId}: {Content}")]
     private static partial void LogThoughtReceived(ILogger logger, string modelId, string content);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tool call from {ModelId}: {Source}__{Name}")]
+    private static partial void LogToolCallReceived(ILogger logger, string modelId, string source, string name);
 }

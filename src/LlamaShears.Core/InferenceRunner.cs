@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -34,6 +35,7 @@ public sealed class InferenceRunner : IInferenceRunner
         var thoughtStreamSeen = false;
         var textStreamSeen = false;
         int? tokenCount = null;
+        var toolCalls = ImmutableArray.CreateBuilder<ToolCall>();
 
         await foreach (var fragment in model.PromptAsync(prompt, options, cancellationToken).ConfigureAwait(false))
         {
@@ -54,6 +56,18 @@ public sealed class InferenceRunner : IInferenceRunner
                     await _eventPublisher.PublishAsync(
                         Event.WellKnown.Agent.Message with { Id = eventId },
                         new AgentMessageFragment(content.ToString(), Final: false),
+                        correlationId,
+                        cancellationToken).ConfigureAwait(false);
+                    break;
+                case IModelToolCallFragment toolFragment:
+                    toolCalls.Add(toolFragment.Call);
+                    await _eventPublisher.PublishAsync(
+                        Event.WellKnown.Agent.ToolCall with { Id = eventId },
+                        new AgentToolCallFragment(
+                            toolFragment.Call.Source,
+                            toolFragment.Call.Name,
+                            toolFragment.Call.ArgumentsJson,
+                            toolFragment.Call.CallId),
                         correlationId,
                         cancellationToken).ConfigureAwait(false);
                     break;
@@ -91,9 +105,17 @@ public sealed class InferenceRunner : IInferenceRunner
                     correlationId,
                     cancellationToken).ConfigureAwait(false);
             }
-            if (content.Length > 0)
+            // Emit an assistant turn whenever there is anything to remember:
+            // textual content, tool calls, or both. A pure tool-call response
+            // has empty content but still belongs in the conversation history
+            // so the model can correlate the eventual tool result with its
+            // own request.
+            if (content.Length > 0 || toolCalls.Count > 0)
             {
-                var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow());
+                var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow())
+                {
+                    ToolCalls = toolCalls.ToImmutable(),
+                };
                 await _eventPublisher.PublishAsync(
                     Event.WellKnown.Agent.Turn with { Id = eventId },
                     assistantTurn,
@@ -102,6 +124,10 @@ public sealed class InferenceRunner : IInferenceRunner
             }
         }
 
-        return new InferenceOutcome(thinking.ToString(), content.ToString(), tokenCount);
+        return new InferenceOutcome(
+            thinking.ToString(),
+            content.ToString(),
+            tokenCount,
+            toolCalls.ToImmutable());
     }
 }

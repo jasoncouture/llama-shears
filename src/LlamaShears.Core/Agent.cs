@@ -6,9 +6,11 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -31,7 +33,11 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
+    private readonly IToolCallDispatcher _toolDispatcher;
+    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly ImmutableArray<ToolGroup> _tools;
+
+    private const int MaxToolIterations = 8;
 
     public Agent(
         AgentConfig config,
@@ -46,6 +52,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IAgentContextProvider agentContextProvider,
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
+        IToolCallDispatcher toolDispatcher,
+        ICurrentAgentAccessor currentAgent,
         ImmutableArray<ToolGroup> tools = default)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -62,6 +70,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
+        _toolDispatcher = toolDispatcher;
+        _currentAgent = currentAgent;
         _tools = tools.IsDefault ? [] : tools;
         _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
@@ -200,32 +210,85 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             correlationId,
             cancellationToken).ConfigureAwait(false);
 
-        var turns = _agentContext.Turns;
-        var now = _time.GetLocalNow();
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
-        var systemTurn = new ModelTurn(ModelRole.System, systemBody, now);
-        var prompt = new ModelPrompt([systemTurn, .. turns]);
-        var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
-        prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
+        var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
-        var outcome = await _inferenceRunner.RunAsync(
-            eventId: Id,
-            model: _model,
-            prompt: prompt,
-            options: new PromptOptions(Tools: _tools),
-            emitTurns: true,
-            correlationId: correlationId,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        if (outcome.TokenCount is { } tokens)
+        for (var iteration = 0; iteration < MaxToolIterations; iteration++)
         {
-            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), cancellationToken).ConfigureAwait(false);
+            var turns = _agentContext.Turns;
+            var prompt = new ModelPrompt([systemTurn, .. turns]);
+            var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
+            prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
+
+            var outcome = await _inferenceRunner.RunAsync(
+                eventId: Id,
+                model: _model,
+                prompt: prompt,
+                options: new PromptOptions(Tools: _tools),
+                emitTurns: true,
+                correlationId: correlationId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (outcome.TokenCount is { } tokens)
+            {
+                await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), cancellationToken).ConfigureAwait(false);
+            }
+
+            if (outcome.ToolCalls.IsDefaultOrEmpty)
+            {
+                if (outcome.Content.Length == 0)
+                {
+                    LogEmptyResponse(_logger, Id);
+                }
+                return;
+            }
+
+            await DispatchToolCallsAsync(outcome.ToolCalls, correlationId, cancellationToken).ConfigureAwait(false);
         }
 
-        if (outcome.Content.Length == 0)
+        LogToolLoopExceeded(_logger, Id, MaxToolIterations);
+    }
+
+    private async Task DispatchToolCallsAsync(
+        ImmutableArray<ToolCall> calls,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        var agentInfo = new AgentInfo(
+            AgentId: Id,
+            ModelId: _modelConfiguration.ModelId,
+            ContextWindowSize: _modelConfiguration.ContextLength ?? 0);
+
+        // Loopback bearer minting reads from ICurrentAgentAccessor;
+        // hold the scope across the whole dispatch batch so each
+        // outbound MCP call sees the agent it's acting on behalf of.
+        using var scope = _currentAgent.BeginScope(agentInfo);
+
+        foreach (var call in calls)
         {
-            LogEmptyResponse(_logger, Id);
+            var result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
+
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.ToolResult with { Id = Id },
+                new AgentToolResultFragment(
+                    call.Source,
+                    call.Name,
+                    result.Content,
+                    result.IsError,
+                    call.CallId),
+                correlationId,
+                cancellationToken).ConfigureAwait(false);
+
+            var toolTurn = new ModelTurn(
+                ModelRole.Tool,
+                result.Content,
+                _time.GetLocalNow());
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.Turn with { Id = Id },
+                toolTurn,
+                correlationId,
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -268,4 +331,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
     private partial void LogProcessOnceFailed(string agentId, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' tool-call loop exceeded {Iterations} iterations; bailing out for this turn.")]
+    private static partial void LogToolLoopExceeded(ILogger logger, string agentId, int iterations);
 }
