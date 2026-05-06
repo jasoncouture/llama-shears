@@ -10,5 +10,7 @@ public interface IShearsPaths
 
     string TemplatesRoot { get; }
 
+    string GetPath(PathKind kind, string? subpath = null);
+
     string GetAgentWorkspaceDefaultPath(string agentName);
 }

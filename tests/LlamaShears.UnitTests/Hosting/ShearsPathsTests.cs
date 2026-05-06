@@ -71,6 +71,68 @@ public sealed class ShearsPathsTests
     }
 
     [Test]
+    [Arguments(PathKind.Data)]
+    [Arguments(PathKind.Workspace)]
+    [Arguments(PathKind.Agents)]
+    [Arguments(PathKind.Templates)]
+    public async Task GetPath_with_no_subpath_returns_the_root_for_each_kind(PathKind kind)
+    {
+        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+
+        var expected = kind switch
+        {
+            PathKind.Data => paths.DataRoot,
+            PathKind.Workspace => paths.WorkspaceRoot,
+            PathKind.Agents => paths.AgentsRoot,
+            PathKind.Templates => paths.TemplatesRoot,
+            _ => throw new InvalidOperationException(),
+        };
+
+        await Assert.That(paths.GetPath(kind)).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task GetPath_combines_root_with_subpath()
+    {
+        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+
+        var combined = paths.GetPath(PathKind.Templates, "spec/v1");
+
+        await Assert.That(combined).IsEqualTo(Path.Combine(paths.TemplatesRoot, "spec/v1"));
+    }
+
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
+    [Arguments("   ")]
+    public async Task GetPath_treats_blank_subpath_as_root(string? subpath)
+    {
+        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+
+        await Assert.That(paths.GetPath(PathKind.Agents, subpath)).IsEqualTo(paths.AgentsRoot);
+    }
+
+    [Test]
+    public async Task GetPath_does_not_create_the_subpath_directory()
+    {
+        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var subpath = $"unit-test-{Guid.NewGuid():N}";
+
+        var path = paths.GetPath(PathKind.Workspace, subpath);
+
+        await Assert.That(Directory.Exists(path)).IsFalse();
+    }
+
+    [Test]
+    public async Task GetPath_throws_for_unknown_kind()
+    {
+        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+
+        await Assert.That(() => paths.GetPath((PathKind)999))
+            .Throws<ArgumentOutOfRangeException>();
+    }
+
+    [Test]
     public async Task GetAgentWorkspaceDefaultPath_returns_WorkspaceRoot_agentName()
     {
         var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
