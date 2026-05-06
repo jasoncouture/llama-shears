@@ -4,11 +4,13 @@ using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.Seeding;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Context;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
+using LlamaShears.Core.Seeding;
 using LlamaShears.Core.SystemPrompt;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,6 +55,7 @@ public static class CoreServiceCollectionExtensions
         services.AddHostedService<SystemTickService>();
 
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
         services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
@@ -70,6 +73,7 @@ public static class CoreServiceCollectionExtensions
 
         services.AddHostStartupTaskRunner();
         services.AddShearsPaths();
+        services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<AgentManager>();
         services.TryAddSingleton<IAgentManager>(sp => sp.GetRequiredService<AgentManager>());
