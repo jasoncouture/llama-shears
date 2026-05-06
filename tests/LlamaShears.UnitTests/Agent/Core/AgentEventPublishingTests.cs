@@ -18,7 +18,7 @@ namespace LlamaShears.UnitTests.Agent.Core;
 public sealed class AgentEventPublishingTests
 {
     [Test]
-    public async Task TextStreamPublishesAFragmentEventPerChunkAFinalEmptyFragmentAndAnAggregateMessage()
+    public async Task TextFragmentsCarryCumulativeContentAndTheFinalFragmentHoldsTheCompleteMessage()
     {
         var publisher = new CapturingEventPublisher();
         await RunSingleTurnAsync(
@@ -26,24 +26,22 @@ public sealed class AgentEventPublishingTests
             model: ScriptedLanguageModel.WithText("Hi", " there"),
             publisher: publisher);
 
-        var messageEvents = publisher.Captured
+        var fragments = publisher.Captured
             .Where(c => c.Type.Component == Event.Sources.Agent && c.Type.EventName == "message")
+            .Select(c => c.Data)
+            .OfType<AgentMessageFragment>()
             .ToArray();
 
-        var fragments = messageEvents.Select(c => c.Data).OfType<AgentMessageFragment>().ToArray();
         await Assert.That(fragments).Count().IsEqualTo(3);
-        await Assert.That(fragments.Select(f => f.Text).ToArray())
-            .IsEquivalentTo(["Hi", " there", string.Empty]);
+        await Assert.That(fragments.Select(f => f.Content).ToArray())
+            .IsEquivalentTo(["Hi", "Hi there", "Hi there"]);
         await Assert.That(fragments.Select(f => f.Final).ToArray())
             .IsEquivalentTo([false, false, true]);
-
-        var aggregates = messageEvents.Select(c => c.Data).OfType<AgentMessage>().ToArray();
-        await Assert.That(aggregates).Count().IsEqualTo(1);
-        await Assert.That(aggregates[0].Text).IsEqualTo("Hi there");
+        await Assert.That(fragments[^1].Content).IsEqualTo("Hi there");
     }
 
     [Test]
-    public async Task ThoughtStreamPublishesAFragmentEventPerChunkAFinalEmptyFragmentAndAnAggregateThought()
+    public async Task ThoughtFragmentsCarryCumulativeContentAndTheFinalFragmentHoldsTheCompleteThought()
     {
         var publisher = new CapturingEventPublisher();
         await RunSingleTurnAsync(
@@ -53,20 +51,18 @@ public sealed class AgentEventPublishingTests
                 ["done"]),
             publisher: publisher);
 
-        var thoughtEvents = publisher.Captured
+        var fragments = publisher.Captured
             .Where(c => c.Type.Component == Event.Sources.Agent && c.Type.EventName == "thought")
+            .Select(c => c.Data)
+            .OfType<AgentThoughtFragment>()
             .ToArray();
 
-        var fragments = thoughtEvents.Select(c => c.Data).OfType<AgentThoughtFragment>().ToArray();
         await Assert.That(fragments).Count().IsEqualTo(3);
-        await Assert.That(fragments.Select(f => f.Text).ToArray())
-            .IsEquivalentTo(["thinking", "...", string.Empty]);
+        await Assert.That(fragments.Select(f => f.Content).ToArray())
+            .IsEquivalentTo(["thinking", "thinking...", "thinking..."]);
         await Assert.That(fragments.Select(f => f.Final).ToArray())
             .IsEquivalentTo([false, false, true]);
-
-        var aggregates = thoughtEvents.Select(c => c.Data).OfType<AgentThought>().ToArray();
-        await Assert.That(aggregates).Count().IsEqualTo(1);
-        await Assert.That(aggregates[0].Text).IsEqualTo("thinking...");
+        await Assert.That(fragments[^1].Content).IsEqualTo("thinking...");
     }
 
     [Test]
@@ -98,7 +94,7 @@ public sealed class AgentEventPublishingTests
     }
 
     [Test]
-    public async Task ATurnWithNoTextProducesNoMessageAggregateEvent()
+    public async Task ATurnWithNoTextProducesNoMessageFragmentEvents()
     {
         var publisher = new CapturingEventPublisher();
         await RunSingleTurnAsync(
@@ -106,12 +102,12 @@ public sealed class AgentEventPublishingTests
             model: ScriptedLanguageModel.WithThoughtThenText(["just thinking"], []),
             publisher: publisher);
 
-        var aggregates = publisher.Captured
+        var messageFragments = publisher.Captured
             .Where(c => c.Type.Component == Event.Sources.Agent && c.Type.EventName == "message")
             .Select(c => c.Data)
-            .OfType<AgentMessage>()
+            .OfType<AgentMessageFragment>()
             .ToArray();
-        await Assert.That(aggregates).IsEmpty();
+        await Assert.That(messageFragments).IsEmpty();
     }
 
     private static async Task RunSingleTurnAsync(
