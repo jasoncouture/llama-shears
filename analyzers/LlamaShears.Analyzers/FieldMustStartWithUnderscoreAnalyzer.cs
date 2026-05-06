@@ -8,12 +8,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace LlamaShears.Analyzers;
 
-/// <summary>
-/// Reports a hard, non-configurable error for any field whose name
-/// does not start with <c>_</c>. <c>const</c> fields are exempt
-/// because they are compile-time constants, not state, and
-/// conventionally use PascalCase.
-/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FieldMustStartWithUnderscoreAnalyzer : DiagnosticAnalyzer
 {

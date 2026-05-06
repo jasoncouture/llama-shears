@@ -8,17 +8,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace LlamaShears.Analyzers;
 
-/// <summary>
-/// Reports a hard, non-configurable error when a single C# file
-/// declares more than one top-level type. Top-level types are
-/// declarations directly under <see cref="CompilationUnitSyntax"/> or
-/// <see cref="BaseNamespaceDeclarationSyntax"/> — classes, structs,
-/// interfaces, enums, records, record structs, and delegates. Nested
-/// types are exempt because they are part of the outer type's
-/// declaration. The first top-level type in the file is treated as
-/// the "primary" type and is left alone; every additional top-level
-/// type is reported.
-/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class OneTypePerFileAnalyzer : DiagnosticAnalyzer
 {

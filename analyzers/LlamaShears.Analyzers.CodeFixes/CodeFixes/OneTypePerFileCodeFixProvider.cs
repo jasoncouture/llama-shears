@@ -13,15 +13,6 @@ using Microsoft.CodeAnalysis.Formatting;
 
 namespace LlamaShears.Analyzers.CodeFixes;
 
-/// <summary>
-/// Code fix for <see cref="DiagnosticIds.OneTypePerFile"/>: extracts
-/// the offending type into a new sibling document named
-/// <c>{TypeName}.cs</c>, preserving the original file's using
-/// directives and namespace structure (file-scoped or block-scoped).
-/// The original document keeps the primary (first) type and any other
-/// types not yet extracted; running the fix repeatedly (or via
-/// FixAll) splits every extra type into its own file.
-/// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(OneTypePerFileCodeFixProvider))]
 [Shared]
 public sealed class OneTypePerFileCodeFixProvider : CodeFixProvider

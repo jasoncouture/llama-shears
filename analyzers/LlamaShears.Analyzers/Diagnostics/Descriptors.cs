@@ -2,14 +2,6 @@ using Microsoft.CodeAnalysis;
 
 namespace LlamaShears.Analyzers.Diagnostics;
 
-/// <summary>
-/// Central registry for every <see cref="DiagnosticDescriptor"/> and
-/// <see cref="SuppressionDescriptor"/> shipped by the LlamaShears
-/// analyzer assembly. Analyzers and suppressors must consume their
-/// descriptors from here rather than redefining them locally; this
-/// keeps ids, titles, severities, and justifications in one
-/// authoritative place.
-/// </summary>
 internal static class Descriptors
 {
     /// <summary>
