@@ -47,9 +47,5 @@ public class OllamaProviderFactory : IProviderFactory
     }
 
     public ILanguageModel CreateModel(ModelConfiguration configuration)
-    {
-        var merged = AgentProviderOptions.Resolve(_hostOptions.CurrentValue, configuration.AgentOptions);
-        var client = _clientFactory.CreateClient(merged);
-        return ActivatorUtilities.CreateInstance<OllamaLanguageModel>(_serviceProvider, client, configuration);
-    }
+        => ActivatorUtilities.CreateInstance<OllamaLanguageModel>(_serviceProvider, configuration);
 }

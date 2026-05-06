@@ -49,9 +49,5 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
     }
 
     public IEmbeddingModel CreateModel(ModelConfiguration configuration)
-    {
-        var merged = AgentProviderOptions.Resolve(_hostOptions.CurrentValue, configuration.AgentOptions);
-        var client = _clientFactory.CreateClient(merged);
-        return ActivatorUtilities.CreateInstance<OllamaEmbeddingModel>(_serviceProvider, client, configuration);
-    }
+        => ActivatorUtilities.CreateInstance<OllamaEmbeddingModel>(_serviceProvider, configuration);
 }

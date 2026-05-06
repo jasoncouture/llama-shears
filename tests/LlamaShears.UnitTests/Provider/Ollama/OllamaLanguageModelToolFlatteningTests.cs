@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Provider.Ollama;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.ObjectPool;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
@@ -86,11 +87,17 @@ public sealed class OllamaLanguageModelToolFlatteningTests
         client.ChatAsync(Arg.Do<ChatRequest>(r => captured = r), Arg.Any<CancellationToken>())
             .Returns(EmptyAsync());
 
+        var clientFactory = Substitute.For<IOllamaApiClientFactory>();
+        clientFactory.CreateClient(Arg.Any<OllamaProviderOptions>()).Returns(client);
+        var hostOptions = Substitute.For<IOptionsMonitor<OllamaProviderOptions>>();
+        hostOptions.CurrentValue.Returns(new OllamaProviderOptions());
+
         var poolProvider = new DefaultObjectPoolProvider();
         var pool = poolProvider.Create<List<Message>>();
         var model = new OllamaLanguageModel(
-            client,
+            clientFactory,
             new ModelConfiguration(ModelId: "test", Think: ThinkLevel.None),
+            hostOptions,
             pool,
             NullLogger<OllamaLanguageModel>.Instance);
 

@@ -6,6 +6,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
+using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models;
 using OllamaSharp.Models.Chat;
@@ -21,15 +22,18 @@ public partial class OllamaLanguageModel : ILanguageModel
     private readonly ILogger<OllamaLanguageModel> _logger;
 
     public OllamaLanguageModel(
-        IOllamaApiClient client,
+        IOllamaApiClientFactory clientFactory,
         ModelConfiguration configuration,
+        IOptionsMonitor<OllamaProviderOptions> hostOptions,
         ObjectPool<List<Message>> messageListPool,
         ILogger<OllamaLanguageModel> logger)
     {
-        _client = client;
         _configuration = configuration;
         _messageListPool = messageListPool;
         _logger = logger;
+
+        var merged = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.AgentOptions);
+        _client = clientFactory.CreateClient(merged);
     }
 
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
