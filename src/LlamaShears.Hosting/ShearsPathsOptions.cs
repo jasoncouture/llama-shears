@@ -9,4 +9,6 @@ public sealed class ShearsPathsOptions
     public string? AgentsRoot { get; set; }
 
     public string? TemplatesRoot { get; set; }
+
+    public string? ConversationsRoot { get; set; }
 }
