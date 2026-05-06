@@ -9,3 +9,4 @@ LS0001  | LlamaShears.Style  | Error    | Primary constructors are not allowed o
 LS0002  | LlamaShears.Style  | Error    | Fields must be private (const fields exempt).
 LS0003  | LlamaShears.Style  | Error    | Field names must start with an underscore (const fields exempt).
 LS0004  | LlamaShears.Style  | Error    | 'this.' qualifier is forbidden except for extension method invocations.
+LS0005  | LlamaShears.Style  | Error    | Only one top-level type declaration per file (nested types unaffected).

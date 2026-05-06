@@ -19,5 +19,7 @@ internal static class DiagnosticIds
 
     public const string NoThisQualifier = "LS0004";
 
+    public const string OneTypePerFile = "LS0005";
+
     public const string SuppressIde0290 = "LSSPR0001";
 }
