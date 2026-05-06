@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -39,7 +38,7 @@ internal static class CodeFixHarness
 
         var document = solution.GetDocument(documentId)!;
         var compilation = await document.Project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
-        var withAnalyzers = compilation!.WithAnalyzers(ImmutableArray.Create(analyzer));
+        var withAnalyzers = compilation!.WithAnalyzers([analyzer]);
         var diagnostics = await withAnalyzers.GetAnalyzerDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
 
         var fixable = diagnostics.FirstOrDefault(d => fixProvider.FixableDiagnosticIds.Contains(d.Id))
@@ -130,9 +129,11 @@ internal static class CodeFixHarness
     private static MetadataReference[] BuildDefaultReferences()
     {
         var trustedAssemblies = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty;
-        return trustedAssemblies
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
-            .ToArray();
+        return
+        [
+            .. trustedAssemblies
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path)),
+        ];
     }
 }
