@@ -1,6 +1,6 @@
 using LlamaShears.Core.Abstractions.Provider;
 
-namespace LlamaShears.Core;
+namespace LlamaShears.Core.Abstractions.Agent;
 
 public sealed record AgentModelConfig
 {

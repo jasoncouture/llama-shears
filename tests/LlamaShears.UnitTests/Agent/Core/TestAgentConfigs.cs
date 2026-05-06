@@ -1,4 +1,4 @@
-using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Agent.Core;
