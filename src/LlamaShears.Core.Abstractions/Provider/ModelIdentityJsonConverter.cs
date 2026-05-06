@@ -3,8 +3,13 @@ using System.Text.Json.Serialization;
 
 namespace LlamaShears.Core.Abstractions.Provider;
 
+/// <summary>
+/// JSON converter for <see cref="ModelIdentity"/>: serializes as the
+/// compact string <c>"provider/model"</c> rather than as an object.
+/// </summary>
 public sealed class ModelIdentityJsonConverter : JsonConverter<ModelIdentity>
 {
+    /// <inheritdoc/>
     public override ModelIdentity? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
@@ -34,6 +39,7 @@ public sealed class ModelIdentityJsonConverter : JsonConverter<ModelIdentity>
         return new ModelIdentity(raw[..slash], raw[(slash + 1)..]);
     }
 
+    /// <inheritdoc/>
     public override void Write(Utf8JsonWriter writer, ModelIdentity value, JsonSerializerOptions options)
     {
         ArgumentNullException.ThrowIfNull(writer);

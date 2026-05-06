@@ -3,12 +3,21 @@ using System.Text.Json.Nodes;
 
 namespace LlamaShears.Core.Abstractions.Provider;
 
+/// <summary>
+/// Helpers for layering an agent's per-model JSON options blob on top
+/// of host-level defaults. Used by providers that expose a strongly-typed
+/// options record for their host config and a free-form
+/// <c>Options</c> JSON blob in agent config.
+/// </summary>
 public static class AgentProviderOptions
 {
-    // Layers an agent's per-model JSON options blob on top of host-level
-    // defaults. Object properties merge field-by-field; arrays and
-    // scalars at any leaf replace. Returns host defaults verbatim when
-    // there is no override (no allocation, no parse).
+    /// <summary>
+    /// Layers <paramref name="agentOverride"/> on top of
+    /// <paramref name="hostDefaults"/>. Object properties merge
+    /// field-by-field; arrays and scalars at any leaf replace. Returns
+    /// <paramref name="hostDefaults"/> verbatim when there is no
+    /// override (no allocation, no parse).
+    /// </summary>
     public static TOptions Resolve<TOptions>(
         TOptions hostDefaults,
         JsonElement? agentOverride,

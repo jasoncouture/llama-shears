@@ -1,7 +1,16 @@
 namespace LlamaShears.Core.Abstractions.Events;
 
+/// <summary>
+/// Convenience extensions over <see cref="IEventPublisher"/> that
+/// generate a fresh UUIDv7 correlation id when the caller is starting
+/// a new event chain.
+/// </summary>
 public static class EventPublisherExtensions
 {
+    /// <summary>
+    /// Publishes <paramref name="data"/> with a freshly generated
+    /// correlation id (UUIDv7).
+    /// </summary>
     public static async ValueTask PublishAsync<T>(
         this IEventPublisher publisher,
         EventType eventType,
@@ -12,6 +21,10 @@ public static class EventPublisherExtensions
         await publisher.PublishAsync(eventType, data, Guid.CreateVersion7(), cancellationToken);
     }
 
+    /// <summary>
+    /// Publishes a payload-less event of <paramref name="eventType"/>
+    /// with a freshly generated correlation id (UUIDv7).
+    /// </summary>
     public static async ValueTask PublishAsync<T>(
         this IEventPublisher publisher,
         EventType eventType,

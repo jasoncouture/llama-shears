@@ -3,14 +3,22 @@ using System.Globalization;
 
 namespace LlamaShears.Core.Abstractions.Provider;
 
+/// <summary>
+/// <see cref="TypeConverter"/> for <see cref="ModelIdentity"/> so it
+/// flows through configuration binding and similar string-pivoted
+/// machinery as <c>"provider/model"</c>.
+/// </summary>
 public sealed class ModelIdentityTypeConverter : TypeConverter
 {
+    /// <inheritdoc/>
     public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
         => sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
 
+    /// <inheritdoc/>
     public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
         => destinationType == typeof(string) || base.CanConvertTo(context, destinationType);
 
+    /// <inheritdoc/>
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {
         if (value is not string raw)
@@ -30,6 +38,7 @@ public sealed class ModelIdentityTypeConverter : TypeConverter
         return new ModelIdentity(raw[..slash], raw[(slash + 1)..]);
     }
 
+    /// <inheritdoc/>
     public override object? ConvertTo(
         ITypeDescriptorContext? context,
         CultureInfo? culture,
