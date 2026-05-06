@@ -5,3 +5,9 @@ root = true
 # or structs (records may). Disable the analyzer that suggests them.
 csharp_style_prefer_primary_constructors = false
 dotnet_diagnostic.IDE0290.severity = none
+
+# Empty collections must use the collection expression form (`[]`).
+# Promoted to error so the build fails on `Type<...>.Empty` /
+# `ImmutableX.Create()` / `Array.Empty<T>()` style at call sites.
+dotnet_style_prefer_collection_expression = when_types_loosely_match:error
+dotnet_diagnostic.IDE0301.severity = error
