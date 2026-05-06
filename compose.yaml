@@ -1,0 +1,21 @@
+services:
+  llamashears:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llamashears:dev
+    container_name: llamashears
+    user: root
+    ports:
+      # Host 5125 matches the dev launchSettings port, so existing
+      # bookmarks keep working. Container always serves on 8080.
+      - "5125:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      Paths__DataRoot: /data
+    restart: unless-stopped
+    # stdin/tty so Ctrl+C reaches the host cleanly when run with
+    # `docker compose up` (no `-d`).
+    stdin_open: true
+    tty: true

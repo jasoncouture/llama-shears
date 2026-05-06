@@ -1,0 +1,17 @@
+**/bin
+**/obj
+**/TestResults
+
+.git
+.github
+.husky
+.vscode
+.idea
+
+# Local mount target — never copy host data into the build context.
+data
+
+# Editor / OS noise.
+**/.DS_Store
+**/*.user
+**/*.suo
