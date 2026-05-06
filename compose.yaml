@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: llamashears:dev
+    image: sjc.vultrcr.com/strangesoft/llama-shears:next
     container_name: llamashears
     user: root
     ports:
