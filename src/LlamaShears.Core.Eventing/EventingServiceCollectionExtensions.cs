@@ -23,17 +23,6 @@ public static class EventingServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddEventHandler<TMessage, TImplementation>(this IServiceCollection services)
-        where TMessage : class
-        where TImplementation : class, IEventHandler<TMessage>
-    {
-        services.TryAddSingleton<TImplementation>();
-        services.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IEventHandler<TMessage>, TImplementation>(
-                static sp => sp.GetRequiredService<TImplementation>()));
-        return services;
-    }
-
     internal static IServiceCollection ForwardService<TService, TImplementation>(this IServiceCollection services)
         where TImplementation : notnull, TService
         where TService : class

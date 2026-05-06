@@ -193,7 +193,11 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         {
             await foreach (var turn in input.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                await _agentContext.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
+                await _eventPublisher.PublishAsync(
+                    Event.WellKnown.Agent.Turn with { Id = Id },
+                    turn,
+                    correlationId,
+                    cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -288,7 +292,11 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         if (thinking.Length > 0)
         {
             var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetUtcNow());
-            await _agentContext.AppendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.Turn with { Id = Id },
+                thoughtTurn,
+                correlationId,
+                cancellationToken).ConfigureAwait(false);
             foreach (var output in _outputChannels)
             {
                 await output.SendAsync(thoughtTurn, cancellationToken).ConfigureAwait(false);
@@ -302,7 +310,11 @@ public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHan
         }
 
         var response = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetUtcNow());
-        await _agentContext.AppendAsync(response, cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(
+            Event.WellKnown.Agent.Turn with { Id = Id },
+            response,
+            correlationId,
+            cancellationToken).ConfigureAwait(false);
 
         foreach (var output in _outputChannels)
         {
