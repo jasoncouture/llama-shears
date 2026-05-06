@@ -30,4 +30,4 @@ Once you have it running, these four together explain how it works:
 
 ## Architectural Decision Records
 
-- [Architectural Decisions](adr/INDEX.md) — analyzer policy, naming conventions, file layout, and other accepted constraints. ADRs are the *decision* record; design docs are the *behavior* record. When they disagree, the code is the tiebreaker, the ADR is what's binding going forward, and the design doc gets updated.
+- [Architectural Decisions](adr/index.md) — analyzer policy, naming conventions, file layout, and other accepted constraints. ADRs are the *decision* record; design docs are the *behavior* record. When they disagree, the code is the tiebreaker, the ADR is what's binding going forward, and the design doc gets updated.

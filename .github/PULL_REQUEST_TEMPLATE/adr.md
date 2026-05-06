@@ -19,7 +19,7 @@ Resolves #
 <!-- If this supersedes an existing ADR:
   - Name which ADR is being superseded.
   - Confirm the old ADR file is left untouched on disk (immutability rule).
-  - Confirm docs/adr/INDEX.md has been updated: the old entry moved from the active list to the Superseded section with a "Superseded by ADR-NNNN on YYYY-MM-DD" note.
+  - Confirm docs/adr/index.md has been updated: the old entry moved from the active list to the Superseded section with a "Superseded by ADR-NNNN on YYYY-MM-DD" note.
 
 If this is a new ADR with no supersession, delete this section.
 -->

@@ -18,8 +18,8 @@ This project uses a modern .NET SDK. The `.slnx` file is the default solution fo
 Agents must:
 
 1. Read **only** the memory index files, if they exist, to learn what memories are available:
-	- [memories/local/INDEX.md](memories/local/INDEX.md)
-	- [memories/shared/INDEX.md](memories/shared/INDEX.md)
+	- [memories/local/index.md](memories/local/index.md)
+	- [memories/shared/index.md](memories/shared/index.md)
 
    Do **not** read the individual memory files up front. Pull a specific memory on demand when its index entry indicates it is relevant to the current task.
 2. Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.

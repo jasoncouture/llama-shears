@@ -28,7 +28,7 @@ This is deliberate. The point is to align on changes to the project's thinking *
 | `tests/`         | Cross-project unit tests (TUnit).                                                |
 | `analyzers/`     | The local Roslyn analyzer assembly, its code-fix sibling, and analyzer tests.    |
 | `docs/`          | Project documentation. See `docs/index.md`.                                      |
-| `docs/adr/`      | Architectural Decision Records. See `docs/adr/INDEX.md`.                         |
+| `docs/adr/`      | Architectural Decision Records. See `docs/adr/index.md`.                         |
 | `docs/design/`   | Design notes for in-flight or recently-landed subsystems.                        |
 | `agents/`        | Agent-facing instructions and shared/local memory for AI collaborators.          |
 
@@ -43,7 +43,7 @@ Tests run via Microsoft Testing Platform; do not pass `--filter` or scope to a s
 
 ## Code style
 
-Almost every style rule is a hard compile error enforced by the local analyzers in [analyzers/LlamaShears.Analyzers/](analyzers/LlamaShears.Analyzers/). The complete set of accepted decisions, with rationale, lives in [docs/adr/INDEX.md](docs/adr/INDEX.md). Highlights:
+Almost every style rule is a hard compile error enforced by the local analyzers in [analyzers/LlamaShears.Analyzers/](analyzers/LlamaShears.Analyzers/). The complete set of accepted decisions, with rationale, lives in [docs/adr/index.md](docs/adr/index.md). Highlights:
 
 - **No primary constructors on non-record types** — [ADR-0004](docs/adr/0004-no-primary-constructors-on-non-record-types.md), `LS0001`. Records only.
 - **No public or internal fields** — [ADR-0002](docs/adr/0002-no-public-fields.md), `LS0002`. Use a property. `const` is exempt.
@@ -92,7 +92,7 @@ The reason size matters at all is review surface. A change broken into clean ato
 
 ## Adding a new ADR
 
-1. Pick the next sequential number after the last entry in [docs/adr/INDEX.md](docs/adr/INDEX.md).
+1. Pick the next sequential number after the last entry in [docs/adr/index.md](docs/adr/index.md).
 2. Create `docs/adr/####-short-kebab-title.md`. Title line: `# ADR-####: <Title>`. Add an `Accepted YYYY-MM-DD.` line directly under the title (and an `Enforced by ...` clause if there is an analyzer).
 3. Sections: `Context`, `Decision`, `Consequences` — Michael Nygard format.
 4. Add the entry to the index. Trail with `— Analysis ID LS####` if there is an analyzer; omit the trailer otherwise.

@@ -1,6 +1,6 @@
 # Design notes
 
-Design-level documentation for LlamaShears subsystems. The pages here describe *how the system works today* (or, where labelled, what the implementation owes the design). ADRs cover the *decisions* that constrain those subsystems; see [docs/adr/INDEX.md](../adr/INDEX.md).
+Design-level documentation for LlamaShears subsystems. The pages here describe *how the system works today* (or, where labelled, what the implementation owes the design). ADRs cover the *decisions* that constrain those subsystems; see [docs/adr/index.md](../adr/index.md).
 
 ## Order to read
 
