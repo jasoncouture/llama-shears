@@ -1,0 +1,38 @@
+# LlamaShears.Core.Abstractions ships as a public NuGet package, so the
+# missing-XML-doc rule the rest of the repo silences (CS1591) is the right
+# discipline here. The custom XML-doc analyzer (LS0008..LS0013) and the
+# CS1591 suppressor (LSSPR0002) — both implementing ADR-0012's
+# "comments default to absent" policy — are turned off for this project
+# only, and CS1591 is escalated to an error.
+
+[*.cs]
+# Custom XML-doc analyzer rules: silenced for this project.
+dotnet_diagnostic.LS0008.severity = none
+dotnet_diagnostic.LS0009.severity = none
+dotnet_diagnostic.LS0010.severity = none
+dotnet_diagnostic.LS0011.severity = none
+dotnet_diagnostic.LS0012.severity = none
+dotnet_diagnostic.LS0013.severity = none
+
+# CS1591 suppressor: opted out so CS1591 actually fires.
+llamashears_suppress_cs1591 = false
+
+# Built-in missing-XML-doc rules: errors for this project.
+dotnet_diagnostic.CS1591.severity = error
+dotnet_diagnostic.CS1573.severity = error
+dotnet_diagnostic.CS1572.severity = error
+dotnet_diagnostic.CS1571.severity = error
+dotnet_diagnostic.CS1570.severity = error
+dotnet_diagnostic.CS1574.severity = error
+dotnet_diagnostic.CS1584.severity = error
+dotnet_diagnostic.CS1587.severity = error
+dotnet_diagnostic.CS1589.severity = error
+dotnet_diagnostic.CS1590.severity = error
+dotnet_diagnostic.CS1592.severity = error
+dotnet_diagnostic.CS1598.severity = error
+dotnet_diagnostic.CS1658.severity = error
+dotnet_diagnostic.CS1710.severity = error
+dotnet_diagnostic.CS1711.severity = error
+dotnet_diagnostic.CS1712.severity = error
+dotnet_diagnostic.CS1723.severity = error
+dotnet_diagnostic.CS1734.severity = error
