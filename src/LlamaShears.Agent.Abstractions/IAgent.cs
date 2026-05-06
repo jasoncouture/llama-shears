@@ -8,8 +8,13 @@ namespace LlamaShears.Agent.Abstractions;
 /// data to a caller. Inputs are accepted from any of
 /// <see cref="InputChannels"/> and outputs are sent to all of
 /// <see cref="OutputChannels"/>; both append to <see cref="Context"/>.
+/// <para>
+/// An agent owns its own heartbeat: it subscribes to the system tick
+/// at construction and decides per tick whether to fire. <see cref="IDisposable.Dispose"/>
+/// tears down that subscription and any other lifetime-bound state.
+/// </para>
 /// </summary>
-public interface IAgent
+public interface IAgent : IDisposable
 {
     /// <summary>
     /// Wall-clock time the agent's last heartbeat completed.
