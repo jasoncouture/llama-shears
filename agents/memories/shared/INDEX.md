@@ -3,4 +3,8 @@
 - [Atomic commits and full-solution build/test](feedback_build_and_commit.md) — commit each logical change; always run `dotnet build` and `dotnet test` with no params
 - [Never accept IConfiguration as a parameter](feedback_iconfiguration_parameter.md) — use `AddOptions<T>().BindConfiguration("Section")`; expose only the section name (defaulted, last)
 - ["SDK reference" means FrameworkReference, not the Sdk attribute](feedback_sdk_reference.md) — add `<FrameworkReference Include="..." />`, never swap the project's `Sdk=`
+- [No EF navigation properties; relationships on principal side](feedback_no_ef_navigation_properties.md) — entities expose scalars + FK columns only; relationship config lives on the referenced entity, giving a "who points at me" view per principal
+- [ISaveChangesHook order is undefined](feedback_save_changes_hook_order.md) — hooks run in undefined order; order-dependent hooks belong combined into one hook
+- [No logic in entity property setters](feedback_no_logic_in_entity_properties.md) — entity properties stay plain; validation and normalization live in `ISaveChangesHook` implementations
+- [Wait for approval after opinion questions](feedback_wait_on_opinion_questions.md) — "what do you think?" / "perhaps we should…" → give opinion and stop, even in auto mode
 - [Vector store choice — Microsoft.Extensions.VectorData](project_vector_store.md) — when vector storage is added, use `Microsoft.Extensions.VectorData` with the SQLite (sqlite-vec) connector; not yet implemented
