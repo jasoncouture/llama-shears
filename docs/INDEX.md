@@ -6,4 +6,5 @@ This is the main entry point for all documentation topics. Each topic will have 
 
 - [Design](design/INDEX.md): Heartbeat-based agentic host architecture and layering.
 - [Data Layer](design/data.md): EF Core + SQLite, `IDataObject` / `IModifiableDataObject`, save-change interceptors, per-entity `IModelConfigurable<TSelf>`.
+- [Tool Calling](design/tool-calling.md): tool catalog (local + MCP), polymorphic turn model, parallel execution, `ReportStatus`-as-terminator, per-agent iteration limits.
 - [Architectural Decisions](adr/INDEX.md): ADRs covering analyzer policy, naming conventions, file layout, and other accepted constraints.
