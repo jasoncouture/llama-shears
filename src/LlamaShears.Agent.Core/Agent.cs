@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.Channels;
 using LlamaShears.Agent.Abstractions;
+using LlamaShears.Agent.Abstractions.Events;
 using LlamaShears.Provider.Abstractions;
 using MessagePipe;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ public sealed partial class Agent : IAgent
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
     private readonly Task[] _inputWaiters;
+    private readonly IAsyncPublisher<AgentFragmentEmitted>? _fragments;
 
     public Agent(
         string id,
@@ -26,12 +28,14 @@ public sealed partial class Agent : IAgent
         IEnumerable<ModelTurn> seedContext,
         IReadOnlyList<IInputChannel> inputChannels,
         IReadOnlyList<IOutputChannel> outputChannels,
-        ILogger<Agent> logger)
+        ILogger<Agent> logger,
+        IAsyncPublisher<AgentFragmentEmitted>? fragments = null)
     {
         Id = id;
         HeartbeatPeriod = heartbeatPeriod;
         _model = model;
         _logger = logger;
+        _fragments = fragments;
         _context = [..seedContext];
         InputChannels = inputChannels;
         OutputChannels = outputChannels;
@@ -163,6 +167,10 @@ public sealed partial class Agent : IAgent
         var prompt = new ModelPrompt([.._context]);
         var thinking = new StringBuilder();
         var content = new StringBuilder();
+        var thoughtStreamId = Guid.NewGuid();
+        var textStreamId = Guid.NewGuid();
+        var thoughtStreamSeen = false;
+        var textStreamSeen = false;
 
         await foreach (var fragment in _model.PromptAsync(prompt, cancellationToken).ConfigureAwait(false))
         {
@@ -170,11 +178,44 @@ public sealed partial class Agent : IAgent
             {
                 case IModelThoughtResponse thought:
                     thinking.Append(thought.Content);
+                    thoughtStreamSeen = true;
+                    await PublishFragmentAsync(
+                        AgentFragmentKind.Thought,
+                        thought.Content,
+                        thoughtStreamId,
+                        isFinal: false,
+                        cancellationToken).ConfigureAwait(false);
                     break;
                 case IModelTextResponse text:
                     content.Append(text.Content);
+                    textStreamSeen = true;
+                    await PublishFragmentAsync(
+                        AgentFragmentKind.Text,
+                        text.Content,
+                        textStreamId,
+                        isFinal: false,
+                        cancellationToken).ConfigureAwait(false);
                     break;
             }
+        }
+
+        if (thoughtStreamSeen)
+        {
+            await PublishFragmentAsync(
+                AgentFragmentKind.Thought,
+                string.Empty,
+                thoughtStreamId,
+                isFinal: true,
+                cancellationToken).ConfigureAwait(false);
+        }
+        if (textStreamSeen)
+        {
+            await PublishFragmentAsync(
+                AgentFragmentKind.Text,
+                string.Empty,
+                textStreamId,
+                isFinal: true,
+                cancellationToken).ConfigureAwait(false);
         }
 
         if (thinking.Length > 0)
@@ -200,6 +241,22 @@ public sealed partial class Agent : IAgent
         {
             await output.SendAsync(response, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task PublishFragmentAsync(
+        AgentFragmentKind kind,
+        string delta,
+        Guid streamId,
+        bool isFinal,
+        CancellationToken cancellationToken)
+    {
+        if (_fragments is null)
+        {
+            return;
+        }
+        await _fragments.PublishAsync(
+            new AgentFragmentEmitted(Id, kind, delta, streamId, isFinal),
+            cancellationToken).ConfigureAwait(false);
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
