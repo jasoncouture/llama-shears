@@ -23,7 +23,7 @@ public sealed partial class Agent : IAgent
     private readonly Task _loop;
     private readonly Task[] _inputWaiters;
     private readonly IAsyncPublisher<AgentFragmentEmitted>? _fragments;
-    private readonly ContextCompactor? _compactor;
+    private readonly IContextCompactor? _compactor;
     private readonly ModelConfiguration? _modelConfiguration;
     private readonly IContextStore? _contextStore;
 
@@ -34,11 +34,11 @@ public sealed partial class Agent : IAgent
         IAgentContext agentContext,
         IReadOnlyList<IInputChannel> inputChannels,
         IReadOnlyList<IOutputChannel> outputChannels,
-        ILogger logger,
+        ILoggerFactory loggerFactory,
         IAsyncSubscriber<SystemTick> ticks,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
-        ContextCompactor? compactor = null,
+        IContextCompactor? compactor = null,
         ModelConfiguration? modelConfiguration = null,
         IContextStore? contextStore = null,
         IAsyncPublisher<AgentFragmentEmitted>? fragments = null)
@@ -49,7 +49,7 @@ public sealed partial class Agent : IAgent
         ArgumentNullException.ThrowIfNull(agentContext);
         ArgumentNullException.ThrowIfNull(inputChannels);
         ArgumentNullException.ThrowIfNull(outputChannels);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
         ArgumentNullException.ThrowIfNull(ticks);
         ArgumentNullException.ThrowIfNull(systemPromptProvider);
         ArgumentNullException.ThrowIfNull(timeProvider);
@@ -57,7 +57,7 @@ public sealed partial class Agent : IAgent
         Id = id;
         Config = config;
         _model = model;
-        _logger = logger;
+        _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{id}");
         _fragments = fragments;
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
@@ -327,11 +327,4 @@ public sealed partial class Agent : IAgent
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private static partial void LogContextCompacted(ILogger logger, string agentId);
-
-    public static ILogger CreateLogger(ILoggerFactory loggerFactory, string agentId)
-    {
-        ArgumentNullException.ThrowIfNull(loggerFactory);
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        return loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{agentId}");
-    }
 }

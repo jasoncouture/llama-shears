@@ -2,6 +2,7 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Paths;
@@ -55,7 +56,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<ISystemPromptProvider, HardcodedSystemPromptProvider>();
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
-        services.TryAddSingleton<ContextCompactor>();
+        services.TryAddSingleton<IContextCompactor, ContextCompactor>();
 
         return services;
     }
