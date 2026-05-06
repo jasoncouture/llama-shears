@@ -2,12 +2,6 @@ using System.Globalization;
 
 namespace LlamaShears.Agent.Core.SystemPrompt;
 
-/// <summary>
-/// Returns a constant system-prompt body with the supplied timestamp
-/// appended at the end. This is the placeholder shipped while the
-/// template/file-based prompt builder is being developed; once the
-/// template path lands this implementation is replaced wholesale.
-/// </summary>
 public sealed class HardcodedSystemPromptProvider : ISystemPromptProvider
 {
     private const string Body =

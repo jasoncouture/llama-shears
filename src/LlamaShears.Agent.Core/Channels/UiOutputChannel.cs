@@ -5,12 +5,6 @@ using MessagePipe;
 
 namespace LlamaShears.Agent.Core.Channels;
 
-/// <summary>
-/// Output channel that re-publishes each completed
-/// <see cref="ModelTurn"/> as an <see cref="AgentTurnEmitted"/> event on
-/// the in-process bus. UI subscribers consume the event to render or
-/// persist the turn.
-/// </summary>
 public sealed class UiOutputChannel : IOutputChannel
 {
     private readonly string _agentId;
