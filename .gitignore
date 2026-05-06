@@ -485,3 +485,6 @@ $RECYCLE.BIN/
 agents/memories/local/*
 !agents/memories/local/README
 !agents/memories/local/.keep
+
+# Throwaway spike workspace
+tmp/
