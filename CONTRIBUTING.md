@@ -78,9 +78,11 @@ If a change is non-trivial:
 - Cross-reference any relevant ADRs or design docs.
 - Verify both `dotnet build` and `dotnet test` are green locally before opening the PR.
 
-**Size policy.** PRs over 500 lines (excluding automated refactors — large mechanical changes from a tool, where the volume is in the tool's output rather than human decisions) will not be reviewed without strong justification for why the change cannot be broken apart. "It's all related" is not strong justification. "Splitting introduces a non-buildable intermediate state" might be, depending on the case.
+**Size policy.** The actual standard is *complexity*, not line count. Line count is the easy-to-measure proxy and it tends to correlate, but the rule is not "PRs over N lines are rejected." Around 500 lines is where a maintainer will start expecting justification for the size; the larger the PR gets from there, the stronger that justification needs to be. There is no hard upper limit and no automatic rejection.
 
-The reason this matters is review surface, not commit count. A 1500-line PR composed of fifteen clean 100-line atomic commits is fine — it gets reviewed one commit at a time, and large changes become tractable that way. A 600-line PR squashed into one commit, or split across commits that cross-cut concerns, is not, regardless of total size. If your change exceeds 500 lines and the commits are not atomic, the path is to rebase the branch into atomic commits before requesting review, not to push a maintainer to read it as-is.
+Automated refactors — large mechanical changes from a tool, where the volume is in the tool's output rather than human decisions — are scored on the human-decision portion, not the line count. A 4000-line rename pass with a tight commit message is not a 4000-line review.
+
+The reason size matters at all is review surface, not commit count. A 1500-line PR composed of fifteen clean 100-line atomic commits is reviewable — one decision at a time, and large changes become tractable that way. A 600-line PR squashed into one commit, or split across commits that cross-cut concerns, is not, regardless of total size. If your change is large *and* the commits are not atomic, the path is to rebase the branch into atomic commits before requesting review. "It's all related" is not strong justification. "Splitting introduces a non-buildable intermediate state" might be, depending on the case.
 
 ## Adding a new ADR
 
