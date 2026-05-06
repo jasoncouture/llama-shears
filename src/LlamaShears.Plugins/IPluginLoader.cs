@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace LlamaShears.Core.Plugin.Core;
+namespace LlamaShears.Plugins;
 
 /// <summary>
 /// Assembly-level entry point for plugin discovery. A plugin assembly

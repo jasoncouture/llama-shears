@@ -1,6 +1,6 @@
-# LlamaShears.Core.Plugin.Core.IPluginLoader
+# LlamaShears.Plugins.IPluginLoader
 
-Assembly: `LlamaShears.Core.Plugin.Core`
+Assembly: `LlamaShears.Plugins`
 
 Assembly-level entry point for plugin discovery. A plugin assembly
 declares one type implementing this contract; the host's loader

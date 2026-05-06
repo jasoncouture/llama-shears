@@ -1,4 +1,4 @@
-# LlamaShears.Core.Plugin.Core
+# LlamaShears.Plugins
 
 ## Types
 

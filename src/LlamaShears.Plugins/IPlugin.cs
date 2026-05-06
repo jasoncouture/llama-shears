@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace LlamaShears.Core.Plugin.Core;
+namespace LlamaShears.Plugins;
 
 /// <summary>
 /// Contract every plugin exposes. Instances are produced by the

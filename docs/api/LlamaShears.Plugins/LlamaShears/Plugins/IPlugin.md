@@ -1,6 +1,6 @@
-# LlamaShears.Core.Plugin.Core.IPlugin
+# LlamaShears.Plugins.IPlugin
 
-Assembly: `LlamaShears.Core.Plugin.Core`
+Assembly: `LlamaShears.Plugins`
 
 Contract every plugin exposes. Instances are produced by the
 assembly's [IPluginLoader](IPluginLoader.md) and threaded through the
