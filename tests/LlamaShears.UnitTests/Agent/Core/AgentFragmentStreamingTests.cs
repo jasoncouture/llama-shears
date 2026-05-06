@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
+using LlamaShears.Core.Eventing;
 using LlamaShears.Core.SystemPrompt;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,8 +20,8 @@ public sealed class AgentFragmentStreamingTests
     public async Task TextFragmentsArePublishedPerChunkWithAFinalMarker()
     {
         await using var provider = BuildServices();
-        var tickPublisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var ticks = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+        var tickPublisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var fragmentSubscriber = provider.GetRequiredService<IAsyncSubscriber<AgentFragmentEmitted>>();
 
@@ -49,7 +50,7 @@ public sealed class AgentFragmentStreamingTests
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
-            ticks: ticks,
+            bus: bus,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
@@ -58,7 +59,10 @@ public sealed class AgentFragmentStreamingTests
             fragments: fragmentPublisher,
             eventPublisher: Substitute.For<IEventPublisher>());
 
-        await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
+        await tickPublisher.PublishAsync(
+            Event.WellKnown.Host.Tick,
+            new SystemTick(DateTimeOffset.UtcNow),
+            CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
         IReadOnlyList<AgentFragmentEmitted> snapshot;
@@ -82,8 +86,8 @@ public sealed class AgentFragmentStreamingTests
     public async Task ThoughtAndTextStreamsUseDistinctStreamIds()
     {
         await using var provider = BuildServices();
-        var tickPublisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var ticks = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+        var tickPublisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var fragmentSubscriber = provider.GetRequiredService<IAsyncSubscriber<AgentFragmentEmitted>>();
 
@@ -112,7 +116,7 @@ public sealed class AgentFragmentStreamingTests
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
-            ticks: ticks,
+            bus: bus,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
@@ -121,7 +125,10 @@ public sealed class AgentFragmentStreamingTests
             fragments: fragmentPublisher,
             eventPublisher: Substitute.For<IEventPublisher>());
 
-        await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
+        await tickPublisher.PublishAsync(
+            Event.WellKnown.Host.Tick,
+            new SystemTick(DateTimeOffset.UtcNow),
+            CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
         IReadOnlyList<AgentFragmentEmitted> snapshot;
@@ -141,8 +148,8 @@ public sealed class AgentFragmentStreamingTests
     public async Task StreamsThatProducedNoFragmentsEmitNoFinalMarker()
     {
         await using var provider = BuildServices();
-        var tickPublisher = provider.GetRequiredService<IAsyncPublisher<SystemTick>>();
-        var ticks = provider.GetRequiredService<IAsyncSubscriber<SystemTick>>();
+        var tickPublisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
         var fragmentPublisher = provider.GetRequiredService<IAsyncPublisher<AgentFragmentEmitted>>();
         var fragmentSubscriber = provider.GetRequiredService<IAsyncSubscriber<AgentFragmentEmitted>>();
 
@@ -172,7 +179,7 @@ public sealed class AgentFragmentStreamingTests
             inputChannels: [seed],
             outputChannels: [captureChannel],
             loggerFactory: NullLoggerFactory.Instance,
-            ticks: ticks,
+            bus: bus,
             systemPromptProvider: new HardcodedSystemPromptProvider(TimeProvider.System),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
@@ -181,7 +188,10 @@ public sealed class AgentFragmentStreamingTests
             fragments: fragmentPublisher,
             eventPublisher: Substitute.For<IEventPublisher>());
 
-        await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
+        await tickPublisher.PublishAsync(
+            Event.WellKnown.Host.Tick,
+            new SystemTick(DateTimeOffset.UtcNow),
+            CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
         IReadOnlyList<AgentFragmentEmitted> snapshot;
@@ -196,7 +206,8 @@ public sealed class AgentFragmentStreamingTests
     private static ServiceProvider BuildServices()
     {
         var services = new ServiceCollection();
-        services.AddMessagePipe();
+        services.AddLogging();
+        services.AddEventingFramework();
         return services.BuildServiceProvider();
     }
 

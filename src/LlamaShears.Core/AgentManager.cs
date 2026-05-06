@@ -1,17 +1,17 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
 using LlamaShears.Hosting;
-using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IDisposable
+public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEventHandler<SystemTick>, IDisposable
 {
-    private readonly IAsyncSubscriber<SystemTick> _ticks;
+    private readonly IEventBus _bus;
     private readonly IEnumerable<IProviderFactory> _providers;
     private readonly IAgentConfigProvider _configs;
     private readonly ILoggerFactory _loggerFactory;
@@ -23,14 +23,14 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IDis
     private int _reconciling;
 
     public AgentManager(
-        IAsyncSubscriber<SystemTick> ticks,
+        IEventBus bus,
         IEnumerable<IProviderFactory> providers,
         IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
         IContextStore contextStore,
         IServiceProvider services)
     {
-        _ticks = ticks;
+        _bus = bus;
         _providers = providers;
         _configs = configs;
         _loggerFactory = loggerFactory;
@@ -50,7 +50,10 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IDis
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
-        _subscription = _ticks.Subscribe(OnTickAsync);
+        _subscription = _bus.Subscribe<SystemTick>(
+            Event.WellKnown.Host.Tick,
+            EventDeliveryMode.FireAndForget,
+            this);
         return ValueTask.CompletedTask;
     }
 
@@ -65,7 +68,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IDis
         }
     }
 
-    private async ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
+    public async ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
     {
         // Skip if a previous tick is still reconciling. Disk I/O on a
         // 30s tick should never overlap, but a slow filesystem could

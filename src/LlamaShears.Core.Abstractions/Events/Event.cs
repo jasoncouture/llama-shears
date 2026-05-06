@@ -16,6 +16,7 @@ public static class Event
         {
             public static EventType Startup { get; } = new(Sources.Host, "startup");
             public static EventType Shutdown { get; } = new(Sources.Host, "shutdown");
+            public static EventType Tick { get; } = new(Sources.Host, "tick");
         }
         public static class Agent
         {

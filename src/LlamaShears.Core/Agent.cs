@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisposable
+public sealed partial class Agent : IAgent, IEventHandler<SystemTick>, IEventHandler<ChannelMessage>, IDisposable
 {
     private readonly ILanguageModel _model;
     private readonly ILogger _logger;
@@ -44,7 +44,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         IReadOnlyList<IInputChannel> inputChannels,
         IReadOnlyList<IOutputChannel> outputChannels,
         ILoggerFactory loggerFactory,
-        IAsyncSubscriber<SystemTick> ticks,
+        IEventBus bus,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
         IContextCompactor compactor,
@@ -75,7 +75,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             SingleReader = true,
         });
         _shutdown = new CancellationTokenSource();
-        _subscription = ticks.Subscribe(OnTickAsync);
+        _subscription = bus.Subscribe<SystemTick>(
+            Event.WellKnown.Host.Tick,
+            EventDeliveryMode.FireAndForget,
+            this);
         _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
         _inputWaiters = [.. inputChannels.Select(c => Task.Run(() => WatchInputAsync(c, _shutdown.Token)))];
     }
@@ -106,8 +109,13 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         }
     }
 
-    private ValueTask OnTickAsync(SystemTick tick, CancellationToken cancellationToken)
+    public ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
     {
+        var tick = envelope.Data;
+        if (tick is null)
+        {
+            return ValueTask.CompletedTask;
+        }
         if (_lastHeartbeatAt != default && tick.At - _lastHeartbeatAt < _heartbeatPeriod)
         {
             return ValueTask.CompletedTask;
