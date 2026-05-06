@@ -15,7 +15,8 @@ public static class ModelContextProtocolServiceCollectionExtensions
 
         services.AddMcpServer()
             .WithHttpTransport()
-            .WithTools<WhoamiTool>();
+            .WithTools<WhoamiTool>()
+            .WithTools<RandomNumberTool>();
 
         return services;
     }
