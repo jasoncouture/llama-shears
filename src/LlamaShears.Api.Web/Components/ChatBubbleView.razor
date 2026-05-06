@@ -1,6 +1,6 @@
 @using LlamaShears.Api.Web.Services
 
-<article class="bubble bubble-@KindClass">
+<article class="bubble bubble-@KindClass @(Bubble.IsStreaming ? "bubble-pulse" : null)">
     <header class="bubble-header">
         <span class="bubble-kind">@Bubble.Kind</span>
         <time datetime="@Bubble.At.ToString("O")">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>

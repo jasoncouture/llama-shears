@@ -1,4 +1,7 @@
 .messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     overflow-y: auto;
     padding: 1rem 1.25rem;
     min-height: 0;

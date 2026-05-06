@@ -1,9 +1,10 @@
 .bubble {
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
-    margin: 0.5rem 0;
     border: 1px solid var(--bubble-border);
     background: var(--bubble-bg);
+    max-width: min(80%, 65ch);
+    align-self: flex-start;
 }
 
 .bubble-header {
@@ -27,16 +28,19 @@
     font-family: inherit;
     font-size: 1rem;
     line-height: 1.55;
+    text-align: left;
 }
 
 .bubble-user {
     background: var(--bubble-user-bg);
     border-color: var(--bubble-user-border);
+    align-self: flex-end;
 }
 
 .bubble-assistant {
     background: var(--bubble-bg);
     border-color: var(--bubble-border);
+    align-self: flex-start;
 }
 
 .bubble-thought {
@@ -44,9 +48,31 @@
     border-color: var(--bubble-thought-border);
     color: var(--bubble-thought-text);
     font-size: 0.9rem;
+    align-self: flex-start;
 }
 
 .bubble-streaming {
     color: var(--text-subtle);
     font-style: italic;
+}
+
+@keyframes bubble-pulse {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 var(--primary-ring);
+    }
+    50% {
+        opacity: 0.78;
+        box-shadow: 0 0 0 4px var(--primary-ring);
+    }
+}
+
+.bubble-pulse {
+    animation: bubble-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bubble-pulse {
+        animation: none;
+    }
 }
