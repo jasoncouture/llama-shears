@@ -2,7 +2,7 @@
     display: grid;
     grid-template-rows: 1fr auto;
     height: 100%;
-    padding: 1rem;
+    padding: 0 0 1rem;
     gap: 1rem;
 }
 
@@ -10,7 +10,6 @@
     display: grid;
     grid-template-rows: auto 1fr;
     background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: 0 0 var(--radius-md) var(--radius-md);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
