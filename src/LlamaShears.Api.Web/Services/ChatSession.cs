@@ -447,10 +447,27 @@ public sealed class ChatSession :
     {
         // Live turn-arrival is the source of truth for Assistant/Thought;
         // for history backfill we additionally render User turns so the
-        // user sees their side of the prior conversation. System,
-        // framework-injected, and Tool turns stay hidden — they're prompt
-        // plumbing, not chat content. Tool calls and results have their
-        // own event channels for any future UI rendering.
+        // user sees their side of the prior conversation, and Tool turns
+        // so prior tool activity replays as result bubbles. System and
+        // framework-injected turns stay hidden — they're prompt plumbing,
+        // not chat content.
+        if (turn.Role == ModelRole.Tool)
+        {
+            // Older persisted Tool turns may pre-date the ToolCall field;
+            // skip those rather than render a bubble with no header
+            // anchor.
+            if (turn.ToolCall is not { } persistedCall)
+            {
+                return null;
+            }
+            var view = new ToolCallView(
+                persistedCall.Source,
+                persistedCall.Name,
+                persistedCall.ArgumentsJson,
+                persistedCall.CallId ?? string.Empty);
+            return ChatBubble.ToolResult(view, turn.Content, turn.IsError, turn.Timestamp);
+        }
+
         var kind = turn.Role switch
         {
             ModelRole.User => ChatBubbleKind.User,
@@ -463,7 +480,8 @@ public sealed class ChatSession :
             // Empty-content assistant turns are real: a model that
             // responds with only tool calls leaves Content empty and
             // ToolCalls populated. The bubble would be a blank rectangle;
-            // skip it.
+            // skip it. The companion Tool turn carries the user-visible
+            // outcome.
             return null;
         }
         return new ChatBubble(kind.Value, turn.Content, turn.Timestamp);
