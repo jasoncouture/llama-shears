@@ -58,6 +58,64 @@ public sealed class ContextPersistenceTests
     }
 
     [Test]
+    public async Task SlashClearCommandFromChatSessionEmptiesPersistedContext()
+    {
+        await using var factory = new IsolatedAppFactory();
+        factory.SeedAgent(AgentId, """
+            { "model": { "id": "TEST/dummy" } }
+            """);
+        using var client = factory.CreateClient();
+        await factory.WaitForAgentAsync(AgentId);
+        await SendUserMessageAndWaitForReplyAsync(factory, "hello");
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var session = scope.ServiceProvider.GetRequiredService<ChatSession>();
+        await session.SelectAgentAsync(AgentId, CancellationToken.None);
+        await session.SendAsync("/clear", CancellationToken.None);
+
+        var contextPath = ContextPathFor(factory, AgentId);
+        var folder = Path.Combine(factory.DataRoot, "context", AgentId);
+
+        await Assert.That(File.Exists(contextPath)).IsFalse();
+        await Assert.That(Directory.Exists(folder)).IsTrue();
+        await Assert.That(session.Bubbles.Count).IsEqualTo(0);
+
+        var store = factory.Services.GetRequiredService<IContextStore>();
+        var liveContext = await store.OpenAsync(AgentId, CancellationToken.None);
+        await Assert.That(liveContext.Turns.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task SlashArchiveCommandFromChatSessionMovesContextToArchive()
+    {
+        await using var factory = new IsolatedAppFactory();
+        factory.SeedAgent(AgentId, """
+            { "model": { "id": "TEST/dummy" } }
+            """);
+        using var client = factory.CreateClient();
+        await factory.WaitForAgentAsync(AgentId);
+        await SendUserMessageAndWaitForReplyAsync(factory, "hello");
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var session = scope.ServiceProvider.GetRequiredService<ChatSession>();
+        await session.SelectAgentAsync(AgentId, CancellationToken.None);
+        await session.SendAsync("/archive", CancellationToken.None);
+
+        var folder = Path.Combine(factory.DataRoot, "context", AgentId);
+        var contextPath = ContextPathFor(factory, AgentId);
+
+        await Assert.That(File.Exists(contextPath)).IsFalse();
+
+        var archives = Directory.EnumerateFiles(folder, "*.json")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(name => name != "current")
+            .Where(name => long.TryParse(name, out _))
+            .ToList();
+        await Assert.That(archives).IsNotEmpty();
+        await Assert.That(session.Bubbles.Count).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task ExternalClearWithArchiveLeavesAgentFolderAndEmptiesAgentContext()
     {
         await using var factory = new IsolatedAppFactory();
