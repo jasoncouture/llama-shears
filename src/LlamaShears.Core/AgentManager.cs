@@ -47,6 +47,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         return _loaded.ContainsKey(agentId);
     }
 
+    public IAgent? Get(string agentId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        return _loaded.TryGetValue(agentId, out var slot) ? slot.Agent : null;
+    }
+
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
         _subscription = _bus.Subscribe<SystemTick>(

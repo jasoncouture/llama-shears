@@ -55,6 +55,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         ModelPrompt prompt,
         ILanguageModel model,
         ModelConfiguration configuration,
+        bool force,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prompt);
@@ -71,12 +72,14 @@ public sealed partial class ContextCompactor : IContextCompactor
             return prompt;
         }
 
-        var totalEstimate = agentContext.LanguageModel.ContextWindowTokenCount;
-
-        var predictBudget = ResolvePredictBudget(configuration, window);
-        if (totalEstimate + predictBudget < window)
+        if (!force)
         {
-            return prompt;
+            var totalEstimate = agentContext.LanguageModel.ContextWindowTokenCount;
+            var predictBudget = ResolvePredictBudget(configuration, window);
+            if (totalEstimate + predictBudget < window)
+            {
+                return prompt;
+            }
         }
 
         var lastTurn = prompt.Turns[^1];

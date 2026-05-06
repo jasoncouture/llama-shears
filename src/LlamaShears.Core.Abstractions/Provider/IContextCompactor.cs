@@ -17,12 +17,15 @@ public interface IContextCompactor
     /// is needed (under budget, too few turns, or no context window
     /// known). Otherwise returns a rebuilt prompt; reference equality
     /// with the input is the caller's signal that compaction did or
-    /// did not occur.
+    /// did not occur. Pass <paramref name="force"/> as <see langword="true"/>
+    /// to skip the under-budget guard (eager compaction); the
+    /// min-turn-count and missing-context-length guards still apply.
     /// </summary>
     ValueTask<ModelPrompt> CompactAsync(
         AgentContext agentContext,
         ModelPrompt prompt,
         ILanguageModel model,
         ModelConfiguration configuration,
+        bool force,
         CancellationToken cancellationToken);
 }

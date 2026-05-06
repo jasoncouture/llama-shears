@@ -83,6 +83,24 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         return ValueTask.CompletedTask;
     }
 
+    public async Task RequestCompactionAsync(CancellationToken cancellationToken)
+    {
+        await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var turns = _agentContext.Turns;
+            var systemTurn = new ModelTurn(ModelRole.System, _systemPrompt.Build(Id), _time.GetLocalNow());
+            var prompt = new ModelPrompt([systemTurn, .. turns]);
+            var snapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
+            await _compactor.CompactAsync(snapshot, prompt, _model, _modelConfiguration, force: true, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _processGate.Release();
+        }
+    }
+
     public void Dispose()
     {
         _subscription.Dispose();
@@ -181,7 +199,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         var prompt = new ModelPrompt([systemTurn, .. turns]);
         var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
-        prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, cancellationToken).ConfigureAwait(false);
+        prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
 
         var outcome = await _inferenceRunner.RunAsync(
             eventId: Id,

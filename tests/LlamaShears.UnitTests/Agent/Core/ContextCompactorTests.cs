@@ -27,7 +27,7 @@ public sealed class ContextCompactorTests
         ]);
         var config = new ModelConfiguration("test", ContextLength: 50);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(prompt);
         _ = model.DidNotReceive().PromptAsync(
@@ -42,7 +42,7 @@ public sealed class ContextCompactorTests
         var prompt = LongPromptOver(charsPerTurn: 10_000);
         var config = new ModelConfiguration("test", ContextLength: null);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(prompt);
         _ = model.DidNotReceive().PromptAsync(
@@ -57,7 +57,7 @@ public sealed class ContextCompactorTests
         var prompt = ShortPromptWithFiveTurns();
         var config = new ModelConfiguration("test", ContextLength: 100_000, TokenLimit: 100);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(prompt);
         _ = model.DidNotReceive().PromptAsync(
@@ -72,7 +72,7 @@ public sealed class ContextCompactorTests
         var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration("test", ContextLength: 1_000, TokenLimit: 100);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         await Assert.That(result).IsNotSameReferenceAs(prompt);
         await Assert.That(result.Turns.Count).IsEqualTo(3);
@@ -92,7 +92,7 @@ public sealed class ContextCompactorTests
         var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration("test", ContextLength: 900, TokenLimit: 100);
 
-        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         // Cap = max(window/3, 256) = max(300, 256) = 300.
         _ = model.Received().PromptAsync(
@@ -109,7 +109,7 @@ public sealed class ContextCompactorTests
         var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration("test", ContextLength: 600, TokenLimit: 100);
 
-        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         // Cap = max(600/3, 256) = max(200, 256) = 256.
         _ = model.Received().PromptAsync(
@@ -126,7 +126,7 @@ public sealed class ContextCompactorTests
         var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration("test", ContextLength: 1_000, TokenLimit: 100);
 
-        await Assert.That(async () => await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None))
+        await Assert.That(async () => await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None))
             .Throws<CompactionFailedException>();
     }
 
@@ -146,7 +146,7 @@ public sealed class ContextCompactorTests
         var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration("test", ContextLength: 1_000, TokenLimit: 100);
 
-        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, CancellationToken.None);
+        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
         await Assert.That(capturedPrompts.Count).IsEqualTo(1);
         var sent = capturedPrompts[0];
