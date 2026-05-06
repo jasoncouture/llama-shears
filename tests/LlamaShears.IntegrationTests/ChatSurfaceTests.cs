@@ -6,12 +6,12 @@ namespace LlamaShears.IntegrationTests;
 public sealed class ChatSurfaceTests
 {
     [Test]
-    public async Task GetRootReturns200AndRendersTheChatShell()
+    public async Task GetChatPageReturns200AndRendersTheChatShell()
     {
         await using var factory = new IsolatedAppFactory();
         using var client = factory.CreateClient();
 
-        using var response = await client.GetAsync("/", CancellationToken.None);
+        using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -33,12 +33,12 @@ public sealed class ChatSurfaceTests
     // host csproj. The next two tests guard that fix.
 
     [Test]
-    public async Task RegressionRootHtmlLinksToBlazorWebJsUnderFramework()
+    public async Task RegressionChatPageHtmlLinksToBlazorWebJsUnderFramework()
     {
         await using var factory = new IsolatedAppFactory();
         using var client = factory.CreateClient();
 
-        using var response = await client.GetAsync("/", CancellationToken.None);
+        using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         // `@Assets["_framework/blazor.web.js"]` rewrites to a
@@ -74,7 +74,7 @@ public sealed class ChatSurfaceTests
         await using var factory = new IsolatedAppFactory();
         using var client = factory.CreateClient();
 
-        using var response = await client.GetAsync("/", CancellationToken.None);
+        using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(html).Contains("M8 3a5 5 0 1 0 4.546 2.914");
@@ -86,7 +86,7 @@ public sealed class ChatSurfaceTests
         await using var factory = new IsolatedAppFactory();
         using var client = factory.CreateClient();
 
-        using var response = await client.GetAsync("/", CancellationToken.None);
+        using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -106,7 +106,7 @@ public sealed class ChatSurfaceTests
         using var client = factory.CreateClient();
         await factory.WaitForAgentAsync("alpha");
 
-        using var response = await client.GetAsync("/", CancellationToken.None);
+        using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         // The <option> may carry a Blazor scoped-CSS attribute between
@@ -131,7 +131,7 @@ public sealed class ChatSurfaceTests
 
         // The agent never makes it into the manager's loaded set; the
         // build path logs a warning and skips it. Picker stays empty.
-        using var response = await client.GetAsync("/", CancellationToken.None);
+        using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(html).DoesNotContain("ollama-only");
