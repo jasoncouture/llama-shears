@@ -179,6 +179,19 @@ internal static class Descriptors
             "doc comments and would report false 'missing doc' errors on every documented type.",
         customTags: [WellKnownDiagnosticTags.NotConfigurable]);
 
+    public static readonly DiagnosticDescriptor ExplicitDelegateInvocation = new(
+        id: DiagnosticIds.ExplicitDelegateInvocation,
+        title: "Delegate invocation must use '.Invoke'",
+        messageFormat: "Delegate invocation uses direct call syntax; rewrite as '.Invoke(...)' or '?.Invoke(...)'",
+        category: DiagnosticCategories.Style,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description:
+            "ADR-0018: delegates must be invoked via '.Invoke' (or '?.Invoke' for nullable receivers). " +
+            "Direct call syntax makes a delegate identifier visually indistinguishable from a method " +
+            "or local function at the call site; '.Invoke' is the canonical, unambiguous form.",
+        customTags: [WellKnownDiagnosticTags.NotConfigurable]);
+
     public static readonly SuppressionDescriptor SuppressIde0290 = new(
         id: DiagnosticIds.SuppressIde0290,
         suppressedDiagnosticId: "IDE0290",
