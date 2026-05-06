@@ -23,6 +23,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 - **ADR-0016** — [Test method names use PascalCase](0016-test-method-naming.md)
 - **ADR-0017** — [Services come from DI, or via `ActivatorUtilities`](0017-services-come-from-di-or-activatorutilities.md)
 - **ADR-0018** — [Invoke delegates explicitly via `.Invoke`](0018-explicit-delegate-invocation.md) — Analysis ID LS0014
+- **ADR-0019** — [Async methods take a non-optional `CancellationToken`](0019-async-methods-take-non-optional-cancellation-token.md)
 
 ## Superseded
 
