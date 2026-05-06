@@ -83,15 +83,16 @@
 }
 
 .typing-indicator-tooling {
-    border-left: 3px solid var(--primary);
+    border-left: 3px solid #94a3b8;
+    background: rgba(148, 163, 184, 0.08);
 }
 
 .typing-indicator-tooling .typing-indicator-dots span {
-    background: var(--primary);
+    background: #94a3b8;
 }
 
 .typing-indicator-tooling .typing-indicator-label {
-    color: var(--primary);
+    color: #94a3b8;
     opacity: 0.85;
 }
 
