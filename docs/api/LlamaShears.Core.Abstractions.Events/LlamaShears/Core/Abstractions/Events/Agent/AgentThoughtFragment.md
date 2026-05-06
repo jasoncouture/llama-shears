@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Events.Agent.AgentThoughtFragment
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Events`
 
 One streaming chunk of hidden chain-of-thought emitted by a
 thinking-capable model. Surfaced for visibility but never replayed

@@ -2,6 +2,8 @@
 
 ## Namespaces
 
+- [LlamaShears.Core.Abstractions.Events.Agent](Agent/index.md)
+- [LlamaShears.Core.Abstractions.Events.Channel](Channel/index.md)
 - [LlamaShears.Core.Abstractions.Events.Event](Event/index.md)
 
 ## Types

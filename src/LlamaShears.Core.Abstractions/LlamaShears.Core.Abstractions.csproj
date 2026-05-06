@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <PackageType>Dependency</PackageType>
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <ItemGroup>

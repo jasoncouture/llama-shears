@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Events.Agent.AgentMessageBase
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Events`
 
 Common shape for agent-emitted message and thought fragments
 flowing through the event bus. Concrete subtypes

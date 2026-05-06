@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Events.Agent.AgentToolResultFragment
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Events`
 
 Event-bus payload describing the outcome of a single tool call.
 Pairs with [AgentToolCallFragment](AgentToolCallFragment.md) via

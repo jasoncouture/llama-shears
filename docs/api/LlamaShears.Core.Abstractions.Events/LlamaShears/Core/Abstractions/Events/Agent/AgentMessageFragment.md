@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Events.Agent.AgentMessageFragment
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Events`
 
 One streaming chunk of agent-visible text emitted as the model
 produces its response. Subscribers concatenate fragments in

@@ -7,4 +7,8 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
+  </ItemGroup>
+
 </Project>

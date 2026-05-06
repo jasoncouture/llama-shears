@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Events.Channel.ChannelMessage
 
-Assembly: `LlamaShears.Core.Abstractions`
+Assembly: `LlamaShears.Core.Abstractions.Events`
 
 One message inbound on a chat channel. Routed onto the event bus so
 the agent loop, UI, and any audit subscribers see the same payload.
