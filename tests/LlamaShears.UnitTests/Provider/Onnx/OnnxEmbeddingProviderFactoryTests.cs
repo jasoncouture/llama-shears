@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Provider.Onnx.Embeddings;
 using Microsoft.Extensions.Options;
@@ -18,57 +19,79 @@ public sealed class OnnxEmbeddingProviderFactoryTests
     }
 
     [Test]
-    public async Task AbsoluteModelPathIsRejected()
+    public async Task AbsoluteModelIdIsRejected()
     {
         using var fixture = OnnxFactoryFixture.Create(opts =>
         {
-            opts.Models["abs"] = new OnnxModelOptions
-            {
-                ModelPath = Path.Combine(Path.GetTempPath(), "model.onnx"),
-                VocabPath = "vocab.txt",
-            };
+            opts.Models[Path.Combine(Path.GetTempPath(), "abs")] = new OnnxModelOptions();
         });
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration("abs")));
+            fixture.Factory.CreateModel(new ModelConfiguration(Path.Combine(Path.GetTempPath(), "abs"))));
 
         await Assert.That(ex.Message).Contains("absolute");
     }
 
     [Test]
-    public async Task PathEscapingModelsRootIsRejected()
+    public async Task ModelIdEscapingModelsRootIsRejected()
     {
         using var fixture = OnnxFactoryFixture.Create(opts =>
         {
-            opts.Models["escape"] = new OnnxModelOptions
-            {
-                ModelPath = Path.Combine("..", "..", "etc", "passwd"),
-                VocabPath = "vocab.txt",
-            };
+            opts.Models[Path.Combine("..", "..", "etc")] = new OnnxModelOptions();
         });
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration("escape")));
+            fixture.Factory.CreateModel(new ModelConfiguration(Path.Combine("..", "..", "etc"))));
 
-        await Assert.That(ex.Message).Contains("escapes");
+        await Assert.That(ex.Message).Contains("outside");
     }
 
     [Test]
-    public async Task MissingFileGivesClearError()
+    public async Task MissingDirectoryGivesClearError()
     {
         using var fixture = OnnxFactoryFixture.Create(opts =>
         {
-            opts.Models["missing"] = new OnnxModelOptions
-            {
-                ModelPath = "missing-model.onnx",
-                VocabPath = "vocab.txt",
-            };
+            opts.Models["missing"] = new OnnxModelOptions();
         });
 
-        var ex = Assert.Throws<FileNotFoundException>(() =>
+        var ex = Assert.Throws<DirectoryNotFoundException>(() =>
             fixture.Factory.CreateModel(new ModelConfiguration("missing")));
 
-        await Assert.That(ex.Message).Contains("missing-model.onnx");
+        await Assert.That(ex.Message).Contains("missing");
+    }
+
+    [Test]
+    public async Task MissingOnnxFileGivesClearError()
+    {
+        using var fixture = OnnxFactoryFixture.Create(opts =>
+        {
+            opts.Models["no-onnx"] = new OnnxModelOptions();
+        });
+        var dir = Directory.CreateDirectory(Path.Combine(fixture.Root, "no-onnx")).FullName;
+        await File.WriteAllTextAsync(Path.Combine(dir, "vocab.txt"), "[CLS]\n");
+
+        var ex = Assert.Throws<FileNotFoundException>(() =>
+            fixture.Factory.CreateModel(new ModelConfiguration("no-onnx")));
+
+        await Assert.That(ex.Message).Contains("*.onnx");
+    }
+
+    [Test]
+    public async Task MultipleOnnxFilesGiveClearError()
+    {
+        using var fixture = OnnxFactoryFixture.Create(opts =>
+        {
+            opts.Models["dupes"] = new OnnxModelOptions();
+        });
+        var dir = Directory.CreateDirectory(Path.Combine(fixture.Root, "dupes")).FullName;
+        await File.WriteAllBytesAsync(Path.Combine(dir, "a.onnx"), [0]);
+        await File.WriteAllBytesAsync(Path.Combine(dir, "b.onnx"), [0]);
+        await File.WriteAllTextAsync(Path.Combine(dir, "vocab.txt"), "[CLS]\n");
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            fixture.Factory.CreateModel(new ModelConfiguration("dupes")));
+
+        await Assert.That(ex.Message).Contains("only one");
     }
 
     [Test]
@@ -76,8 +99,8 @@ public sealed class OnnxEmbeddingProviderFactoryTests
     {
         using var fixture = OnnxFactoryFixture.Create(opts =>
         {
-            opts.Models["a"] = new OnnxModelOptions { ModelPath = "a.onnx", VocabPath = "a.txt" };
-            opts.Models["b"] = new OnnxModelOptions { ModelPath = "b.onnx", VocabPath = "b.txt", DisplayName = "Beta" };
+            opts.Models["a"] = new OnnxModelOptions();
+            opts.Models["b"] = new OnnxModelOptions { DisplayName = "Beta" };
         });
 
         var ids = new List<string>();
@@ -102,9 +125,12 @@ public sealed class OnnxEmbeddingProviderFactoryTests
             var opts = new OnnxEmbeddingsProviderOptions { ModelsRoot = root };
             configure?.Invoke(opts);
             var monitor = new StaticOptionsMonitor<OnnxEmbeddingsProviderOptions>(opts);
+            // ModelsRoot is set, so the IShearsPaths fallback is unused
+            // here. A stub that throws on GetPath proves that.
+            var paths = new ThrowingPaths();
             return new OnnxFactoryFixture
             {
-                Factory = new OnnxEmbeddingProviderFactory(monitor),
+                Factory = new OnnxEmbeddingProviderFactory(monitor, paths),
                 Root = root,
             };
         }
@@ -131,5 +157,11 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         public T CurrentValue { get; }
         public T Get(string? name) => CurrentValue;
         public IDisposable? OnChange(Action<T, string?> listener) => null;
+    }
+
+    private sealed class ThrowingPaths : IShearsPaths
+    {
+        public string GetPath(PathKind kind, string? subpath = null, bool ensureExists = false)
+            => throw new InvalidOperationException("IShearsPaths.GetPath should not be reached when ModelsRoot is explicitly set.");
     }
 }

@@ -10,7 +10,9 @@ type: project
 
 **How to apply:**
 
-- **Models live under `~/.llama-shears/models/onnx`** (configurable via `OnnxEmbeddingsProviderOptions.ModelsRoot`). Per-model `ModelPath`/`VocabPath` are *relative* to that root; absolute paths and `..`-escapes are rejected by the factory. Reuse this sandbox shape for any future ONNX provider sub-project.
+- **Models live under `<Data>/models/onnx/embeddings/<name>/`** where `<Data>` comes from `IShearsPaths.GetPath(PathKind.Data)` (default `~/.llama-shears`). The default ModelsRoot is computed at runtime from the paths provider; an explicit `OnnxEmbeddingsProviderOptions.ModelsRoot` overrides it.
+- **Per-model layout is convention, not config.** Each `<name>/` directory must contain *exactly one* `*.onnx` and *exactly one* `*.txt`. The factory auto-discovers both; zero or more-than-one of either is a hard error with a clear message. The dictionary key in `Models` (which is also the agent's `model.id.model`) IS the subdirectory name.
+- The `OnnxModelOptions` config carries only the per-model knobs (`MaxSequenceLength`, `LowerCase`, `Pooling`, `Normalize`, `DisplayName`, `Description`) — never paths.
 - **`BertTokenizer.Create` takes `vocab.txt`, not `tokenizer.json`.** This is non-obvious because HF surfaces `tokenizer.json` as the modern fast-tokenizer artifact. For all-MiniLM-L6-v2, fetch `vocab.txt` from `https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt` alongside `onnx/model.onnx`.
 - **Pooling + normalization are explicit.** Default is mean-pool with attention mask, then L2 normalize (CLS pooling and skipping normalization are config-toggles). Sentence-transformer-style embedders need both; if either is wrong, cosine ranks look plausible but drift.
 - **`token_type_ids` is conditional.** Some ONNX exports require it as a third input, others don't. The provider auto-detects via `InferenceSession.InputMetadata` and supplies an all-zero tensor when needed.
