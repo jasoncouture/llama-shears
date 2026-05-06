@@ -10,4 +10,6 @@ public record ModelTurn(
     string? ChannelId = null) : IContextEntry
 {
     public ImmutableArray<ToolCall> ToolCalls { get; init; } = [];
+
+    public string? ToolName { get; init; }
 }

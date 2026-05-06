@@ -299,7 +299,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
             var toolTurn = new ModelTurn(
                 ModelRole.Tool,
                 results[i].Content,
-                _time.GetLocalNow());
+                _time.GetLocalNow())
+            {
+                ToolName = $"{calls[i].Source}__{calls[i].Name}",
+            };
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.Turn with { Id = Id },
                 toolTurn,
