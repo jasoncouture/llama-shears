@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LlamaShears.Provider.Abstractions;
 
 /// <summary>
@@ -28,6 +30,7 @@ namespace LlamaShears.Provider.Abstractions;
 ///   resubmitted as part of the prompt.</item>
 /// </list>
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ModelRole>))]
 public enum ModelRole
 {
     System,
