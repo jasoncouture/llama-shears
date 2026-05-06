@@ -85,7 +85,9 @@ public sealed class XmlDocsToMarkdownTask : Task
             byRelativePath[ToRelativeMarkdownPath(pair.Key)] = (pair.Key, pair.Value);
         }
 
-        ClearStaleMarkdown(OutputDirectory, byRelativePath.Keys);
+        var indexRelativePath = "index.md";
+        var keepPaths = new HashSet<string>(byRelativePath.Keys, StringComparer.Ordinal) { indexRelativePath };
+        ClearStaleMarkdown(OutputDirectory, keepPaths);
 
         var writtenTypes = new HashSet<string>(byType.Keys, StringComparer.Ordinal);
         var written = 0;
@@ -104,8 +106,14 @@ public sealed class XmlDocsToMarkdownTask : Task
             written++;
         }
 
+        var indexContent = AssemblyIndexRenderer.Render(AssemblyName, byType.Keys);
+        File.WriteAllText(
+            Path.Combine(OutputDirectory, indexRelativePath),
+            indexContent,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
         Log.LogMessage(MessageImportance.Normal,
-            "XmlDocsToMarkdownTask: wrote {0} markdown file(s) to '{1}' for assembly '{2}'.",
+            "XmlDocsToMarkdownTask: wrote {0} type page(s) plus index to '{1}' for assembly '{2}'.",
             written, OutputDirectory, AssemblyName);
         return true;
     }
