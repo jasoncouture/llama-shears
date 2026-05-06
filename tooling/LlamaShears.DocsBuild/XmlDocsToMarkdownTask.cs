@@ -85,11 +85,17 @@ public sealed class XmlDocsToMarkdownTask : Task
             byRelativePath[ToRelativeMarkdownPath(pair.Key)] = (pair.Key, pair.Value);
         }
 
-        var indexRelativePath = "index.md";
-        var keepPaths = new HashSet<string>(byRelativePath.Keys, StringComparer.Ordinal) { indexRelativePath };
+        var writtenTypes = new HashSet<string>(byType.Keys, StringComparer.Ordinal);
+        var namespaceIndexes = NamespaceIndexRenderer.RenderAll(byType, filter, writtenTypes);
+
+        var assemblyIndexRelativePath = "index.md";
+        var keepPaths = new HashSet<string>(byRelativePath.Keys, StringComparer.Ordinal) { assemblyIndexRelativePath };
+        foreach (var nsIndex in namespaceIndexes.Keys)
+        {
+            keepPaths.Add(nsIndex);
+        }
         ClearStaleMarkdown(OutputDirectory, keepPaths);
 
-        var writtenTypes = new HashSet<string>(byType.Keys, StringComparer.Ordinal);
         var written = 0;
         foreach (var pair in byRelativePath)
         {
@@ -108,14 +114,54 @@ public sealed class XmlDocsToMarkdownTask : Task
 
         var indexContent = AssemblyIndexRenderer.Render(AssemblyName, byType.Keys);
         File.WriteAllText(
-            Path.Combine(OutputDirectory, indexRelativePath),
+            Path.Combine(OutputDirectory, assemblyIndexRelativePath),
             indexContent,
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
+        foreach (var nsIndex in namespaceIndexes)
+        {
+            var path = Path.Combine(OutputDirectory, nsIndex.Key.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, nsIndex.Value, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+
+        WriteApiRootIndex();
+
         Log.LogMessage(MessageImportance.Normal,
-            "XmlDocsToMarkdownTask: wrote {0} type page(s) plus index to '{1}' for assembly '{2}'.",
-            written, OutputDirectory, AssemblyName);
+            "XmlDocsToMarkdownTask: wrote {0} type page(s), {1} namespace index page(s), and the assembly index to '{2}' for '{3}'.",
+            written, namespaceIndexes.Count, OutputDirectory, AssemblyName);
         return true;
+    }
+
+    private void WriteApiRootIndex()
+    {
+        var apiRoot = Path.GetDirectoryName(OutputDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.IsNullOrEmpty(apiRoot) || !Directory.Exists(apiRoot))
+        {
+            return;
+        }
+
+        var assemblyEntries = Directory.EnumerateDirectories(apiRoot)
+            .Where(static dir => File.Exists(Path.Combine(dir, "index.md")))
+            .Select(static dir => Path.GetFileName(dir))
+            .Where(static name => !string.IsNullOrEmpty(name))
+            .OrderBy(static name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var output = new StringBuilder();
+        output.AppendLine("# API Reference");
+        output.AppendLine();
+        output.AppendLine("Generated from XML doc comments. One entry per shipped assembly.");
+        output.AppendLine();
+        foreach (var name in assemblyEntries)
+        {
+            output.Append("- [").Append(name).Append("](").Append(name).AppendLine("/index.md)");
+        }
+
+        File.WriteAllText(
+            Path.Combine(apiRoot, "index.md"),
+            output.ToString(),
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
     private static string ToRelativeMarkdownPath(string typeFqn)
