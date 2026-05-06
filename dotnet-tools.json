@@ -8,13 +8,6 @@
         "husky"
       ],
       "rollForward": false
-    },
-    "xmldoc2markdown": {
-      "version": "5.0.0",
-      "commands": [
-        "xmldoc2md"
-      ],
-      "rollForward": false
     }
   }
 }
