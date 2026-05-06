@@ -77,6 +77,26 @@ This means an agent's workspace is, by default, a snapshot of whatever the opera
 
 The marker is the difference between *empty because nobody has filled it yet* and *empty because someone deliberately cleared it*. Without the marker, every clear-out would be re-seeded on the next boot, defeating the operator's intent.
 
+## Long-term memory and RAG
+
+`memories/**/*.md` is the long-term memory tree. The markdown files on disk are the **source of truth**; the vector index that backs RAG retrieval is a derived, secondary artifact.
+
+The model:
+
+- When the agent (or the framework on its behalf) writes a memory file under `memories/`, the framework derives a vector from the file's contents and adds it to the vector store with the file path as the key.
+- When the agent retrieves memories, the framework runs the query against the vector index and gets back a set of hits keyed by file path.
+- For each hit, the framework reads the corresponding file from disk before returning content to the model.
+- A hit whose file is **missing** (the agent deleted it, the disk was edited out-of-band, etc.) is dropped from the result set, noted, and queued for garbage collection of its index entry. The model never sees the orphaned hit.
+- Garbage collection of the vector store is lazy and runs out-of-band; it's not on the retrieval hot path.
+
+**Why this shape:**
+
+- The agent owns its workspace (see *Agent-as-author*). "Delete the file" must be the only thing the agent has to do to forget something — chasing down vector entries by hand would defeat the agent-as-author model.
+- The vector store is allowed to drift behind the filesystem. As long as the framework re-reads on retrieval, drift is invisible to the model.
+- Adds are eager (write triggers indexing); deletes are lazy (retrieval surfaces orphans, GC handles the cleanup later). That asymmetry matches where the cost is: agents query memories often, but rarely inspect their own delete history.
+
+The agent doesn't manage the vector store — it never sees the index, never invokes "reindex," never deals with vectors. From the agent's perspective, `memories/` is just a directory it can read, write, and delete files in.
+
 ## Open items
 
 - **Per-agent workspace location.** Where each agent's workspace lives on disk (relative to `DataRoot` / `WorkspaceRoot` / `AgentsRoot`) is not yet wired. Two natural shapes:
