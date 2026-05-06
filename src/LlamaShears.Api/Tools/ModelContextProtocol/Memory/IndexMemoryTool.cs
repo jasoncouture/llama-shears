@@ -36,13 +36,14 @@ public sealed partial class IndexMemoryTool
         try
         {
             var summary = await _indexer.ReconcileAsync(workspace.AgentId, force, cancellationToken).ConfigureAwait(false);
-            LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed);
+            LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed, summary.Total);
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "Reconciled memory index: {0} added, {1} updated, {2} removed.",
+                "Reconciled memory index: {0} added, {1} updated, {2} removed, {3} total.",
                 summary.Added,
                 summary.Updated,
-                summary.Removed);
+                summary.Removed,
+                summary.Total);
         }
         catch (InvalidOperationException ex)
         {
@@ -51,8 +52,8 @@ public sealed partial class IndexMemoryTool
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' reconciled memory index: +{Added} ~{Updated} -{Removed}.")]
-    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' reconciled memory index: +{Added} ~{Updated} -{Removed}, {Total} total.")]
+    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "index_memory failed for agent '{AgentId}': {Message}")]
     private static partial void LogReconcileFailed(ILogger logger, string agentId, string message, Exception ex);

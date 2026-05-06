@@ -88,12 +88,7 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
             {
                 LogReconcilingAgent(_logger, agentId, force);
                 var summary = await _indexer.ReconcileAsync(agentId, force, cancellationToken).ConfigureAwait(false);
-                // Three lines, even on zero, so a sweep that touched
-                // nothing is still observable in the log instead of
-                // looking like a no-op crash.
-                LogReconciledAdded(_logger, agentId, summary.Added);
-                LogReconciledUpdated(_logger, agentId, summary.Updated);
-                LogReconciledRemoved(_logger, agentId, summary.Removed);
+                LogReconciled(_logger, agentId, summary.Added, summary.Updated, summary.Removed, summary.Total);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -117,14 +112,8 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconciling memory index for agent '{AgentId}' (force={Force})…")]
     private static partial void LogReconcilingAgent(ILogger logger, string agentId, bool force);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Added} added.")]
-    private static partial void LogReconciledAdded(ILogger logger, string agentId, int added);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Updated} updated.")]
-    private static partial void LogReconciledUpdated(ILogger logger, string agentId, int updated);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Removed} removed.")]
-    private static partial void LogReconciledRemoved(ILogger logger, string agentId, int removed);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Added} added, {Updated} updated, {Removed} removed, {Total} total.")]
+    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory indexer failed to reconcile agent '{AgentId}'.")]
     private static partial void LogReconcileFailed(ILogger logger, string agentId, Exception ex);
