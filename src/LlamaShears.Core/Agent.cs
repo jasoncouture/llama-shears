@@ -23,6 +23,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly Channel<IEventEnvelope<ChannelMessage>> _inbound;
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
+    private readonly SemaphoreSlim _processGate = new(1, 1);
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
@@ -70,6 +71,18 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
     public string Id { get; }
 
+    public DateTimeOffset? LastActivity
+        => _agentContext.Turns is [.., var last] ? last.Timestamp : null;
+
+    public Task LockAsync(CancellationToken cancellationToken)
+        => _processGate.WaitAsync(cancellationToken);
+
+    public ValueTask UnlockAsync()
+    {
+        _processGate.Release();
+        return ValueTask.CompletedTask;
+    }
+
     public void Dispose()
     {
         _subscription.Dispose();
@@ -83,21 +96,21 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         {
         }
         _shutdown.Dispose();
+        _processGate.Dispose();
     }
 
-    public ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
+    public async ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
     {
         var data = envelope.Data;
         if (data is null)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
         if (!string.IsNullOrWhiteSpace(data.AgentId) && !string.Equals(data.AgentId, Id, StringComparison.Ordinal))
         {
-            return ValueTask.CompletedTask;
+            return;
         }
-        _inbound.Writer.TryWrite(envelope);
-        return ValueTask.CompletedTask;
+        await _inbound.Writer.WriteAsync(envelope, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
@@ -128,7 +141,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
 
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
-                await ProcessBatchAsync(batch, correlationId, cancellationToken).ConfigureAwait(false);
+                await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await ProcessBatchAsync(batch, correlationId, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _processGate.Release();
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
