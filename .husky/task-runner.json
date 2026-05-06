@@ -28,6 +28,12 @@
          ],
          "command": "bash",
          "args": [ "-c", "dotnet clean -v quiet && dotnet test", "_", "${staged}" ]
+      },
+      {
+         "name": "docs-api-up-to-date",
+         "group": "pre-push",
+         "command": "bash",
+         "args": [ ".husky/scripts/check-docs-up-to-date.sh" ]
       }
    ]
 }
