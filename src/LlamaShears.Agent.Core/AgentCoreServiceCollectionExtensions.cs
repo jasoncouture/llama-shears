@@ -1,5 +1,7 @@
+using LlamaShears.Hosting;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -22,6 +24,19 @@ public static class AgentCoreServiceCollectionExtensions
             .BindConfiguration(systemTickConfigurationSection);
 
         services.AddHostedService<SystemTickService>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddAgentManager(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddHostStartupTaskRunner();
+        services.TryAddSingleton<AgentManager>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHostStartupTask, AgentManager>(
+                sp => sp.GetRequiredService<AgentManager>()));
 
         return services;
     }
