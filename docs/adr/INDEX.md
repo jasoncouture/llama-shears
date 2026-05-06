@@ -15,6 +15,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 7. [Pit of success](0007-pit-of-success.md)
 8. [No per-model workarounds](0008-no-per-model-workarounds.md)
 9. [Strive for technical purity, where practical](0009-pragmatism-over-technical-purity.md)
+10. [Exception handling requires explicit justification](0010-exception-handling-requires-justification.md)
 
 ## Format
 
