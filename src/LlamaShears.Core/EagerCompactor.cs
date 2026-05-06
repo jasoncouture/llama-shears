@@ -85,16 +85,21 @@ public sealed partial class EagerCompactor : BackgroundService,
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(_scanInterval, _time);
-        try
+        while (!stoppingToken.IsCancellationRequested)
         {
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
+            await ScanAsync(stoppingToken).ConfigureAwait(false);
+            try
             {
-                await ScanAsync(stoppingToken).ConfigureAwait(false);
+                // Task.Delay (vs PeriodicTimer) so the gap is *between*
+                // scans rather than a wall-clock cadence — a scan that
+                // touches many agents and runs long can't pile up ticks
+                // behind it.
+                await Task.Delay(_scanInterval, _time, stoppingToken).ConfigureAwait(false);
             }
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
         }
     }
 
