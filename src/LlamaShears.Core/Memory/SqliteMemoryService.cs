@@ -52,7 +52,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         try
         {
             var hash = ComputeHash(content);
-            var vector = await ctx.Embedding.EmbedAsync(content, cancellationToken).ConfigureAwait(false);
+            var vector = await ctx.Embedding.EmbedAsync(content, EmbeddingPurpose.Document, cancellationToken).ConfigureAwait(false);
             await using var conn = OpenDb(ctx.IndexDbPath);
             EnsureSchema(conn);
             UpsertEntry(conn, relativePath, hash, vector);
@@ -89,7 +89,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
-        var queryVector = await ctx.Embedding.EmbedAsync(query, cancellationToken).ConfigureAwait(false);
+        var queryVector = await ctx.Embedding.EmbedAsync(query, EmbeddingPurpose.Query, cancellationToken).ConfigureAwait(false);
 
         await using var conn = OpenDb(ctx.IndexDbPath);
         EnsureSchema(conn);
@@ -127,7 +127,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         return ranked;
     }
 
-    public async ValueTask<MemoryReconciliation> ReconcileAsync(string agentId, CancellationToken cancellationToken)
+    public async ValueTask<MemoryReconciliation> ReconcileAsync(string agentId, bool force, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
@@ -162,11 +162,13 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 seen.Add(relativePath);
                 var content = await File.ReadAllTextAsync(fullPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
                 var hash = ComputeHash(content);
-                if (indexed.TryGetValue(relativePath, out var existingHash) && string.Equals(existingHash, hash, StringComparison.Ordinal))
+                indexed.TryGetValue(relativePath, out var existingHash);
+                var unchanged = existingHash is not null && string.Equals(existingHash, hash, StringComparison.Ordinal);
+                if (unchanged && !force)
                 {
                     continue;
                 }
-                var vector = await ctx.Embedding.EmbedAsync(content, cancellationToken).ConfigureAwait(false);
+                var vector = await ctx.Embedding.EmbedAsync(content, EmbeddingPurpose.Document, cancellationToken).ConfigureAwait(false);
                 UpsertEntry(conn, relativePath, hash, vector);
                 if (existingHash is null)
                 {

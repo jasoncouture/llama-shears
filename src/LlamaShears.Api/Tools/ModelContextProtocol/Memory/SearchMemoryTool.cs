@@ -13,7 +13,7 @@ public sealed partial class SearchMemoryTool
 {
     private const int DefaultLimit = 10;
     private const int HardMaxLimit = 100;
-    private const double DefaultMinScore = 0.5;
+    private const double DefaultMinScore = 0.35;
 
     private readonly IAgentWorkspaceLocator _workspace;
     private readonly IMemorySearcher _searcher;
@@ -31,7 +31,7 @@ public sealed partial class SearchMemoryTool
     public async Task<string> SearchMemory(
         [Description("Free-text query. Embedded with the agent's configured embedding model and compared by cosine similarity.")] string query,
         [Description("Maximum number of hits to return. Defaults to 10; hard-capped at 100.")] int limit = DefaultLimit,
-        [Description("Minimum cosine similarity (0.0 - 1.0). Hits below this score are dropped. Defaults to 0.5.")] double minScore = DefaultMinScore,
+        [Description("Minimum cosine similarity (0.0 - 1.0). Hits below this score are dropped. Defaults to 0.35 — asymmetric retrieval models cluster relevant matches around 0.4-0.7, so don't raise this above ~0.6 unless you want very tight matches only.")] double minScore = DefaultMinScore,
         CancellationToken cancellationToken = default)
     {
         var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
