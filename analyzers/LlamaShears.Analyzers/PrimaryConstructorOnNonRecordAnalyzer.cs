@@ -19,7 +19,7 @@ namespace LlamaShears.Analyzers;
 public sealed class PrimaryConstructorOnNonRecordAnalyzer : DiagnosticAnalyzer
 {
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        => ImmutableArray.Create(Descriptors.PrimaryConstructorOnNonRecord);
+        => [Descriptors.PrimaryConstructorOnNonRecord];
 
     public override void Initialize(AnalysisContext context)
     {
