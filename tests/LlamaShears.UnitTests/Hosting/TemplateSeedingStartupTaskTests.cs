@@ -6,7 +6,7 @@ namespace LlamaShears.UnitTests.Hosting;
 public sealed class TemplateSeedingStartupTaskTests
 {
     [Test]
-    public async Task SeedIfEmpty_copies_directory_tree_and_writes_keep_when_destination_is_empty()
+    public async Task SeedIfEmptyCopiesDirectoryTreeAndWritesKeepWhenDestinationIsEmpty()
     {
         using var fixture = new SeedingFixture();
 
@@ -22,7 +22,7 @@ public sealed class TemplateSeedingStartupTaskTests
     }
 
     [Test]
-    public async Task SeedIfEmpty_skips_when_destination_contains_only_keep()
+    public async Task SeedIfEmptySkipsWhenDestinationContainsOnlyKeep()
     {
         using var fixture = new SeedingFixture();
 
@@ -36,7 +36,7 @@ public sealed class TemplateSeedingStartupTaskTests
     }
 
     [Test]
-    public async Task SeedIfEmpty_skips_when_destination_already_has_files()
+    public async Task SeedIfEmptySkipsWhenDestinationAlreadyHasFiles()
     {
         using var fixture = new SeedingFixture();
 
@@ -52,7 +52,7 @@ public sealed class TemplateSeedingStartupTaskTests
     }
 
     [Test]
-    public async Task SeedIfEmpty_creates_empty_destination_when_source_missing_but_does_not_throw()
+    public async Task SeedIfEmptyCreatesEmptyDestinationWhenSourceMissingButDoesNotThrow()
     {
         using var fixture = new SeedingFixture(createSource: false);
 
