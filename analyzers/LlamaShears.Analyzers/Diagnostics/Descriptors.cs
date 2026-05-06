@@ -185,4 +185,13 @@ internal static class Descriptors
         justification:
             "LlamaShears policy: primary constructors are forbidden on non-record types. " +
             "The suggestion is replaced by the LS0001 hard-error analyzer, which enforces the inverse rule.");
+
+    public static readonly SuppressionDescriptor SuppressCs1591 = new(
+        id: DiagnosticIds.SuppressCs1591,
+        suppressedDiagnosticId: "CS1591",
+        justification:
+            "ADR-0012: XML doc comments default to absent; concrete public types and members " +
+            "should be self-describing rather than carry redundant doc comments. CS1591 (missing " +
+            "XML comment for publicly visible type or member) contradicts that policy. The " +
+            "missing-doc requirement on public interfaces is enforced by LS0009/LS0011 instead.");
 }
