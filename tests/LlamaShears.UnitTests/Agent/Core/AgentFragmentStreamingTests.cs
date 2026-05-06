@@ -1,6 +1,7 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Events;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Channels;
 using LlamaShears.Core.SystemPrompt;
@@ -54,7 +55,8 @@ public sealed class AgentFragmentStreamingTests
             compactor: BuildNoOpCompactor(),
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(),
-            fragments: fragmentPublisher);
+            fragments: fragmentPublisher,
+            eventPublisher: Substitute.For<IEventPublisher>());
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
@@ -116,7 +118,8 @@ public sealed class AgentFragmentStreamingTests
             compactor: BuildNoOpCompactor(),
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(),
-            fragments: fragmentPublisher);
+            fragments: fragmentPublisher,
+            eventPublisher: Substitute.For<IEventPublisher>());
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
@@ -175,7 +178,8 @@ public sealed class AgentFragmentStreamingTests
             compactor: BuildNoOpCompactor(),
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(),
-            fragments: fragmentPublisher);
+            fragments: fragmentPublisher,
+            eventPublisher: Substitute.For<IEventPublisher>());
 
         await tickPublisher.PublishAsync(new SystemTick(DateTimeOffset.UtcNow), CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
