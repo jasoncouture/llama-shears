@@ -16,7 +16,7 @@ public sealed partial class DeleteFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "delete_file")]
+    [McpServerTool(Name = "file_delete")]
     [Description("Deletes a file or directory inside the agent's workspace. Directories require recursive=true. Deletes inside the protected 'system/' subfolder are refused.")]
     public async Task<string> DeleteFile(
         [Description("Path to delete. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,

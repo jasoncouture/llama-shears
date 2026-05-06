@@ -18,8 +18,6 @@ public static class ModelContextProtocolServiceCollectionExtensions
 
         services.AddMcpServer()
             .WithHttpTransport()
-            .WithTools<WhoamiTool>()
-            .WithTools<RandomNumberTool>()
             .WithTools<ReadFileTool>()
             .WithTools<ListFilesTool>()
             .WithTools<WriteFileTool>()

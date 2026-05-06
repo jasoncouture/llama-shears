@@ -17,7 +17,7 @@ Long-term memory for an agent is a directory of markdown files plus a derived ve
 ```
 
 - Memory files are markdown, written under `memory/YYYY-MM-DD/<unix-seconds>.md`. Same-second collisions get suffixed (`-1`, `-2`, …).
-- The directory layout is the framework's responsibility; agents should call `store_memory` rather than write files by hand. The format is plain text — there's no front-matter or required structure inside the file.
+- The directory layout is the framework's responsibility; agents should call `memory_store` rather than write files by hand. The format is plain text — there's no front-matter or required structure inside the file.
 - The SQLite index lives at `<workspace>/system/.memory.db`. Schema is one table, `memories(path TEXT PRIMARY KEY, hash TEXT NOT NULL, vector BLOB NOT NULL)`. Vectors are stored as raw little-endian `float32`. Cosine similarity is computed in C# at query time — there's no SQLite extension at play yet.
 
 The on-disk shape was chosen so that an agent never has to manage the index. The agent does file operations — write, edit, delete — and the framework reconciles.
@@ -109,11 +109,11 @@ The migration plan is a same-shape replacement: same schema (path, hash, vector)
 
 Three MCP tools live behind the host's own listener (registered in [`ModelContextProtocolServiceCollectionExtensions`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/ModelContextProtocolServiceCollectionExtensions.cs)):
 
-- **`store_memory`** — calls `IMemoryStore.StoreAsync`. Returns the relative path of the new file.
-- **`search_memory`** — calls `IMemorySearcher.SearchAsync`. Returns scored relative paths plus content.
-- **`index_memory`** — calls `IMemoryIndexer.ReconcileAsync(force: true)` for the calling agent. Returns the reconciliation summary (added / updated / removed / total).
+- **`memory_store`** — calls `IMemoryStore.StoreAsync`. Returns the relative path of the new file.
+- **`memory_search`** — calls `IMemorySearcher.SearchAsync`. Returns scored relative paths plus content.
+- **`memory_index`** — calls `IMemoryIndexer.ReconcileAsync(force: true)` for the calling agent. Returns the reconciliation summary (added / updated / removed / total).
 
-`index_memory` exists primarily as an escape hatch for "I edited something out-of-band and don't want to wait for the next reconciliation tick."
+`memory_index` exists primarily as an escape hatch for "I edited something out-of-band and don't want to wait for the next reconciliation tick."
 
 ## What's deliberately not here
 

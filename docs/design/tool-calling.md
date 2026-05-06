@@ -103,7 +103,7 @@ There is no separate "internal tool" path. Tools registered with `services.AddMc
 
 Two facts to coexist:
 
-- A model emits a single tool name string (`name: "read_file"`).
+- A model emits a single tool name string (`name: "file_read"`).
 - The framework needs to know which server the call routes to.
 
 The convention: tool names are reported to the model as `<source>__<name>` (double underscore separator). The provider decodes the prefix when it builds the `ToolCall`:
@@ -197,7 +197,7 @@ A provider is explicitly **not** responsible for:
 
 - [agent-loop.md](agent-loop.md) — the loop that drives this.
 - [mcp.md](mcp.md) — the dispatch and authentication path.
-- [memory.md](memory.md) — the bundled memory tools (`store_memory`, `search_memory`, `index_memory`).
+- [memory.md](memory.md) — the bundled memory tools (`memory_store`, `memory_search`, `memory_index`).
 - [`ToolCall`](../../src/LlamaShears.Core.Abstractions/Provider/ToolCall.cs)
 - [`ModelTurn`](../../src/LlamaShears.Core.Abstractions/Provider/ModelTurn.cs)
 - [`ModelRole`](../../src/LlamaShears.Core.Abstractions/Provider/ModelRole.cs)

@@ -20,7 +20,7 @@ public sealed partial class AppendFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "append_file")]
+    [McpServerTool(Name = "file_append")]
     [Description("Appends content to a file inside the agent's workspace. Creates the file (and any missing parent directories) if it does not exist. Writes into the protected 'system/' subfolder are refused.")]
     public async Task<string> AppendFile(
         [Description("Path to append to. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,

@@ -22,7 +22,7 @@ public sealed partial class RegexReplaceFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "regex_replace_file")]
+    [McpServerTool(Name = "file_regex_replace")]
     [Description("Edits a file in place by applying a .NET regex replacement. Returns the number of replacements made. Files in the protected 'system/' subfolder cannot be edited. Hard-capped to files <= 4 MiB.")]
     public async Task<string> RegexReplaceFile(
         [Description("Path to edit. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,

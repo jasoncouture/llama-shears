@@ -155,7 +155,7 @@ The ephemeral turn is a distinct `ModelRole` for two reasons:
 
 Each is read in full and added to `Files` as `(Name, Content)`. Missing files are silently skipped; the template iterates whatever's present.
 
-The `AdditionalFiles` listing is every other `*.md` in the workspace root that *isn't* in the conventional set. The model gets file names only — it can issue a `read_file` tool call when it actually needs the body. This trades token cost for a discovery hop and lands on the right side of "models are good at deciding what to read; they're terrible at being told to read everything."
+The `AdditionalFiles` listing is every other `*.md` in the workspace root that *isn't* in the conventional set. The model gets file names only — it can issue a `file_read` tool call when it actually needs the body. This trades token cost for a discovery hop and lands on the right side of "models are good at deciding what to read; they're terrible at being told to read everything."
 
 ## Bus events from the renderer
 

@@ -14,8 +14,6 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
 ```csharp
 services.AddMcpServer()
     .WithHttpTransport()
-    .WithTools<WhoamiTool>()
-    .WithTools<RandomNumberTool>()
     .WithTools<ReadFileTool>()
     .WithTools<ListFilesTool>()
     .WithTools<WriteFileTool>()
@@ -28,14 +26,14 @@ services.AddMcpServer()
     .WithTools<IndexMemoryTool>();
 ```
 
+Tool names follow a `<category>_<action>` convention so they group naturally in the model's tool listing:
+
 | Tool | Purpose |
 |------|---------|
-| `whoami` | Echo back the bearer's agent id. Smoke test. |
-| `random_number` | Return a random integer in a range. Smoke test. |
-| `read_file`, `list_files`, `write_file`, `append_file`, `delete_file`, `regex_replace_file`, `grep` | Filesystem operations. Relative paths resolve against the agent's workspace; absolute paths are honored. See *Filesystem tools* below. |
-| `store_memory`, `search_memory`, `index_memory` | Memory operations. See [memory.md](memory.md). |
+| `file_read`, `file_list`, `file_write`, `file_append`, `file_delete`, `file_regex_replace`, `file_grep` | Filesystem operations. Relative paths resolve against the agent's workspace; absolute paths are honored. See *Filesystem tools* below. |
+| `memory_store`, `memory_search`, `memory_index` | Memory operations. See [memory.md](memory.md). |
 
-The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__read_file`, `llamashears__store_memory`, etc.
+The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__file_read`, `llamashears__memory_store`, etc.
 
 ### Filesystem tools
 
@@ -43,7 +41,7 @@ Every filesystem tool resolves through [`IAgentWorkspaceLocator`](../../src/Llam
 
 The current contract is **no sandboxing**. An agent that sends an absolute path can read or write anywhere the host process can reach. This is the security-boundary remark from the project memory: tools enforce access policy in the MCP handler. If you want to lock filesystem tools to the workspace, that's a change to the path resolver in this directory.
 
-`read_file` caps responses at 64 KiB by default (256 KiB hard ceiling). `grep` and `list_files` run within whatever directory the call names. `regex_replace_file` is single-file; `write_file` replaces, `append_file` adds.
+`file_read` caps responses at 64 KiB by default (256 KiB hard ceiling). `file_grep` and `file_list` run within whatever directory the call names. `file_regex_replace` is single-file; `file_write` replaces, `file_append` adds.
 
 ### Bearer authentication
 
