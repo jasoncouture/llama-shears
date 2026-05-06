@@ -184,7 +184,8 @@ public sealed class ContextCompactorTests
             Model: new AgentModelConfig(
                 Id: new ModelIdentity("OLLAMA", config.ModelId),
                 ContextLength: config.ContextLength,
-                TokenLimit: config.TokenLimit));
+                TokenLimit: config.TokenLimit),
+            ModelContextProtocolServers: []);
         return new AgentContext(
             AgentId: "test",
             Now: Now,

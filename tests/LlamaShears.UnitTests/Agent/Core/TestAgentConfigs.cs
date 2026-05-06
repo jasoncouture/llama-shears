@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
@@ -9,6 +10,7 @@ internal static class TestAgentConfigs
     public static AgentConfig WithHeartbeat(TimeSpan heartbeatPeriod, string id = "test") =>
         new(
             Model: new AgentModelConfig(Id: new ModelIdentity("TEST", "stub")),
+            ModelContextProtocolServers: [],
             Id: id)
         {
             HeartbeatPeriod = heartbeatPeriod,

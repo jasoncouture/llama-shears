@@ -1,7 +1,9 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -10,21 +12,23 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
 {
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
+    private const string InternalServerName = "llamashears";
+
     private readonly IShearsPaths _paths;
     private readonly IFileParserCache<AgentConfigProvider> _cache;
     private readonly ILogger<AgentConfigProvider> _logger;
+    private readonly IInternalModelContextProtocolServer _internalMcpServer;
 
     public AgentConfigProvider(
         IShearsPaths paths,
         IFileParserCache<AgentConfigProvider> cache,
-        ILogger<AgentConfigProvider> logger)
+        ILogger<AgentConfigProvider> logger,
+        IInternalModelContextProtocolServer internalMcpServer)
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        ArgumentNullException.ThrowIfNull(cache);
-        ArgumentNullException.ThrowIfNull(logger);
         _paths = paths;
         _cache = cache;
         _logger = logger;
+        _internalMcpServer = internalMcpServer;
     }
 
     public IReadOnlyList<string> ListAgentIds()
@@ -45,11 +49,12 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
         var path = Path.Combine(_paths.GetPath(PathKind.Agents), agentId + ".json");
-        var state = new ParseState(agentId, path, _logger, _paths);
+        var state = new ParseState(agentId, path, _logger);
 
+        AgentConfig? raw;
         try
         {
-            return await _cache.GetOrParseAsync<AgentConfig, ParseState>(
+            raw = await _cache.GetOrParseAsync<AgentConfig, ParseState>(
                 path,
                 state,
                 ParseAsync,
@@ -60,6 +65,24 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
             LogParseFailure(_logger, agentId, path, ex.Message, ex);
             return null;
         }
+
+        return raw is null ? null : Stamp(raw, agentId);
+    }
+
+    private AgentConfig Stamp(AgentConfig raw, string agentId)
+    {
+        var userServers = raw.ModelContextProtocolServers ?? [];
+        var internalUri = _internalMcpServer.Uri;
+        var servers = internalUri is null
+            ? userServers
+            : userServers.SetItem(InternalServerName, internalUri);
+
+        return raw with
+        {
+            Id = agentId,
+            WorkspacePath = ResolveWorkspacePath(raw.WorkspacePath, agentId),
+            ModelContextProtocolServers = servers,
+        };
     }
 
     private static ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
@@ -86,19 +109,15 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
             return ValueTask.FromResult<AgentConfig?>(null);
         }
 
-        return ValueTask.FromResult<AgentConfig?>(config with
-        {
-            Id = state.AgentId,
-            WorkspacePath = ResolveWorkspacePath(config.WorkspacePath, state),
-        });
+        return ValueTask.FromResult<AgentConfig?>(config);
     }
 
-    private static string ResolveWorkspacePath(string? configured, ParseState state)
+    private string ResolveWorkspacePath(string? configured, string agentId)
     {
         string resolved;
         if (string.IsNullOrWhiteSpace(configured))
         {
-            resolved = state.Paths.GetPath(PathKind.Workspace, state.AgentId);
+            resolved = _paths.GetPath(PathKind.Workspace, agentId);
         }
         else if (TryExpandHomeTilde(configured, out var expanded))
         {
@@ -110,7 +129,7 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         }
         else
         {
-            resolved = Path.Combine(state.Paths.GetPath(PathKind.Data), configured);
+            resolved = Path.Combine(_paths.GetPath(PathKind.Data), configured);
         }
 
         Directory.CreateDirectory(resolved);
@@ -154,5 +173,5 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}' from {Path}: empty document")]
     private static partial void LogEmptyConfig(ILogger logger, string agentId, string path);
 
-    private readonly record struct ParseState(string AgentId, string Path, ILogger Logger, IShearsPaths Paths);
+    private readonly record struct ParseState(string AgentId, string Path, ILogger Logger);
 }
