@@ -238,9 +238,13 @@ public partial class OllamaLanguageModel : ILanguageModel
         {
             message.ToolCalls = ToOllamaToolCalls(turn.ToolCalls);
         }
-        if (turn.Role == ModelRole.Tool && !string.IsNullOrEmpty(turn.ToolName))
+        if (turn.Role == ModelRole.Tool && turn.ToolCall is { } resolved)
         {
-            message.ToolName = turn.ToolName;
+            // Provider does its own flattening — the abstraction layer
+            // hands us the (source, name) split and we mirror the same
+            // separator used on the outbound side so chat templates
+            // that surface ToolName see a consistent identifier.
+            message.ToolName = $"{resolved.Source}{ToolNameSeparator}{resolved.Name}";
         }
         return message;
     }

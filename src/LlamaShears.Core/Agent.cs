@@ -301,7 +301,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
                 results[i].Content,
                 _time.GetLocalNow())
             {
-                ToolName = $"{calls[i].Source}__{calls[i].Name}",
+                ToolCall = calls[i],
             };
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.Turn with { Id = Id },
