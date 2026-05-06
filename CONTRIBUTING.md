@@ -62,6 +62,8 @@ A few additional conventions that are not analyzer-enforced:
 
 ## Commit conventions
 
+The two rules below are not stylistic — they exist because they enable PRs to be reviewed *per commit* rather than as one squashed wall of diff. A 600-line PR with six clean atomic commits is reviewable one decision at a time; the same change squashed, or split across cross-cutting commits, is not. This is what makes substantive PRs possible at all in this project (see the size policy under Pull requests below). Treat conventional + atomic commits as the price of admission for any PR larger than trivial.
+
 - [Conventional Commits](https://www.conventionalcommits.org/) for every commit message. The first line carries type/scope/summary; further detail goes in the body.
 - **Atomic commits.** Each commit is one self-contained change. A bug fix is a commit. The refactor that enables the fix is a separate commit. The test for the fix is part of the fix commit, not a follow-up.
 - **Every commit must build.** `dotnet build` and `dotnet test` (the entire suite) must succeed at every commit unless the commit message explicitly notes otherwise.
@@ -75,6 +77,10 @@ If a change is non-trivial:
 - The PR description explains the *why*, not just the *what*. The diff already shows the what.
 - Cross-reference any relevant ADRs or design docs.
 - Verify both `dotnet build` and `dotnet test` are green locally before opening the PR.
+
+**Size policy.** PRs over 500 lines (excluding automated refactors — large mechanical changes from a tool, where the volume is in the tool's output rather than human decisions) will not be reviewed without strong justification for why the change cannot be broken apart. "It's all related" is not strong justification. "Splitting introduces a non-buildable intermediate state" might be, depending on the case.
+
+The reason this matters is review surface, not commit count. A 1500-line PR composed of fifteen clean 100-line atomic commits is fine — it gets reviewed one commit at a time, and large changes become tractable that way. A 600-line PR squashed into one commit, or split across commits that cross-cut concerns, is not, regardless of total size. If your change exceeds 500 lines and the commits are not atomic, the path is to rebase the branch into atomic commits before requesting review, not to push a maintainer to read it as-is.
 
 ## Adding a new ADR
 
