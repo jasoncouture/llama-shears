@@ -82,10 +82,10 @@ public sealed class JsonCronStoreTests
         await Assert.That(jobs).IsEmpty();
     }
 
-    private static JsonCronStore NewStore(TempRoot fixture)
+    private static ICronStore NewStore(TempRoot fixture)
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
-        return new JsonCronStore(paths, Options.Create(new CronOptions()), NullLogger<JsonCronStore>.Instance);
+        IShearsPaths paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        return new JsonCronStore(paths, NullLogger<JsonCronStore>.Instance);
     }
 
     private static CronJob NewJob(string agentId, string name, string expression, string prompt) =>

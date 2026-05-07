@@ -1,9 +1,11 @@
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Cron;
 using LlamaShears.Core.Paths;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using NSubstitute;
 
 namespace LlamaShears.UnitTests.Cron;
 
@@ -137,11 +139,19 @@ public sealed class CronSchedulerTests
 
     private static FakeTimeProvider NewTime(DateTimeOffset start) => new(start);
 
-    private static CronScheduler NewScheduler(TempRoot fixture, FakeTimeProvider? time = null)
+    private static ICronScheduler NewScheduler(TempRoot fixture, FakeTimeProvider? time = null, IAgentManager? agents = null)
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
-        var store = new JsonCronStore(paths, Options.Create(new CronOptions()), NullLogger<JsonCronStore>.Instance);
-        return new CronScheduler(store, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
+        IShearsPaths paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        ICronStore store = new JsonCronStore(paths, NullLogger<JsonCronStore>.Instance);
+        var agentManager = agents ?? AlwaysLoadedAgentManager();
+        return new CronScheduler(store, agentManager, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
+    }
+
+    private static IAgentManager AlwaysLoadedAgentManager()
+    {
+        var manager = Substitute.For<IAgentManager>();
+        manager.Contains(Arg.Any<string>()).Returns(true);
+        return manager;
     }
 
     private sealed class TempRoot : IDisposable
