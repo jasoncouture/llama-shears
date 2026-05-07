@@ -50,6 +50,9 @@ home before they drift. Group by area; trim freely.
   safe).
 - [ ] **Self-restart control.** Restart-the-app button.
 - [ ] **Interrupt in-flight agent.** Cancel an in-flight turn from the UI.
+- [ ] **View archived sessions.** Browse compaction-archived context
+  (`<Context>/<agent>/<unix-ms>.json`) from the UI as read-only history
+  alongside the live conversation.
 - [ ] **Attachment-types discovery.** UI asks the host what kinds of
   attachments it can accept (images today, more later — see "additional
   attachment types" below).
