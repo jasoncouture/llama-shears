@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using StrangeSoft.Plugins.Abstractions;
 
-namespace StrangeSoft.Plugins;
+namespace StrangeSoft.Plugins.Host;
 
 public class PluginContext<T> : IPluginContext<T> where T : class
 {

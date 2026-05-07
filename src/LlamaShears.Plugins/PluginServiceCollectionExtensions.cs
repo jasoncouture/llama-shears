@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using StrangeSoft.Plugins;
+using StrangeSoft.Plugins.Host;
 
 namespace LlamaShears.Plugins;
 

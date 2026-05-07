@@ -1,6 +1,6 @@
-# StrangeSoft.Plugins.IPluginContext<T>
+# StrangeSoft.Plugins.Host.IPluginContext<T>
 
-Assembly: `StrangeSoft.Plugins`
+Assembly: `StrangeSoft.Plugins.Host`
 
 Materialized plugin-loading scope: a per-plugin
 AssemblyLoadContext already

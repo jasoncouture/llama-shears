@@ -1,4 +1,4 @@
-# StrangeSoft.Plugins
+# StrangeSoft.Plugins.Host
 
 ## Types
 

@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\StrangeSoft.Plugins\StrangeSoft.Plugins.csproj" />
+    <ProjectReference Include="..\StrangeSoft.Plugins.Host\StrangeSoft.Plugins.Host.csproj" />
   </ItemGroup>
 
 </Project>

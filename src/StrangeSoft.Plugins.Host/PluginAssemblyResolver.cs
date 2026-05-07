@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace StrangeSoft.Plugins;
+namespace StrangeSoft.Plugins.Host;
 
 internal sealed class PluginAssemblyResolver : IAssemblyResolver
 {

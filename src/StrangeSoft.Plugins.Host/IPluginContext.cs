@@ -1,4 +1,4 @@
-namespace StrangeSoft.Plugins;
+namespace StrangeSoft.Plugins.Host;
 
 /// <summary>
 /// Materialized plugin-loading scope: a per-plugin
