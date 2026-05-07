@@ -27,9 +27,11 @@ home before they drift. Group by area; trim freely.
   - `some.package.nupkg`
 
 ## Agent orchestration & context
-- [ ] **Cron tool.** Lets an agent schedule its own future actions; when the
-  scheduled time fires, the execution runs as the agent against a channel the
-  agent has visibility into.
+- [ ] **Cron tool — agent execution.** The tool surface, scheduler, and
+  JSON store landed in PR #36; firing currently logs a stub instead of
+  driving the agent. Gated on channel see/unsee (#7) — needs a
+  channel-visibility model before "executes against a channel the agent
+  has seen" is meaningful.
 - [ ] **Channel see / unsee.** Grant or revoke an agent's visibility into a
   channel — paired affordances; an agent that can see channels at runtime
   also needs a way to stop seeing one.
@@ -48,8 +50,6 @@ home before they drift. Group by area; trim freely.
 - [ ] **Agent creator/editor.** Build / edit agent JSON from the UI.
 - [ ] **Expose config.** Surface host config in the UI (read/write where
   safe).
-- [ ] **Self-restart control.** Restart-the-app button.
-- [ ] **Interrupt in-flight agent.** Cancel an in-flight turn from the UI.
 - [ ] **View archived sessions.** Browse compaction-archived context
   (`<Context>/<agent>/<unix-ms>.json`) from the UI as read-only history
   alongside the live conversation.
