@@ -94,7 +94,9 @@ public static class CoreServiceCollectionExtensions
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();
-        services.AddHttpClient(ModelContextProtocolToolDiscovery.HttpClientName)
+        services.AddHttpClient(nameof(ModelContextProtocolToolDiscovery))
+            .AddHttpMessageHandler<LoopbackBearerHandler>();
+        services.AddHttpClient(nameof(ModelContextProtocolToolCallDispatcher))
             .AddHttpMessageHandler<LoopbackBearerHandler>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();

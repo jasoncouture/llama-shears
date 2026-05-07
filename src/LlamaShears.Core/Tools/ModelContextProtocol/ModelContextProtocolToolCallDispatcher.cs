@@ -2,18 +2,23 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Caching;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
 namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
-public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDispatcher
+public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDispatcher, IAsyncDisposable
 {
+    private static readonly TimeSpan _connectionIdleTimeout = TimeSpan.FromMinutes(5);
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly ILogger<ModelContextProtocolToolCallDispatcher> _logger;
+    private readonly LifetimeCache<(string Name, Uri Endpoint), McpClient> _connections;
 
     public ModelContextProtocolToolCallDispatcher(
         IHttpClientFactory httpClientFactory,
@@ -24,7 +29,21 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
         _loggerFactory = loggerFactory;
         _serverRegistry = serverRegistry;
         _logger = loggerFactory.CreateLogger<ModelContextProtocolToolCallDispatcher>();
+        _connections = new LifetimeCache<(string, Uri), McpClient>(ConnectAsync, _connectionIdleTimeout);
     }
+
+    private Task<McpClient> ConnectAsync((string Name, Uri Endpoint) key, CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient(nameof(ModelContextProtocolToolCallDispatcher));
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions { Endpoint = key.Endpoint, Name = key.Name },
+            httpClient,
+            _loggerFactory,
+            ownsHttpClient: false);
+        return McpClient.CreateAsync(transport, clientOptions: null, loggerFactory: _loggerFactory, cancellationToken: cancellationToken);
+    }
+
+    public ValueTask DisposeAsync() => _connections.DisposeAsync();
 
     public async ValueTask<ToolCallResult> DispatchAsync(ToolCall call, CancellationToken cancellationToken)
     {
@@ -48,25 +67,10 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
         }
 
         var arguments = DeserializeArguments(call.ArgumentsJson);
-        var httpClient = _httpClientFactory.CreateClient(ModelContextProtocolToolDiscovery.HttpClientName);
 
         try
         {
-            var transport = new HttpClientTransport(
-                new HttpClientTransportOptions
-                {
-                    Endpoint = serverUri,
-                    Name = call.Source,
-                },
-                httpClient,
-                _loggerFactory,
-                ownsHttpClient: false);
-            await using var client = await McpClient.CreateAsync(
-                transport,
-                clientOptions: null,
-                loggerFactory: _loggerFactory,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-
+            var client = await _connections.GetOrCreateAsync((call.Source, serverUri), cancellationToken).ConfigureAwait(false);
             var result = await client.CallToolAsync(
                 call.Name,
                 arguments,

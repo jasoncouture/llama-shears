@@ -1,18 +1,20 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Caching;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Client;
 
 namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
-public sealed partial class ModelContextProtocolToolDiscovery : IModelContextProtocolToolDiscovery
+public sealed partial class ModelContextProtocolToolDiscovery : IModelContextProtocolToolDiscovery, IAsyncDisposable
 {
-    internal const string HttpClientName = "LlamaShears.ModelContextProtocol";
+    private static readonly TimeSpan _connectionIdleTimeout = TimeSpan.FromMinutes(5);
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<ModelContextProtocolToolDiscovery> _logger;
+    private readonly LifetimeCache<(string Name, Uri Endpoint), McpClient> _connections;
 
     public ModelContextProtocolToolDiscovery(
         IHttpClientFactory httpClientFactory,
@@ -21,7 +23,21 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
         _httpClientFactory = httpClientFactory;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<ModelContextProtocolToolDiscovery>();
+        _connections = new LifetimeCache<(string, Uri), McpClient>(ConnectAsync, _connectionIdleTimeout);
     }
+
+    private Task<McpClient> ConnectAsync((string Name, Uri Endpoint) key, CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient(nameof(ModelContextProtocolToolDiscovery));
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions { Endpoint = key.Endpoint, Name = key.Name },
+            httpClient,
+            _loggerFactory,
+            ownsHttpClient: false);
+        return McpClient.CreateAsync(transport, clientOptions: null, loggerFactory: _loggerFactory, cancellationToken: cancellationToken);
+    }
+
+    public ValueTask DisposeAsync() => _connections.DisposeAsync();
 
     public async ValueTask<ImmutableArray<ToolGroup>> DiscoverAsync(
         IReadOnlyDictionary<string, Uri> servers,
@@ -50,25 +66,9 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
         Uri serverUri,
         CancellationToken cancellationToken)
     {
-        // HttpClientFactory pools the underlying handler; the returned
-        // HttpClient is a cheap wrapper and is not disposed here.
-        var httpClient = _httpClientFactory.CreateClient(HttpClientName);
         try
         {
-            var transport = new HttpClientTransport(
-                new HttpClientTransportOptions
-                {
-                    Endpoint = serverUri,
-                    Name = serverName,
-                },
-                httpClient,
-                _loggerFactory,
-                ownsHttpClient: false);
-            await using var client = await McpClient.CreateAsync(
-                transport,
-                clientOptions: null,
-                loggerFactory: _loggerFactory,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+            var client = await _connections.GetOrCreateAsync((serverName, serverUri), cancellationToken).ConfigureAwait(false);
             var tools = await client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             return new ToolGroup(
                 Source: serverName,
