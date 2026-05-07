@@ -10,7 +10,7 @@ public static class SlashCommandsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<ISlashCommandRegistry, SlashCommandRegistry>();
+        services.TryAddScoped<ISlashCommandRegistry, SlashCommandRegistry>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, ClearCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, ArchiveCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, CompactCommand>());

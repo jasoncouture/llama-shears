@@ -14,11 +14,12 @@ using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisposable
+public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyncDisposable
 {
     private readonly AgentConfig _config;
     private readonly ILanguageModel _model;
@@ -41,6 +42,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
     private readonly IPromptContextProvider _promptContext;
     private readonly IMemorySearcher _memorySearcher;
     private readonly ImmutableArray<ToolGroup> _tools;
+    private readonly IServiceProvider _scopedServices;
+    // Boxed reference to the AsyncServiceScope passed at construction.
+    // Held as IAsyncDisposable + interlocked-null on dispose so the
+    // scope teardown can't recurse if a service inside the scope ever
+    // tries to dispose the agent during its own disposal.
+    private IAsyncDisposable? _scope;
 
     // When Memory.Prefetch is enabled, a search task is installed by
     // HandleAsync the moment a ChannelMessage is observed and consumed
@@ -68,6 +75,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         ICurrentAgentAccessor currentAgent,
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
+        AsyncServiceScope scope,
         ImmutableArray<ToolGroup> tools = default)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -89,6 +97,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         _promptContext = promptContext;
         _memorySearcher = memorySearcher;
         _tools = tools.IsDefault ? [] : tools;
+        _scope = scope;
+        _scopedServices = scope.ServiceProvider;
         _inbound = Channel.CreateUnbounded<IEventEnvelope<ChannelMessage>>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -134,21 +144,36 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        // Interlocked-null guards against re-entrant disposal: a service
+        // resolved from this scope that holds a back-reference to the
+        // agent could otherwise drag dispose into a loop on its own
+        // teardown. First disposer wins; subsequent calls observe null
+        // and return immediately.
+        var scope = Interlocked.Exchange(ref _scope, null);
+        if (scope is null)
+        {
+            return;
+        }
+
         _subscription.Dispose();
         _shutdown.Cancel();
         _inbound.Writer.TryComplete();
         try
         {
-            _loop.GetAwaiter().GetResult();
+            await _loop.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
         }
         _shutdown.Dispose();
         _processGate.Dispose();
+
+        await scope.DisposeAsync().ConfigureAwait(false);
     }
+
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
 
     public async ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
     {
@@ -244,6 +269,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IDisp
         Guid correlationId,
         CancellationToken cancellationToken)
     {
+        // Nested per-batch scope: every tool call and inner turn in this
+        // loop sees the same scoped instances, but the next batch starts
+        // fresh. Resolve scoped services from loopScope.ServiceProvider
+        // when they need to land here.
+        await using var loopScope = _scopedServices.CreateAsyncScope();
+
         var userTurn = BuildUserTurn(batch);
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.Turn with { Id = Id },

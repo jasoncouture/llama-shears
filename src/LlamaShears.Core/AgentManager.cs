@@ -27,6 +27,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly ILogger<AgentManager> _logger;
     private readonly IContextStore _contextStore;
     private readonly IServiceProvider _services;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
@@ -46,6 +47,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         ILoggerFactory loggerFactory,
         IContextStore contextStore,
         IServiceProvider services,
+        IServiceScopeFactory scopeFactory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
         IModelContextProtocolToolDiscovery toolDiscovery,
@@ -61,6 +63,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _logger = loggerFactory.CreateLogger<AgentManager>();
         _contextStore = contextStore;
         _services = services;
+        _scopeFactory = scopeFactory;
         _paths = paths;
         _seeder = seeder;
         _toolDiscovery = toolDiscovery;
@@ -315,13 +318,28 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
-        return ActivatorUtilities.CreateInstance<Agent>(
-            _services,
-            config,
-            model,
-            agentContext,
-            modelConfig,
-            tools);
+        // Each agent owns its own DI scope; per-batch nested scopes live
+        // inside the agent's run loop. Pass scope.ServiceProvider to
+        // ActivatorUtilities so the agent's auto-injected dependencies
+        // resolve from this scope, and the AsyncServiceScope itself as
+        // an explicit param so the agent can dispose it on teardown.
+        var scope = _scopeFactory.CreateAsyncScope();
+        try
+        {
+            return ActivatorUtilities.CreateInstance<Agent>(
+                scope.ServiceProvider,
+                config,
+                model,
+                agentContext,
+                modelConfig,
+                scope,
+                tools);
+        }
+        catch
+        {
+            await scope.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
