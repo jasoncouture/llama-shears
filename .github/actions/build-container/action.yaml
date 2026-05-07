@@ -1,0 +1,54 @@
+name: build-container
+description: >-
+  Build a single Docker bake target via docker/bake-action. Optionally
+  pushes to GHCR when `push` is "true". Tag list is computed by
+  docker/metadata-action and merged into the existing docker-bake.hcl
+  via the action's HCL overlay output — no manual `docker buildx bake`
+  invocation, no hand-rolled `--set tags=` plumbing.
+
+inputs:
+  target:
+    description: Bake target name to build.
+    required: true
+  registry:
+    description: 'Registry + namespace prefix, e.g. ghcr.io/owner/repo. The action appends `/<target>` to form the published image name.'
+    required: true
+  version:
+    description: SemVer2 version to tag this build with.
+    required: true
+  push:
+    description: '"true" to push to the registry, "false" to build only.'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@v3
+
+    - id: meta
+      name: Compute image tags for ${{ inputs.target }} @ ${{ inputs.version }}
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ inputs.registry }}/${{ inputs.target }}
+        bake-target: ${{ inputs.target }}
+        flavor: |
+          latest=auto
+        # type=edge automatically picks up defaut branch (main)
+        # type=sha tags with short hash, prefixed with `sha-`
+        tags: |
+          type=raw,value=${{ inputs.version }}
+          type=edge
+          type=sha
+
+    - name: ${{ inputs.push == 'true' && format('Build and push {0} @ {1}', inputs.target, inputs.version) || format('Build {0} @ {1}', inputs.target, inputs.version) }}
+      uses: docker/bake-action@v6
+      with:
+        # v6 defaults to building from the remote git context; force the
+        # local checkout so the metadata-action overlay (a local-fs path
+        # that doesn't exist in the remote git tree) actually resolves.
+        source: .
+        files: |
+          ./docker-bake.hcl
+          ${{ steps.meta.outputs.bake-file }}
+        targets: ${{ inputs.target }}
+        push: ${{ inputs.push == 'true' }}

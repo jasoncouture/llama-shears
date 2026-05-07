@@ -1,0 +1,76 @@
+name: Build/Push Containers
+run-name: "${{ github.event_name == 'pull_request' && format('Building container for PR #{0}', github.event.pull_request.number) || format('Publishing container from {0}', github.ref_name) }}"
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+      version: ${{ steps.nbgv.outputs.SemVer2 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet tool restore
+
+      - id: list
+        name: Enumerate bake targets
+        uses: docker/bake-action/subaction/matrix@v6
+
+      - id: nbgv
+        name: Compute NBGV version
+        uses: dotnet/nbgv@master
+
+  build:
+    name: ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: ${{ github.event_name == 'push' && format('Build and push {0} @ {1}', matrix.target, needs.prepare.outputs.version) || format('Build {0} @ {1}', matrix.target, needs.prepare.outputs.version) }}
+        uses: ./.github/actions/build-container
+        with:
+          target: ${{ matrix.target }}
+          registry: ghcr.io/${{ github.repository }}
+          version: ${{ needs.prepare.outputs.version }}
+          push: ${{ github.event_name == 'push' && 'true' || 'false' }}
