@@ -14,12 +14,8 @@ inputs:
     description: 'Fully qualified image reference, e.g. ghcr.io/owner/repo/service. Used as the metadata-action `images` input.'
     required: true
   version:
-    description: SemVer2 version (sanitised for OCI) to tag this build with.
+    description: SemVer2 version to tag this build with.
     required: true
-  tag-latest:
-    description: '"true" to additionally tag the image with :latest; "false" to skip.'
-    required: false
-    default: 'false'
   push:
     description: '"true" to push to the registry, "false" to build only.'
     required: true
@@ -42,9 +38,14 @@ runs:
       with:
         images: ${{ inputs.image }}
         bake-target: ${{ inputs.target }}
+        flavor: |
+          latest=auto
+        # type=edge automatically picks up defaut branch (main)
+        # type=sha tags with short hash, prefixed with `sha-`
         tags: |
           type=raw,value=${{ inputs.version }}
-          type=raw,value=latest,enable=${{ inputs.tag-latest == 'true' }}
+          type=edge
+          type=sha
 
     - name: ${{ inputs.push == 'true' && format('Build and push {0} @ {1}', inputs.target, inputs.version) || format('Build {0} @ {1}', inputs.target, inputs.version) }}
       uses: docker/bake-action@v6
