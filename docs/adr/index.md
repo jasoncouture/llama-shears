@@ -26,6 +26,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 - **ADR-0019** — [Async methods take a non-optional `CancellationToken`](0019-async-methods-take-non-optional-cancellation-token.md)
 - **ADR-0020** — [Service lifetime defaults to Scoped](0020-default-service-lifetime-is-scoped.md)
 - **ADR-0021** — [Flaky tests are failing tests](0021-flaky-tests-are-failing-tests.md)
+- **ADR-0022** — [Tests wait on the actual signal, never on `Task.Delay`](0022-tests-wait-on-signal-not-time.md)
 
 ## Superseded
 

@@ -16,6 +16,7 @@ runs:
       run: |
         dotnet test \
           --no-restore \
+          --max-parallel-test-modules 1 \
           --coverage \
           --coverage-output-format cobertura \
           --coverage-output coverage.cobertura.xml

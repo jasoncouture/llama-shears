@@ -55,6 +55,8 @@ internal sealed class AgentContext : IAgentContext
 
     public event EventHandler? Cleared;
 
+    public event EventHandler<IContextEntry>? Appended;
+
     public async Task AppendAsync(IContextEntry entry, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -66,6 +68,7 @@ internal sealed class AgentContext : IAgentContext
         {
             _entries.Add(entry);
         }
+        Appended?.Invoke(this, entry);
     }
 
     internal void ClearInMemory()

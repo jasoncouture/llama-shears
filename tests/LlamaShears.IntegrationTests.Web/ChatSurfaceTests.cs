@@ -177,10 +177,11 @@ public sealed class ChatSurfaceTests
 
         using var client = factory.CreateClient();
         await factory.WaitForAgentAsync("alpha");
-        // Give the agent loop a moment to do whatever it does on first
-        // tick. With no user input pending and seed turn removed, the
-        // model must not be invoked.
-        await Task.Delay(150);
+        // Once WaitForAgentAsync has returned the agent is loaded and
+        // its run loop is idle in WaitToReadAsync — no inbound channel
+        // messages, no further ticks delivered before the assertion.
+        // The model's invocation count is the settled post-load value;
+        // there is no pending work to wait on.
 
         await Assert.That(factory.Model.InvocationCount).IsEqualTo(0);
     }

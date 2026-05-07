@@ -151,30 +151,44 @@ public sealed class ContextPersistenceTests
         string content)
     {
         var publisher = factory.Services.GetRequiredService<IEventPublisher>();
-        var bus = factory.Services.GetRequiredService<IEventBus>();
+        var contextStore = factory.Services.GetRequiredService<IContextStore>();
+        var context = await contextStore.OpenAsync(AgentId, CancellationToken.None).ConfigureAwait(false);
 
+        // Wait on the persistence signal — IAgentContext.Appended fires
+        // *after* the entry is committed to both disk and the in-memory
+        // snapshot. Subscribing to the bus's `agent:turn:<id>` event is
+        // not equivalent: the bus uses parallel async dispatch, so the
+        // assistant-turn event can fire while the persister is still
+        // mid-append, leaving directory.GetTurnsAsync racing the writer.
         var done = new TaskCompletionSource<ModelTurn>(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var subscription = bus.Subscribe<ModelTurn>(
-            $"{Event.WellKnown.Agent.Turn}:{AgentId}",
-            EventDeliveryMode.Awaited,
-            (envelope, _) =>
-            {
-                if (envelope.Data is { Role: ModelRole.Assistant } turn)
-                {
-                    done.TrySetResult(turn);
-                }
-                return ValueTask.CompletedTask;
-            });
-
-        await publisher.PublishAsync(
-            Event.WellKnown.Channel.Message with { Id = "test" },
-            new ChannelMessage(content, AgentId, DateTimeOffset.UtcNow),
-            CancellationToken.None);
-
-        var winner = await Task.WhenAny(done.Task, Task.Delay(ResponseTimeout));
-        if (winner != done.Task)
+        EventHandler<IContextEntry> handler = (_, entry) =>
         {
-            throw new TimeoutException($"Agent '{AgentId}' did not reply within {ResponseTimeout}.");
+            if (entry is ModelTurn { Role: ModelRole.Assistant } turn)
+            {
+                done.TrySetResult(turn);
+            }
+        };
+        context.Appended += handler;
+        try
+        {
+            await publisher.PublishAsync(
+                Event.WellKnown.Channel.Message with { Id = "test" },
+                new ChannelMessage(content, AgentId, DateTimeOffset.UtcNow),
+                CancellationToken.None);
+
+            using var cts = new CancellationTokenSource(ResponseTimeout);
+            try
+            {
+                await done.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Agent '{AgentId}' did not reply within {ResponseTimeout}.", ex);
+            }
+        }
+        finally
+        {
+            context.Appended -= handler;
         }
     }
 

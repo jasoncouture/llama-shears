@@ -52,10 +52,14 @@ internal sealed class CapturingTurnSubscriber : IEventHandler<ModelTurn>, IDispo
 
     public async Task WaitForTurnAsync(TimeSpan timeout)
     {
-        var completed = await Task.WhenAny(_firstTurn.Task, Task.Delay(timeout)).ConfigureAwait(false);
-        if (completed != _firstTurn.Task)
+        using var cts = new CancellationTokenSource(timeout);
+        try
         {
-            throw new TimeoutException($"No turn captured within {timeout}.");
+            await _firstTurn.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
+        {
+            throw new TimeoutException($"No turn captured within {timeout}.", ex);
         }
     }
 
