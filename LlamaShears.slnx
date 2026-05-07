@@ -14,6 +14,7 @@
     <Project Path="src/LlamaShears.Core/LlamaShears.Core.csproj" />
     <Project Path="src/LlamaShears.Hosting/LlamaShears.Hosting.csproj" />
     <Project Path="src/LlamaShears.Provider.Ollama/LlamaShears.Provider.Ollama.csproj" />
+    <Project Path="src/LlamaShears.Provider.OpenAI/LlamaShears.Provider.OpenAI.csproj" />
   </Folder>
   <Folder Name="/src/public/">
     <Project Path="src/public/LlamaShears.Core.Abstractions/LlamaShears.Core.Abstractions.csproj" />
