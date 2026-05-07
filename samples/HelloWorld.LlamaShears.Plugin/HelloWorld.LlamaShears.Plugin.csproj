@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>HelloWorld.LlamaShears.Plugin</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LlamaShears.Plugins\LlamaShears.Plugins.csproj" />
+    <ProjectReference Include="..\..\src\StrangeSoft.Plugins.Abstractions\StrangeSoft.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
