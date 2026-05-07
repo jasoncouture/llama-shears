@@ -40,6 +40,13 @@ underlying store atomically. Subsequent reads of
 
 ## Events
 
+### `Appended`
+
+Raised after [IAgentContext](IAgentContext.md).`AppendAsync` has committed an entry to
+both durable storage and the in-memory snapshot. Subscribers can
+rely on the entry being visible from [IAgentContext](IAgentContext.md).`Entries` /
+[IAgentContext](IAgentContext.md).`Turns` by the time the event fires.
+
 ### `Cleared`
 
 Raised when the context is cleared in-memory (typically following

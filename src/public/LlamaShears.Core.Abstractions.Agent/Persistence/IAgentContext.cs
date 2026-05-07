@@ -46,4 +46,12 @@ public interface IAgentContext
     /// previously-observed entries as discarded.
     /// </summary>
     event EventHandler? Cleared;
+
+    /// <summary>
+    /// Raised after <see cref="AppendAsync"/> has committed an entry to
+    /// both durable storage and the in-memory snapshot. Subscribers can
+    /// rely on the entry being visible from <see cref="Entries"/> /
+    /// <see cref="Turns"/> by the time the event fires.
+    /// </summary>
+    event EventHandler<IContextEntry>? Appended;
 }

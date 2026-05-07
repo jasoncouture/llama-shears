@@ -132,6 +132,10 @@ public sealed class AgentContextProviderTests
 
         public event EventHandler? Cleared;
 
+#pragma warning disable CS0067 // Stub does not raise Appended.
+        public event EventHandler<IContextEntry>? Appended;
+#pragma warning restore CS0067
+
         public Task AppendAsync(IContextEntry entry, CancellationToken cancellationToken)
         {
             _entries.Add(entry);

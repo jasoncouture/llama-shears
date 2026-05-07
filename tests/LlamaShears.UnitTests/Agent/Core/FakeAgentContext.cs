@@ -43,12 +43,15 @@ internal sealed class FakeAgentContext : IAgentContext
 
     public event EventHandler? Cleared;
 
+    public event EventHandler<IContextEntry>? Appended;
+
     public Task AppendAsync(IContextEntry entry, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
             _entries.Add(entry);
         }
+        Appended?.Invoke(this, entry);
         return Task.CompletedTask;
     }
 
