@@ -25,12 +25,22 @@ This is deliberate. The point is to align on changes to the project's thinking *
 | Path             | What lives there                                                                 |
 |------------------|----------------------------------------------------------------------------------|
 | `src/`           | Production code. Every project here picks up the analyzer ruleset automatically. |
-| `tests/`         | Cross-project unit tests (TUnit).                                                |
+| `src/public/`    | NuGet-shipped packages (the contract surface plugins compile against). Strict doc gate (`CS1591`, `CS1574` are errors); each project must carry a `README.md`. See *Public surface* below. |
+| `tests/`         | Cross-project unit / integration tests (TUnit). Integration tests are split into `LlamaShears.IntegrationTests` (host-runtime) and `LlamaShears.IntegrationTests.Web` (HTTP / Blazor surface). |
+| `samples/`       | Reference plugin and example projects. `samples/HelloWorld.LlamaShears.Plugin` is the canonical "minimum viable plugin" shape. |
+| `tooling/`       | Build-time MSBuild tasks. Today: `LlamaShears.DocsBuild` (XML-doc → markdown task that drives `docs/api/`). |
 | `analyzers/`     | The local Roslyn analyzer assembly, its code-fix sibling, and analyzer tests.    |
 | `docs/`          | Project documentation. See `docs/index.md`.                                      |
 | `docs/adr/`      | Architectural Decision Records. See `docs/adr/index.md`.                         |
 | `docs/design/`   | Design notes for in-flight or recently-landed subsystems.                        |
+| `docs/api/`      | Auto-generated API reference, built by `LlamaShears.DocsBuild` from XML doc comments. Do not hand-edit. |
 | `agents/`        | Agent-facing instructions and shared/local memory for AI collaborators.          |
+
+### Public surface
+
+`src/public/` is the line between host-private code and shipped contract. The `Directory.Build.props` there sets `IsPackable=true` for every project automatically, promotes `CS1591` (missing public XML doc) and `CS1574` (broken cref) to build errors, and the sibling `.editorconfig` flips the LlamaShears LS XML-doc heuristics off in favour of the compiler's strict gate. A new project under `src/public/` ships as a NuGet package with no per-csproj opt-in.
+
+Every project under `src/public/` carries a `README.md` — both as the package's NuGet readme (shown on nuget.org) and as the lead-in for `docs/api/<assembly>/index.md` produced by the docs build.
 
 ## Building and running
 
