@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using StrangeSoft.Plugins.Abstractions;
@@ -8,10 +9,47 @@ namespace StrangeSoft.Plugins.Host;
 public class PluginContext<T> : IPluginContext<T> where T : class
 {
     private readonly AssemblyLoadContext _context;
+    private readonly IPluginContextLogger _logger;
+    private readonly List<IAssemblyResolver> _resolvers = [];
 
-    private PluginContext(AssemblyLoadContext context) => _context = context;
+    private PluginContext(AssemblyLoadContext context, IPluginContextLogger logger)
+    {
+        _context = context;
+        _logger = logger;
+        _context.Resolving += OnResolving;
+    }
 
-    public static IPluginContext<T>? CreatePluginContext(string rootAssemblyFile, string name)
+    public AssemblyLoadContext AssemblyLoadContext => _context;
+
+    public event Func<AssemblyLoadContext, AssemblyName, Assembly?> Resolving
+    {
+        add => _context.Resolving += value;
+        remove => _context.Resolving -= value;
+    }
+
+    public void AddAssemblyResolver(IAssemblyResolver resolver)
+    {
+        ArgumentNullException.ThrowIfNull(resolver);
+        _resolvers.Add(resolver);
+    }
+
+    public Assembly LoadFromAssemblyName(AssemblyName assemblyName)
+        => _context.LoadFromAssemblyName(assemblyName);
+
+    public Assembly LoadFromAssemblyPath(string assemblyPath)
+        => _context.LoadFromAssemblyPath(assemblyPath);
+
+    private Assembly? OnResolving(AssemblyLoadContext context, AssemblyName assemblyName)
+    {
+        foreach (var resolver in _resolvers)
+        {
+            var assembly = resolver.Resolve(context, assemblyName);
+            if (assembly is not null) return assembly;
+        }
+        return null;
+    }
+
+    public static IPluginContext<T>? CreatePluginContext(string rootAssemblyFile, string name, IPluginContextLogger? logger = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootAssemblyFile);
         rootAssemblyFile = Path.GetFullPath(rootAssemblyFile);
@@ -20,10 +58,11 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         if (directory is null) throw new DirectoryNotFoundException("Could not get plugin directory from plugin path");
         var resolver = PluginAssemblyResolver.GetOrCreate(directory);
         var context = new AssemblyLoadContext(name);
-        context.Resolving += resolver.Resolve;
+        var pluginContext = new PluginContext<T>(context, logger ?? NullPluginContextLogger.Instance);
+        pluginContext.AddAssemblyResolver(resolver);
         context.LoadFromAssemblyPath(rootAssemblyFile);
 
-        return new PluginContext<T>(context);
+        return pluginContext;
     }
 
     public async IAsyncEnumerable<T> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -62,8 +101,9 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         {
             return await loader.LoadAsync(cancellationToken).WaitAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LoaderInvocationFailed(loader.GetType(), ex);
             return [];
         }
     }
@@ -80,8 +120,9 @@ public class PluginContext<T> : IPluginContext<T> where T : class
                 if (constructor is null) continue;
                 result = constructor.Invoke(null, []);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LoaderInstantiationFailed(loaderType, ex);
                 continue;
             }
             if (result is IPluginLoader<T> loader) yield return loader;

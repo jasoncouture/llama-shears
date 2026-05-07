@@ -28,11 +28,12 @@ internal sealed class PluginAssemblyResolver : IAssemblyResolver
         return context.LoadFromAssemblyPath(path);
     }
 
-    public static void Initialize(Assembly? hostAssembly = null)
+    public static void Initialize(Assembly? hostAssembly = null, IPluginContextLogger? logger = null)
     {
         if (_hostAssemblyNames is not null) throw new InvalidOperationException("Plugin assembly resolver is already initialized and cannot be initialized again.");
         hostAssembly ??= Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly();
         ArgumentNullException.ThrowIfNull(hostAssembly);
+        logger ??= NullPluginContextLogger.Instance;
         var hostAssemblyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var assemblies = new Stack<Assembly>();
@@ -46,7 +47,7 @@ internal sealed class PluginAssemblyResolver : IAssemblyResolver
 
             foreach (var assemblyName in assembly.GetReferencedAssemblies())
             {
-                if (!TryLoadAssembly(assemblyName, out var currentAssembly)) continue;
+                if (!TryLoadAssembly(assemblyName, logger, out var currentAssembly)) continue;
                 assemblies.Push(currentAssembly);
             }
         }
@@ -54,7 +55,7 @@ internal sealed class PluginAssemblyResolver : IAssemblyResolver
         _hostAssemblyNames = hostAssemblyNames.ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static bool TryLoadAssembly(AssemblyName name, [NotNullWhen(true)] out Assembly? assembly)
+    private static bool TryLoadAssembly(AssemblyName name, IPluginContextLogger logger, [NotNullWhen(true)] out Assembly? assembly)
     {
         assembly = null;
         try
@@ -64,7 +65,7 @@ internal sealed class PluginAssemblyResolver : IAssemblyResolver
         }
         catch (Exception ex)
         {
-            Console.WriteLine("PLUGIN:INIT[WARN] Failed to load assembly {0} will continue anyway, but this assembly will not be available to plugins. The failure was: {1}", name, ex);
+            logger.AssemblyLoadFailed(name, ex);
             return false;
         }
     }
