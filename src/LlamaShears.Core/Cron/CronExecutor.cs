@@ -1,59 +1,48 @@
-using Microsoft.Extensions.Hosting;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Events;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Core.Cron;
 
-public sealed partial class CronExecutor : BackgroundService
+public sealed partial class CronExecutor : IEventHandler<SystemTick>, IDisposable
 {
     private readonly ICronScheduler _scheduler;
     private readonly TimeProvider _time;
-    private readonly IOptionsMonitor<CronOptions> _options;
     private readonly ILogger<CronExecutor> _logger;
+    private readonly IDisposable _subscription;
 
     public CronExecutor(
         ICronScheduler scheduler,
         TimeProvider time,
-        IOptionsMonitor<CronOptions> options,
+        IEventBus bus,
         ILogger<CronExecutor> logger)
     {
         _scheduler = scheduler;
         _time = time;
-        _options = options;
         _logger = logger;
+        _subscription = bus.Subscribe<SystemTick>(
+            Event.WellKnown.Host.Tick,
+            EventDeliveryMode.FireAndForget,
+            this);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
     {
-        LogStarted(_logger, _options.CurrentValue.TickInterval);
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
-            {
-                await _scheduler.FireDueAsync(_time.GetUtcNow(), stoppingToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception ex)
-            {
-                LogTickFailed(_logger, ex);
-            }
-
-            try
-            {
-                await Task.Delay(_options.CurrentValue.TickInterval, _time, stoppingToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
+            await _scheduler.FireDueAsync(_time.GetUtcNow(), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            LogTickFailed(_logger, ex);
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Cron executor started; tick interval {TickInterval}.")]
-    private static partial void LogStarted(ILogger logger, TimeSpan tickInterval);
+    public void Dispose() => _subscription.Dispose();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron executor tick failed.")]
     private static partial void LogTickFailed(ILogger logger, Exception ex);

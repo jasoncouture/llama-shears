@@ -1,4 +1,5 @@
 using Cronos;
+using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Cron;
@@ -6,12 +7,14 @@ namespace LlamaShears.Core.Cron;
 public sealed partial class CronScheduler : ICronScheduler
 {
     private readonly ICronStore _store;
+    private readonly IAgentManager _agents;
     private readonly TimeProvider _time;
     private readonly ILogger<CronScheduler> _logger;
 
-    public CronScheduler(ICronStore store, TimeProvider time, ILogger<CronScheduler> logger)
+    public CronScheduler(ICronStore store, IAgentManager agents, TimeProvider time, ILogger<CronScheduler> logger)
     {
         _store = store;
+        _agents = agents;
         _time = time;
         _logger = logger;
     }
@@ -142,6 +145,11 @@ public sealed partial class CronScheduler : ICronScheduler
             {
                 continue;
             }
+            if (!_agents.Contains(job.AgentId))
+            {
+                LogSkippedMissingAgent(_logger, job.Id, job.AgentId);
+                continue;
+            }
 
             await FireSingleAsync(job, now, manual: false, cancellationToken).ConfigureAwait(false);
         }
@@ -190,4 +198,7 @@ public sealed partial class CronScheduler : ICronScheduler
 
     [LoggerMessage(Level = LogLevel.Information, Message = "[cron stub] Job '{JobId}' for agent '{AgentId}' (manual={Manual}) would fire with prompt: {Prompt}")]
     private static partial void LogStubFire(ILogger logger, Guid jobId, string agentId, bool manual, string prompt);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Cron job '{JobId}' due but agent '{AgentId}' is not currently loaded; skipping.")]
+    private static partial void LogSkippedMissingAgent(ILogger logger, Guid jobId, string agentId);
 }

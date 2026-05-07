@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <PackageReference Include="Cronos" Version="0.10.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.AutoActivation" Version="10.1.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.SqliteVec" Version="1.74.0-preview" />
     <PackageReference Include="ModelContextProtocol" Version="1.2.0" />

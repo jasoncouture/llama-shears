@@ -2,12 +2,13 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Core.Cron;
 
 public sealed partial class JsonCronStore : ICronStore
 {
+    private const string FileName = "cron.json";
+
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
@@ -15,21 +16,19 @@ public sealed partial class JsonCronStore : ICronStore
     };
 
     private readonly IShearsPaths _paths;
-    private readonly IOptions<CronOptions> _options;
     private readonly ILogger<JsonCronStore> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private Dictionary<Guid, CronJob>? _cache;
 
-    public JsonCronStore(IShearsPaths paths, IOptions<CronOptions> options, ILogger<JsonCronStore> logger)
+    public JsonCronStore(IShearsPaths paths, ILogger<JsonCronStore> logger)
     {
         _paths = paths;
-        _options = options;
         _logger = logger;
     }
 
     private string FilePath => Path.Combine(
         _paths.GetPath(PathKind.Data, ensureExists: true),
-        _options.Value.FileName);
+        FileName);
 
     public async ValueTask<IReadOnlyList<CronJob>> GetAllAsync(CancellationToken cancellationToken = default)
     {
