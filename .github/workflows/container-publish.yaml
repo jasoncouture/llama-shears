@@ -58,6 +58,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: ${{ github.event_name == 'push' && format('Build and push {0} @ {1}', matrix.target, needs.prepare.outputs.version) || format('Build {0} @ {1}', matrix.target, needs.prepare.outputs.version) }}
         uses: ./.github/actions/build-container
         with:
