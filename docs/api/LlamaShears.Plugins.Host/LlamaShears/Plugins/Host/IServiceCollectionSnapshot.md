@@ -1,6 +1,6 @@
-# LlamaShears.Plugins.IServiceCollectionSnapshot
+# LlamaShears.Plugins.Host.IServiceCollectionSnapshot
 
-Assembly: `LlamaShears.Plugins`
+Assembly: `LlamaShears.Plugins.Host`
 
 Reversible record of an `IServiceCollection`'s descriptor list.
 Disposing without calling [IServiceCollectionSnapshot](IServiceCollectionSnapshot.md).`AcceptChanges` rolls the

@@ -27,6 +27,7 @@
     <Project Path="src/LlamaShears.Core.Eventing.Extensions/LlamaShears.Core.Eventing.Extensions.csproj" />
     <Project Path="src/StrangeSoft.Plugins.Host/StrangeSoft.Plugins.Host.csproj" />
     <Project Path="src/LlamaShears.Plugins/LlamaShears.Plugins.csproj" />
+    <Project Path="src/LlamaShears.Plugins.Host/LlamaShears.Plugins.Host.csproj" />
     <Project Path="src/StrangeSoft.Plugins.Abstractions/StrangeSoft.Plugins.Abstractions.csproj" />
     <Project Path="src/LlamaShears.Core/LlamaShears.Core.csproj" />
     <Project Path="src/LlamaShears.Hosting/LlamaShears.Hosting.csproj" />

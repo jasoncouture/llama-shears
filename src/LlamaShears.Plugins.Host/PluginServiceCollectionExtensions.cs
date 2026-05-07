@@ -1,7 +1,8 @@
+using LlamaShears.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 using StrangeSoft.Plugins.Host;
 
-namespace LlamaShears.Plugins;
+namespace LlamaShears.Plugins.Host;
 
 public static class PluginServiceCollectionExtensions
 {
@@ -19,6 +20,7 @@ public static class PluginServiceCollectionExtensions
         try
         {
             plugin.Register(services);
+            services.AddSingleton(plugin);
             snapshot.AcceptChanges();
         }
         catch (Exception ex)
