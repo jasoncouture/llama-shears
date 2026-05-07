@@ -6,11 +6,39 @@ namespace LlamaShears.IntegrationTests.Web;
 
 public sealed class ChatSurfaceTests
 {
+    // Read-only tests share one host + one HttpClient — booting the
+    // WebApplicationFactory is a multi-second cold path (DI graph,
+    // hosted services, static-asset manifest) and these tests don't
+    // mutate any host state, so amortizing across them is safe.
+    // State-mutating tests (SeededAgent..., RealOllamaProvider...,
+    // StubModelIsNotInvoked..., the data-root / dispose tests) keep
+    // their own factories.
+    private static IsolatedAppFactory _sharedFactory = null!;
+    private static HttpClient _sharedClient = null!;
+
+    [Before(Class)]
+    public static void StartSharedHost()
+    {
+        _sharedFactory = new IsolatedAppFactory();
+        _sharedClient = _sharedFactory.CreateClient();
+    }
+
+    [After(Class)]
+    public static async Task StopSharedHost()
+    {
+        _sharedClient?.Dispose();
+        if (_sharedFactory is not null)
+        {
+            await _sharedFactory.DisposeAsync();
+        }
+    }
+
     [Test]
     public async Task GetRootRedirectsToChat()
     {
-        await using var factory = new IsolatedAppFactory();
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        // Custom client (no auto-redirect) but the factory itself
+        // is shared — a no-redirect client is cheap to build.
+        using var client = _sharedFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
         });
@@ -24,10 +52,7 @@ public sealed class ChatSurfaceTests
     [Test]
     public async Task GetChatPageReturns200AndRendersTheChatShell()
     {
-        await using var factory = new IsolatedAppFactory();
-        using var client = factory.CreateClient();
-
-        using var response = await client.GetAsync("/chat", CancellationToken.None);
+        using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -51,10 +76,7 @@ public sealed class ChatSurfaceTests
     [Test]
     public async Task RegressionChatPageHtmlLinksToBlazorWebJsUnderFramework()
     {
-        await using var factory = new IsolatedAppFactory();
-        using var client = factory.CreateClient();
-
-        using var response = await client.GetAsync("/chat", CancellationToken.None);
+        using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         // `@Assets["_framework/blazor.web.js"]` rewrites to a
@@ -67,10 +89,7 @@ public sealed class ChatSurfaceTests
     [Test]
     public async Task RegressionBlazorWebJsMustReturn200WhenHostHasNoRazorFiles()
     {
-        await using var factory = new IsolatedAppFactory();
-        using var client = factory.CreateClient();
-
-        using var response = await client.GetAsync("/_framework/blazor.web.js", CancellationToken.None);
+        using var response = await _sharedClient.GetAsync("/_framework/blazor.web.js", CancellationToken.None);
         var contentType = response.Content.Headers.ContentType?.MediaType;
         var bytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
 
@@ -87,10 +106,7 @@ public sealed class ChatSurfaceTests
         // empty and the icon button is invisible (page still renders 200,
         // so a generic "page loads" test wouldn't catch it). The path
         // data below is verbatim from wwwroot/icons/arrow-clockwise.svg.
-        await using var factory = new IsolatedAppFactory();
-        using var client = factory.CreateClient();
-
-        using var response = await client.GetAsync("/chat", CancellationToken.None);
+        using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(html).Contains("M8 3a5 5 0 1 0 4.546 2.914");
@@ -99,10 +115,7 @@ public sealed class ChatSurfaceTests
     [Test]
     public async Task EmptyAgentsDirectoryRendersTheNoAgentsState()
     {
-        await using var factory = new IsolatedAppFactory();
-        using var client = factory.CreateClient();
-
-        using var response = await client.GetAsync("/chat", CancellationToken.None);
+        using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
