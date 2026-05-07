@@ -1,0 +1,38 @@
+name: run-tests
+description: >-
+  Restore the solution, run all tests with cobertura code coverage, and upload
+  a per-assembly markdown coverage summary as the `coverage-summary` artifact.
+  Tests failing aborts the action before the summary or upload steps; nothing
+  is uploaded on failure.
+
+runs:
+  using: composite
+  steps:
+    - name: Restore solution
+      shell: bash
+      run: dotnet restore LlamaShears.slnx
+
+    - name: Test with coverage
+      shell: bash
+      run: |
+        dotnet test LlamaShears.slnx \
+          --no-restore \
+          --coverage \
+          --coverage-output-format cobertura \
+          --coverage-output coverage.cobertura.xml
+
+    - name: Generate markdown coverage summary
+      uses: irongut/CodeCoverageSummary@v1
+      with:
+        filename: '**/TestResults/coverage.cobertura.xml'
+        badge: false
+        format: markdown
+        indicators: true
+        output: file
+
+    - name: Upload coverage summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-summary
+        path: code-coverage-results.md
+        if-no-files-found: error
