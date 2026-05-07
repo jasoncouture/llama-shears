@@ -1,3 +1,4 @@
+using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -27,7 +28,12 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<GrepTool>()
             .WithTools<StoreMemoryTool>()
             .WithTools<SearchMemoryTool>()
-            .WithTools<IndexMemoryTool>();
+            .WithTools<IndexMemoryTool>()
+            .WithTools<ScheduleCronTool>()
+            .WithTools<ListCronTool>()
+            .WithTools<CancelCronTool>()
+            .WithTools<EditCronTool>()
+            .WithTools<TriggerCronTool>();
 
         return services;
     }
