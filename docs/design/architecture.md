@@ -120,7 +120,7 @@ These five touch nearly every other component; understanding them up front makes
 
 ### Event bus
 
-`IEventBus` is the only inter-component channel inside the host. Components publish typed envelopes to a colon-delimited event name (`agent:turn:<agent-id>`, `host:tick`, `channel:message:<channel-id>`, …) and subscribe with patterns (`agent:turn:+` for all agents, `agent:turn:claudia` for one). Two delivery modes:
+`IEventBus` is the only inter-component channel inside the host. Components publish typed envelopes to a colon-delimited event name (`agent:turn:<agent-id>`, `system:tick`, `channel:message:<channel-id>`, …) and subscribe with patterns (`agent:turn:+` for all agents, `agent:turn:claudia` for one). Two delivery modes:
 
 - **`FireAndForget`** — the publisher does not await. Used for streaming UI fragments, telemetry, anything that must not block inference.
 - **`Awaited`** — the publisher awaits all matching handlers. Used for persistence (the turn must be on disk before the next iteration runs).
@@ -129,7 +129,7 @@ Every publish actually fires twice — once in each mode — and handlers filter
 
 ### System tick
 
-`SystemTickService` publishes `host:tick` every 30 seconds (toggleable via `Frame:Enabled`). Today it drives:
+`SystemTickService` publishes `system:tick` every 30 seconds (toggleable via `Frame:Enabled`). Today it drives:
 
 - `AgentManager.ReconcileAsync` — start, reload, or stop agents based on what's in `<Data>/agents/`.
 - `MemoryIndexerBackgroundService` — periodic memory reconciliation against disk.
@@ -138,7 +138,7 @@ The tick is the *only* periodic signal in the host and is intended to drive per-
 
 ### Agent lifecycle
 
-`AgentManager` is the single owner of running `IAgent` instances. On `ApplicationStarted` it subscribes to `host:tick` and runs an initial reconcile; on each subsequent tick it diffs `<Data>/agents/*.json` against the loaded set and starts / reloads / stops as needed. A reconcile is gated by an `Interlocked` flag so a slow filesystem can't pile handlers up.
+`AgentManager` is the single owner of running `IAgent` instances. On `ApplicationStarted` it subscribes to `system:tick` and runs an initial reconcile; on each subsequent tick it diffs `<Data>/agents/*.json` against the loaded set and starts / reloads / stops as needed. A reconcile is gated by an `Interlocked` flag so a slow filesystem can't pile handlers up.
 
 Each agent gets its workspace seeded (if empty) from `<Templates>/workspace/`, its tool catalog discovered from the MCP servers it whitelists, and a context handle opened from `JsonLineContextStore`.
 

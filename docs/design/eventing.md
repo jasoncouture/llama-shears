@@ -1,6 +1,6 @@
 # Eventing
 
-LlamaShears wires its components together with a single in-process pub/sub bus. The contracts live in [`Core.Abstractions/Events/`](../../src/LlamaShears.Core.Abstractions/Events/); the implementation is a thin wrapper over MessagePipe in [`Core.Eventing/`](../../src/LlamaShears.Core.Eventing/).
+LlamaShears wires its components together with a single in-process pub/sub bus. The contracts live in [`Core.Abstractions.Events`](../../src/public/LlamaShears.Core.Abstractions.Events/); the implementation is a thin wrapper over MessagePipe in [`Core.Eventing`](../../src/LlamaShears.Core.Eventing/).
 
 ## Why a bus
 
@@ -14,7 +14,7 @@ A bus instead of direct calls because:
 
 Every event has an `EventType` (`Component:EventName[:Id]`). The string form is colon-delimited, lowercased, validated by a regex.
 
-The `Component` is one of the well-known sources defined in [`Event.Sources`](../../src/LlamaShears.Core.Abstractions/Events/Event.cs):
+The `Component` is one of the well-known sources defined in [`Event.Sources`](../../src/public/LlamaShears.Core.Abstractions.Events/Event.cs):
 
 | Source | Meaning |
 |--------|---------|
@@ -26,16 +26,16 @@ The well-known `EventName`s are also defined in `Event.cs`. The current set:
 
 | Event | Payload | Source |
 |-------|---------|--------|
-| `system:tick` | [`SystemTick`](../../src/LlamaShears.Core.Abstractions/Agent/SystemTick.cs) | `SystemTickService` |
+| `system:tick` | [`SystemTick`](../../src/public/LlamaShears.Core.Abstractions.Agent/SystemTick.cs) | `SystemTickService` |
 | `system:startup` / `system:shutdown` | (declared, not yet emitted) | — |
-| `agent:turn:<id>` | [`ModelTurn`](../../src/LlamaShears.Core.Abstractions/Provider/ModelTurn.cs) (User, Assistant, Tool, Thought) | `Agent`, `InferenceRunner` |
-| `agent:message:<id>` | [`AgentMessageFragment`](../../src/LlamaShears.Core.Abstractions/Events/Agent/AgentMessageFragment.cs) (text streaming, `Final` flag) | `InferenceRunner` |
-| `agent:thought:<id>` | [`AgentThoughtFragment`](../../src/LlamaShears.Core.Abstractions/Events/Agent/AgentThoughtFragment.cs) | `InferenceRunner` |
-| `agent:tool-call:<id>` | [`AgentToolCallFragment`](../../src/LlamaShears.Core.Abstractions/Events/Agent/AgentToolCallFragment.cs) | `InferenceRunner` |
-| `agent:tool-result:<id>` | [`AgentToolResultFragment`](../../src/LlamaShears.Core.Abstractions/Events/Agent/AgentToolResultFragment.cs) | `Agent` (after dispatch) |
-| `agent:compacting-started:<id>` / `agent:compacting-finished:<id>` | [`AgentCompactionMarker`](../../src/LlamaShears.Core.Abstractions/Events/Agent/AgentCompactionMarker.cs) | `ContextCompactor` |
+| `agent:turn:<id>` | [`ModelTurn`](../../src/public/LlamaShears.Core.Abstractions.Provider/ModelTurn.cs) (User, Assistant, Tool, Thought) | `Agent`, `InferenceRunner` |
+| `agent:message:<id>` | [`AgentMessageFragment`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentMessageFragment.cs) (text streaming, `Final` flag) | `InferenceRunner` |
+| `agent:thought:<id>` | [`AgentThoughtFragment`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentThoughtFragment.cs) | `InferenceRunner` |
+| `agent:tool-call:<id>` | [`AgentToolCallFragment`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentToolCallFragment.cs) | `InferenceRunner` |
+| `agent:tool-result:<id>` | [`AgentToolResultFragment`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentToolResultFragment.cs) | `Agent` (after dispatch) |
+| `agent:compacting-started:<id>` / `agent:compacting-finished:<id>` | [`AgentCompactionMarker`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentCompactionMarker.cs) | `ContextCompactor` |
 | `agent:loaded` / `agent:unloaded` / `agent:loading-error` / `agent:busy` / `agent:idle` | (declared in `Event.WellKnown.Agent`; emit sites currently TBD) | — |
-| `channel:message:<channel-id>` | [`ChannelMessage`](../../src/LlamaShears.Core.Abstractions/Events/Channel/ChannelMessage.cs) | Chat UI / external producers |
+| `channel:message:<channel-id>` | [`ChannelMessage`](../../src/public/LlamaShears.Core.Abstractions.Events/Channel/ChannelMessage.cs) | Chat UI / external producers |
 | `channel:created` / `channel:destroyed` / `channel:error` | (declared, not yet emitted) | — |
 
 The `Id` segment is the agent id for `agent:*` events and the channel id for `channel:message:*`. It is what makes patterns like `agent:turn:claudia` work.
@@ -69,6 +69,16 @@ Persistence (`AgentTurnContextPersister`) subscribes `Awaited`, so the agent loo
 
 The tradeoff lands in the right place because publishers don't get to choose the awaiting policy; subscribers do. Add a UI subscriber that takes 100 ms per fragment and the agent doesn't notice. Add a persistence subscriber that takes 100 ms per turn and the next inference pauses for 100 ms.
 
+## Publish-side filtering
+
+`IEventFilter` is the publisher-side counterpart to subscriber filtering. It runs **once per `IEventPublisher.PublishAsync<T>` call**, before delivery, and returns the `EventDeliveryMask` of legs (`FireAndForget` and/or `Awaited`) the publisher should *not* fan out for that envelope. Every registered filter contributes; the bus ORs the masks and skips any leg present in the union.
+
+The default posture is allow — a filter that doesn't care about an event returns `EventDeliveryMask.None`. Filters see every event regardless of payload type via `IEventEnvelope<object>`; pattern-match on `IEventEnvelope.Data` to scope behaviour to a particular payload.
+
+Filters must not swallow exceptions to coerce a deny — throwing propagates out of the publish call. The bus treats a thrown filter as a publish-time error, which is loud-failure on purpose: a filter is policy code, and policy code that silently misbehaves is the worst kind of failure.
+
+Use cases on the live system today: keeping noisy fragment events out of the awaited path so persistence never blocks on UI churn; per-mode suppression during shutdown so a torn-down handler doesn't see one last burst of events.
+
 ## Subscribing
 
 ```csharp
@@ -83,6 +93,8 @@ subscription.Dispose();
 Handlers implement `IEventHandler<T> : ValueTask HandleAsync(IEventEnvelope<T>, CancellationToken)`. The envelope carries the resolved `EventType` (with id) and a `CorrelationId` that's stamped at publish time and propagated through derivative events of the same logical operation — useful for tracing a single user turn through to its tool results.
 
 For DI-driven subscribers (auto-activated singletons that subscribe in their constructor or `StartAsync`), use `services.AddEventHandler<T>()` from `LlamaShears.Core.Eventing.Extensions` — that registers the type as a singleton with auto-activation so it's instantiated at container build time and starts subscribing immediately.
+
+Subscribe / unsubscribe call sites log at **`Debug`** rather than `Information`. They fire often (every agent reload, every UI session lifecycle, every plugin load), and the noise drowns out actually useful logs at default verbosity. Bumping the category to `Debug` if you need to trace lifecycle is one config change away.
 
 ## Project boundary
 
