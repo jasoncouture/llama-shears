@@ -1,7 +1,7 @@
-using LlamaShears.Plugins;
 using Microsoft.Extensions.DependencyInjection;
+using StrangeSoft.Plugins;
 
-namespace LlamaShears.Host.Plugins;
+namespace LlamaShears.Plugins;
 
 public static class PluginServiceCollectionExtensions
 {

@@ -1,4 +1,4 @@
-namespace LlamaShears.Host.Plugins;
+namespace StrangeSoft.Plugins;
 
 /// <summary>
 /// Materialized plugin-loading scope: a per-plugin

@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace LlamaShears.Host.Plugins;
+namespace StrangeSoft.Plugins;
 
 /// <summary>
 /// Hook supplied to an <see cref="AssemblyLoadContext"/>'s <c>Resolving</c>

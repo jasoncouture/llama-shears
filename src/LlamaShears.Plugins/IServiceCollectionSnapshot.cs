@@ -1,4 +1,4 @@
-namespace LlamaShears.Host.Plugins;
+namespace LlamaShears.Plugins;
 
 /// <summary>
 /// Reversible record of an <c>IServiceCollection</c>'s descriptor list.

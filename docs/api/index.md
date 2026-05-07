@@ -17,4 +17,5 @@ Generated from XML doc comments. One entry per shipped assembly.
 - [LlamaShears.Core.Abstractions.Templating](LlamaShears.Core.Abstractions.Templating/index.md)
 - [LlamaShears.Core.Abstractions.Tools](LlamaShears.Core.Abstractions.Tools/index.md)
 - [LlamaShears.Plugins](LlamaShears.Plugins/index.md)
+- [StrangeSoft.Plugins](StrangeSoft.Plugins/index.md)
 - [StrangeSoft.Plugins.Abstractions](StrangeSoft.Plugins.Abstractions/index.md)

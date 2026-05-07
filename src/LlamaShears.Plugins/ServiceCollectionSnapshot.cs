@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace LlamaShears.Host.Plugins;
+namespace LlamaShears.Plugins;
 
 internal sealed class ServiceCollectionSnapshot : IServiceCollectionSnapshot
 {

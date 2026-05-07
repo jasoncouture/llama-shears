@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace LlamaShears.Host.Plugins;
+namespace StrangeSoft.Plugins;
 
 internal sealed class PluginAssemblyResolver : IAssemblyResolver
 {
