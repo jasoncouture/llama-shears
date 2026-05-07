@@ -22,7 +22,13 @@ internal sealed class PluginAssemblyResolver : IAssemblyResolver
     public Assembly? Resolve(AssemblyLoadContext context, AssemblyName assemblyName)
     {
         if (string.IsNullOrWhiteSpace(assemblyName.Name)) throw new ArgumentException("Assembly name cannot be null or empty");
-        if (_hostAssemblyNames!.Contains(assemblyName.Name)) return null;
+        // Host-owned: actively return Default's loaded copy so type identity unifies
+        // with the host. Returning null here would let later resolvers in the chain
+        // try, which could (e.g.) load a private plugin copy and break the unification.
+        if (_hostAssemblyNames!.Contains(assemblyName.Name))
+        {
+            return AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
+        }
         var path = _pluginDependencyResolver.ResolveAssemblyToPath(assemblyName);
         if (path is null) return null;
         return context.LoadFromAssemblyPath(path);
