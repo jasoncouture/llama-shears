@@ -38,6 +38,24 @@ public sealed class HostContextAssemblyResolver : IAssemblyResolver
         return AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
     }
 
+    public static bool TryInitialize(Assembly? hostAssembly, IPluginContextLogger? logger = null)
+    {
+        if(_hostAssemblyNames is not null)
+        {
+            return false;
+        }
+
+        Initialize(hostAssembly, logger);
+        return true;
+    }
+
+    private static Assembly LocateRootAssemblyOrThrow(Assembly? hostAssembly)
+    {
+        hostAssembly ??= Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly();
+        ArgumentNullException.ThrowIfNull(hostAssembly);
+        return hostAssembly;
+    }
+
     /// <summary>
     /// Walks <paramref name="hostAssembly"/>'s transitive reference
     /// graph, eagerly loads every reachable assembly into
@@ -49,9 +67,8 @@ public sealed class HostContextAssemblyResolver : IAssemblyResolver
     public static void Initialize(Assembly? hostAssembly = null, IPluginContextLogger? logger = null)
     {
         if (_hostAssemblyNames is not null) throw new InvalidOperationException("HostContextAssemblyResolver is already initialized and cannot be initialized again.");
-        hostAssembly ??= Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly();
-        ArgumentNullException.ThrowIfNull(hostAssembly);
-        logger ??= NullPluginContextLogger.Instance;
+        hostAssembly ??= LocateRootAssemblyOrThrow(hostAssembly);
+        logger ??= DefaultPluginContextLogger.Instance;
         var hostAssemblyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var assemblies = new Stack<Assembly>();
@@ -83,7 +100,7 @@ public sealed class HostContextAssemblyResolver : IAssemblyResolver
         }
         catch (Exception ex)
         {
-            logger.AssemblyLoadFailed(name, ex);
+            logger.Warning("Failed to load referenced assembly {AssemblyName} during host graph walk", ex, name);
             return false;
         }
     }

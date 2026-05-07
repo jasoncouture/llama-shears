@@ -9,25 +9,56 @@ single bad assembly or loader doesn't take everything down; this
 interface gives the host a place to surface those failures (or
 not) in whatever logging stack it owns.
 
+## Remarks
+
+Format strings follow the .NET `ILogger` message-template
+convention (named placeholders like `{AssemblyName}`); it is
+the implementation's responsibility to wire that through to its
+underlying logging stack.
+
 ## Methods
 
-### `AssemblyLoadFailed`(AssemblyName assemblyName, Exception exception)
+### `Debug`(string format, IEnumerable<object> data)
 
-Reported when Assembly.`Load`
-throws during the host's transitive-reference walk. The walk
-continues; `assemblyName` simply won't be in
-the host-owned set.
+Records a diagnostic-level message — verbose detail useful when
+inspecting loader behavior, normally off in production.
 
-### `LoaderInstantiationFailed`(Type loaderType, Exception exception)
+#### Parameters
 
-Reported when an `IPluginLoader<T>` implementation
-can't be constructed — missing parameterless constructor, ctor
-throws, etc. The discovery walk skips it and continues with
-the next type.
+- `format` — Message template (named placeholders).
+- `data` — Values for the placeholders, in order.
 
-### `LoaderInvocationFailed`(Type loaderType, Exception exception)
+### `Error`(string format, Exception exception, IEnumerable<object> data)
 
-Reported when an `IPluginLoader<T>.LoadAsync` call
-throws. The loader's contribution is treated as empty; other
-loaders' results are still streamed out.
+Records a failure — something the loader couldn't recover from
+at this granularity (e.g. a plugin loader's `LoadAsync`
+threw). Pass the originating exception when one is available.
+
+#### Parameters
+
+- `format` — Message template (named placeholders).
+- `exception` — The exception associated with the error, or `null`.
+- `data` — Values for the placeholders, in order.
+
+### `Information`(string format, IEnumerable<object> data)
+
+Records an informational message — routine progress about the
+loader's work that the host may want to surface.
+
+#### Parameters
+
+- `format` — Message template (named placeholders).
+- `data` — Values for the placeholders, in order.
+
+### `Warning`(string format, Exception exception, IEnumerable<object> data)
+
+Records a non-fatal problem — the loader recovered (e.g. by
+skipping a bad assembly or loader type), but the host may want
+to know. Pass the originating exception when one is available.
+
+#### Parameters
+
+- `format` — Message template (named placeholders).
+- `exception` — The exception associated with the warning, or `null`.
+- `data` — Values for the placeholders, in order.
 

@@ -8,6 +8,21 @@ namespace StrangeSoft.Plugins.Host;
 
 public class PluginContext<T> : IPluginContext<T> where T : class
 {
+    private class PluginContextAssemblyLoadLogger : IAssemblyResolver
+    {
+        private IPluginContextLogger _logger;
+
+        public PluginContextAssemblyLoadLogger(IPluginContextLogger logger)
+        {
+            _logger = logger;
+        }
+
+        public Assembly? Resolve(AssemblyLoadContext context, AssemblyName assembly)
+        {
+            _logger.Debug("Plugin loading context {ContextName} is Loading {Assembly}", context.Name, assembly);
+            return null;
+        }
+    }
     private readonly AssemblyLoadContext _context;
     private readonly IPluginContextLogger _logger;
     private readonly List<IAssemblyResolver> _resolvers = [];
@@ -17,6 +32,7 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         _context = context;
         _logger = logger;
         _context.Resolving += OnResolving;
+        AddAssemblyResolver(new PluginContextAssemblyLoadLogger(logger));
     }
 
     public AssemblyLoadContext AssemblyLoadContext => _context;
@@ -55,7 +71,7 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         rootAssemblyFile = Path.GetFullPath(rootAssemblyFile);
         if (!File.Exists(rootAssemblyFile)) throw new ArgumentException("Root assembly file must exist!");
         var context = new AssemblyLoadContext(name);
-        var pluginContext = new PluginContext<T>(context, logger ?? NullPluginContextLogger.Instance);
+        var pluginContext = new PluginContext<T>(context, logger ?? DefaultPluginContextLogger.Instance);
         context.LoadFromAssemblyPath(rootAssemblyFile);
         return pluginContext;
     }
@@ -110,11 +126,22 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         await Task.Yield();
         try
         {
-            return await loader.LoadAsync(cancellationToken).WaitAsync(cancellationToken);
+
+            var plugins = await loader.LoadAsync(cancellationToken).WaitAsync(cancellationToken);
+            if (plugins.Length > 0)
+            {
+                _logger.Information("Loaded {Count} plugins using {LoaderType}", plugins.Length, loader.GetType());
+                foreach (var plugin in plugins)
+                {
+                    _logger.Information("{LoaderType} loaded {PluginName}", loader.GetType(), plugin.GetType());
+                }
+            }
+
+            return plugins;
         }
         catch (Exception ex)
         {
-            _logger.LoaderInvocationFailed(loader.GetType(), ex);
+            _logger.Error("Plugin loader {LoaderType} threw during LoadAsync", ex, loader.GetType());
             return [];
         }
     }
@@ -127,16 +154,29 @@ public class PluginContext<T> : IPluginContext<T> where T : class
             object? result;
             try
             {
-                var constructor = loaderType.GetConstructor([]);
-                if (constructor is null) continue;
-                result = constructor.Invoke(null, []);
+                _logger.Debug("Attempting to create instance of {Type} plugin loader", loaderType);
+                result = Activator.CreateInstance(loaderType);
+            }
+            catch (MissingMethodException)
+            {
+                _logger.Debug("Unable to find default constructor on {Type}, cannot construct plugin.", loaderType);
+                continue;
+            }
+            catch (TargetInvocationException ex)
+            {
+                _logger.Warning("Failed to instantiate plugin loader {LoaderType}", ex.InnerException ?? ex, loaderType);
+                continue;
             }
             catch (Exception ex)
             {
-                _logger.LoaderInstantiationFailed(loaderType, ex);
+                _logger.Warning("Failed to instantiate plugin loader {LoaderType}", ex, loaderType);
                 continue;
             }
-            if (result is IPluginLoader<T> loader) yield return loader;
+            if (result is IPluginLoader<T> loader)
+            {
+                _logger.Information("Plugin loader {Type} loaded", loaderType);
+                yield return loader;
+            }
         }
     }
 }
