@@ -21,6 +21,6 @@ public sealed class InterruptCommand : ISlashCommand
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
         await _directory.InterruptAsync(context.AgentId, cancellationToken).ConfigureAwait(false);
-        return SlashCommandResult.Default;
+        return SlashCommandResult.StreamingWasInterrupted;
     }
 }

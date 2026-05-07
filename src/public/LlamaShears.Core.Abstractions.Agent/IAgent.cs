@@ -47,8 +47,13 @@ public interface IAgent : IDisposable
     /// Cancels the in-flight turn (model inference, eager tool dispatch)
     /// without affecting the agent's lifetime. The agent's persisted
     /// context up to the interrupt is preserved; partial assistant text
-    /// or thought fragments emitted by the canceled turn are dropped.
-    /// Idempotent — calling when no turn is in flight is a no-op.
+    /// or thought fragments are dropped from persisted history (no
+    /// <c>ModelTurn</c> is recorded for the canceled turn). Live
+    /// subscribers (e.g. UI streaming bubbles) may have already
+    /// observed fragment events emitted before cancellation was
+    /// noticed; they're responsible for closing those streams on the
+    /// post-interrupt signal. Idempotent — calling when no turn is in
+    /// flight is a no-op.
     /// </summary>
     Task InterruptAsync(CancellationToken cancellationToken);
 }

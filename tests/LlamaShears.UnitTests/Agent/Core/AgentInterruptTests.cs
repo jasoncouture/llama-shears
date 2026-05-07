@@ -103,7 +103,8 @@ public sealed class AgentInterruptTests
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>());
+            memorySearcher: Substitute.For<IMemorySearcher>(),
+            scope: services.CreateAsyncScope());
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
