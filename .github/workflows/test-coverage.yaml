@@ -1,4 +1,4 @@
-name: ci
+name: test-coverage
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: test-coverage-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
