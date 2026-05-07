@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Hosting;
 
 namespace LlamaShears.Api.Web.Services;
 
@@ -18,6 +19,7 @@ public sealed class ChatSession :
     private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
     private readonly IAgentDirectory _directory;
+    private readonly IHostRestarter _restarter;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
@@ -37,11 +39,13 @@ public sealed class ChatSession :
     public ChatSession(
         IEventBus bus,
         IEventPublisher publisher,
-        IAgentDirectory directory)
+        IAgentDirectory directory,
+        IHostRestarter restarter)
     {
         _bus = bus;
         _publisher = publisher;
         _directory = directory;
+        _restarter = restarter;
     }
 
     public string? SelectedAgentId
@@ -492,6 +496,9 @@ public sealed class ChatSession :
             case ChatCommand.Compact:
                 await _directory.RequestCompactionAsync(agentId, cancellationToken).ConfigureAwait(false);
                 break;
+            case ChatCommand.Restart:
+                _restarter.RequestRestart();
+                break;
         }
     }
 
@@ -526,6 +533,11 @@ public sealed class ChatSession :
         if (string.Equals(trimmedContent, "/compact", StringComparison.OrdinalIgnoreCase))
         {
             command = ChatCommand.Compact;
+            return true;
+        }
+        if (string.Equals(trimmedContent, "/restart", StringComparison.OrdinalIgnoreCase))
+        {
+            command = ChatCommand.Restart;
             return true;
         }
         return false;
@@ -588,5 +600,6 @@ public sealed class ChatSession :
         Clear,
         Archive,
         Compact,
+        Restart,
     }
 }

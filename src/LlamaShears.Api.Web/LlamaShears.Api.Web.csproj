@@ -14,6 +14,7 @@
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Events\LlamaShears.Core.Abstractions.Events.csproj" />
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
+    <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

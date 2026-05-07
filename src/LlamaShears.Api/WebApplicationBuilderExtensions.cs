@@ -5,6 +5,7 @@ using LlamaShears.Core;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Persistence;
+using LlamaShears.Hosting;
 using LlamaShears.Provider.Ollama;
 using LlamaShears.Provider.Onnx.Embeddings;
 using Microsoft.AspNetCore.Builder;
@@ -32,6 +33,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddEventingFramework();
         builder.Services.AddCore();
         builder.Services.AddAgentManager();
+        builder.Services.AddHostRestarter();
         builder.Services.AddEventHandler<AgentTurnContextPersister>();
         builder.Services.AddEventHandler<AgentTurnLogger>();
         builder.Services.AddAgentBearerAuthentication();
