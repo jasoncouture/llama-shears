@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
-    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Context\LlamaShears.Core.Abstractions.Context.csproj" />
-    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
+    <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
+    <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Context\LlamaShears.Core.Abstractions.Context.csproj" />
+    <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
   </ItemGroup>
 
   <ItemGroup>

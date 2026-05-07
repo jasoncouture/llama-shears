@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Paths\LlamaShears.Core.Abstractions.Paths.csproj" />
-    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
+    <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Paths\LlamaShears.Core.Abstractions.Paths.csproj" />
+    <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
   </ItemGroup>
 
   <ItemGroup>

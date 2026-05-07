@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LlamaShears.Plugins\LlamaShears.Plugins.csproj" />
-    <ProjectReference Include="..\..\src\StrangeSoft.Plugins.Abstractions\StrangeSoft.Plugins.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\public\LlamaShears.Plugins\LlamaShears.Plugins.csproj" />
+    <ProjectReference Include="..\..\src\public\StrangeSoft.Plugins.Abstractions\StrangeSoft.Plugins.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

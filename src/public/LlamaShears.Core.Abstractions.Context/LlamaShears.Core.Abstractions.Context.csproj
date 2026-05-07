@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Agent\LlamaShears.Core.Abstractions.Agent.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Tools\LlamaShears.Core.Abstractions.Tools.csproj" />
+  </ItemGroup>
+
+</Project>
