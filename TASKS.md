@@ -75,6 +75,13 @@ home before they drift. Group by area; trim freely.
 - [ ] **Unsafe tools.** Shell execution, background processes — gated behind
   explicit permission (per-agent, per-call, or both).
 
+## Build / infrastructure
+- [ ] **Missing `README.md` in `src/public/` is a build failure.** Wire the
+  docs-build target (or a sibling MSBuild target) to fail when a project
+  under `src/public/` has no `README.md`. Pit-of-success enforcement of
+  the "every public package needs a README" rule. No GH issue — this
+  stays as a TASKS.md item until the enforcement lands.
+
 ## Misc
 - [ ] **Additional attachment types.** Beyond images — text files, PDFs,
   audio, whatever the active model can ingest.
