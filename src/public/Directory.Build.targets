@@ -1,0 +1,33 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Pit-of-success enforcement: every project under src/public/ ships as a
+    NuGet package, and every NuGet package needs a README.md (it backs the
+    package readme on the feed and the docs/api lead-in). Missing or empty
+    README.md fails the build before CoreCompile so the contract is loud
+    rather than silently producing a package with no readme.
+  -->
+  <Target Name="LlamaShearsValidatePublicReadme"
+          BeforeTargets="CoreCompile"
+          Condition=" '$(DesignTimeBuild)' != 'true' ">
+
+    <PropertyGroup>
+      <_LlamaShearsPublicReadmePath>$(MSBuildProjectDirectory)\README.md</_LlamaShearsPublicReadmePath>
+    </PropertyGroup>
+
+    <Error Condition=" !Exists('$(_LlamaShearsPublicReadmePath)') "
+           Code="LSPUB0001"
+           Text="Project '$(MSBuildProjectName)' lives under src/public/ and must ship a README.md (used as the NuGet package readme and the docs/api lead-in). Add README.md to the project folder." />
+
+    <PropertyGroup Condition=" Exists('$(_LlamaShearsPublicReadmePath)') ">
+      <_LlamaShearsPublicReadmeContent>$([System.IO.File]::ReadAllText('$(_LlamaShearsPublicReadmePath)').Trim())</_LlamaShearsPublicReadmeContent>
+    </PropertyGroup>
+
+    <Error Condition=" Exists('$(_LlamaShearsPublicReadmePath)') AND '$(_LlamaShearsPublicReadmeContent)' == '' "
+           Code="LSPUB0002"
+           Text="Project '$(MSBuildProjectName)' has an empty README.md. Add real content describing the package (role paragraph, public surface, see-also links, licensing)." />
+  </Target>
+
+</Project>
