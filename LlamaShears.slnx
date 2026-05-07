@@ -40,6 +40,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/LlamaShears.IntegrationTests/LlamaShears.IntegrationTests.csproj" />
+    <Project Path="tests/LlamaShears.IntegrationTests.Web/LlamaShears.IntegrationTests.Web.csproj" />
     <Project Path="tests/LlamaShears.UnitTests/LlamaShears.UnitTests.csproj" />
   </Folder>
 </Solution>

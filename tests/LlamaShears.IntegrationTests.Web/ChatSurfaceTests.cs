@@ -2,7 +2,7 @@ using System.Net;
 using LlamaShears.IntegrationTests.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace LlamaShears.IntegrationTests;
+namespace LlamaShears.IntegrationTests.Web;
 
 public sealed class ChatSurfaceTests
 {
