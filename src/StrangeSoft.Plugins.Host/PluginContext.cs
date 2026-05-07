@@ -7,16 +7,11 @@ namespace StrangeSoft.Plugins.Host;
 
 public class PluginContext<T> : IPluginContext<T> where T : class
 {
-    private readonly IAssemblyResolver _resolver;
     private readonly AssemblyLoadContext _context;
 
-    private PluginContext(IAssemblyResolver resolver, AssemblyLoadContext context)
-    {
-        _resolver = resolver;
-        _context = context;
-    }
+    private PluginContext(AssemblyLoadContext context) => _context = context;
 
-    public static IPluginContext<T>? CreatePluginContext(string rootAssemblyFile, string name, CancellationToken cancellationToken)
+    public static IPluginContext<T>? CreatePluginContext(string rootAssemblyFile, string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootAssemblyFile);
         rootAssemblyFile = Path.GetFullPath(rootAssemblyFile);
@@ -28,7 +23,7 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         context.Resolving += resolver.Resolve;
         context.LoadFromAssemblyPath(rootAssemblyFile);
 
-        return new PluginContext<T>(resolver, context);
+        return new PluginContext<T>(context);
     }
 
     public async IAsyncEnumerable<T> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
