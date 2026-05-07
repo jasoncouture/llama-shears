@@ -1,4 +1,5 @@
 name: container-publish
+run-name: ${{ github.event_name == 'pull_request' && format('Building container for PR #{0}', github.event.pull_request.number) || format('Publishing container from {0}', github.ref_name) }}
 
 on:
   push:
@@ -16,14 +17,14 @@ permissions:
 
 concurrency:
   group: container-publish-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   prepare:
     name: prepare
     runs-on: ubuntu-latest
     outputs:
-      targets: ${{ steps.list.outputs.targets }}
+      matrix: ${{ steps.list.outputs.matrix }}
       version: ${{ steps.version.outputs.semver2 }}
     steps:
       - uses: actions/checkout@v4
@@ -35,9 +36,11 @@ jobs:
           dotnet-version: '10.0.x'
 
       - id: list
-        uses: docker/bake-action/subaction/list-targets@v6
+        name: Enumerate bake targets
+        uses: docker/bake-action/subaction/matrix@v6
 
       - id: version
+        name: Compute NBGV version
         shell: bash
         run: |
           set -euo pipefail
@@ -50,19 +53,20 @@ jobs:
           echo "semver2=${sanitized}" >> "$GITHUB_OUTPUT"
 
   build:
-    name: ${{ matrix.target }}
+    name: ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJson(needs.prepare.outputs.targets) }}
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - id: ref
+        name: Compute image reference
         env:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
@@ -77,6 +81,7 @@ jobs:
           echo "package=${repo_lc}%2F${target_lc}" >> "$GITHUB_OUTPUT"
 
       - id: latest
+        name: Decide whether this build earns the :latest tag
         env:
           GH_TOKEN: ${{ github.token }}
           OWNER: ${{ github.repository_owner }}
@@ -104,7 +109,8 @@ jobs:
           fi
           echo "tag-latest=${flag}" >> "$GITHUB_OUTPUT"
 
-      - uses: ./.github/actions/build-container
+      - name: Build (and conditionally push) ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
+        uses: ./.github/actions/build-container
         with:
           target: ${{ matrix.target }}
           image: ${{ steps.ref.outputs.image }}

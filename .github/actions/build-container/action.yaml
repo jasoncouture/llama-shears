@@ -37,6 +37,7 @@ runs:
         password: ${{ github.token }}
 
     - id: meta
+      name: Compute image tags for ${{ inputs.target }} @ ${{ inputs.version }}
       uses: docker/metadata-action@v5
       with:
         images: ${{ inputs.image }}
@@ -45,8 +46,13 @@ runs:
           type=raw,value=${{ inputs.version }}
           type=raw,value=latest,enable=${{ inputs.tag-latest == 'true' }}
 
-    - uses: docker/bake-action@v6
+    - name: Build container image ${{ inputs.target }} @ ${{ inputs.version }}
+      uses: docker/bake-action@v6
       with:
+        # v6 defaults to building from the remote git context; force the
+        # local checkout so the metadata-action overlay (a local-fs path
+        # that doesn't exist in the remote git tree) actually resolves.
+        source: .
         files: |
           ./docker-bake.hcl
           ${{ steps.meta.outputs.bake-file }}
