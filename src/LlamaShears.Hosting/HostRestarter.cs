@@ -37,11 +37,11 @@ public sealed partial class HostRestarter : IHostRestarter
         // (release ports, flush state). Inside the callback we step out
         // of the .NET runtime via Environment.Exit; the spawned child
         // is independent.
-        _lifetime.ApplicationStopped.Register(() => Finalize(inContainer));
+        _lifetime.ApplicationStopped.Register(() => FinalizeRestart(inContainer));
         _lifetime.StopApplication();
     }
 
-    private void Finalize(bool inContainer)
+    private void FinalizeRestart(bool inContainer)
     {
         if (inContainer)
         {
@@ -80,7 +80,17 @@ public sealed partial class HostRestarter : IHostRestarter
             }
 
             using var spawned = Process.Start(psi);
-            LogReExecuted(_logger, entrypoint, spawned?.Id ?? -1);
+            if (spawned is null)
+            {
+                // Process.Start returns null when the OS reports the
+                // process couldn't be started without throwing; treat
+                // it as a re-exec failure so we don't bring the host
+                // down with exit 0 and no replacement.
+                LogReExecReturnedNull(_logger, entrypoint);
+                Environment.Exit(1);
+                return;
+            }
+            LogReExecuted(_logger, entrypoint, spawned.Id);
         }
         catch (Exception ex)
         {
@@ -103,6 +113,9 @@ public sealed partial class HostRestarter : IHostRestarter
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Host restart: re-executed '{Entrypoint}' as pid {Pid}; exiting current process.")]
     private static partial void LogReExecuted(ILogger logger, string entrypoint, int pid);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Host restart: Process.Start returned null for '{Entrypoint}'; exiting non-zero so the host doesn't disappear silently.")]
+    private static partial void LogReExecReturnedNull(ILogger logger, string entrypoint);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Host restart: failed to re-execute the entrypoint.")]
     private static partial void LogReExecFailed(ILogger logger, Exception ex);
