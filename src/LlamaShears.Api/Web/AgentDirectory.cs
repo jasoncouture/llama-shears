@@ -38,4 +38,12 @@ internal sealed class AgentDirectory : IAgentDirectory
             ?? throw new InvalidOperationException($"Agent '{agentId}' is not loaded.");
         return agent.RequestCompactionAsync(cancellationToken);
     }
+
+    public Task InterruptAsync(string agentId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        var agent = _manager.Get(agentId)
+            ?? throw new InvalidOperationException($"Agent '{agentId}' is not loaded.");
+        return agent.InterruptAsync(cancellationToken);
+    }
 }

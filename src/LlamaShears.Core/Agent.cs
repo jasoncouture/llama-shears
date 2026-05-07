@@ -32,6 +32,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
     private readonly SemaphoreSlim _processGate = new(1, 1);
+    private readonly Lock _interruptLock = new();
+    private CancellationTokenSource? _activeTurnCts;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
@@ -123,6 +125,18 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     {
         _processGate.Release();
         return ValueTask.CompletedTask;
+    }
+
+    public Task InterruptAsync(CancellationToken cancellationToken)
+    {
+        lock (_interruptLock)
+        {
+            // Cancellation here only signals the linked per-turn CTS; the
+            // run-loop's outer CT is unaffected, so the agent stays up
+            // and resumes on the next ChannelMessage.
+            _activeTurnCts?.Cancel();
+        }
+        return Task.CompletedTask;
     }
 
     public async Task RequestCompactionAsync(CancellationToken cancellationToken)
@@ -243,12 +257,25 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                lock (_interruptLock)
+                {
+                    _activeTurnCts = turnCts;
+                }
                 try
                 {
-                    await ProcessBatchAsync(batch, correlationId, cancellationToken).ConfigureAwait(false);
+                    await ProcessBatchAsync(batch, correlationId, turnCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (turnCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    LogTurnInterrupted(_logger, Id, correlationId);
                 }
                 finally
                 {
+                    lock (_interruptLock)
+                    {
+                        _activeTurnCts = null;
+                    }
                     _processGate.Release();
                 }
             }
@@ -672,4 +699,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory search failed for agent '{AgentId}': {Message}. Proceeding without memory enrichment.")]
     private static partial void LogMemorySearchFailed(ILogger logger, string agentId, string message, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
+    private static partial void LogTurnInterrupted(ILogger logger, string agentId, Guid correlationId);
 }

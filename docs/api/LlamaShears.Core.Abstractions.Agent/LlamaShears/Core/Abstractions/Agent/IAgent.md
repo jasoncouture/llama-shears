@@ -23,6 +23,14 @@ duration from this against the current wall clock.
 
 ## Methods
 
+### `InterruptAsync`(CancellationToken cancellationToken)
+
+Cancels the in-flight turn (model inference, eager tool dispatch)
+without affecting the agent's lifetime. The agent's persisted
+context up to the interrupt is preserved; partial assistant text
+or thought fragments emitted by the canceled turn are dropped.
+Idempotent — calling when no turn is in flight is a no-op.
+
 ### `LockAsync`(CancellationToken cancellationToken)
 
 Acquires the agent's processing gate, blocking the run loop

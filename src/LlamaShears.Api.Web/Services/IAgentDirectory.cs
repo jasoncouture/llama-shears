@@ -38,4 +38,12 @@ public interface IAgentDirectory
     /// in-flight turn handling.
     /// </summary>
     Task RequestCompactionAsync(string agentId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Interrupts the agent's in-flight turn, if any. Persisted context
+    /// up to the interrupt is preserved; partial assistant text or
+    /// thought fragments emitted by the canceled turn are dropped. The
+    /// agent stays live and resumes on the next inbound message.
+    /// </summary>
+    Task InterruptAsync(string agentId, CancellationToken cancellationToken);
 }
