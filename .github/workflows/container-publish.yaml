@@ -109,7 +109,7 @@ jobs:
           fi
           echo "tag-latest=${flag}" >> "$GITHUB_OUTPUT"
 
-      - name: Build (and conditionally push) ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
+      - name: ${{ github.event_name == 'push' && format('Build and push {0} @ {1}', matrix.target, needs.prepare.outputs.version) || format('Build {0} @ {1}', matrix.target, needs.prepare.outputs.version) }}
         uses: ./.github/actions/build-container
         with:
           target: ${{ matrix.target }}

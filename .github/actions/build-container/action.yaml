@@ -46,7 +46,7 @@ runs:
           type=raw,value=${{ inputs.version }}
           type=raw,value=latest,enable=${{ inputs.tag-latest == 'true' }}
 
-    - name: Build container image ${{ inputs.target }} @ ${{ inputs.version }}
+    - name: ${{ inputs.push == 'true' && format('Build and push {0} @ {1}', inputs.target, inputs.version) || format('Build {0} @ {1}', inputs.target, inputs.version) }}
       uses: docker/bake-action@v6
       with:
         # v6 defaults to building from the remote git context; force the
