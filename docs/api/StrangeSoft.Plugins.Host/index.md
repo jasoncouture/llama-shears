@@ -9,4 +9,5 @@ Public API surface, organized by namespace.
 - [IPluginContextLogger](StrangeSoft/Plugins/Host/IPluginContextLogger.md)
 - [IPluginContext<T>](StrangeSoft/Plugins/Host/IPluginContext-1.md)
 - [PathAssemblyResolver](StrangeSoft/Plugins/Host/PathAssemblyResolver.md)
+- [PluginContext<T>](StrangeSoft/Plugins/Host/PluginContext-1.md)
 
