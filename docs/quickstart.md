@@ -6,7 +6,8 @@ Five minutes from `git clone` to talking to an agent. Two paths:
 
 You will need:
 
-- An Ollama instance reachable on the network with at least one chat model pulled (e.g. `ollama pull llama3.1`) and one embedding model if you want memory (e.g. `ollama pull embeddinggemma`).
+- An Ollama instance reachable on the network with at least one chat model pulled (e.g. `ollama pull llama3.1`).
+- For memory, either an Ollama embedding model (e.g. `ollama pull embeddinggemma`) **or** the bundled in-process ONNX embedder — see [Embeddings](#embeddings) below. Either works; pick what fits the deployment.
 - Either Docker (Compose path) or the .NET 10 SDK (`dotnet run` path).
 
 ## Docker Compose path
@@ -64,6 +65,25 @@ You will need:
 3. **Add an agent** at `~/.llama-shears/agents/claudia.json` (same JSON as above).
 
 4. **Open the chat UI** at the launch-profile URL (typically `http://localhost:5125`).
+
+## Embeddings
+
+Memory needs an embedding model. Two options ship today, selected per agent by the prefix on the model id:
+
+- **`OLLAMA/<model>`** — calls a configured Ollama endpoint. Easiest if you already run an embedding model on your Ollama box.
+- **`ONNX/<model>`** — runs an ONNX sentence-transformer in-process inside the host. No network round-trip; the host registers an `all-minilm-l6-v2-qint8-avx512-vnni` model out of the box. Use this when you don't want to pull an embedder onto Ollama, or when you want embedding latency under your local control.
+
+Drop the chosen id into the agent config:
+
+```json
+{
+  "model": { "id": "OLLAMA/llama3.1:latest" },
+  "embedding": { "id": "ONNX/all-minilm-l6-v2-qint8-avx512-vnni" },
+  "mcpServers": ["llamashears"]
+}
+```
+
+Skip `embedding` entirely if you don't want memory; the host falls back to the `Memory:DefaultEmbeddingModel` config setting (default `OLLAMA/embeddinggemma:latest`). See [memory.md](design/memory.md) for the full embedding-config layering.
 
 ## What just happened
 
