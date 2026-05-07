@@ -1,4 +1,5 @@
 name: test-coverage
+run-name: Test coverage on ${{ github.ref_name }}
 
 on:
   push:
