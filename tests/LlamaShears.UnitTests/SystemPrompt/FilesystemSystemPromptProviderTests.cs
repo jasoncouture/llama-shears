@@ -1,4 +1,6 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Caching;
+using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Paths;
@@ -215,10 +217,10 @@ public sealed class FilesystemSystemPromptProviderTests
                 DataRoot = Path.Combine(_root, "data"),
                 TemplatesRoot = Path.Combine(_root, "templates"),
             });
-            var paths = new ShearsPaths(pathsOptions);
+            IShearsPaths paths = new ShearsPaths(pathsOptions);
 
             _memory = new MemoryCache(new MemoryCacheOptions());
-            var shears = new ShearsCache<TemplateRenderer>(_memory);
+            IShearsCache<TemplateRenderer> shears = new ShearsCache<TemplateRenderer>(_memory);
             var fpcOptions = new TestOptionsMonitor<FileParserCacheOptions>(
                 new FileParserCacheOptions { TimeToLive = TimeSpan.FromMinutes(10) });
             _rendererCache = new FileParserCache<TemplateRenderer>(shears, fpcOptions);

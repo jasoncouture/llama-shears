@@ -130,7 +130,7 @@ public sealed class FileParserCacheTests
     public async Task TimeToLiveUpdateAppliesToFutureSetCalls()
     {
         using var memory = new MemoryCache(new MemoryCacheOptions());
-        var sharedCache = new Core.Caching.ShearsCache<OwnerA>(memory);
+        IShearsCache<OwnerA> sharedCache = new Core.Caching.ShearsCache<OwnerA>(memory);
         var monitor = new MutableOptionsMonitor<FileParserCacheOptions>(
             new FileParserCacheOptions { TimeToLive = TimeSpan.FromMilliseconds(50) });
         using var cache = new FileParserCache<OwnerA>(sharedCache, monitor);
@@ -164,7 +164,7 @@ public sealed class FileParserCacheTests
     public async Task NonPositiveTimeToLiveUpdateIsIgnored()
     {
         using var memory = new MemoryCache(new MemoryCacheOptions());
-        var sharedCache = new Core.Caching.ShearsCache<OwnerA>(memory);
+        IShearsCache<OwnerA> sharedCache = new Core.Caching.ShearsCache<OwnerA>(memory);
         var monitor = new MutableOptionsMonitor<FileParserCacheOptions>(
             new FileParserCacheOptions { TimeToLive = TimeSpan.FromMinutes(30) });
         using var cache = new FileParserCache<OwnerA>(sharedCache, monitor);
@@ -225,7 +225,7 @@ public sealed class FileParserCacheTests
         public Fixture()
         {
             _ownedMemory = new MemoryCache(new MemoryCacheOptions());
-            var shears = new Core.Caching.ShearsCache<OwnerA>(_ownedMemory);
+            IShearsCache<OwnerA> shears = new Core.Caching.ShearsCache<OwnerA>(_ownedMemory);
             var monitor = new MutableOptionsMonitor<FileParserCacheOptions>(
                 new FileParserCacheOptions { TimeToLive = TimeSpan.FromMinutes(10) });
             _ownedCache = new FileParserCache<OwnerA>(shears, monitor);

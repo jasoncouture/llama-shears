@@ -9,6 +9,7 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Context;
+using LlamaShears.Core.Cron;
 using LlamaShears.Core.Memory;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
@@ -89,6 +90,8 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IMemorySearcher>(sp => sp.GetRequiredService<SqliteMemoryService>());
         services.TryAddSingleton<IMemoryIndexer>(sp => sp.GetRequiredService<SqliteMemoryService>());
         services.AddHostedService<MemoryIndexerBackgroundService>();
+
+        services.AddCron();
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();

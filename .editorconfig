@@ -6,6 +6,13 @@ root = true
 csharp_style_prefer_primary_constructors = false
 dotnet_diagnostic.IDE0290.severity = none
 
+# CA1859 ("Use concrete types when possible for improved performance")
+# is a premature-optimisation prompt that pushes consumers off the
+# interface they're meant to depend on, and pushes tests off the
+# interface they're meant to assert against (see ADR-0023). Disabled
+# repo-wide.
+dotnet_diagnostic.CA1859.severity = none
+
 # Collections must use the collection expression form (`[]`) wherever it
 # applies. Promoted to error per-diagnostic so the build (not just the IDE)
 # fails on `new[] { ... }`, `Type<...>.Empty`, `Array.Empty<T>()`,
