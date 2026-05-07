@@ -26,6 +26,23 @@ home before they drift. Group by area; trim freely.
   - `path/to/folder/Assembly.dll`
   - `some.package.nupkg`
 
+## Agent orchestration & context
+- **Cron tool.** Lets an agent schedule its own future actions; when the
+  scheduled time fires, the execution runs as the agent against a channel the
+  agent has visibility into.
+- **Channel "unsee".** Ability to revoke an agent's visibility into a channel
+  — the inverse of granting it.
+- **Sub-agents.** An agent can spawn another agent to handle a delimited task,
+  receive the result, and continue.
+- **Sub-agent depth limits.** Configurable max spawn depth plus a per-tree
+  budget, so a runaway parent can't infinitely recurse.
+- **Transient controllable contexts.** Agent can carve scratch contexts to
+  hold a task's working state without bloating its main context window or
+  forcing compaction.
+- **Smarter compaction.** Safely preserve tools (tool-call ↔ tool-result
+  pairs, schema-anchored entries) and other invariants the current compactor
+  can break.
+
 ## Web UI
 - **Agent creator/editor.** Build / edit agent JSON from the UI.
 - **Expose config.** Surface host config in the UI (read/write where safe).
