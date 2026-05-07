@@ -62,6 +62,6 @@ jobs:
         uses: ./.github/actions/build-container
         with:
           target: ${{ matrix.target }}
-          image: ghcr.io/${{ github.repository }}/${{ matrix.target }}
+          registry: ghcr.io/${{ github.repository }}
           version: ${{ needs.prepare.outputs.version }}
           push: ${{ github.event_name == 'push' && 'true' || 'false' }}
