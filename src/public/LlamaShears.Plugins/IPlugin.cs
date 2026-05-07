@@ -25,21 +25,23 @@ public interface IPlugin
     public void Register(IServiceCollection services);
 
     /// <summary>
+    /// Asynchronous one-shot initialization, run after the service
+    /// provider has been built and before <see cref="Build"/>. Default
+    /// is a completed task.
+    /// </summary>
+    public Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    /// <summary>
     /// Hook into the host's HTTP request pipeline (middleware,
-    /// endpoint routing, etc.). Invoked exactly once after
-    /// <see cref="Register"/>. Default is a no-op so plugins that
-    /// don't expose HTTP surface can ignore it.
+    /// endpoint routing, etc.). Invoked exactly once after every
+    /// plugin's <see cref="InitializeAsync"/> has completed. Default
+    /// is a no-op so plugins that don't expose HTTP surface can ignore
+    /// it.
     /// </summary>
     public void Build(IApplicationBuilder applicationBuilder)
     {
     }
-
-    /// <summary>
-    /// Asynchronous one-shot initialization, run after the service
-    /// provider has been built. Default is a completed value task.
-    /// </summary>
-    public Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken)
-        => Task.CompletedTask;
 
     /// <summary>
     /// Called when the plugin is being unloaded — graceful cleanup of
