@@ -3,6 +3,7 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Seeding;
@@ -19,6 +20,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private const string WorkspaceTemplateSubpath = "workspace";
 
     private readonly IEventBus _bus;
+    private readonly IEventPublisher _publisher;
     private readonly IEnumerable<IProviderFactory> _providers;
     private readonly IAgentConfigProvider _configs;
     private readonly ILoggerFactory _loggerFactory;
@@ -38,6 +40,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     public AgentManager(
         IEventBus bus,
+        IEventPublisher publisher,
         IEnumerable<IProviderFactory> providers,
         IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
@@ -51,6 +54,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IHostApplicationLifetime appLifetime)
     {
         _bus = bus;
+        _publisher = publisher;
         _providers = providers;
         _configs = configs;
         _loggerFactory = loggerFactory;
@@ -194,6 +198,11 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         _loaded[name] = slot;
         LogAgentStarted(_logger, name);
+
+        await _publisher.PublishAsync(
+            Event.WellKnown.Agent.Loaded with { Id = name },
+            new AgentLifecycleMarker(),
+            cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config, CancellationToken cancellationToken)

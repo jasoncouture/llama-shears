@@ -171,10 +171,14 @@ public sealed class ContextPersistenceTests
             new ChannelMessage(content, AgentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-        var winner = await Task.WhenAny(done.Task, Task.Delay(ResponseTimeout));
-        if (winner != done.Task)
+        using var cts = new CancellationTokenSource(ResponseTimeout);
+        try
         {
-            throw new TimeoutException($"Agent '{AgentId}' did not reply within {ResponseTimeout}.");
+            await done.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Agent '{AgentId}' did not reply within {ResponseTimeout}.", ex);
         }
     }
 

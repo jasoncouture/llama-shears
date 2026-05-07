@@ -1,6 +1,7 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -82,26 +83,49 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Publishes a tick and polls until <paramref name="agentId"/> is
-    /// present in <see cref="AgentManager.Agents"/>, or the timeout
-    /// elapses. The reconcile runs synchronously inside the tick handler,
-    /// so a single pulse is normally enough; the poll only exists so a
-    /// slow CI host doesn't flake.
+    /// Publishes a tick and waits for the agent's <c>Agent.Loaded</c>
+    /// signal. The subscription is installed before the tick fires, and
+    /// a post-subscription <see cref="IAgentManager.Contains"/> check
+    /// covers the case where the agent had already loaded before this
+    /// call (e.g. a prior <see cref="TickAsync"/>) so the loaded signal
+    /// is in the past.
     /// </summary>
     public async Task WaitForAgentAsync(string agentId, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         var manager = Services.GetRequiredService<IAgentManager>();
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(5));
-        await TickAsync().ConfigureAwait(false);
-        while (!manager.Contains(agentId))
-        {
-            if (DateTimeOffset.UtcNow >= deadline)
+        var bus = Services.GetRequiredService<IEventBus>();
+
+        var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var subscription = bus.Subscribe<AgentLifecycleMarker>(
+            $"{Event.WellKnown.Agent.Loaded}:{agentId}",
+            EventDeliveryMode.Awaited,
+            (_, _) =>
             {
-                throw new TimeoutException(
-                    $"Agent '{agentId}' did not appear in AgentManager within the timeout.");
-            }
-            await Task.Delay(25).ConfigureAwait(false);
+                loaded.TrySetResult();
+                return ValueTask.CompletedTask;
+            });
+
+        // Subscribe-then-check covers the already-loaded case: if the
+        // agent landed before this method ran, the publish is in the
+        // past and our subscription would never see it; the Contains
+        // check shortcuts in that case.
+        if (manager.Contains(agentId))
+        {
+            return;
+        }
+
+        await TickAsync().ConfigureAwait(false);
+
+        using var cts = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(5));
+        try
+        {
+            await loaded.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Agent '{agentId}' did not appear in AgentManager within the timeout.", ex);
         }
     }
 
