@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.SystemPrompt;
-using LlamaShears.Core.Abstractions.Templating;
 using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Core.SystemPrompt;

@@ -1,5 +1,5 @@
 using LlamaShears.Core.Abstractions.Caching;
-using LlamaShears.Core.Abstractions.Templating;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using Scriban;
 
 namespace LlamaShears.Core.Templating;

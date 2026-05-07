@@ -1,6 +1,6 @@
-# LlamaShears.Core.Abstractions.Templating.ITemplateRenderer
+# LlamaShears.Core.Abstractions.SystemPrompt.ITemplateRenderer
 
-Assembly: `LlamaShears.Core.Abstractions.Templating`
+Assembly: `LlamaShears.Core.Abstractions.SystemPrompt`
 
 Renders a template file against an input object. Implementations
 own the template language (today: Scriban); callers see only the

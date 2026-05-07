@@ -7,7 +7,6 @@ using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
-using LlamaShears.Core.Abstractions.Templating;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Context;
 using LlamaShears.Core.Memory;

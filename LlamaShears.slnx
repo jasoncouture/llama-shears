@@ -27,7 +27,6 @@
     <Project Path="src/public/LlamaShears.Core.Abstractions.PromptContext/LlamaShears.Core.Abstractions.PromptContext.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Provider/LlamaShears.Core.Abstractions.Provider.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.SystemPrompt/LlamaShears.Core.Abstractions.SystemPrompt.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Templating/LlamaShears.Core.Abstractions.Templating.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Tools/LlamaShears.Core.Abstractions.Tools.csproj" />
     <Project Path="src/public/LlamaShears.Plugins/LlamaShears.Plugins.csproj" />
     <Project Path="src/public/LlamaShears.Plugins.Host/LlamaShears.Plugins.Host.csproj" />

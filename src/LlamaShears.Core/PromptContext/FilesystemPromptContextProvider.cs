@@ -1,6 +1,6 @@
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.PromptContext;
-using LlamaShears.Core.Abstractions.Templating;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Core.PromptContext;
