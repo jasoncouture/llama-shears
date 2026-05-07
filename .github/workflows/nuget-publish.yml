@@ -1,0 +1,45 @@
+name: nuget-publish
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: nuget-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: pack & push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore solution
+        run: dotnet restore LlamaShears.slnx
+
+      - name: Pack public packages
+        run: |
+          dotnet pack LlamaShears.slnx \
+            --configuration Release \
+            --no-restore \
+            --output ./artifacts/nuget
+
+      - name: Push to GitHub Packages
+        run: |
+          dotnet nuget push './artifacts/nuget/*.nupkg' \
+            --source 'https://nuget.pkg.github.com/jasoncouture/index.json' \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-duplicate
