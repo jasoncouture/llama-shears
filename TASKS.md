@@ -30,8 +30,9 @@ home before they drift. Group by area; trim freely.
 - [ ] **Cron tool.** Lets an agent schedule its own future actions; when the
   scheduled time fires, the execution runs as the agent against a channel the
   agent has visibility into.
-- [ ] **Channel "unsee".** Ability to revoke an agent's visibility into a
-  channel — the inverse of granting it.
+- [ ] **Channel see / unsee.** Grant or revoke an agent's visibility into a
+  channel — paired affordances; an agent that can see channels at runtime
+  also needs a way to stop seeing one.
 - [ ] **Sub-agents.** An agent can spawn another agent to handle a delimited
   task, receive the result, and continue.
 - [ ] **Sub-agent depth limits.** Configurable max spawn depth plus a
