@@ -26,3 +26,4 @@ If you're orienting from scratch:
 - [System tick](system-tick.md)
 - [Eventing](eventing.md)
 - [Paths and data layout](paths.md)
+- [Plugins](plugins.md) — SDK and chassis for loading external plugins into the host

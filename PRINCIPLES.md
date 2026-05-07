@@ -47,8 +47,8 @@ When a decision is hard, the question is not "which principle applies here" but 
 
 The ADRs are concrete instances of these principles applied to specific decisions. The mapping is not exclusive — most ADRs touch both — but the dominant generator is usually clear.
 
-- **Mostly mechanism over memory:** ADR-0001 through ADR-0006 (analyzer-enforced naming, layout, and disambiguation rules), ADR-0011 (config root location), ADR-0013 (`DateTime` requires justification), ADR-0014 (source-generated logging is the default).
-- **Mostly bound aggregate cost:** ADR-0010 (exception handling requires justification), ADR-0012 (XML doc comments default absent — every comment is a maintenance commitment), ADR-0015 (provider vs. model workarounds).
+- **Mostly mechanism over memory:** ADR-0001 through ADR-0006 (analyzer-enforced naming, layout, and disambiguation rules), ADR-0011 (config root location), ADR-0013 (`DateTime` requires justification), ADR-0014 (source-generated logging is the default), ADR-0016 (test method names use PascalCase), ADR-0017 (services come from DI or `ActivatorUtilities`), ADR-0018 (explicit delegate invocation), ADR-0019 (async methods take a non-optional `CancellationToken`), ADR-0020 (default service lifetime is Scoped).
+- **Mostly bound aggregate cost:** ADR-0010 (exception handling requires justification), ADR-0012 (XML doc comments default absent — every comment is a maintenance commitment), ADR-0015 (provider vs. model workarounds), ADR-0021 (flaky tests are failing tests — tolerated flakes degrade the test signal at compounding cost).
 - **Both at once, with the tension named:** ADR-0007 (pit of success — what mechanism over memory looks like when applied broadly), ADR-0009 (pragmatism over technical purity — what bounding aggregate cost looks like when held against purist instinct).
 
 The save-changes hook pattern, the no-navigation-properties EF rule, the no-logic-in-property-setters rule, the source-generated logging requirement, the loud-failures-over-silent-success memory, and the plugin-as-escape-hatch posture in the agent host are all instances of the same two principles, applied at different layers.

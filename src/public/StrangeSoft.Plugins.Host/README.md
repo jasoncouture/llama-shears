@@ -37,15 +37,3 @@ Generic host-side plugin chassis for the StrangeSoft plugin SDK. Reusable outsid
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## StrangeSoft.Plugins.Host
-
-- [HostContextAssemblyResolver](StrangeSoft/Plugins/Host/HostContextAssemblyResolver.md)
-- [IAssemblyResolver](StrangeSoft/Plugins/Host/IAssemblyResolver.md)
-- [IPluginContextLogger](StrangeSoft/Plugins/Host/IPluginContextLogger.md)
-- [IPluginContext<T>](StrangeSoft/Plugins/Host/IPluginContext-1.md)
-- [PathAssemblyResolver](StrangeSoft/Plugins/Host/PathAssemblyResolver.md)
-- [PluginContext<T>](StrangeSoft/Plugins/Host/PluginContext-1.md)
-

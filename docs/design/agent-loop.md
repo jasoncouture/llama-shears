@@ -19,18 +19,19 @@ Inbound `ChannelMessage` events whose `AgentId` doesn't match this agent's `Id` 
 
 ```
 inbound channel ──▶ batch coalesce ──▶ user turn build ──▶ publish agent:turn ──▶
-   resolve memories (once per batch) ──▶
+   resolve memories (prefetched on inbound, or searched once now) ──▶
       iteration loop (≤ TurnLimit):
          build prompt = system + persisted turns
          compactor.CompactAsync(force: false)        ← may rewrite prompt + persistence
          inject ephemeral prompt-context block       ← memories, time, channel id
-         inferenceRunner.RunAsync                     ← streaming fragments → events
+         inferenceRunner.RunAsync(dispatchTool)       ← streaming fragments → events
+                                                      ↳ tool calls dispatch eagerly
+                                                        as their fragments land
          if final iteration:                          ← TurnLimit-th iteration runs tools-less
             drop any tool calls, log empty-content if any, return
          if no tool calls:
             return
-         dispatch tools in parallel
-         persist Tool turns in original call order
+         persist Tool turns in original call order   ← results already in InferenceOutcome
 ```
 
 Every numbered detail below points back to a line in `Agent.cs` or its callees; if you need to chase one of these to ground truth, the source is the source.
@@ -50,13 +51,15 @@ This is why coalescing lives at the loop level, not at the producer: it can only
 
 The user turn is published as `agent:turn:<id>` immediately and that publication is what triggers `AgentTurnContextPersister` to write it to `current.json`. The model never sees a turn that isn't on disk.
 
-### 3. Resolve memories once per batch
+### 3. Resolve memories once per batch (with optional prefetch)
 
 `SearchMemoriesAsync` builds a query out of the last assistant turn (if any) plus the freshly-coalesced user turn, calls `IMemorySearcher.SearchAsync` with `limit=5, minScore=0.30`, and reads the matching files. If the agent has no `WorkspacePath` or no embedding model, the call short-circuits to an empty list. If the embedding model is unreachable, the failure is logged and the turn proceeds without memory enrichment — search is best-effort.
 
 The 0.30 floor is empirical against `embeddinggemma:latest` with the configured task prefixes; relevant matches land in the 0.40–0.60 band, noise stays under 0.10. The threshold sits in the gap.
 
 Memories are searched **once per batch, not once per iteration**. The user input and prior assistant turn are fixed for the whole tool loop, so re-querying every iteration would be wasted work and wasted embedding-model latency.
+
+If `AgentConfig.Memory.Prefetch` is enabled, the search is **kicked off when the inbound `ChannelMessage` arrives** at the agent's bus handler, not when the batch begins processing. The prefetch task runs concurrently with whatever the agent is doing right then (finishing the previous batch, waiting on the gate, etc.); when this batch reaches step 3 it consumes the prefetched result instead of starting a new search. If no prefetch was installed (flag off, empty message text, or the prefetch slot raced with a competing message), the loop falls back to the synchronous search at this step. The win is overlap — embedding-model latency hides behind whatever the agent was already doing.
 
 ### 4. Iterate up to `Tools.TurnLimit`
 
@@ -75,25 +78,31 @@ Each iteration calls `IContextCompactor.CompactAsync(snapshot, prompt, model, mo
 
 `InjectPromptContextAsync` finds the most recent `User` turn in the prompt and inserts a `SystemEphemeral` turn immediately *before* it. The body is rendered by `IPromptContextProvider` from the `PROMPT.md` template (workspace-overridable, falls back to the bundled `content/templates/workspace/system/context/PROMPT.md`).
 
-The block carries: current local time / timezone / day-of-week, channel id, an optional `important_message` (used for the final-iteration "tools are gone, write text" notice), the conventional workspace files (`BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md` — in that order), the memory hits, and a name-only listing of every other root-level `.md` in the workspace (so the model knows what's available without paying token cost for the bodies). See [prompt-context.md](prompt-context.md).
+The block carries: current local time / timezone / day-of-week, channel id, an optional `important_message` (used for the final-iteration "tools are gone, write text" notice), the memory hits as `(path, first-line summary, score)` triples, and a name-only listing of every other root-level `.md` in the workspace (so the model knows what's available without paying token cost for the bodies). See [prompt-context.md](prompt-context.md).
+
+The conventional persona files (`BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md`) used to live in this block; they now live in the **system prompt** instead, since their contents are stable across iterations within a batch and re-emitting them every turn defeated cache locality without buying anything. See [prompt-context.md](prompt-context.md) for the system-prompt template.
 
 `SystemEphemeral` is a distinct `ModelRole` so providers can render it as a system-class message without confusing it with the persistent system prompt. It is **never persisted** — it's rebuilt each iteration so that the time, the memory hits, and the workspace file contents stay live.
 
-### 7. Run inference
+### 7. Run inference (with eager tool dispatch)
 
-`InferenceRunner.RunAsync` consumes `ILanguageModel.PromptAsync(prompt, options)` as an `IAsyncEnumerable<IModelResponseFragment>`. As it streams it accumulates text into one `StringBuilder`, thoughts into another, and tool calls into a builder; it publishes a `FireAndForget` event for each fragment so the chat UI streams in real time. When the stream completes, it publishes a final `agent:turn` event for the assistant turn (carrying both the streamed text and the captured `ToolCalls`, which is what `AgentTurnContextPersister` writes to `current.json`).
+`InferenceRunner.RunAsync` consumes `ILanguageModel.PromptAsync(prompt, options)` as an `IAsyncEnumerable<IModelResponseFragment>`. As it streams it accumulates text into one `StringBuilder`, thoughts into another, and tool calls into a builder; it publishes a `FireAndForget` event for each fragment so the chat UI streams in real time.
 
-The runner returns an `InferenceOutcome(Thinking, Content, TokenCount?, ToolCalls)`. Callers use it to decide whether to dispatch tools and whether to loop again.
+The runner takes an optional `dispatchTool` callback. When a tool-call fragment lands in the stream, the runner immediately spawns `Task.Run(() => dispatchTool(call, ct))` for that call and continues consuming the stream. Tool execution overlaps with the rest of the model's output instead of waiting for the stream to finish — by the time the model emits its next text fragment or completes the turn, the earliest tool call may already have a result. After the stream completes, the runner `Task.WhenAll`s the dispatched tasks before returning, so the `InferenceOutcome` carries both the captured tool calls *and* their results in original call order.
 
-### 8. Dispatch tool calls in parallel
+When the stream completes the runner also publishes a final `agent:turn` event for the assistant turn (carrying both the streamed text and the captured `ToolCalls`, which is what `AgentTurnContextPersister` writes to `current.json`).
 
-When the outcome carries tool calls, `DispatchToolCallsAsync`:
+The runner returns `InferenceOutcome(Thinking, Content, TokenCount?, ToolCalls, ToolResults)`. Earlier iterations of the loop pass a real `dispatchTool`; the **final iteration** passes `null` so any confabulated tool calls the model emits when it has no schema available are dropped rather than executed.
 
-1. Begins an `ICurrentAgentAccessor` scope carrying this agent's `AgentInfo`. The scope flows into spawned tasks because `ExecutionContext` captures `AsyncLocal` at task start.
-2. Launches one `Task` per call, all running in parallel. Each task calls `IToolCallDispatcher.DispatchAsync`, captures the `ToolCallResult` into a slot in an output array, and publishes its own `agent:tool-result` event the moment it completes — so the UI can render results in arrival order regardless of which tool finished first.
-3. After `Task.WhenAll`, persists `Tool`-role turns in the *original call order*. Some providers pair tool calls and tool results positionally rather than by id; deterministic order keeps re-prompting honest no matter which model is driving.
+### 8. Persist tool results, then loop or return
 
-Dispatch routes by the `Source` prefix on the tool name (`server__tool` is split into `Source = "server"`, `Name = "tool"` at fragment-decode time on the provider side). If `Source` is empty or unknown, the dispatcher returns an error result rather than throwing — the loop continues and the model gets to see the failure on its next iteration. See [mcp.md](mcp.md).
+The agent loop sees the `ToolResults` already populated in the `InferenceOutcome` (eagerly dispatched in step 7). It walks them in original call order and persists each as a `Tool`-role turn in `current.json`. Persistence in original order matters because some providers pair tool calls and tool results positionally rather than by id; deterministic order keeps re-prompting honest no matter which model is driving.
+
+Around the eager dispatch in step 7, the agent loop opens an `ICurrentAgentAccessor` scope carrying this agent's `AgentInfo`. The scope flows into spawned tasks because `ExecutionContext` captures `AsyncLocal` at task start; this is what makes `LoopbackBearerHandler` able to mint an agent-bound bearer for the loopback dispatch path. See [mcp.md](mcp.md).
+
+Each dispatched task publishes its own `agent:tool-result` event the moment its dispatch completes — so the UI can render results in arrival order regardless of which tool finished first.
+
+Dispatch routes by the `Source` prefix on the tool name (`server__tool` is split into `Source = "server"`, `Name = "tool"` at fragment-decode time on the provider side). If `Source` is empty or unknown, the dispatcher returns an error result rather than throwing — the loop continues and the model gets to see the failure on its next iteration.
 
 The agent's `CancellationToken` flows into every dispatch. Tools are responsible for their own concurrency (locking, transactional integrity, idempotency); the framework does not serialize parallel calls.
 

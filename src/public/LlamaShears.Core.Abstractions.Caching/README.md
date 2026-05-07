@@ -16,12 +16,3 @@ Generic caching contracts for [LlamaShears](https://github.com/jasoncouture/llam
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Core.Abstractions.Caching
-
-- [CacheResult<T>](LlamaShears/Core/Abstractions/Caching/CacheResult-1.md)
-- [IFileParserCache<T>](LlamaShears/Core/Abstractions/Caching/IFileParserCache-1.md)
-- [IShearsCache<T>](LlamaShears/Core/Abstractions/Caching/IShearsCache-1.md)
-

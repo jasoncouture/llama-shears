@@ -21,16 +21,3 @@ Per-turn context contracts for [LlamaShears](https://github.com/jasoncouture/lla
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Core.Abstractions.Context
-
-- [AgentContext](LlamaShears/Core/Abstractions/Context/AgentContext.md)
-- [IAgentContextProvider](LlamaShears/Core/Abstractions/Context/IAgentContextProvider.md)
-- [IContextCompactor](LlamaShears/Core/Abstractions/Context/IContextCompactor.md)
-- [LanguageModelContext](LlamaShears/Core/Abstractions/Context/LanguageModelContext.md)
-- [PluginContext](LlamaShears/Core/Abstractions/Context/PluginContext.md)
-- [SystemContext](LlamaShears/Core/Abstractions/Context/SystemContext.md)
-- [ToolContext](LlamaShears/Core/Abstractions/Context/ToolContext.md)
-

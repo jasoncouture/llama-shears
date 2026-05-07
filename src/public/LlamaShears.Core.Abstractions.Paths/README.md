@@ -16,11 +16,3 @@ Filesystem-path contracts for [LlamaShears](https://github.com/jasoncouture/llam
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Core.Abstractions.Paths
-
-- [IShearsPaths](LlamaShears/Core/Abstractions/Paths/IShearsPaths.md)
-- [PathKind](LlamaShears/Core/Abstractions/Paths/PathKind.md)
-

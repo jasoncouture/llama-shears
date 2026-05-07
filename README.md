@@ -5,7 +5,7 @@
 
 An agentic hosting application for running unattended, automated agent tasks. The goal is a self-driving runtime where agents tick on a schedule, accumulate memory, retrieve relevant context, call external tools, and act without human intervention beyond initial configuration.
 
-**This is early-stage work.** The substrate (event bus, persistence, memory, MCP, agent loop, Blazor chat UI) is real and exercised by tests. The autonomous side — heartbeat firing, RAG-driven recall on its own schedule, multi-provider support — is partially in place; the [Status](#status) table is the source of truth on what runs end-to-end today.
+**This is early-stage work.** The substrate (event bus, persistence, memory + sqlite-vec RAG, MCP, agent loop, Blazor chat UI, plugin SDK chassis) is real and exercised by tests. The autonomous side — heartbeat firing, multi-LLM-provider support, channel adapters beyond the bundled UI — is partially in place; the [Status](#status) table is the source of truth on what runs end-to-end today.
 
 ## Scope
 
@@ -13,28 +13,30 @@ LlamaShears is a *host*, not an agent. It runs agents you configure and provides
 
 - **Heartbeat-driven execution.** Agents are scheduled by a heartbeat tick rather than invoked imperatively. The system tick is wired today; per-agent heartbeat firing from `HEARTBEAT.md` is not.
 - **Persistent context** — JSON-lines files on disk for conversation turns; archive on compaction is `mv current.json <unix-ms>.json`.
-- **Self-healing RAG memory** — agent-owned markdown under `memory/`, with a SQLite-backed vector index that reconciles against the filesystem on a schedule.
-- **Model Context Protocol (MCP) tools** — the host exposes its own MCP server (filesystem and memory tools) and dispatches outbound calls to user-configured MCP servers; tool names are source-prefixed (`server__tool`).
-- **Provider-agnostic LLM access** — Ollama is the only shipping provider; the abstraction is in `LlamaShears.Core.Abstractions.Provider`.
-- **Per-agent JSON config** — model, embedding model, MCP server allow-list, tool turn limit, heartbeat period.
-- **Server-rendered Blazor chat UI** — interactive turns over the same event bus the rest of the system speaks.
+- **Self-healing RAG memory** — agent-owned markdown under `memory/`, with a sqlite-vec-backed vector index (via `Microsoft.Extensions.VectorData`) that reconciles against the filesystem on a schedule.
+- **Model Context Protocol (MCP) tools** — the host exposes its own MCP server (filesystem and memory tools) and dispatches outbound calls to user-configured MCP servers; tool names are source-prefixed (`server__tool`) and standardized as `<category>_<action>` on the bundled set.
+- **Provider-agnostic LLM access** — Ollama is the shipping chat provider; an in-process ONNX embeddings provider (all-MiniLM scope) ships alongside it. The abstraction lives in `LlamaShears.Core.Abstractions.Provider` and per-agent provider options layer over host defaults.
+- **Plugin SDK + host loader.** `LlamaShears.Plugins` is the contract a plugin compiles against; `LlamaShears.Plugins.Host` and the `StrangeSoft.Plugins.*` pair carry the assembly-load-context chassis, host-shared type unification, transactional DI snapshot, and deferred-logger plumbing. See `samples/HelloWorld.LlamaShears.Plugin` for the minimum viable plugin shape.
+- **Per-agent JSON config** — model, embedding model, MCP server allow-list, tool turn limit, heartbeat period, optional memory prefetch.
+- **Server-rendered Blazor chat UI** — interactive turns over the same event bus the rest of the system speaks; auto-reload on terminal Blazor circuit reconnect failure.
 
 ## Status
 
 | Area                          | State |
 |-------------------------------|-------|
-| System tick                   | **Implemented.** `SystemTickService` publishes `system:tick` on the event bus every 30s; `SystemTickOptions.Enabled` controls it. |
+| System tick                   | **Implemented.** `SystemTickService` publishes `host:tick` on the event bus every 30s; `SystemTickOptions.Enabled` controls it. |
 | Heartbeat                     | **Config-only.** `AgentConfig.HeartbeatPeriod` exists; nothing reads it yet — `HEARTBEAT.md` is not delivered to the agent on tick. |
-| Agent loop                    | **Implemented.** Channel-fed, single-threaded per agent, with batching, parallel tool dispatch, per-batch memory enrichment, and a configurable tool turn limit. |
+| Agent loop                    | **Implemented.** Channel-fed, single-threaded per agent, with batching, eager parallel tool dispatch during model streaming, per-batch memory enrichment, optional pre-prompt memory prefetch, and a configurable tool turn limit. |
 | Persistence                   | **Implemented.** `JsonLineContextStore` writes turns to `<Context>/<agentId>/current.json`; archives are renamed to `<unix-ms>.json` on compaction. |
-| Context compaction            | **Implemented.** Auto-compacts when token estimate plus predict budget would exceed the model's context window; eager compactor force-compacts after 15 min of agent idle. |
-| LLM providers                 | **Ollama only.** Provider factory + embeddings; `IProviderFactory.Name` selects between providers. |
-| Memory & RAG                  | **Implemented (raw SQLite).** Markdown files under `<workspace>/memory/YYYY-MM-DD/<unix-seconds>.md`, SHA-256-keyed SQLite index at `<workspace>/system/.memory.db`. Cosine similarity is computed in-process; the move to `Microsoft.Extensions.VectorData` + sqlite-vec is still planned. |
+| Context compaction            | **Implemented.** Auto-compacts when token estimate plus predict budget would exceed the model's context window; eager compactor force-compacts after 15 min of agent idle. Tool-call/result preservation is on the followup list (see [TASKS.md](TASKS.md)). |
+| LLM providers                 | **Ollama (chat)** + **ONNX (embeddings, in-process).** Per-agent provider options layer over host defaults; `IProviderFactory.Name` and `IEmbeddingProviderFactory.Name` select between registered providers. |
+| Memory & RAG                  | **Implemented.** Markdown files under `<workspace>/memory/YYYY-MM-DD/<unix-seconds>.md`, SHA-256-keyed SQLite index at `<workspace>/system/.memory.db` via `Microsoft.Extensions.VectorData` + `sqlite-vec`. Index auto-rebuilds on vector-dimension mismatch; matched memories are injected as first-line summaries. |
 | Memory reconciliation         | **Implemented.** `MemoryIndexerBackgroundService` walks every agent on a configured interval (default 30 min) and reconciles the index against disk. |
-| MCP integration               | **Implemented.** Host MCP server mounted at `/mcp` with bearer auth; built-in tools cover filesystem and memory; user-configured outbound servers are dispatched via `LoopbackBearerHandler`. |
-| API host                      | **Implemented.** ASP.NET Core 10 host (`LlamaShears`) with Razor Components + interactive server render mode. |
-| Blazor chat UI                | **Implemented.** Server-rendered chat with streaming message/thought/tool fragments, scoped CSS, no inline JS where C# can do the job. |
-| Desktop UI                    | **Not implemented.** Blazor server is the only UI today. |
+| MCP integration               | **Implemented.** Host MCP server mounted at `/mcp` with bearer auth; built-in tools cover filesystem and memory under `<category>_<action>` names; user-configured outbound servers are dispatched via `LoopbackBearerHandler`, with persistent `McpClient` connections pooled per server. |
+| Plugin SDK                    | **Chassis implemented.** `IPlugin` contract + locator surface (`IPluginLocator<T>` / `PluginInformation` / `Plugin` orchestrator), per-plugin `AssemblyLoadContext` with host-shared type unification, deferred logger that flushes after DI is built, sample HelloWorld plugin. NuGet-source loading is followup. |
+| API host                      | **Implemented.** ASP.NET Core 10 host (`LlamaShears`) with Razor Components + interactive server render mode, NerdBank.GitVersioning for build versioning, Dockerfile + compose for sandboxed runs. |
+| Blazor chat UI                | **Implemented.** Server-rendered chat with streaming message/thought/tool fragments, scoped CSS, no inline JS where C# can do the job, auto-reload on terminal circuit-reconnect failure, server-side reject of reconnects during shutdown so Ctrl+C exits promptly. |
+| Desktop / mobile / TUI        | **Not implemented.** Blazor server is the only UI today; followups tracked in [TASKS.md](TASKS.md). |
 
 ## Building and running
 

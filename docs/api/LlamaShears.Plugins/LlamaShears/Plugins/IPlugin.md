@@ -19,14 +19,16 @@ when the host needs to distinguish two plugins that share one.
 ### `Build`(IApplicationBuilder applicationBuilder)
 
 Hook into the host's HTTP request pipeline (middleware,
-endpoint routing, etc.). Invoked exactly once after
-[IPlugin](IPlugin.md).`Register`. Default is a no-op so plugins that
-don't expose HTTP surface can ignore it.
+endpoint routing, etc.). Invoked exactly once after every
+plugin's [IPlugin](IPlugin.md).`InitializeAsync` has completed. Default
+is a no-op so plugins that don't expose HTTP surface can ignore
+it.
 
 ### `InitializeAsync`(IServiceProvider services, CancellationToken cancellationToken)
 
 Asynchronous one-shot initialization, run after the service
-provider has been built. Default is a completed value task.
+provider has been built and before [IPlugin](IPlugin.md).`Build`. Default
+is a completed task.
 
 ### `Register`(IServiceCollection services)
 

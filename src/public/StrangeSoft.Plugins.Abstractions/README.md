@@ -18,10 +18,3 @@ The chassis is intentionally generic — `T` is the host's plugin contract, defi
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## StrangeSoft.Plugins.Abstractions
-
-- [IPluginLoader<T>](StrangeSoft/Plugins/Abstractions/IPluginLoader-1.md)
-

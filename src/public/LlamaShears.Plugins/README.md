@@ -25,10 +25,3 @@ A reference plugin lives at [`samples/HelloWorld.LlamaShears.Plugin`](https://gi
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Plugins
-
-- [IPlugin](LlamaShears/Plugins/IPlugin.md)
-

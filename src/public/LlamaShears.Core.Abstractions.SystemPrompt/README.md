@@ -18,13 +18,3 @@ System-prompt and template-rendering contracts for [LlamaShears](https://github.
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Core.Abstractions.SystemPrompt
-
-- [ISystemPromptProvider](LlamaShears/Core/Abstractions/SystemPrompt/ISystemPromptProvider.md)
-- [ITemplateRenderer](LlamaShears/Core/Abstractions/SystemPrompt/ITemplateRenderer.md)
-- [SystemPromptTemplateParameters](LlamaShears/Core/Abstractions/SystemPrompt/SystemPromptTemplateParameters.md)
-- [WorkspaceFile](LlamaShears/Core/Abstractions/SystemPrompt/WorkspaceFile.md)
-

@@ -88,7 +88,7 @@ Per-call rules:
 - **Empty `Source`** → reject with an error `ToolCallResult` immediately, without making a network call.
 - **Unknown `Source`** → reject with an error result. The model sees the rejection on the next iteration.
 - **Server present but unreachable / throws** → catch, log, return error result. The agent loop persists the failure as a `Tool` turn with `IsError = true`.
-- **Per-call MCP client.** A fresh `McpClient` is created per dispatch (the underlying `HttpClient` is reused via the named factory). The client is `await using`-disposed at the end of the call.
+- **Pooled MCP client.** Each consumer (`ModelContextProtocolToolCallDispatcher` and `ModelContextProtocolToolDiscovery`) holds a `LifetimeCache<(string Name, Uri Endpoint), McpClient>` keyed by server identity. The first call to a server pays the MCP `initialize` / capabilities-exchange handshake; subsequent calls reuse the connection. Idle entries (default 5 min) are evicted from the cache and properly disposed; the consumers themselves implement `IAsyncDisposable` so DI shutdown drains the pool. This replaces an earlier design where every dispatch built and tore down a fresh `McpClient` — the old shape worked but flooded `Information` logs with "client created and connected" / "message processing canceled" lines on every tool call.
 
 ### Server registry
 
@@ -114,20 +114,23 @@ Per-call rules:
 
 ### Loopback bearer minting
 
-[`LoopbackBearerHandler`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/LoopbackBearerHandler.cs) is a `DelegatingHandler` registered on the named `ModelContextProtocolToolDiscovery.HttpClientName` HTTP client. On every outbound request:
+[`LoopbackBearerHandler`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/LoopbackBearerHandler.cs) is a `DelegatingHandler` registered on each consumer's named HTTP client. The clients are named after the consumer class via `nameof(ModelContextProtocolToolDiscovery)` and `nameof(ModelContextProtocolToolCallDispatcher)` — both at the registration side and the resolution side, so a rename of either consumer carries through automatically and a string-typo can't silently fall back to a default-configured client.
 
-1. Compare the request URI against the internal listener's URI. If the request port matches *and* the host is `localhost` or a loopback IP literal, treat it as loopback.
-2. For loopback requests, read the current agent off [`ICurrentAgentAccessor.Current`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ICurrentAgentAccessor.cs).
-3. Mint a one-shot bearer with `IAgentTokenStore.Issue(agent)` and stamp it onto the request as `Authorization: Bearer <token>`.
-4. For non-loopback requests, do nothing — external MCP servers are trusted on their own connection.
+On every outbound request:
 
-The `ICurrentAgentAccessor` scope is opened by `Agent.DispatchToolCallsAsync` *around* the parallel `Task.WhenAll`, so the `AsyncLocal` value flows into every spawned task. If the scope is missing — i.e. an outbound MCP request to the loopback listener with no current agent — the handler throws. This is intentional: it's a programming error, not a runtime condition to recover from.
+1. **Shutdown short-circuit.** If `IHostApplicationLifetime.ApplicationStopping.IsCancellationRequested` is set *and* the request is a `DELETE` (the MCP session-teardown call `McpClient.DisposeAsync` issues during shutdown), the handler synthesizes a `200 OK` response locally and returns it without going to the listener. The listener is mid-shutdown anyway and would 401 the request, which would then be logged as `MCP shutdown failed.` on the way out — noise that doesn't reflect a real problem.
+2. Compare the request URI against the internal listener's URI. If the request port matches *and* the host is `localhost` or a loopback IP literal, treat it as loopback.
+3. For loopback requests, read the current agent off [`ICurrentAgentAccessor.Current`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ICurrentAgentAccessor.cs).
+4. Mint a one-shot bearer with `IAgentTokenStore.Issue(agent)` and stamp it onto the request as `Authorization: Bearer <token>`.
+5. For non-loopback requests, do nothing — external MCP servers are trusted on their own connection.
+
+The `ICurrentAgentAccessor` scope is opened by `Agent.DispatchToolCallsAsync` *around* the parallel `Task.WhenAll`, so the `AsyncLocal` value flows into every spawned task. If the scope is missing on a live (non-shutdown) loopback call — i.e. an outbound MCP request to the loopback listener with no current agent — the handler throws. This is intentional: it's a programming error, not a runtime condition to recover from. Shutdown is the one place where "no scope on a loopback DELETE" is an expected flow rather than a bug, which is why it's the one branch that's tolerated above.
 
 ### Tool discovery
 
-[`ModelContextProtocolToolDiscovery.DiscoverAsync(servers, ct)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolDiscovery.cs) is called once per agent at load (from `AgentManager.DiscoverToolsAsync`). For each `(name, uri)` pair in the resolved registry it opens an MCP client, lists the server's tools, and translates each into a `ToolDescriptor`. The result is grouped per server (`ToolGroup(Source, Tools)`) and handed to the `Agent` constructor as `ImmutableArray<ToolGroup>`.
+[`ModelContextProtocolToolDiscovery.DiscoverAsync(servers, ct)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolDiscovery.cs) is called once per agent at load (from `AgentManager.DiscoverToolsAsync`). For each `(name, uri)` pair in the resolved registry it acquires (or reuses) the cached `McpClient`, lists the server's tools, and translates each into a `ToolDescriptor`. The result is grouped per server (`ToolGroup(Source, Tools)`) and handed to the `Agent` constructor as `ImmutableArray<ToolGroup>`.
 
-Discovery uses the same named HTTP client and therefore picks up `LoopbackBearerHandler`. Calls to `llamashears` during discovery mint and consume a one-shot token just like every other loopback call. There is no "discovery-only" auth path.
+Discovery uses its own named HTTP client (`nameof(ModelContextProtocolToolDiscovery)`) and therefore picks up `LoopbackBearerHandler` independently of the dispatcher. Calls to `llamashears` during discovery mint and consume a one-shot token just like every other loopback call. There is no "discovery-only" auth path. Discovery's `McpClient` cache is the same `LifetimeCache` shape as the dispatcher's, so an agent that discovers tools once at load and then makes calls a few minutes later reuses the connection.
 
 ## Why this shape
 

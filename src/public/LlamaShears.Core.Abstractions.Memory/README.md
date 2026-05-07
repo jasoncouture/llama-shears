@@ -19,15 +19,3 @@ Long-term-memory contracts for [LlamaShears](https://github.com/jasoncouture/lla
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Core.Abstractions.Memory
-
-- [IMemoryIndexer](LlamaShears/Core/Abstractions/Memory/IMemoryIndexer.md)
-- [IMemorySearcher](LlamaShears/Core/Abstractions/Memory/IMemorySearcher.md)
-- [IMemoryStore](LlamaShears/Core/Abstractions/Memory/IMemoryStore.md)
-- [MemoryReconciliation](LlamaShears/Core/Abstractions/Memory/MemoryReconciliation.md)
-- [MemoryRef](LlamaShears/Core/Abstractions/Memory/MemoryRef.md)
-- [MemorySearchResult](LlamaShears/Core/Abstractions/Memory/MemorySearchResult.md)
-

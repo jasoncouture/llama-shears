@@ -21,12 +21,3 @@ Host-side DI plumbing for the [LlamaShears](https://github.com/jasoncouture/llam
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Plugins.Host
-
-- [DeferredLogEntry](LlamaShears/Plugins/Host/DeferredLogEntry.md)
-- [DeferredPluginHostLogger](LlamaShears/Plugins/Host/DeferredPluginHostLogger.md)
-- [IServiceCollectionSnapshot](LlamaShears/Plugins/Host/IServiceCollectionSnapshot.md)
-

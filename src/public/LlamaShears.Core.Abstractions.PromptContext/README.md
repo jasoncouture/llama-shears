@@ -17,12 +17,3 @@ Per-turn ephemeral prompt-context contracts for [LlamaShears](https://github.com
 ## Licensing
 
 [AGPL-3.0-or-later](https://github.com/jasoncouture/llama-shears/blob/main/LICENSE.md). [Commercial licensing](https://github.com/jasoncouture/llama-shears/blob/main/COMMERCIAL.md) is available.
-
----
-
-## LlamaShears.Core.Abstractions.PromptContext
-
-- [IPromptContextProvider](LlamaShears/Core/Abstractions/PromptContext/IPromptContextProvider.md)
-- [PromptContextMemory](LlamaShears/Core/Abstractions/PromptContext/PromptContextMemory.md)
-- [PromptContextParameters](LlamaShears/Core/Abstractions/PromptContext/PromptContextParameters.md)
-
