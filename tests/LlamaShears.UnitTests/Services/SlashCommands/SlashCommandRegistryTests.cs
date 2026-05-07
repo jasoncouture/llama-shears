@@ -42,6 +42,7 @@ public sealed class SlashCommandRegistryTests
         var registry = new SlashCommandRegistry([new StubCommand("/foo")]);
 
         await Assert.That(registry.Find(string.Empty)).IsNull();
+        await Assert.That(registry.Find(null!)).IsNull();
     }
 
     [Test]

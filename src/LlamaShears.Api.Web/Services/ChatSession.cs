@@ -487,7 +487,7 @@ public sealed class ChatSession :
             return false;
         }
 
-        var parts = trimmedContent.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = trimmedContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
             return false;
