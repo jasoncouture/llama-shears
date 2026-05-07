@@ -19,6 +19,7 @@
     <Project Path="src/public/LlamaShears.Core.Abstractions/LlamaShears.Core.Abstractions.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Agent/LlamaShears.Core.Abstractions.Agent.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Caching/LlamaShears.Core.Abstractions.Caching.csproj" />
+    <Project Path="src/public/LlamaShears.Core.Abstractions.Commands/LlamaShears.Core.Abstractions.Commands.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Content/LlamaShears.Core.Abstractions.Content.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Context/LlamaShears.Core.Abstractions.Context.csproj" />
     <Project Path="src/public/LlamaShears.Core.Abstractions.Events/LlamaShears.Core.Abstractions.Events.csproj" />
