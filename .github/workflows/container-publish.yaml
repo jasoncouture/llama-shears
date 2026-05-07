@@ -1,5 +1,5 @@
 name: container-publish
-run-name: ${{ github.event_name == 'pull_request' && format('Building container for PR #{0}', github.event.pull_request.number) || format('Publishing container from {0}', github.ref_name) }}
+run-name: "${{ github.event_name == 'pull_request' && format('Building container for PR #{0}', github.event.pull_request.number) || format('Publishing container from {0}', github.ref_name) }}"
 
 on:
   push:
