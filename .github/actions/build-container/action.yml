@@ -1,17 +1,25 @@
 name: build-container
 description: >-
-  Build a single Docker bake target. Optionally pushes to the registry
-  (GHCR) when `push` is "true". Caller supplies the full set of image
-  references via `tags` (newline-separated). The action wires GHA build
-  cache automatically.
+  Build a single Docker bake target via docker/bake-action. Optionally
+  pushes to GHCR when `push` is "true". Tag list is computed by
+  docker/metadata-action and merged into the existing docker-bake.hcl
+  via the action's HCL overlay output — no manual `docker buildx bake`
+  invocation, no hand-rolled `--set tags=` plumbing.
 
 inputs:
   target:
     description: Bake target name to build.
     required: true
-  tags:
-    description: Newline-separated full image references to apply to the target.
+  image:
+    description: 'Fully qualified image reference, e.g. ghcr.io/owner/repo/service. Used as the metadata-action `images` input.'
     required: true
+  version:
+    description: SemVer2 version (sanitised for OCI) to tag this build with.
+    required: true
+  tag-latest:
+    description: '"true" to additionally tag the image with :latest; "false" to skip.'
+    required: false
+    default: 'false'
   push:
     description: '"true" to push to the registry, "false" to build only.'
     required: true
@@ -28,25 +36,22 @@ runs:
         username: ${{ github.actor }}
         password: ${{ github.token }}
 
-    - shell: bash
-      env:
-        TARGET: ${{ inputs.target }}
-        TAGS: ${{ inputs.tags }}
-        PUSH: ${{ inputs.push }}
-      run: |
-        set -euo pipefail
-        sets=()
-        while IFS= read -r tag; do
-          [ -z "${tag}" ] && continue
-          sets+=( "--set" "${TARGET}.tags=${tag}" )
-        done <<< "${TAGS}"
+    - id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ inputs.image }}
+        bake-target: ${{ inputs.target }}
+        tags: |
+          type=raw,value=${{ inputs.version }}
+          type=raw,value=latest,enable=${{ inputs.tag-latest == 'true' }}
 
-        if [ "${PUSH}" = "true" ]; then
-          sets+=( "--push" )
-        fi
-
-        docker buildx bake \
-          --set "${TARGET}.cache-from=type=gha" \
-          --set "${TARGET}.cache-to=type=gha,mode=max" \
-          "${sets[@]}" \
-          "${TARGET}"
+    - uses: docker/bake-action@v6
+      with:
+        files: |
+          ./docker-bake.hcl
+          ${{ steps.meta.outputs.bake-file }}
+        targets: ${{ inputs.target }}
+        push: ${{ inputs.push == 'true' }}
+        set: |
+          ${{ inputs.target }}.cache-from=type=gha
+          ${{ inputs.target }}.cache-to=type=gha,mode=max
