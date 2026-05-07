@@ -22,7 +22,7 @@ runs:
           --coverage-output coverage.cobertura.xml
 
     - name: Generate markdown coverage summary
-      uses: irongut/CodeCoverageSummary@v1
+      uses: irongut/CodeCoverageSummary@v1.3.0
       with:
         filename: '**/TestResults/coverage.cobertura.xml'
         badge: false
