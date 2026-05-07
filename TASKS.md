@@ -76,6 +76,15 @@ home before they drift. Group by area; trim freely.
   explicit permission (per-agent, per-call, or both).
 
 ## Build / infrastructure
+- [ ] **Cron `FireSingleAsync` lost-update window.** `JsonCronStore`
+  read-modify-writes the whole file on every upsert, so two ticks (or a
+  manual `Trigger` racing the system tick) firing the same job in parallel
+  can clobber `LastFiredAt` / `NextFireAt`. Today's `SemaphoreSlim` only
+  serialises within a process; nothing protects against a stale snapshot
+  re-overwriting fresh state. Real fix is a transactional update — re-read
+  the file inside the gate (or check a per-job version) before the atomic
+  rename — and is out of scope for the cron stub PR (#36) due to
+  complexity. Track here until it lands.
 - [ ] **Missing `README.md` in `src/public/` is a build failure.** Wire the
   docs-build target (or a sibling MSBuild target) to fail when a project
   under `src/public/` has no `README.md`. Pit-of-success enforcement of
