@@ -125,6 +125,69 @@ public sealed class EventFilterTests
     }
 
     [Test]
+    public async Task FireAndForgetCancelledHandlerDoesNotCrashHost()
+    {
+        // Regression: when /interrupt cancelled a per-turn CTS that was
+        // the live publish CT, the FAF wrapper's ThrowIfCancellationRequested
+        // fired and MessagePipe's TaskExtensions.Forget re-threw the OCE on
+        // the threadpool, killing the host. The wrapper now catches OCE
+        // when the CT is cancelled (mode-independent), so FAF dispatch
+        // never escapes an OCE into Forget.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddEventingFramework();
+        var provider = services.BuildServiceProvider();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
+        bus.Subscribe<Payload>(
+            pattern: null,
+            EventDeliveryMode.FireAndForget,
+            new ThrowOnCancellationHandler());
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        // Awaited leg surfaces OCE back to the caller (publish reasserts
+        // cancellation at the tail). Catch + assert: that's the only OCE
+        // that should appear; the FAF leg's wrapper must not have crashed
+        // the host on the threadpool before this point.
+        await Assert.That(async () =>
+            await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), cancellationTokenSource.Token))
+            .Throws<OperationCanceledException>();
+
+        GC.KeepAlive(bus);
+    }
+
+    [Test]
+    public async Task AwaitedPublishReassertsCancellationAfterHandlersSwallow()
+    {
+        // Per-handler swallow of OCE-on-cancellation means an awaited
+        // dispatch can complete "successfully" from MessagePipe's POV
+        // even though the caller's CT was tripped. PublishAsync is
+        // expected to ThrowIfCancellationRequested at the tail so
+        // `await PublishAsync` still surfaces cancellation to callers.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddEventingFramework();
+        var provider = services.BuildServiceProvider();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var bus = provider.GetRequiredService<IEventBus>();
+        bus.Subscribe<Payload>(
+            pattern: null,
+            EventDeliveryMode.Awaited,
+            new ThrowOnCancellationHandler());
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        await Assert.That(async () =>
+            await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), cancellationTokenSource.Token))
+            .Throws<OperationCanceledException>();
+
+        GC.KeepAlive(bus);
+    }
+
+    [Test]
     public async Task FilterReceivesEnvelopeWithFireAndForgetMode()
     {
         EventDeliveryMode? observed = null;
@@ -163,6 +226,15 @@ public sealed class EventFilterTests
     }
 
     private sealed record Payload(string Value);
+
+    private sealed class ThrowOnCancellationHandler : IEventHandler<Payload>
+    {
+        public ValueTask HandleAsync(IEventEnvelope<Payload> envelope, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.CompletedTask;
+        }
+    }
 
     private sealed class RecordingHandler
     {
