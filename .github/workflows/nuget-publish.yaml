@@ -1,4 +1,4 @@
-name: nuget-publish
+name: Build/Push NuGet Packages
 run-name: Publishing NuGet packages from ${{ github.ref_name }}
 
 on:

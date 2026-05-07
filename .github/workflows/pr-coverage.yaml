@@ -1,4 +1,4 @@
-name: pr-coverage
+name: "Test & Comment PR Coverage"
 run-name: Getting test coverage for PR #${{ github.event.pull_request.number }}
 
 on:

@@ -1,4 +1,4 @@
-name: docs
+name: Build/Deploy Docs
 run-name: Building docs from ${{ github.ref_name }}
 
 on:

@@ -1,4 +1,4 @@
-name: test-coverage
+name: "Test & Report Coverage"
 run-name: Test coverage on ${{ github.ref_name }}
 
 on:
