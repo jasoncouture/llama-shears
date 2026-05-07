@@ -10,12 +10,14 @@ public class PluginContext<T> : IPluginContext<T> where T : class
 {
     private readonly AssemblyLoadContext _context;
     private readonly IPluginContextLogger _logger;
-    private readonly List<IAssemblyResolver> _resolvers = [];
+    private readonly List<IAssemblyResolver> _userResolvers = [];
+    private readonly IAssemblyResolver _pathResolver;
 
-    private PluginContext(AssemblyLoadContext context, IPluginContextLogger logger)
+    private PluginContext(AssemblyLoadContext context, IPluginContextLogger logger, IAssemblyResolver pathResolver)
     {
         _context = context;
         _logger = logger;
+        _pathResolver = pathResolver;
         _context.Resolving += OnResolving;
     }
 
@@ -24,7 +26,7 @@ public class PluginContext<T> : IPluginContext<T> where T : class
     public void AddAssemblyResolver(IAssemblyResolver resolver)
     {
         ArgumentNullException.ThrowIfNull(resolver);
-        _resolvers.Add(resolver);
+        _userResolvers.Add(resolver);
     }
 
     public Assembly LoadFromAssemblyName(AssemblyName assemblyName)
@@ -35,12 +37,18 @@ public class PluginContext<T> : IPluginContext<T> where T : class
 
     private Assembly? OnResolving(AssemblyLoadContext context, AssemblyName assemblyName)
     {
-        foreach (var resolver in _resolvers)
+        // User-supplied resolvers run first, in registration order.
+        foreach (var resolver in _userResolvers)
         {
             var assembly = resolver.Resolve(context, assemblyName);
             if (assembly is not null) return assembly;
         }
-        return null;
+
+        // Built-in fallback chain — host wins for host-owned names so type identity
+        // unifies with the host; otherwise consult the plugin's own deps.json.
+        var hostHit = HostContextAssemblyResolver.Instance.Resolve(context, assemblyName);
+        if (hostHit is not null) return hostHit;
+        return _pathResolver.Resolve(context, assemblyName);
     }
 
     public static IPluginContext<T>? CreatePluginContext(string rootAssemblyFile, string name, IPluginContextLogger? logger = null)
@@ -50,10 +58,9 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         if (!File.Exists(rootAssemblyFile)) throw new ArgumentException("Root assembly file must exist!");
         var directory = Path.GetDirectoryName(rootAssemblyFile);
         if (directory is null) throw new DirectoryNotFoundException("Could not get plugin directory from plugin path");
-        var resolver = PluginAssemblyResolver.GetOrCreate(directory);
+        var pathResolver = new PathAssemblyResolver(directory);
         var context = new AssemblyLoadContext(name);
-        var pluginContext = new PluginContext<T>(context, logger ?? NullPluginContextLogger.Instance);
-        pluginContext.AddAssemblyResolver(resolver);
+        var pluginContext = new PluginContext<T>(context, logger ?? NullPluginContextLogger.Instance, pathResolver);
         context.LoadFromAssemblyPath(rootAssemblyFile);
 
         return pluginContext;
