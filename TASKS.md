@@ -81,6 +81,12 @@ home before they drift. Group by area; trim freely.
   under `src/public/` has no `README.md`. Pit-of-success enforcement of
   the "every public package needs a README" rule. No GH issue — this
   stays as a TASKS.md item until the enforcement lands.
+- [ ] **Replace `irongut/CodeCoverageSummary`.** The action backing the
+  per-assembly markdown coverage summary in the run-tests composite
+  action looks abandoned — last commit in 2022, no major-floating tag.
+  Currently pinned to `@v1.3.0`. Find a maintained replacement (or roll
+  our own simple cobertura→markdown step) before the existing pin
+  bit-rots.
 
 ## Misc
 - [ ] **Additional attachment types.** Beyond images — text files, PDFs,
