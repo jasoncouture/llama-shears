@@ -23,11 +23,7 @@ public static class OllamaServiceCollectionExtensions
         services.TryAddSingleton(sp =>
             sp.GetRequiredService<ObjectPoolProvider>().Create(new MessageListPooledObjectPolicy()));
 
-        // Per-call API-client factory: each provider-factory CreateModel
-        // call resolves its merged per-agent OllamaProviderOptions and
-        // hands them to IOllamaApiClientFactory, which news up an
-        // HttpClient + OllamaApiClient configured for that endpoint.
-        // No HttpClient pooling, no leaky abstractions through DI.
+        services.AddHttpClient(nameof(OllamaApiClientFactory));
         services.TryAddSingleton<IOllamaApiClientFactory, OllamaApiClientFactory>();
 
         services.AddSingleton<IProviderFactory, OllamaProviderFactory>();

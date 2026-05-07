@@ -3,19 +3,17 @@ using OllamaSharp;
 namespace LlamaShears.Provider.Ollama;
 
 /// <summary>
-/// Builds a fresh <see cref="IOllamaApiClient"/> configured for the
-/// supplied <see cref="OllamaProviderOptions"/>. Each call returns a
-/// new client backed by a new <see cref="HttpClient"/>; consumers own
-/// the lifetime and should keep the client for as long as they intend
-/// to hit the configured endpoint.
+/// Builds an <see cref="IOllamaApiClient"/> configured for the supplied
+/// <see cref="OllamaProviderOptions"/>. The underlying <see cref="HttpClient"/>
+/// is acquired from <see cref="IHttpClientFactory"/>, so the handler and
+/// connection pool are shared across calls.
 /// </summary>
 public interface IOllamaApiClientFactory
 {
     /// <summary>
-    /// Returns a new <see cref="IOllamaApiClient"/> with
+    /// Returns an <see cref="IOllamaApiClient"/> whose
     /// <see cref="HttpClient.BaseAddress"/> and
-    /// <see cref="HttpClient.Timeout"/> taken from
-    /// <paramref name="options"/>.
+    /// <see cref="HttpClient.Timeout"/> reflect <paramref name="options"/>.
     /// </summary>
     IOllamaApiClient CreateClient(OllamaProviderOptions options);
 }
