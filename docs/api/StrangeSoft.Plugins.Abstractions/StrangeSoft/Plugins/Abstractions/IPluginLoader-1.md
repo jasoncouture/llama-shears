@@ -1,6 +1,6 @@
-# LlamaShears.Plugins.Abstractions.IPluginLoader<T>
+# StrangeSoft.Plugins.Abstractions.IPluginLoader<T>
 
-Assembly: `LlamaShears.Plugins.Abstractions`
+Assembly: `StrangeSoft.Plugins.Abstractions`
 
 Assembly-level entry point a plugin assembly exposes for a host
 expecting plugins of type `T`. The host loader

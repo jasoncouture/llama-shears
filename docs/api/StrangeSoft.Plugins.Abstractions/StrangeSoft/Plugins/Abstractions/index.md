@@ -1,4 +1,4 @@
-# LlamaShears.Plugins.Abstractions
+# StrangeSoft.Plugins.Abstractions
 
 ## Types
 
