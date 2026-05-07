@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: container-publish-${{ github.ref }}
@@ -56,6 +55,9 @@ jobs:
     name: ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
     needs: prepare
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -89,25 +91,7 @@ jobs:
           THIS_VER: ${{ needs.prepare.outputs.version }}
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          flag=false
-          # Only release/** pushes ever earn :latest. main pushes are
-          # naturally pre-release per NBGV; PR builds don't push at all.
-          if [ "${EVENT_NAME}" = "push" ] && [[ "${REF}" == refs/heads/release/* ]]; then
-            existing=$(gh api -X GET "/users/${OWNER}/packages/container/${PACKAGE}/versions" --paginate 2>/dev/null \
-                       | jq -r '.[].metadata.container.tags[]?' \
-                       || true)
-            top=$(printf '%s\n%s\n' "${existing}" "${THIS_VER}" \
-                  | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
-                  | sort -V \
-                  | tail -1 || true)
-            if [ "${top}" = "${THIS_VER}" ]; then
-              flag=true
-            fi
-          fi
-          echo "tag-latest=${flag}" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/decide-latest-tag.sh
 
       - name: ${{ github.event_name == 'push' && format('Build and push {0} @ {1}', matrix.target, needs.prepare.outputs.version) || format('Build {0} @ {1}', matrix.target, needs.prepare.outputs.version) }}
         uses: ./.github/actions/build-container
