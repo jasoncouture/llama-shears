@@ -1,5 +1,5 @@
 using LlamaShears.Core.Abstractions.Paths;
-using LlamaShears.Core.Abstractions.Seeding;
+using LlamaShears.Core.Seeding;
 using LlamaShears.Hosting;
 
 namespace LlamaShears;

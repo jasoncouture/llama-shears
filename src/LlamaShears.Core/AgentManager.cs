@@ -5,7 +5,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Abstractions.Seeding;
+using LlamaShears.Core.Seeding;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;

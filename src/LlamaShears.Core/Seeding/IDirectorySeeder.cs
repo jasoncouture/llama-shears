@@ -1,4 +1,4 @@
-namespace LlamaShears.Core.Abstractions.Seeding;
+namespace LlamaShears.Core.Seeding;
 
 /// <summary>
 /// Copies a source directory tree into a destination directory the

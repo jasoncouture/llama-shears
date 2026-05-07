@@ -20,7 +20,6 @@
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Paths\LlamaShears.Core.Abstractions.Paths.csproj" />
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.PromptContext\LlamaShears.Core.Abstractions.PromptContext.csproj" />
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Provider\LlamaShears.Core.Abstractions.Provider.csproj" />
-    <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Seeding\LlamaShears.Core.Abstractions.Seeding.csproj" />
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.SystemPrompt\LlamaShears.Core.Abstractions.SystemPrompt.csproj" />
     <ProjectReference Include="..\public\LlamaShears.Core.Abstractions.Templating\LlamaShears.Core.Abstractions.Templating.csproj" />
     <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
