@@ -33,7 +33,7 @@ public static class PluginServiceCollectionExtensions
 
     public static async ValueTask<IServiceCollection> TryApplyPlugins(
         this IServiceCollection services,
-        IPluginContext context,
+        IPluginContext<IPlugin> context,
         Func<IPlugin, Exception, bool>? failureCallback,
         CancellationToken cancellationToken)
     {

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LlamaShears.Plugins\LlamaShears.Plugins.csproj" />
+    <ProjectReference Include="..\StrangeSoft.Plugins.Abstractions\StrangeSoft.Plugins.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

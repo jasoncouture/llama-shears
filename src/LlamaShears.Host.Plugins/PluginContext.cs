@@ -1,11 +1,11 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
-using LlamaShears.Plugins;
+using StrangeSoft.Plugins.Abstractions;
 
 namespace LlamaShears.Host.Plugins;
 
-public class PluginContext : IPluginContext
+public class PluginContext<T> : IPluginContext<T> where T : class
 {
     private readonly IAssemblyResolver _resolver;
     private readonly AssemblyLoadContext _context;
@@ -16,7 +16,7 @@ public class PluginContext : IPluginContext
         _context = context;
     }
 
-    public static IPluginContext? CreatePluginContext(string rootAssemblyFile, string name, CancellationToken cancellationToken)
+    public static IPluginContext<T>? CreatePluginContext(string rootAssemblyFile, string name, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootAssemblyFile);
         rootAssemblyFile = Path.GetFullPath(rootAssemblyFile);
@@ -28,12 +28,12 @@ public class PluginContext : IPluginContext
         context.Resolving += resolver.Resolve;
         context.LoadFromAssemblyPath(rootAssemblyFile);
 
-        return new PluginContext(resolver, context);
+        return new PluginContext<T>(resolver, context);
     }
 
-    public async IAsyncEnumerable<IPlugin> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<T> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var tasks = new List<Task<ImmutableArray<IPlugin>>>();
+        var tasks = new List<Task<ImmutableArray<T>>>();
         foreach (var loader in _context.Assemblies.SelectMany(i => CollectLoaderTypes(i.GetTypes())))
         {
             // Outer WaitAsync guards against a misbehaving loader that blocks synchronously
@@ -57,7 +57,7 @@ public class PluginContext : IPluginContext
         }
     }
 
-    private async Task<ImmutableArray<IPlugin>> LoadFromAsync(IPluginLoader loader, CancellationToken cancellationToken)
+    private async Task<ImmutableArray<T>> LoadFromAsync(IPluginLoader<T> loader, CancellationToken cancellationToken)
     {
         // We can't trust that a loader will actually switch to async. Force entry into
         // the async state machine immediately so the returned Task can be awaited /
@@ -73,9 +73,9 @@ public class PluginContext : IPluginContext
         }
     }
 
-    private IEnumerable<IPluginLoader> CollectLoaderTypes(Type[] types)
+    private IEnumerable<IPluginLoader<T>> CollectLoaderTypes(Type[] types)
     {
-        var maybeEligible = types.Where(i => i.IsAssignableTo(typeof(IPluginLoader)) && i.IsClass && !i.IsAbstract);
+        var maybeEligible = types.Where(i => i.IsAssignableTo(typeof(IPluginLoader<T>)) && i.IsClass && !i.IsAbstract);
         foreach (var loaderType in maybeEligible)
         {
             object? result;
@@ -89,7 +89,7 @@ public class PluginContext : IPluginContext
             {
                 continue;
             }
-            if (result is IPluginLoader loader) yield return loader;
+            if (result is IPluginLoader<T> loader) yield return loader;
         }
     }
 }

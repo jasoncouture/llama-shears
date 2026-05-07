@@ -3,8 +3,8 @@
 Assembly: `LlamaShears.Plugins`
 
 Contract every plugin exposes. Instances are produced by the
-assembly's [IPluginLoader](IPluginLoader.md) and threaded through the
-host's startup, request pipeline, and lifecycle.
+assembly's `IPluginLoader<IPlugin>` implementation and
+threaded through the host's startup, request pipeline, and lifecycle.
 
 ## Properties
 

@@ -5,8 +5,8 @@ namespace LlamaShears.Plugins;
 
 /// <summary>
 /// Contract every plugin exposes. Instances are produced by the
-/// assembly's <see cref="IPluginLoader"/> and threaded through the
-/// host's startup, request pipeline, and lifecycle.
+/// assembly's <c>IPluginLoader&lt;IPlugin&gt;</c> implementation and
+/// threaded through the host's startup, request pipeline, and lifecycle.
 /// </summary>
 public interface IPlugin
 {
