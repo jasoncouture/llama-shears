@@ -507,7 +507,26 @@ public sealed class ChatSession :
         {
             ResetBubbles();
         }
+        else if (result.StreamingInterrupted)
+        {
+            DropStreamingBubbles();
+        }
         return true;
+    }
+
+    private void DropStreamingBubbles()
+    {
+        // /interrupt aborts an in-flight turn without changing persisted
+        // history. The model.cpp side won't deliver a final fragment, so
+        // any open streaming bubble (assistant text, thought, in-flight
+        // tool) would otherwise sit forever marked "streaming". Drop
+        // exactly those without touching the persistent conversation.
+        lock (_gate)
+        {
+            _streamingBubbles.Clear();
+            _inFlightToolBubbles.Clear();
+        }
+        Changed?.Invoke();
     }
 
     private void ResetBubbles()

@@ -32,6 +32,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
     private readonly SemaphoreSlim _processGate = new(1, 1);
+    private readonly Lock _interruptLock = new();
+    private CancellationTokenSource? _activeTurnCts;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
@@ -123,6 +125,24 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     {
         _processGate.Release();
         return ValueTask.CompletedTask;
+    }
+
+    public Task InterruptAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        // Snapshot the CTS under the lock and Cancel outside it.
+        // CancellationTokenSource.Cancel can run callbacks synchronously,
+        // and any callback that touched _interruptLock would deadlock.
+        // The interrupt only signals the linked per-turn CTS; the
+        // run-loop's outer CT is unaffected, so the agent stays up
+        // and resumes on the next ChannelMessage.
+        CancellationTokenSource? cancellationTokenSource;
+        lock (_interruptLock)
+        {
+            cancellationTokenSource = _activeTurnCts;
+        }
+        cancellationTokenSource?.Cancel();
+        return Task.CompletedTask;
     }
 
     public async Task RequestCompactionAsync(CancellationToken cancellationToken)
@@ -243,12 +263,25 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                lock (_interruptLock)
+                {
+                    _activeTurnCts = turnCts;
+                }
                 try
                 {
-                    await ProcessBatchAsync(batch, correlationId, cancellationToken).ConfigureAwait(false);
+                    await ProcessBatchAsync(batch, correlationId, cancellationToken, turnCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (turnCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    LogTurnInterrupted(_logger, Id, correlationId);
                 }
                 finally
                 {
+                    lock (_interruptLock)
+                    {
+                        _activeTurnCts = null;
+                    }
                     _processGate.Release();
                 }
             }
@@ -267,6 +300,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private async Task ProcessBatchAsync(
         IReadOnlyList<IEventEnvelope<ChannelMessage>> batch,
         Guid correlationId,
+        CancellationToken outerCancellationToken,
         CancellationToken cancellationToken)
     {
         // Nested per-batch scope: every tool call and inner turn in this
@@ -276,11 +310,18 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         await using var loopScope = _scopedServices.CreateAsyncScope();
 
         var userTurn = BuildUserTurn(batch);
+        // The user turn must reach subscribers (history persister, UI)
+        // before /interrupt can null it out. We've already dequeued the
+        // ChannelMessage(s) from the inbound channel; if /interrupt
+        // cancels this publish the message is lost entirely. Use the
+        // outer (run-loop / shutdown) token here so /interrupt only
+        // takes effect after the user turn is on the bus. Subsequent
+        // work uses the per-turn token and is freely interruptible.
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.Turn with { Id = Id },
             userTurn,
             correlationId,
-            cancellationToken).ConfigureAwait(false);
+            outerCancellationToken).ConfigureAwait(false);
 
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
@@ -672,4 +713,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory search failed for agent '{AgentId}': {Message}. Proceeding without memory enrichment.")]
     private static partial void LogMemorySearchFailed(ILogger logger, string agentId, string message, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
+    private static partial void LogTurnInterrupted(ILogger logger, string agentId, Guid correlationId);
 }

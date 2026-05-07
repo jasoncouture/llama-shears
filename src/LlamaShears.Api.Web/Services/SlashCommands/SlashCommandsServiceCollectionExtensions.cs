@@ -15,6 +15,7 @@ public static class SlashCommandsServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, ArchiveCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, CompactCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, RestartCommand>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ISlashCommand, InterruptCommand>());
 
         return services;
     }
