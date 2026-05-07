@@ -38,18 +38,19 @@ jobs:
         name: Enumerate bake targets
         uses: docker/bake-action/subaction/matrix@v6
 
-      - id: version
+      - id: nbgv
         name: Compute NBGV version
+        uses: dotnet/nbgv@master
+
+      - id: version
+        name: Sanitise NBGV SemVer2 for OCI tags
         shell: bash
+        env:
+          RAW: ${{ steps.nbgv.outputs.SemVer2 }}
         run: |
-          set -euo pipefail
-          dotnet tool install --global nbgv
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          # SemVer2 may contain '+' (build metadata) which OCI tags reject;
-          # replace with '_' so '1.0.0+gabc' becomes a legal '1.0.0_gabc'.
-          raw=$(nbgv get-version -v SemVer2)
-          sanitized=${raw//+/_}
-          echo "semver2=${sanitized}" >> "$GITHUB_OUTPUT"
+          # SemVer2 may contain '+' (build metadata) which OCI tags
+          # reject; '1.0.0+gabc' becomes a legal '1.0.0_gabc'.
+          echo "semver2=${RAW//+/_}" >> "$GITHUB_OUTPUT"
 
   build:
     name: ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
