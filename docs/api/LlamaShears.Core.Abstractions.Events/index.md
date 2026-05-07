@@ -18,6 +18,7 @@ Event-bus contracts and the framework's typed event payloads for [LlamaShears](h
 
 - **`AgentMessageBase`** + fragments (`AgentMessageFragment`, `AgentThoughtFragment`, `AgentToolCallFragment`, `AgentToolResultFragment`) — streamed pieces of an agent turn.
 - **`AgentCompactionMarker`** — emitted when the context store rolls a window into archive.
+- **`AgentLifecycleMarker`** — empty payload for `Agent.Loaded` / `Agent.Unloaded` / `Agent.LoadError` (the agent id rides on `EventType.Id`).
 - **`Channel/ChannelMessage`** — inbound user / channel-adapter input.
 
 ## See also
