@@ -13,6 +13,13 @@ public static class HostingServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddHostRestarter(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton<IHostRestarter, HostRestarter>();
+        return services;
+    }
+
     public static IServiceCollection AddHostStartupTask<TTask>(this IServiceCollection services)
         where TTask : class, IHostStartupTask
     {
