@@ -5,6 +5,7 @@ Generated from XML doc comments. One entry per shipped assembly.
 - [LlamaShears.Core.Abstractions](LlamaShears.Core.Abstractions/index.md)
 - [LlamaShears.Core.Abstractions.Agent](LlamaShears.Core.Abstractions.Agent/index.md)
 - [LlamaShears.Core.Abstractions.Caching](LlamaShears.Core.Abstractions.Caching/index.md)
+- [LlamaShears.Core.Abstractions.Commands](LlamaShears.Core.Abstractions.Commands/index.md)
 - [LlamaShears.Core.Abstractions.Content](LlamaShears.Core.Abstractions.Content/index.md)
 - [LlamaShears.Core.Abstractions.Context](LlamaShears.Core.Abstractions.Context/index.md)
 - [LlamaShears.Core.Abstractions.Events](LlamaShears.Core.Abstractions.Events/index.md)

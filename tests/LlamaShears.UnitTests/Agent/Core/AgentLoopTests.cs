@@ -180,7 +180,8 @@ public sealed class AgentLoopTests
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: memorySearcher ?? Substitute.For<IMemorySearcher>());
+            memorySearcher: memorySearcher ?? Substitute.For<IMemorySearcher>(),
+            scope: services.CreateAsyncScope());
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()

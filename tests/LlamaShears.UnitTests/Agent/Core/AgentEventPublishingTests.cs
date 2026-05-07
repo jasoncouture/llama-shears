@@ -139,7 +139,8 @@ public sealed class AgentEventPublishingTests
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>());
+            memorySearcher: Substitute.For<IMemorySearcher>(),
+            scope: provider.CreateAsyncScope());
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

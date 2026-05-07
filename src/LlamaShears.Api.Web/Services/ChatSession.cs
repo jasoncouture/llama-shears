@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
+using LlamaShears.Core.Abstractions.Commands;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Hosting;
 
 namespace LlamaShears.Api.Web.Services;
 
@@ -19,7 +19,7 @@ public sealed class ChatSession :
     private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
     private readonly IAgentDirectory _directory;
-    private readonly IHostRestarter _restarter;
+    private readonly ISlashCommandRegistry _slashCommands;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
@@ -40,12 +40,12 @@ public sealed class ChatSession :
         IEventBus bus,
         IEventPublisher publisher,
         IAgentDirectory directory,
-        IHostRestarter restarter)
+        ISlashCommandRegistry slashCommands)
     {
         _bus = bus;
         _publisher = publisher;
         _directory = directory;
-        _restarter = restarter;
+        _slashCommands = slashCommands;
     }
 
     public string? SelectedAgentId
@@ -232,9 +232,8 @@ public sealed class ChatSession :
             agentId = _selectedAgentId;
         }
 
-        if (TryParseCommand(trimmed, out var command))
+        if (await TryDispatchSlashCommandAsync(trimmed, agentId, cancellationToken).ConfigureAwait(false))
         {
-            await ExecuteCommandAsync(agentId, command, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -481,25 +480,34 @@ public sealed class ChatSession :
         Changed?.Invoke();
     }
 
-    private async Task ExecuteCommandAsync(string agentId, ChatCommand command, CancellationToken cancellationToken)
+    private async Task<bool> TryDispatchSlashCommandAsync(string trimmedContent, string agentId, CancellationToken cancellationToken)
     {
-        switch (command)
+        if (trimmedContent.Length < 2 || trimmedContent[0] != '/')
         {
-            case ChatCommand.Clear:
-                await _directory.ClearAsync(agentId, archive: false, cancellationToken).ConfigureAwait(false);
-                ResetBubbles();
-                break;
-            case ChatCommand.Archive:
-                await _directory.ClearAsync(agentId, archive: true, cancellationToken).ConfigureAwait(false);
-                ResetBubbles();
-                break;
-            case ChatCommand.Compact:
-                await _directory.RequestCompactionAsync(agentId, cancellationToken).ConfigureAwait(false);
-                break;
-            case ChatCommand.Restart:
-                _restarter.RequestRestart();
-                break;
+            return false;
         }
+
+        var parts = trimmedContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return false;
+        }
+
+        var command = _slashCommands.Find(parts[0]);
+        if (command is null)
+        {
+            return false;
+        }
+
+        var args = parts.Length == 1
+            ? []
+            : ImmutableArray.Create(parts, 1, parts.Length - 1);
+        var result = await command.ExecuteAsync(new SlashCommandContext(agentId, args), cancellationToken).ConfigureAwait(false);
+        if (result.ContextChanged)
+        {
+            ResetBubbles();
+        }
+        return true;
     }
 
     private void ResetBubbles()
@@ -511,36 +519,6 @@ public sealed class ChatSession :
             _inFlightToolBubbles.Clear();
         }
         Changed?.Invoke();
-    }
-
-    private static bool TryParseCommand(string trimmedContent, out ChatCommand command)
-    {
-        command = default;
-        if (trimmedContent.Length < 2 || trimmedContent[0] != '/')
-        {
-            return false;
-        }
-        if (string.Equals(trimmedContent, "/clear", StringComparison.OrdinalIgnoreCase))
-        {
-            command = ChatCommand.Clear;
-            return true;
-        }
-        if (string.Equals(trimmedContent, "/archive", StringComparison.OrdinalIgnoreCase))
-        {
-            command = ChatCommand.Archive;
-            return true;
-        }
-        if (string.Equals(trimmedContent, "/compact", StringComparison.OrdinalIgnoreCase))
-        {
-            command = ChatCommand.Compact;
-            return true;
-        }
-        if (string.Equals(trimmedContent, "/restart", StringComparison.OrdinalIgnoreCase))
-        {
-            command = ChatCommand.Restart;
-            return true;
-        }
-        return false;
     }
 
     private static ChatBubble? HistoryBubbleFromTurn(ModelTurn turn)
@@ -595,11 +573,4 @@ public sealed class ChatSession :
             attachments: turn.Attachments);
     }
 
-    private enum ChatCommand
-    {
-        Clear,
-        Archive,
-        Compact,
-        Restart,
-    }
 }
