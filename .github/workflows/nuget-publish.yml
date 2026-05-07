@@ -10,10 +10,6 @@ permissions:
   contents: read
   packages: write
 
-concurrency:
-  group: nuget-publish-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   publish:
     name: pack & push
