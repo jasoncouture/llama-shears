@@ -21,12 +21,6 @@ public class PluginContext<T> : IPluginContext<T> where T : class
 
     public AssemblyLoadContext AssemblyLoadContext => _context;
 
-    public event Func<AssemblyLoadContext, AssemblyName, Assembly?> Resolving
-    {
-        add => _context.Resolving += value;
-        remove => _context.Resolving -= value;
-    }
-
     public void AddAssemblyResolver(IAssemblyResolver resolver)
     {
         ArgumentNullException.ThrowIfNull(resolver);

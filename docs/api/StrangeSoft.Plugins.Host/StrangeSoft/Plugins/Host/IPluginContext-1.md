@@ -52,14 +52,3 @@ invokes each loader concurrently, and streams the resulting
 plugins as they arrive. Loader exceptions are swallowed and
 surface as an empty contribution from that loader.
 
-## Events
-
-### `Resolving`
-
-Forwarded `Resolving` event from the underlying
-[IPluginContext](IPluginContext-1.md).`AssemblyLoadContext`. Subscribe here to react when
-resolution falls through every [IAssemblyResolver](IAssemblyResolver.md)
-added to the chain. Returning a non-null assembly satisfies
-the binding; returning `null` lets resolution
-continue to fail.
-

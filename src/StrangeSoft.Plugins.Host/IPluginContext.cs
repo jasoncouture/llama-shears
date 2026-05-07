@@ -49,16 +49,6 @@ public interface IPluginContext<T> where T : class
     Assembly LoadFromAssemblyPath(string assemblyPath);
 
     /// <summary>
-    /// Forwarded <c>Resolving</c> event from the underlying
-    /// <see cref="AssemblyLoadContext"/>. Subscribe here to react when
-    /// resolution falls through every <see cref="IAssemblyResolver"/>
-    /// added to the chain. Returning a non-null assembly satisfies
-    /// the binding; returning <see langword="null"/> lets resolution
-    /// continue to fail.
-    /// </summary>
-    event Func<AssemblyLoadContext, AssemblyName, Assembly?> Resolving;
-
-    /// <summary>
     /// Discovers loader types within the context's loaded assemblies,
     /// invokes each loader concurrently, and streams the resulting
     /// plugins as they arrive. Loader exceptions are swallowed and
