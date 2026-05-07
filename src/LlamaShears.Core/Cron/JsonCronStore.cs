@@ -114,10 +114,21 @@ public sealed partial class JsonCronStore : ICronStore
             var loaded = await JsonSerializer
                 .DeserializeAsync<List<CronJob>>(stream, _jsonOptions, cancellationToken)
                 .ConfigureAwait(false) ?? [];
-            _cache = loaded.ToDictionary(j => j.Id);
+            _cache = [];
+            foreach (var job in loaded)
+            {
+                // Last-write-wins on duplicate ids (manual edits, merge
+                // conflicts). The earlier entry is dropped with a log so
+                // the mismatch is visible without preventing startup.
+                if (_cache.ContainsKey(job.Id))
+                {
+                    LogDuplicateJobId(_logger, path, job.Id);
+                }
+                _cache[job.Id] = job;
+            }
             LogLoaded(_logger, path, _cache.Count);
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             LogLoadFailed(_logger, path, ex.Message, ex);
             _cache = [];
@@ -140,6 +151,9 @@ public sealed partial class JsonCronStore : ICronStore
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded {JobCount} cron job(s) from '{Path}'.")]
     private static partial void LogLoaded(ILogger logger, string path, int jobCount);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to deserialize cron store '{Path}': {Reason}. Starting empty.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to load cron store '{Path}': {Reason}. Starting empty.")]
     private static partial void LogLoadFailed(ILogger logger, string path, string reason, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cron store '{Path}' contains duplicate job id '{JobId}'; keeping the last occurrence.")]
+    private static partial void LogDuplicateJobId(ILogger logger, string path, Guid jobId);
 }

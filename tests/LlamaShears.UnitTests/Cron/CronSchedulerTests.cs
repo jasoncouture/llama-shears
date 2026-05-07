@@ -86,6 +86,41 @@ public sealed class CronSchedulerTests
     }
 
     [Test]
+    [Arguments("  ")]
+    [Arguments("\t")]
+    public async Task EditRejectsBlankName(string blank)
+    {
+        using var fixture = new TempRoot();
+        var scheduler = NewScheduler(fixture);
+        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 0 * * *", "p");
+
+        await Assert.That(async () => await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(Name: blank)))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task EditRejectsBlankPrompt()
+    {
+        using var fixture = new TempRoot();
+        var scheduler = NewScheduler(fixture);
+        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 0 * * *", "p");
+
+        await Assert.That(async () => await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(Prompt: "   ")))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task EditRejectsBlankCronExpression()
+    {
+        using var fixture = new TempRoot();
+        var scheduler = NewScheduler(fixture);
+        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 0 * * *", "p");
+
+        await Assert.That(async () => await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(CronExpression: "  ")))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
     public async Task EditRecomputesNextFireWhenExpressionChanges()
     {
         using var fixture = new TempRoot();

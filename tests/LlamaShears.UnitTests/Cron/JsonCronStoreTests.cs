@@ -3,6 +3,7 @@ using LlamaShears.Core.Cron;
 using LlamaShears.Core.Paths;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace LlamaShears.UnitTests.Cron;
 
@@ -80,6 +81,27 @@ public sealed class JsonCronStoreTests
 
         var jobs = await store.GetAllAsync();
         await Assert.That(jobs).IsEmpty();
+    }
+
+    [Test]
+    public async Task LoadDedupesDuplicateIdsLastWriteWins()
+    {
+        using var fixture = new TempRoot();
+        var dataRoot = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
+            .GetPath(PathKind.Data, ensureExists: true);
+        var sharedId = Guid.NewGuid();
+        var earlier = NewJob("agent-a", "earlier", "0 0 * * *", "earlier-prompt") with { Id = sharedId };
+        var later = NewJob("agent-a", "later", "0 1 * * *", "later-prompt") with { Id = sharedId };
+        await File.WriteAllTextAsync(
+            Path.Combine(dataRoot, "cron.json"),
+            JsonSerializer.Serialize(new[] { earlier, later }));
+
+        var store = NewStore(fixture);
+
+        var jobs = await store.GetAllAsync();
+        await Assert.That(jobs).HasSingleItem();
+        await Assert.That(jobs[0].Name).IsEqualTo("later");
+        await Assert.That(jobs[0].Prompt).IsEqualTo("later-prompt");
     }
 
     private static ICronStore NewStore(TempRoot fixture)

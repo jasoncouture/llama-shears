@@ -85,6 +85,22 @@ public sealed partial class CronScheduler : ICronScheduler
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         ArgumentNullException.ThrowIfNull(edit);
+        // Reject whitespace-only fields up front. Schedule rejects blank
+        // values; Edit must be the same — otherwise an edit can leave a
+        // job persisted with a blank name/prompt/expression that
+        // schedule would never have allowed in the first place.
+        if (edit.Name is not null && string.IsNullOrWhiteSpace(edit.Name))
+        {
+            throw new ArgumentException("Cron job name must not be blank.", nameof(edit));
+        }
+        if (edit.Prompt is not null && string.IsNullOrWhiteSpace(edit.Prompt))
+        {
+            throw new ArgumentException("Cron job prompt must not be blank.", nameof(edit));
+        }
+        if (edit.CronExpression is not null && string.IsNullOrWhiteSpace(edit.CronExpression))
+        {
+            throw new ArgumentException("Cron expression must not be blank.", nameof(edit));
+        }
 
         var existing = await _store.GetAsync(id, cancellationToken).ConfigureAwait(false);
         if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
@@ -151,7 +167,20 @@ public sealed partial class CronScheduler : ICronScheduler
                 continue;
             }
 
-            await FireSingleAsync(job, now, manual: false, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await FireSingleAsync(job, now, manual: false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // One bad job (e.g. invalid expression from a manual
+                // file edit) must not stop the rest of the tick.
+                LogFireFailed(_logger, job.Id, job.AgentId, ex);
+            }
         }
     }
 
@@ -159,8 +188,10 @@ public sealed partial class CronScheduler : ICronScheduler
     {
         // STUB: log the would-have-been agent input. When the executor
         // graduates from stub to real, this is where the channel publish
-        // (or whatever execution surface lands) goes.
-        LogStubFire(_logger, job.Id, job.AgentId, manual, job.Prompt);
+        // (or whatever execution surface lands) goes. The prompt body is
+        // intentionally not logged — it is user/agent-provided text that
+        // can carry secrets; only the length is recorded.
+        LogStubFire(_logger, job.Id, job.AgentId, manual, job.Prompt.Length);
 
         var parsed = ParseOrThrow(job.CronExpression);
         var nextFireAt = parsed.GetNextOccurrence(firedAt, TimeZoneInfo.Utc);
@@ -196,9 +227,12 @@ public sealed partial class CronScheduler : ICronScheduler
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' edited cron job '{JobId}' '{Name}'.")]
     private static partial void LogEdited(ILogger logger, string agentId, Guid jobId, string name);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "[cron stub] Job '{JobId}' for agent '{AgentId}' (manual={Manual}) would fire with prompt: {Prompt}")]
-    private static partial void LogStubFire(ILogger logger, Guid jobId, string agentId, bool manual, string prompt);
+    [LoggerMessage(Level = LogLevel.Information, Message = "[cron stub] Job '{JobId}' for agent '{AgentId}' (manual={Manual}) would fire with a prompt of length {PromptLength}.")]
+    private static partial void LogStubFire(ILogger logger, Guid jobId, string agentId, bool manual, int promptLength);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Cron job '{JobId}' due but agent '{AgentId}' is not currently loaded; skipping.")]
     private static partial void LogSkippedMissingAgent(ILogger logger, Guid jobId, string agentId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cron job '{JobId}' for agent '{AgentId}' failed to fire on this tick; remaining jobs continue.")]
+    private static partial void LogFireFailed(ILogger logger, Guid jobId, string agentId, Exception ex);
 }
