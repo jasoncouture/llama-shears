@@ -10,12 +10,12 @@ runs:
   steps:
     - name: Restore solution
       shell: bash
-      run: dotnet restore LlamaShears.slnx
+      run: dotnet restore
 
     - name: Test with coverage
       shell: bash
       run: |
-        dotnet test LlamaShears.slnx \
+        dotnet test \
           --no-restore \
           --coverage \
           --coverage-output-format cobertura \

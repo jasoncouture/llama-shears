@@ -28,11 +28,11 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore solution
-        run: dotnet restore LlamaShears.slnx
+        run: dotnet restore
 
       - name: Pack public packages
         run: |
-          dotnet pack LlamaShears.slnx \
+          dotnet pack \
             --configuration Release \
             --no-restore \
             --output ./artifacts/nuget
