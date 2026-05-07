@@ -7,6 +7,7 @@ using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Hosting;
 using LlamaShears.Provider.Ollama;
+using LlamaShears.Provider.OpenAI;
 using LlamaShears.Provider.Onnx.Embeddings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ public static class WebApplicationBuilderExtensions
             o.ShutdownTimeout = TimeSpan.FromSeconds(3));
 
         builder.Services.AddOllamaProvider();
+        builder.Services.AddOpenAIProvider();
         builder.Services.AddOnnxEmbeddingsProvider();
         builder.Services.AddEventingFramework();
         builder.Services.AddCore();

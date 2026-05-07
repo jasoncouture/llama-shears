@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LlamaShears.Provider.Ollama\LlamaShears.Provider.Ollama.csproj" />
+    <ProjectReference Include="..\LlamaShears.Provider.OpenAI\LlamaShears.Provider.OpenAI.csproj" />
     <ProjectReference Include="..\LlamaShears.Core\LlamaShears.Core.csproj" />
     <ProjectReference Include="..\LlamaShears.Core.Eventing\LlamaShears.Core.Eventing.csproj" />
     <ProjectReference Include="..\LlamaShears.Core.Eventing.Extensions\LlamaShears.Core.Eventing.Extensions.csproj" />
