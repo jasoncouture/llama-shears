@@ -58,24 +58,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - id: ref
-        name: Compute image reference
-        env:
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          TARGET: ${{ matrix.target }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          owner_lc=$(echo "${OWNER}" | tr '[:upper:]' '[:lower:]')
-          repo_lc=$(echo "${REPO}"   | tr '[:upper:]' '[:lower:]')
-          target_lc=$(echo "${TARGET}" | tr '[:upper:]' '[:lower:]')
-          echo "image=ghcr.io/${owner_lc}/${repo_lc}/${target_lc}" >> "$GITHUB_OUTPUT"
-
       - name: ${{ github.event_name == 'push' && format('Build and push {0} @ {1}', matrix.target, needs.prepare.outputs.version) || format('Build {0} @ {1}', matrix.target, needs.prepare.outputs.version) }}
         uses: ./.github/actions/build-container
         with:
           target: ${{ matrix.target }}
-          image: ${{ steps.ref.outputs.image }}
+          image: ghcr.io/${{ github.repository }}/${{ matrix.target }}
           version: ${{ needs.prepare.outputs.version }}
           push: ${{ github.event_name == 'push' && 'true' || 'false' }}
