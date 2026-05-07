@@ -41,6 +41,12 @@ internal sealed partial class EventBus : IEventBus, IEventPublisher
             _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
             await publisher.PublishAsync(envelope, cancellationToken);
         }
+        // Awaited subscribers swallow OCE per-handler when the caller's
+        // CT is cancelled (so a single misbehaving handler can't tank
+        // the rest of the dispatch). Surface the cancellation back to
+        // the caller here so `await PublishAsync` still throws OCE the
+        // way callers expect when their CT was tripped during publish.
+        cancellationToken.ThrowIfCancellationRequested();
         _logger.LogTrace("Event publishing complete");
     }
 
@@ -60,6 +66,9 @@ internal sealed partial class EventBus : IEventBus, IEventPublisher
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Unsubscribed {EventHandlerType} from {EventType} with filter pattern {EventTypePattern}")]
     private static partial void LogUnsubscribed(ILogger logger, Type eventHandlerType, Type eventType, string? eventTypePattern);
+
+    [LoggerMessage(Level = LogLevel.Trace, Message = "Handler {EventHandlerType} for {EventType} ({DeliveryMode}) observed cancellation; stopping.")]
+    private static partial void LogHandlerCancelled(ILogger logger, Type eventHandlerType, Type eventType, EventDeliveryMode deliveryMode);
 
     private sealed class SubscriptionHandle : IDisposable
     {
@@ -95,22 +104,41 @@ internal sealed partial class EventBus : IEventBus, IEventPublisher
         private readonly string? _pattern;
         private readonly EventDeliveryMode _deliveryMode;
         private readonly IPatternMatcher _patternMatcher;
-        
+        private readonly ILogger<EventBus> _logger;
 
-        public EventHandlerWrapper(IEventHandler<T> handler, EventHandlerWrapperOptions options, IPatternMatcher patternMatcher)
+        public EventHandlerWrapper(IEventHandler<T> handler, EventHandlerWrapperOptions options, IPatternMatcher patternMatcher, ILogger<EventBus> logger)
         {
             _handler = handler;
             _pattern = options.Pattern;
             _deliveryMode = options.DeliveryMode;
             _patternMatcher = patternMatcher;
+            _logger = logger;
         }
 
         public async ValueTask HandleAsync(IEventEnvelope<T> envelope, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
             if(envelope.DeliveryMode != _deliveryMode) return;
             if(!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
-            await _handler.HandleAsync(envelope, cancellationToken);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await _handler.HandleAsync(envelope, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Benign cancellation: the caller asked us to stop, we
+                // stop. Applies to both modes and keeps OCE from
+                // escaping into MessagePipe's TaskExtensions.Forget on
+                // the FAF leg (which would crash the host on the
+                // threadpool). Awaited callers still see cancellation
+                // because EventBus.PublishAsync calls
+                // ThrowIfCancellationRequested at the tail.
+                // Other exceptions are not caught — handlers that
+                // misbehave on FAF subscriptions will crash the host
+                // (the documented contract; see IEventBus.Subscribe).
+                LogHandlerCancelled(_logger, _handler.GetType(), typeof(T), _deliveryMode);
+            }
         }
     }
     record EventEnvelope<T>(EventType Type, EventDeliveryMode DeliveryMode, Guid CorrelationId, T? Data) : IEventEnvelope<T> where T : class;
