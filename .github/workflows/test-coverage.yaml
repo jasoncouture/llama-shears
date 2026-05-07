@@ -1,4 +1,5 @@
-name: ci
+name: test-coverage
+run-name: Test coverage on ${{ github.ref_name }}
 
 on:
   push:
@@ -11,8 +12,8 @@ permissions:
   actions: write
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
+  group: test-coverage-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -27,4 +28,5 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - uses: ./.github/actions/run-tests
+      - name: Run tests with coverage
+        uses: ./.github/actions/run-tests

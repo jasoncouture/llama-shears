@@ -1,4 +1,5 @@
 name: docs
+run-name: Building docs from ${{ github.ref_name }}
 
 on:
   push:
@@ -6,7 +7,7 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
-      - ".github/workflows/docs.yml"
+      - ".github/workflows/docs.yaml"
   workflow_dispatch:
 
 permissions:

@@ -8,21 +8,20 @@ description: >-
 runs:
   using: composite
   steps:
-    - name: Restore solution
-      shell: bash
-      run: dotnet restore LlamaShears.slnx
+    - shell: bash
+      run: dotnet restore
 
     - name: Test with coverage
       shell: bash
       run: |
-        dotnet test LlamaShears.slnx \
+        dotnet test \
           --no-restore \
           --coverage \
           --coverage-output-format cobertura \
           --coverage-output coverage.cobertura.xml
 
     - name: Generate markdown coverage summary
-      uses: irongut/CodeCoverageSummary@v1
+      uses: irongut/CodeCoverageSummary@v1.3.0
       with:
         filename: '**/TestResults/coverage.cobertura.xml'
         badge: false
