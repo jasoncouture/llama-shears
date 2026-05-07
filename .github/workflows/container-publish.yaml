@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
-      version: ${{ steps.version.outputs.semver2 }}
+      version: ${{ steps.nbgv.outputs.SemVer2 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,16 +41,6 @@ jobs:
       - id: nbgv
         name: Compute NBGV version
         uses: dotnet/nbgv@master
-
-      - id: version
-        name: Sanitise NBGV SemVer2 for OCI tags
-        shell: bash
-        env:
-          RAW: ${{ steps.nbgv.outputs.SemVer2 }}
-        run: |
-          # SemVer2 may contain '+' (build metadata) which OCI tags
-          # reject; '1.0.0+gabc' becomes a legal '1.0.0_gabc'.
-          echo "semver2=${RAW//+/_}" >> "$GITHUB_OUTPUT"
 
   build:
     name: ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}
