@@ -28,7 +28,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - uses: ./.github/actions/run-tests
+      - name: Run tests with coverage
+        uses: ./.github/actions/run-tests
 
       - name: Post coverage comment
         uses: marocchino/sticky-pull-request-comment@v2

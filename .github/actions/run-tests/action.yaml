@@ -8,8 +8,7 @@ description: >-
 runs:
   using: composite
   steps:
-    - name: Restore solution
-      shell: bash
+    - shell: bash
       run: dotnet restore
 
     - name: Test with coverage
