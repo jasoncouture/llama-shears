@@ -1,6 +1,6 @@
 # Memory and RAG
 
-Long-term memory for an agent is a directory of markdown files plus a derived vector index. Files are the source of truth; the index is a search-time accelerator that the framework keeps in sync. The contracts are in [`Core.Abstractions/Memory/`](../../src/LlamaShears.Core.Abstractions/Memory/) (`IMemoryStore`, `IMemorySearcher`, `IMemoryIndexer`); the implementation is [`SqliteMemoryService`](../../src/LlamaShears.Core/Memory/SqliteMemoryService.cs); the periodic reconciliation runs in [`MemoryIndexerBackgroundService`](../../src/LlamaShears.Core/Memory/MemoryIndexerBackgroundService.cs).
+Long-term memory for an agent is a directory of markdown files plus a derived vector index. Files are the source of truth; the index is a search-time accelerator that the framework keeps in sync. The contracts are in [`Core.Abstractions.Memory`](../../src/public/LlamaShears.Core.Abstractions.Memory/) (`IMemoryStore`, `IMemorySearcher`, `IMemoryIndexer`); the implementation is [`SqliteMemoryService`](../../src/LlamaShears.Core/Memory/SqliteMemoryService.cs); the periodic reconciliation runs in [`MemoryIndexerBackgroundService`](../../src/LlamaShears.Core/Memory/MemoryIndexerBackgroundService.cs).
 
 ## On disk
 
@@ -13,12 +13,12 @@ Long-term memory for an agent is a directory of markdown files plus a derived ve
 │   └── 2026-05-06/
 │       └── ...
 └── system/
-    └── .memory.db          # SQLite; framework-owned
+    └── .memory.db          # SQLite + sqlite-vec; framework-owned
 ```
 
 - Memory files are markdown, written under `memory/YYYY-MM-DD/<unix-seconds>.md`. Same-second collisions get suffixed (`-1`, `-2`, …).
 - The directory layout is the framework's responsibility; agents should call `memory_store` rather than write files by hand. The format is plain text — there's no front-matter or required structure inside the file.
-- The SQLite index lives at `<workspace>/system/.memory.db`. Schema is one table, `memories(path TEXT PRIMARY KEY, hash TEXT NOT NULL, vector BLOB NOT NULL)`. Vectors are stored as raw little-endian `float32`. Cosine similarity is computed in C# at query time — there's no SQLite extension at play yet.
+- The vector index lives at `<workspace>/system/.memory.db`. It's a SQLite database with the `sqlite-vec` extension loaded, accessed through `Microsoft.Extensions.VectorData` via the SemanticKernel SqliteVec connector. The collection is named `memories` and each row is a `MemoryVectorRecord(Path, Hash, Vector)` — `Path` is the SHA-keyed primary key (relative to the workspace), `Hash` is the SHA-256 of the file contents (lowercase hex), `Vector` is the embedding stored in sqlite-vec's binary form.
 
 The on-disk shape was chosen so that an agent never has to manage the index. The agent does file operations — write, edit, delete — and the framework reconciles.
 
@@ -29,40 +29,44 @@ The on-disk shape was chosen so that an agent never has to manage the index. The
 1. Resolve the agent's workspace and embedding model.
 2. Pick a path under `memory/YYYY-MM-DD/<unix-seconds>.md`, create the directory if needed, write the file (UTF-8).
 3. Compute SHA-256 of the content (lowercase hex).
-4. Embed the content (with the configured document prefix) and upsert `(path, hash, vector)` into the index.
+4. Embed the content (with the configured document prefix) and `UpsertAsync` `(Path, Hash, Vector)` into the `memories` collection.
 5. Return a `MemoryRef(relativePath)`.
 
-If indexing fails (SQLite error, embedding model unreachable), the file write still wins — the file is on disk and the next reconciliation pass will catch it. Indexing failures are logged at `Warning`.
+If indexing fails (`VectorStoreException`, `InvalidOperationException`, network failure on the embedder), the file write still wins — the file is on disk and the next reconciliation pass will catch it. Indexing failures are logged at `Warning`.
 
 ### `IMemorySearcher.SearchAsync(agentId, query, limit, minScore, ct)`
 
 1. Resolve workspace + embedding model.
 2. If `<workspace>/system/.memory.db` doesn't exist, return `[]`.
-3. If the table is empty, return `[]` without embedding the query (no point doing the round-trip).
-4. Embed the query (with the configured query prefix).
-5. Read every `(path, vector)` row, compute cosine similarity in C#.
+3. Embed the query (with the configured query prefix).
+4. Open the collection (creating the database with the right vector dimension if it doesn't yet exist).
+5. Call `collection.SearchAsync(queryVector, top: max(limit * 4, limit))`. sqlite-vec ranks by cosine *distance* (lower is better; 0 = identical); the service translates it to the similarity scale callers expect (`1.0 - distance`, where `1.0` is identical).
 6. For each hit at or above `minScore`, check that the file still exists on disk. If it doesn't, drop the hit (the next reconcile will GC the index entry).
-7. Sort descending by score, truncate to `limit`, return `MemorySearchResult(relativePath, score)` records.
+7. Sort descending by similarity, truncate to `limit`, return `MemorySearchResult(relativePath, score)` records.
 
-Steps 6 is the **retrieval-time self-healing**: orphaned index entries never make it back to the model. The model sees only hits whose files are still there.
+Step 6 is the **retrieval-time self-healing**: orphaned index entries never make it back to the model. The model sees only hits whose files are still there.
 
-`Agent.SearchMemoriesAsync` (the agent loop's caller) reads the file contents for each hit and surfaces `(relativePath, content, score)` into the per-turn ephemeral block — see [agent-loop.md](agent-loop.md), step 3, and [prompt-context.md](prompt-context.md). Defaults: `limit = 5`, `minScore = 0.30`.
+`Agent.SearchMemoriesAsync` (the agent loop's caller) reads the file contents for each hit and surfaces them into the per-turn ephemeral block — see [agent-loop.md](agent-loop.md), step 3, and [prompt-context.md](prompt-context.md). Defaults: `limit = 5`, `minScore = 0.30`. Matched memories are injected with their first-line summary rather than full body, to keep the per-turn block tight; the agent can still reach the full content via the file path.
 
 ### `IMemoryIndexer.ReconcileAsync(agentId, force, ct)`
 
 The periodic / on-demand sync. For one agent:
 
-1. Snapshot every `(path, hash)` row currently in the index.
+1. Snapshot every `(Path, Hash)` row currently in the index.
 2. Walk `<workspace>/memory/**/*.md` on disk.
    - Compute the file's SHA-256.
-   - If the row is missing → embed and insert. (`added++`)
-   - If the row's hash differs from disk → re-embed and update. (`updated++`)
+   - If the row is missing → embed and upsert. (`added++`)
+   - If the row's hash differs from disk → re-embed and upsert. (`updated++`)
    - If the hashes match and `force` is false → skip.
-   - If `force` is true → re-embed and update regardless. (`updated++`)
-3. After the walk, every index row whose `path` was *not* visited is an orphan. Delete each. (`removed++`)
+   - If `force` is true → re-embed and upsert regardless. (`updated++`)
+3. After the walk, every index row whose `Path` was *not* visited is an orphan. Delete each. (`removed++`)
 4. Return a `MemoryReconciliation(Added, Updated, Removed, Total)` (Total = files seen on disk).
 
 Reconciliation is per-agent. There's no global "rebuild everything" path — the background service iterates agents.
+
+## Vector-dimension auto-rebuild
+
+If the configured embedding model's vector dimension doesn't match the dimension already baked into the existing `.memory.db` (because the operator changed embedding models, or because a new model has a different output size), `SqliteMemoryService` detects the mismatch when opening the collection and rebuilds the index from scratch — drops the existing collection, recreates it with the new dimension, and lets the next reconcile pass refill it from the source-of-truth markdown files. The reconcile is idempotent and can recover the entire corpus from disk, so a rebuild costs only re-embedding time.
 
 ## Periodic reconciliation
 
@@ -92,22 +96,20 @@ Two layers, with per-agent overriding host:
 
 The prefixes are part of the `embeddinggemma` task convention — see the model card. They're configurable so other embedders that use different prefixes can drop in without code changes.
 
+Two embedding providers ship today:
+
+- **Ollama** (`OLLAMA/<model>`) — calls a configured Ollama endpoint. The default for backward compat with the original setup.
+- **ONNX in-process** (`ONNX/<model>`) — runs the embedder inside the host process via `OnnxRuntime`, using a per-model layout under the `Providers:Onnx:Embeddings:Models` config tree. Currently scoped to all-MiniLM-family sentence-transformers checkpoints; pooling strategy and max sequence length come from per-model config.
+
 If neither the agent nor the host provides an embedding model, memory operations throw `InvalidOperationException` with the message `"Agent '<id>' has no embedding model and no host-level default is configured."` This is loud-failure behavior on purpose: silently disabling RAG would mask a configuration mistake.
 
-## Why raw SQLite (and not `Microsoft.Extensions.VectorData`)
+## SQLite connection pooling
 
-The shared memory index records the long-running plan: vector storage will move to `Microsoft.Extensions.VectorData` with the sqlite-vec connector. That hasn't happened. Today the schema is hand-written, the similarity calculation is in C#, and the `.memory.db` file is a regular SQLite database with no extensions loaded.
-
-The current shape was chosen for two reasons:
-
-1. **No native dependency.** sqlite-vec ships as a native loadable extension; vendoring it cleanly across Linux/macOS/Windows for the developer build wasn't worth the complexity yet.
-2. **The query path is dominated by embedding latency, not similarity math.** Once you've paid for the embedding round-trip, walking 200 vectors in C# is a rounding error. When the corpus grows past the point where C# scan dominates, that's the trigger to migrate.
-
-The migration plan is a same-shape replacement: same schema (path, hash, vector), same self-healing semantics, same agent-facing API. Only the similarity computation moves into the database.
+`Microsoft.Data.Sqlite`'s default connection pooling lets handles outlive the calling scope. `SqliteMemoryService` opens connections with pooling **disabled** — pooling caused live handles from one agent to be torn down when another agent's `ResetIndex` ran on the same path. Without pooling, each call gets a fresh connection that's closed deterministically, and cross-agent reconciles can't step on each other.
 
 ## Agent-facing tools
 
-Three MCP tools live behind the host's own listener (registered in [`ModelContextProtocolServiceCollectionExtensions`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/ModelContextProtocolServiceCollectionExtensions.cs)):
+Three MCP tools live behind the host's own listener (registered in [`ModelContextProtocolServiceCollectionExtensions`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/ModelContextProtocolServiceCollectionExtensions.cs)). Names follow the `<category>_<action>` convention:
 
 - **`memory_store`** — calls `IMemoryStore.StoreAsync`. Returns the relative path of the new file.
 - **`memory_search`** — calls `IMemorySearcher.SearchAsync`. Returns scored relative paths plus content.
