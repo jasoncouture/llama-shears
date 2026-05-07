@@ -9,6 +9,9 @@
     <ProjectReference Include="..\LlamaShears.Api\LlamaShears.Api.csproj" />
     <ProjectReference Include="..\LlamaShears.Core.Abstractions\LlamaShears.Core.Abstractions.csproj" />
     <ProjectReference Include="..\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
+    <ProjectReference Include="..\LlamaShears.Plugins\LlamaShears.Plugins.csproj" />
+    <ProjectReference Include="..\LlamaShears.Plugins.Host\LlamaShears.Plugins.Host.csproj" />
+    <ProjectReference Include="..\StrangeSoft.Plugins.Host\StrangeSoft.Plugins.Host.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="content\**\*" />
