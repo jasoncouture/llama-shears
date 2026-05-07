@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core.Tools.ModelContextProtocol;
 

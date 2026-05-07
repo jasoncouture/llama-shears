@@ -13,7 +13,6 @@ Generated from XML doc comments. One entry per shipped assembly.
 - [LlamaShears.Core.Abstractions.PromptContext](LlamaShears.Core.Abstractions.PromptContext/index.md)
 - [LlamaShears.Core.Abstractions.Provider](LlamaShears.Core.Abstractions.Provider/index.md)
 - [LlamaShears.Core.Abstractions.SystemPrompt](LlamaShears.Core.Abstractions.SystemPrompt/index.md)
-- [LlamaShears.Core.Abstractions.Tools](LlamaShears.Core.Abstractions.Tools/index.md)
 - [LlamaShears.Plugins](LlamaShears.Plugins/index.md)
 - [LlamaShears.Plugins.Host](LlamaShears.Plugins.Host/index.md)
 - [StrangeSoft.Plugins.Abstractions](StrangeSoft.Plugins.Abstractions/index.md)

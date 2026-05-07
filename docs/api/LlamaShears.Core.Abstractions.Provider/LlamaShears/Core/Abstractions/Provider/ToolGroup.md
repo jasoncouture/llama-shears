@@ -1,6 +1,6 @@
-# LlamaShears.Core.Abstractions.Context.ToolGroup
+# LlamaShears.Core.Abstractions.Provider.ToolGroup
 
-Assembly: `LlamaShears.Core.Abstractions.Tools`
+Assembly: `LlamaShears.Core.Abstractions.Provider`
 
 A bundle of [ToolDescriptor](ToolDescriptor.md)s sharing a single
 [ToolGroup](ToolGroup.md).`Source` (e.g. an MCP server slug). Used as the

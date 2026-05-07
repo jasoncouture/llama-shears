@@ -38,7 +38,7 @@ Results of dispatching `ToolCalls`; aligned by index with `ToolCalls`.
 
 ## Methods
 
-### `InferenceOutcome`(string Thinking, string Content, Nullable<int> TokenCount, ImmutableArray<ToolCall> ToolCalls, ImmutableArray<ToolCallResult> ToolResults)
+### `InferenceOutcome`(string Thinking, string Content, Nullable<int> TokenCount, ImmutableArray<[ToolCall](ToolCall.md)> ToolCalls, ImmutableArray<[ToolCallResult](ToolCallResult.md)> ToolResults)
 
 Aggregated result of one [IInferenceRunner](IInferenceRunner.md).`RunAsync`
 pass: the streamed thought/text, any tool calls and their replies,

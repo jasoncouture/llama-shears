@@ -30,4 +30,9 @@ Public API surface, organized by namespace.
 - [PromptOptions](LlamaShears/Core/Abstractions/Provider/PromptOptions.md)
 - [SupportedInputType](LlamaShears/Core/Abstractions/Provider/SupportedInputType.md)
 - [ThinkLevel](LlamaShears/Core/Abstractions/Provider/ThinkLevel.md)
+- [ToolCall](LlamaShears/Core/Abstractions/Provider/ToolCall.md)
+- [ToolCallResult](LlamaShears/Core/Abstractions/Provider/ToolCallResult.md)
+- [ToolDescriptor](LlamaShears/Core/Abstractions/Provider/ToolDescriptor.md)
+- [ToolGroup](LlamaShears/Core/Abstractions/Provider/ToolGroup.md)
+- [ToolParameter](LlamaShears/Core/Abstractions/Provider/ToolParameter.md)
 

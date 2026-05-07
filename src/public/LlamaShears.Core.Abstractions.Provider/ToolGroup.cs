@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace LlamaShears.Core.Abstractions.Context;
+namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
 /// A bundle of <see cref="ToolDescriptor"/>s sharing a single

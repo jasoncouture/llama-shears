@@ -1,4 +1,4 @@
-namespace LlamaShears.Core.Abstractions.Context;
+namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
 /// One parameter in a <see cref="ToolDescriptor"/>'s schema.

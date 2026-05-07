@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Provider.ToolCallResult
 
-Assembly: `LlamaShears.Core.Abstractions.Tools`
+Assembly: `LlamaShears.Core.Abstractions.Provider`
 
 Output of dispatching a single [ToolCall](ToolCall.md) back to the
 model.

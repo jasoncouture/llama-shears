@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace LlamaShears.Core.Abstractions.Context;
+namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
 /// Describes one callable tool: its name, what it does (for the

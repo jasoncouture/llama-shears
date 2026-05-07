@@ -1,6 +1,6 @@
-# LlamaShears.Core.Abstractions.Context.ToolParameter
+# LlamaShears.Core.Abstractions.Provider.ToolParameter
 
-Assembly: `LlamaShears.Core.Abstractions.Tools`
+Assembly: `LlamaShears.Core.Abstractions.Provider`
 
 One parameter in a [ToolDescriptor](ToolDescriptor.md)'s schema.
 

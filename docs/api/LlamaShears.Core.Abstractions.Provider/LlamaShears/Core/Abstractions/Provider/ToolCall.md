@@ -1,6 +1,6 @@
 # LlamaShears.Core.Abstractions.Provider.ToolCall
 
-Assembly: `LlamaShears.Core.Abstractions.Tools`
+Assembly: `LlamaShears.Core.Abstractions.Provider`
 
 One tool the model is asking the host to invoke. The host pairs
 [ToolCall](ToolCall.md).`Source` + [ToolCall](ToolCall.md).`Name` against the registered

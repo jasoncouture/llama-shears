@@ -1,6 +1,6 @@
-# LlamaShears.Core.Abstractions.Context.ToolDescriptor
+# LlamaShears.Core.Abstractions.Provider.ToolDescriptor
 
-Assembly: `LlamaShears.Core.Abstractions.Tools`
+Assembly: `LlamaShears.Core.Abstractions.Provider`
 
 Describes one callable tool: its name, what it does (for the
 model), and its parameter schema.
