@@ -58,6 +58,3 @@ runs:
           ${{ steps.meta.outputs.bake-file }}
         targets: ${{ inputs.target }}
         push: ${{ inputs.push == 'true' }}
-        set: |
-          ${{ inputs.target }}.cache-from=type=gha
-          ${{ inputs.target }}.cache-to=type=gha,mode=max
