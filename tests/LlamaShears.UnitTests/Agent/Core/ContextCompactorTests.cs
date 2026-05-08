@@ -5,8 +5,11 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
@@ -131,7 +134,7 @@ public sealed class ContextCompactorTests
     }
 
     [Test]
-    public async Task SummarizationPromptOmitsTrailingUserTurnAndAppendsInstruction()
+    public async Task SummarizationPromptDropsTrailingUserAndAddsCompactionSystemAfterAgentSystem()
     {
         var capturedPrompts = new List<ModelPrompt>();
         var model = Substitute.For<ILanguageModel>();
@@ -150,9 +153,10 @@ public sealed class ContextCompactorTests
 
         await Assert.That(capturedPrompts.Count).IsEqualTo(1);
         var sent = capturedPrompts[0];
-        await Assert.That(sent.Turns.Count).IsEqualTo(prompt.Turns.Count);
-        await Assert.That(sent.Turns[^1].Role).IsEqualTo(ModelRole.User);
-        await Assert.That(sent.Turns[^1].Content).Contains("Summarize");
+        await Assert.That(sent.Turns[0].Role).IsEqualTo(ModelRole.System);
+        await Assert.That(sent.Turns[0].Content).IsEqualTo(prompt.Turns[0].Content);
+        await Assert.That(sent.Turns[1].Role).IsEqualTo(ModelRole.System);
+        await Assert.That(sent.Turns[1].Content).IsEqualTo("compaction-system");
         var originalUserContent = prompt.Turns[^1].Content;
         await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalUserContent);
     }
@@ -165,8 +169,23 @@ public sealed class ContextCompactorTests
         store.OpenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
-        var runner = new InferenceRunner(publisher, TimeProvider.System);
-        return new ContextCompactor(provider, store, runner, publisher, NullLogger<ContextCompactor>.Instance);
+        var runner = new InferenceRunner(publisher, Substitute.For<IToolCallDispatcher>(), TimeProvider.System);
+        var systemPrompt = Substitute.For<ISystemPromptProvider>();
+        systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult("compaction-system"));
+        var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();
+        serverRegistry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
+            .Returns(new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase));
+        var toolDiscovery = Substitute.For<IModelContextProtocolToolDiscovery>();
+        toolDiscovery.DiscoverAsync(Arg.Any<IReadOnlyDictionary<string, Uri>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
+        var currentAgent = Substitute.For<ICurrentAgentAccessor>();
+        var locator = Substitute.For<ITemplateFileLocator>();
+        locator.Locate(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>()).Returns("/tmp/llamashears-test/PROMPT.md");
+        var templateRenderer = Substitute.For<ITemplateRenderer>();
+        templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
+        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

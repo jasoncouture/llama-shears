@@ -11,7 +11,7 @@ observers tell agent traffic apart from compaction traffic.
 
 ## Methods
 
-### `RunAsync`(string eventId, [ILanguageModel](ILanguageModel.md) model, [ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, bool emitTurns, Guid correlationId, Func<[ToolCall](ToolCall.md), CancellationToken, ValueTask<[ToolCallResult](ToolCallResult.md)>> dispatchTool, CancellationToken cancellationToken)
+### `RunAsync`(string eventId, [ILanguageModel](ILanguageModel.md) model, [ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, bool emitTurns, Guid correlationId, CancellationToken cancellationToken)
 
 Runs `prompt` through `model`
 and publishes message/thought fragment events keyed at

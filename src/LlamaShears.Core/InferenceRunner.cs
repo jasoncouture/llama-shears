@@ -3,24 +3,22 @@ using System.Text;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 
 namespace LlamaShears.Core;
 
 public sealed class InferenceRunner : IInferenceRunner
 {
-    private const string InterruptedToolResultContent = "Tool call interrupted by user.";
-    // Budget for flushing partial-state publishes (Final fragments,
-    // assistant/thought turns) after an interrupt. Subscribers are
-    // in-process and should answer in milliseconds; the budget exists
-    // so a wedged subscriber can't make /interrupt look like a hang.
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IEventPublisher _eventPublisher;
+    private readonly IToolCallDispatcher _toolDispatcher;
     private readonly TimeProvider _time;
 
-    public InferenceRunner(IEventPublisher eventPublisher, TimeProvider time)
+    public InferenceRunner(IEventPublisher eventPublisher, IToolCallDispatcher toolDispatcher, TimeProvider time)
     {
         _eventPublisher = eventPublisher;
+        _toolDispatcher = toolDispatcher;
         _time = time;
     }
 
@@ -31,7 +29,6 @@ public sealed class InferenceRunner : IInferenceRunner
         PromptOptions? options,
         bool emitTurns,
         Guid correlationId,
-        Func<ToolCall, CancellationToken, ValueTask<ToolCallResult>>? dispatchTool,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
@@ -44,13 +41,9 @@ public sealed class InferenceRunner : IInferenceRunner
         var textStreamSeen = false;
         int? tokenCount = null;
         var toolCalls = ImmutableArray.CreateBuilder<ToolCall>();
-        // Dispatch tasks accumulate as tool calls arrive. With a non-null
-        // dispatcher the runner kicks off each tool the moment its
-        // fragment lands, so execution overlaps with the model's
-        // continued streaming of subsequent calls. With a null dispatcher
-        // (e.g. compaction) the list stays empty and ToolResults on the
-        // outcome is default.
-        var dispatchTasks = dispatchTool is null ? null : new List<Task<ToolCallResult>>();
+
+        var tools = options?.Tools ?? [];
+        var dispatchTasks = new List<Task<ToolCallResult>>();
         var interrupted = false;
 
         try
@@ -88,11 +81,7 @@ public sealed class InferenceRunner : IInferenceRunner
                                 toolFragment.Call.CallId),
                             correlationId,
                             cancellationToken).ConfigureAwait(false);
-                        if (dispatchTool is not null)
-                        {
-                            var call = toolFragment.Call;
-                            dispatchTasks!.Add(Task.Run(() => dispatchTool.Invoke(call, cancellationToken).AsTask(), cancellationToken));
-                        }
+                        dispatchTasks.Add(_toolDispatcher.DispatchAsync(toolFragment.Call, tools, eventId, correlationId, cancellationToken).AsTask());
                         break;
                     case IModelCompletionResponse completion:
                         tokenCount = completion.TokenCount;
@@ -105,13 +94,6 @@ public sealed class InferenceRunner : IInferenceRunner
             interrupted = true;
         }
 
-        // From here on the original cancellation token may already be
-        // tripped. On interrupt, swap to a fresh CTS with a fixed
-        // budget for the "we're closing out the partial state"
-        // publishes — long enough for in-process subscribers (the
-        // persister, the UI) to record what the model produced before
-        // the cancel; short enough that a wedged subscriber can't make
-        // /interrupt look like a hang.
         using var finalizeTokenSource = interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
         var finalizeToken = interrupted ? finalizeTokenSource!.Token : cancellationToken;
 
@@ -143,11 +125,6 @@ public sealed class InferenceRunner : IInferenceRunner
                     correlationId,
                     finalizeToken).ConfigureAwait(false);
             }
-            // Emit an assistant turn whenever there is anything to remember:
-            // textual content, tool calls, or both. A pure tool-call response
-            // has empty content but still belongs in the conversation history
-            // so the model can correlate the eventual tool result with its
-            // own request.
             if (content.Length > 0 || toolCalls.Count > 0)
             {
                 var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow())
@@ -162,51 +139,13 @@ public sealed class InferenceRunner : IInferenceRunner
             }
         }
 
-        var toolResults = ImmutableArray<ToolCallResult>.Empty;
-        if (dispatchTasks is { Count: > 0 })
-        {
-            toolResults = interrupted
-                ? CollapseInterruptedDispatchTasks(dispatchTasks)
-                : ImmutableArray.Create(await Task.WhenAll(dispatchTasks).ConfigureAwait(false));
-        }
 
         return new InferenceOutcome(
             thinking.ToString(),
             content.ToString(),
             tokenCount,
             toolCalls.ToImmutable(),
-            toolResults,
+            [.. await Task.WhenAll(dispatchTasks).ConfigureAwait(false)],
             Interrupted: interrupted);
-    }
-
-    // On interrupt we don't await pending tool tasks: the dispatcher's
-    // own cancellation has already torn them down, and re-awaiting would
-    // re-throw OperationCanceledException. Each in-flight slot becomes
-    // an error result so the caller can persist a paired Tool turn for
-    // every assistant tool_call. Faulting tasks are observed via a
-    // continuation to keep the unobserved-exception finalizer silent.
-    private static ImmutableArray<ToolCallResult> CollapseInterruptedDispatchTasks(
-        IReadOnlyList<Task<ToolCallResult>> dispatchTasks)
-    {
-        var builder = ImmutableArray.CreateBuilder<ToolCallResult>(dispatchTasks.Count);
-        for (var i = 0; i < dispatchTasks.Count; i++)
-        {
-            var task = dispatchTasks[i];
-            if (task.IsCompletedSuccessfully)
-            {
-                builder.Add(task.Result);
-                continue;
-            }
-            if (!task.IsCompleted)
-            {
-                _ = task.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
-            }
-            else if (task.IsFaulted)
-            {
-                _ = task.Exception;
-            }
-            builder.Add(new ToolCallResult(InterruptedToolResultContent, IsError: true));
-        }
-        return builder.MoveToImmutable();
     }
 }

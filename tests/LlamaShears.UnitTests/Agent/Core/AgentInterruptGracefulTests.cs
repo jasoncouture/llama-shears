@@ -1,9 +1,11 @@
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
@@ -59,7 +61,7 @@ public sealed class AgentInterruptGracefulTests
 
         var model = new GatedToolCallModel(
             new ToolCall("test", "noop", "{}", "1"));
-        var dispatcher = new HangingDispatcher();
+        var dispatcher = new HangingDispatcher(publisher);
 
         using var agent = BuildAgent("alice", provider, ctx, model, dispatcher: dispatcher);
 
@@ -130,14 +132,37 @@ public sealed class AgentInterruptGracefulTests
     private sealed class HangingDispatcher : IToolCallDispatcher
     {
         private readonly TaskCompletionSource _dispatched = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly IEventPublisher _publisher;
+
+        public HangingDispatcher(IEventPublisher publisher)
+        {
+            _publisher = publisher;
+        }
 
         public Task WaitForDispatchAsync(TimeSpan timeout) => _dispatched.Task.WaitAsync(timeout);
 
-        public async ValueTask<ToolCallResult> DispatchAsync(ToolCall call, CancellationToken cancellationToken)
+        public async ValueTask<ToolCallResult> DispatchAsync(
+            ToolCall call,
+            ImmutableArray<ToolGroup> tools,
+            string eventId,
+            Guid correlationId,
+            CancellationToken cancellationToken)
         {
             _dispatched.TrySetResult();
-            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
-            return new ToolCallResult("unreachable", IsError: false);
+            try
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            var result = new ToolCallResult($"Tool '{call.Name}' on server '{call.Source}' was interrupted by user.", IsError: true);
+            await _publisher.PublishAsync(
+                Event.WellKnown.Agent.ToolResult with { Id = eventId },
+                new AgentToolResultFragment(call.Source, call.Name, result.Content, result.IsError, call.CallId),
+                correlationId,
+                CancellationToken.None).ConfigureAwait(false);
+            return result;
         }
     }
 
@@ -186,8 +211,7 @@ public sealed class AgentInterruptGracefulTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(publisher, TimeProvider.System),
-            toolDispatcher: dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+            inferenceRunner: new InferenceRunner(publisher, dispatcher ?? Substitute.For<IToolCallDispatcher>(), TimeProvider.System),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
             memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),

@@ -6,7 +6,6 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
@@ -44,7 +43,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
-    private readonly IToolCallDispatcher _toolDispatcher;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IPromptContextProvider _promptContext;
     private readonly IMemorySearcher _memorySearcher;
@@ -70,7 +68,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IAgentContextProvider agentContextProvider,
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
-        IToolCallDispatcher toolDispatcher,
         ICurrentAgentAccessor currentAgent,
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
@@ -92,7 +89,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
-        _toolDispatcher = toolDispatcher;
         _currentAgent = currentAgent;
         _promptContext = promptContext;
         _memorySearcher = memorySearcher;
@@ -331,9 +327,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
         prompt = await InjectPromptContextAsync(prompt, ResolveAnchorChannelId(prompt.Turns), memories, cancellationToken).ConfigureAwait(false);
 
-        ValueTask<ToolCallResult> Dispatcher(ToolCall call, CancellationToken callCancellationToken)
-            => DispatchToolAsync(call, correlationId, callCancellationToken);
-
         var outcome = await _inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,
@@ -341,7 +334,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             options: new PromptOptions(Tools: _tools),
             emitTurns: true,
             correlationId: correlationId,
-            dispatchTool: Dispatcher,
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
         // On interrupt, the inference runner has already flushed
@@ -426,41 +418,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
     }
 
-    private async ValueTask<ToolCallResult> DispatchToolAsync(
-        ToolCall call,
-        Guid correlationId,
-        CancellationToken cancellationToken)
-    {
-        ToolCallResult result;
-        var interrupted = false;
-        try
-        {
-            result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            result = new ToolCallResult("Tool call interrupted by user.", IsError: true);
-            interrupted = true;
-        }
-
-        using var interruptedTokenSource = interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
-        var publishToken = interrupted ? interruptedTokenSource!.Token : cancellationToken;
-        await _eventPublisher.PublishAsync(
-            Event.WellKnown.Agent.ToolResult with { Id = Id },
-            new AgentToolResultFragment(
-                call.Source,
-                call.Name,
-                result.Content,
-                result.IsError,
-                call.CallId),
-            correlationId,
-            publishToken).ConfigureAwait(false);
-        return result;
-    }
-
-    // Budget for flushing the synthetic interrupt-failure tool-result
-    // event after a per-turn cancel. See InferenceRunner for the same
-    // pattern on partial-fragment finalize publishes.
+    // Budget for flushing post-interrupt persistence (token count
+    // append, paired tool turns) after a per-turn cancel. See
+    // InferenceRunner for the same pattern on partial-fragment
+    // finalize publishes and synthetic tool-result publishes.
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     // The ephemeral system block anchors against the latest contiguous

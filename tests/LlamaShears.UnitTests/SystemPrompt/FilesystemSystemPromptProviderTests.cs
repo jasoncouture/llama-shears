@@ -21,7 +21,7 @@ public sealed class FilesystemSystemPromptProviderTests
         using var fixture = new Fixture();
         await fixture.WriteWorkspaceTemplateAsync("MINIMAL", "minimal-from-workspace");
 
-        var body = await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("minimal-from-workspace");
     }
@@ -32,7 +32,7 @@ public sealed class FilesystemSystemPromptProviderTests
         using var fixture = new Fixture();
         await fixture.WriteWorkspaceTemplateAsync("DEFAULT", "default-from-workspace");
 
-        var body = await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("default-from-workspace");
     }
@@ -43,7 +43,7 @@ public sealed class FilesystemSystemPromptProviderTests
         using var fixture = new Fixture();
         await fixture.WriteBundledTemplateAsync("MINIMAL", "minimal-from-bundled");
 
-        var body = await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("minimal-from-bundled");
     }
@@ -54,7 +54,7 @@ public sealed class FilesystemSystemPromptProviderTests
         using var fixture = new Fixture();
         await fixture.WriteBundledTemplateAsync("DEFAULT", "default-from-bundled");
 
-        var body = await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("default-from-bundled");
     }
@@ -66,7 +66,7 @@ public sealed class FilesystemSystemPromptProviderTests
         await fixture.WriteWorkspaceTemplateAsync("MINIMAL", "minimal-from-workspace");
         await fixture.WriteBundledTemplateAsync("MINIMAL", "minimal-from-bundled");
 
-        var body = await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("minimal-from-workspace");
     }
@@ -78,7 +78,7 @@ public sealed class FilesystemSystemPromptProviderTests
         await fixture.WriteWorkspaceTemplateAsync("DEFAULT", "default-from-workspace");
         await fixture.WriteBundledTemplateAsync("MINIMAL", "minimal-from-bundled");
 
-        var body = await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("default-from-workspace");
     }
@@ -88,7 +88,7 @@ public sealed class FilesystemSystemPromptProviderTests
     {
         using var fixture = new Fixture();
 
-        await Assert.That(async () => await fixture.Provider.GetAsync("MINIMAL", _emptyParameters, CancellationToken.None))
+        await Assert.That(async () => await fixture.Provider.GetAsync("MINIMAL.md", _emptyParameters, CancellationToken.None))
             .Throws<FileNotFoundException>();
     }
 
@@ -177,7 +177,7 @@ public sealed class FilesystemSystemPromptProviderTests
         using var fixture = new Fixture();
         await fixture.WriteWorkspaceTemplateAsync("DEFAULT", "{{ files.size }}");
 
-        var body = await fixture.Provider.GetAsync("DEFAULT", _emptyParameters, CancellationToken.None);
+        var body = await fixture.Provider.GetAsync("DEFAULT.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("0");
     }
@@ -226,8 +226,8 @@ public sealed class FilesystemSystemPromptProviderTests
             _rendererCache = new FileParserCache<TemplateRenderer>(shears, fpcOptions);
             var renderer = new TemplateRenderer(_rendererCache);
 
-            var providerOptions = Options.Create(new FilesystemSystemPromptOptions { BundledRoot = BundledRoot });
-            Provider = new FilesystemSystemPromptProvider(paths, renderer, providerOptions);
+            var locator = new TestTemplateFileLocator(WorkspaceSystemDir, BundledRoot);
+            Provider = new FilesystemSystemPromptProvider(renderer, locator);
         }
 
         public string WorkspaceSystemDir { get; }
@@ -267,6 +267,42 @@ public sealed class FilesystemSystemPromptProviderTests
             catch (DirectoryNotFoundException)
             {
             }
+        }
+    }
+
+    private sealed class TestTemplateFileLocator : ITemplateFileLocator
+    {
+        private readonly string _workspaceRoot;
+        private readonly string _bundledRoot;
+
+        public TestTemplateFileLocator(string workspaceRoot, string bundledRoot)
+        {
+            _workspaceRoot = workspaceRoot;
+            _bundledRoot = bundledRoot;
+        }
+
+        public string? Locate(string? subFolder, string fileName, string defaultFileName)
+        {
+            string[] roots = [_workspaceRoot, _bundledRoot];
+            foreach (var root in roots)
+            {
+                var dir = string.IsNullOrEmpty(subFolder) ? root : Path.Combine(root, subFolder);
+                var primary = Path.Combine(dir, fileName);
+                if (File.Exists(primary))
+                {
+                    return primary;
+                }
+                if (string.Equals(fileName, defaultFileName, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                var fallback = Path.Combine(dir, defaultFileName);
+                if (File.Exists(fallback))
+                {
+                    return fallback;
+                }
+            }
+            return null;
         }
     }
 

@@ -1,44 +1,41 @@
+using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
 public sealed partial class ContextCompactor : IContextCompactor
 {
-    // 1 system + 2 user + 2 assistant. Below this the trade-off (one model
-    // call to produce a summary that wouldn't have been near the limit
-    // anyway) isn't worth it; also avoids the pathological case where the
-    // summary itself triggers the next compaction.
     private const int MinTurnsForCompaction = 5;
 
-    // Floor for any predict-budget calculation. The compactor never
-    // assumes there's less than this many tokens of headroom on either
-    // the agent's next response or the summary it requests.
     private const int MinTokenLimitFloor = 256;
 
-    // Default fraction of the context window reserved for the model's
-    // response when ModelConfiguration.TokenLimit is unset. Must match
-    // the provider's own default reasoning so the budget check stays
-    // honest; widen the divisor for larger windows in a follow-up.
     private const int DefaultPredictDivisor = 6;
-
-    // Cap on the summarization call's response. Bounds the rebuilt
-    // context so a runaway summary can't itself blow the window.
     private const int SummaryDivisor = 3;
 
-    private const string SummarizeInstruction =
-        "This conversation is being compacted to free context. Summarize what came before " +
-        "as concise notes — important context, decisions, user goals, and open threads. " +
-        "Write it as you would write a note to yourself, since this summary will be your " +
-        "only memory of what came before.";
+    private const string CompactionTemplateFileName = "COMPACTION.md";
+    private const string MemoryToolSource = "llamashears";
+    private const string MemoryToolName = "memory_store";
+    private const string KickerFileName = "PROMPT.md";
+    private const string KickerSubFolder = "compaction";
+
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IEventPublisher _eventPublisher;
+    private readonly ISystemPromptProvider _systemPrompt;
+    private readonly IModelContextProtocolServerRegistry _serverRegistry;
+    private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
+    private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly ITemplateFileLocator _locator;
+    private readonly ITemplateRenderer _templateRenderer;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
@@ -46,12 +43,24 @@ public sealed partial class ContextCompactor : IContextCompactor
         IContextStore contextStore,
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
+        ISystemPromptProvider systemPrompt,
+        IModelContextProtocolServerRegistry serverRegistry,
+        IModelContextProtocolToolDiscovery toolDiscovery,
+        ICurrentAgentAccessor currentAgent,
+        ITemplateFileLocator locator,
+        ITemplateRenderer templateRenderer,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
         _inferenceRunner = inferenceRunner;
         _eventPublisher = eventPublisher;
+        _systemPrompt = systemPrompt;
+        _serverRegistry = serverRegistry;
+        _toolDiscovery = toolDiscovery;
+        _currentAgent = currentAgent;
+        _locator = locator;
+        _templateRenderer = templateRenderer;
         _logger = logger;
     }
 
@@ -108,12 +117,19 @@ public sealed partial class ContextCompactor : IContextCompactor
             cancellationToken).ConfigureAwait(false);
         try
         {
+            var agentInfo = new AgentInfo(
+                AgentId: agentContext.AgentId,
+                ModelId: configuration.ModelId,
+                ContextWindowSize: configuration.ContextLength ?? 0);
+            using var scope = _currentAgent.BeginScope(agentInfo);
+            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken).ConfigureAwait(false);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
                 model,
                 window,
                 preserveTrailingUser,
+                memoryTools,
                 cancellationToken).ConfigureAwait(false);
 
             var rebuilt = new List<ModelTurn>(3);
@@ -156,12 +172,50 @@ public sealed partial class ContextCompactor : IContextCompactor
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private static partial void LogContextCompacted(ILogger logger, string agentId);
 
+    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
+    {
+        var servers = _serverRegistry.Resolve(whitelist: [MemoryToolSource]);
+        if (servers.Count == 0)
+        {
+            return [];
+        }
+        var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken).ConfigureAwait(false);
+        foreach (var group in groups)
+        {
+            if (!string.Equals(group.Source, MemoryToolSource, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            foreach (var descriptor in group.Tools)
+            {
+                if (string.Equals(descriptor.Name, MemoryToolName, StringComparison.Ordinal))
+                {
+                    return [new ToolGroup(MemoryToolSource, [descriptor])];
+                }
+            }
+        }
+        return [];
+    }
+
+    private async ValueTask<string> LoadKickerAsync(string agentId, CancellationToken cancellationToken)
+    {
+        var resolved = _locator.Locate(KickerSubFolder, KickerFileName, KickerFileName)
+            ?? throw new FileNotFoundException(
+                $"Compaction kicker template '{KickerFileName}' not found in workspace, templates, or bundled '{KickerSubFolder}/' folder.");
+        var input = new SystemPromptTemplateParameters(AgentId: agentId);
+        var rendered = await _templateRenderer.RenderAsync(resolved, input, cancellationToken).ConfigureAwait(false)
+            ?? throw new FileNotFoundException(
+                $"Compaction kicker template '{resolved}' could not be rendered.");
+        return rendered;
+    }
+
     private async ValueTask<string> SummarizeAsync(
         string agentId,
         ModelPrompt prompt,
         ILanguageModel model,
         int window,
         bool preserveTrailingUser,
+        ImmutableArray<ToolGroup> tools,
         CancellationToken cancellationToken)
     {
         // Auto-compaction excludes the trailing user message (it gets
@@ -172,34 +226,79 @@ public sealed partial class ContextCompactor : IContextCompactor
         var historyCount = preserveTrailingUser
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
-        var historyTurns = new List<ModelTurn>(historyCount + 1);
+        var systemBody = await _systemPrompt.GetAsync(
+            CompactionTemplateFileName,
+            new SystemPromptTemplateParameters(AgentId: agentId),
+            cancellationToken).ConfigureAwait(false);
+        var historyTurns = new List<ModelTurn>(historyCount + 2);
+        var compactionInserted = false;
         for (var i = 0; i < historyCount; i++)
         {
-            historyTurns.Add(prompt.Turns[i]);
+            var turn = prompt.Turns[i];
+            historyTurns.Add(turn);
+            if (turn.Role == ModelRole.System && !compactionInserted)
+            {
+                historyTurns.Add(new ModelTurn(ModelRole.System, systemBody, turn.Timestamp));
+                compactionInserted = true;
+            }
         }
-        historyTurns.Add(new ModelTurn(ModelRole.User, SummarizeInstruction, prompt.Turns[^1].Timestamp));
-
-        var summarizationPrompt = new ModelPrompt(historyTurns);
-        var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
-        var options = new PromptOptions(TokenLimit: summaryCap);
-
-        var outcome = await _inferenceRunner.RunAsync(
-            eventId: $"{agentId}-compaction",
-            model: model,
-            prompt: summarizationPrompt,
-            options: options,
-            emitTurns: false,
-            correlationId: Guid.CreateVersion7(),
-            dispatchTool: null,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        var summary = outcome.Content.Trim();
-        if (summary.Length == 0)
+        if (!compactionInserted)
         {
-            throw new CompactionFailedException(
-                "Model produced an empty summary; cannot compact context.");
+            historyTurns.Insert(0, new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
         }
-        return summary;
+        if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
+        {
+            var kicker = await LoadKickerAsync(agentId, cancellationToken).ConfigureAwait(false);
+            historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
+        }
+
+        var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
+        var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
+        var correlationId = Guid.CreateVersion7();
+
+        while (true)
+        {
+            var summarizationPrompt = new ModelPrompt(historyTurns);
+            var outcome = await _inferenceRunner.RunAsync(
+                eventId: $"{agentId}-compaction",
+                model: model,
+                prompt: summarizationPrompt,
+                options: options,
+                emitTurns: false,
+                correlationId: correlationId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (outcome.Interrupted)
+            {
+                throw new CompactionFailedException("Compaction was interrupted before the model produced a summary.");
+            }
+
+            if (!outcome.ToolCalls.IsDefaultOrEmpty)
+            {
+                var assistantTurn = new ModelTurn(ModelRole.Assistant, outcome.Content, prompt.Turns[^1].Timestamp)
+                {
+                    ToolCalls = outcome.ToolCalls,
+                };
+                historyTurns.Add(assistantTurn);
+                for (var i = 0; i < outcome.ToolCalls.Length; i++)
+                {
+                    historyTurns.Add(new ModelTurn(ModelRole.Tool, outcome.ToolResults[i].Content, prompt.Turns[^1].Timestamp)
+                    {
+                        ToolCall = outcome.ToolCalls[i],
+                        IsError = outcome.ToolResults[i].IsError,
+                    });
+                }
+                continue;
+            }
+
+            var summary = outcome.Content.Trim();
+            if (summary.Length == 0)
+            {
+                throw new CompactionFailedException(
+                    "Model produced an empty summary; cannot compact context.");
+            }
+            return summary;
+        }
     }
 
     private static int ResolvePredictBudget(ModelConfiguration configuration, int window)
