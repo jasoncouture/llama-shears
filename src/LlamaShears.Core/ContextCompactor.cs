@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -45,6 +46,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly ISystemPromptProvider _systemPrompt;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
+    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
@@ -55,6 +57,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         ISystemPromptProvider systemPrompt,
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
+        ICurrentAgentAccessor currentAgent,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
@@ -64,6 +67,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         _systemPrompt = systemPrompt;
         _serverRegistry = serverRegistry;
         _toolDiscovery = toolDiscovery;
+        _currentAgent = currentAgent;
         _logger = logger;
     }
 
@@ -120,7 +124,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             cancellationToken).ConfigureAwait(false);
         try
         {
-            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken).ConfigureAwait(false);
+            var memoryTools = await ResolveMemoryStoreToolAsync(agentContext.AgentId, configuration, cancellationToken).ConfigureAwait(false);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
@@ -170,13 +174,21 @@ public sealed partial class ContextCompactor : IContextCompactor
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private static partial void LogContextCompacted(ILogger logger, string agentId);
 
-    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
+    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(
+        string agentId,
+        ModelConfiguration configuration,
+        CancellationToken cancellationToken)
     {
         var servers = _serverRegistry.Resolve(whitelist: [MemoryToolSource]);
         if (servers.Count == 0)
         {
             return [];
         }
+        var agentInfo = new AgentInfo(
+            AgentId: agentId,
+            ModelId: configuration.ModelId,
+            ContextWindowSize: configuration.ContextLength ?? 0);
+        using var scope = _currentAgent.BeginScope(agentInfo);
         var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken).ConfigureAwait(false);
         foreach (var group in groups)
         {

@@ -179,7 +179,8 @@ public sealed class ContextCompactorTests
         var toolDiscovery = Substitute.For<IModelContextProtocolToolDiscovery>();
         toolDiscovery.DiscoverAsync(Arg.Any<IReadOnlyDictionary<string, Uri>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
-        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, NullLogger<ContextCompactor>.Instance);
+        var currentAgent = Substitute.For<ICurrentAgentAccessor>();
+        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)
