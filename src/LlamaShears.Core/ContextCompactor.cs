@@ -124,7 +124,12 @@ public sealed partial class ContextCompactor : IContextCompactor
             cancellationToken).ConfigureAwait(false);
         try
         {
-            var memoryTools = await ResolveMemoryStoreToolAsync(agentContext.AgentId, configuration, cancellationToken).ConfigureAwait(false);
+            var agentInfo = new AgentInfo(
+                AgentId: agentContext.AgentId,
+                ModelId: configuration.ModelId,
+                ContextWindowSize: configuration.ContextLength ?? 0);
+            using var scope = _currentAgent.BeginScope(agentInfo);
+            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken).ConfigureAwait(false);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
@@ -174,21 +179,13 @@ public sealed partial class ContextCompactor : IContextCompactor
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private static partial void LogContextCompacted(ILogger logger, string agentId);
 
-    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(
-        string agentId,
-        ModelConfiguration configuration,
-        CancellationToken cancellationToken)
+    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
     {
         var servers = _serverRegistry.Resolve(whitelist: [MemoryToolSource]);
         if (servers.Count == 0)
         {
             return [];
         }
-        var agentInfo = new AgentInfo(
-            AgentId: agentId,
-            ModelId: configuration.ModelId,
-            ContextWindowSize: configuration.ContextLength ?? 0);
-        using var scope = _currentAgent.BeginScope(agentInfo);
         var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken).ConfigureAwait(false);
         foreach (var group in groups)
         {
