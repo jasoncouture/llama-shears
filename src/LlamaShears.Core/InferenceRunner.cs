@@ -8,6 +8,13 @@ namespace LlamaShears.Core;
 
 public sealed class InferenceRunner : IInferenceRunner
 {
+    private const string InterruptedToolResultContent = "Tool call interrupted by user.";
+    // Budget for flushing partial-state publishes (Final fragments,
+    // assistant/thought turns) after an interrupt. Subscribers are
+    // in-process and should answer in milliseconds; the budget exists
+    // so a wedged subscriber can't make /interrupt look like a hang.
+    private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
+
     private readonly IEventPublisher _eventPublisher;
     private readonly TimeProvider _time;
 
@@ -44,51 +51,69 @@ public sealed class InferenceRunner : IInferenceRunner
         // (e.g. compaction) the list stays empty and ToolResults on the
         // outcome is default.
         var dispatchTasks = dispatchTool is null ? null : new List<Task<ToolCallResult>>();
+        var interrupted = false;
 
-        await foreach (var fragment in model.PromptAsync(prompt, options, cancellationToken).ConfigureAwait(false))
+        try
         {
-            switch (fragment)
+            await foreach (var fragment in model.PromptAsync(prompt, options, cancellationToken).ConfigureAwait(false))
             {
-                case IModelThoughtResponse thought:
-                    thinking.Append(thought.Content);
-                    thoughtStreamSeen = true;
-                    await _eventPublisher.PublishAsync(
-                        Event.WellKnown.Agent.Thought with { Id = eventId },
-                        new AgentThoughtFragment(thinking.ToString(), Final: false),
-                        correlationId,
-                        cancellationToken).ConfigureAwait(false);
-                    break;
-                case IModelTextResponse text:
-                    content.Append(text.Content);
-                    textStreamSeen = true;
-                    await _eventPublisher.PublishAsync(
-                        Event.WellKnown.Agent.Message with { Id = eventId },
-                        new AgentMessageFragment(content.ToString(), Final: false),
-                        correlationId,
-                        cancellationToken).ConfigureAwait(false);
-                    break;
-                case IModelToolCallFragment toolFragment:
-                    toolCalls.Add(toolFragment.Call);
-                    await _eventPublisher.PublishAsync(
-                        Event.WellKnown.Agent.ToolCall with { Id = eventId },
-                        new AgentToolCallFragment(
-                            toolFragment.Call.Source,
-                            toolFragment.Call.Name,
-                            toolFragment.Call.ArgumentsJson,
-                            toolFragment.Call.CallId),
-                        correlationId,
-                        cancellationToken).ConfigureAwait(false);
-                    if (dispatchTool is not null)
-                    {
-                        var call = toolFragment.Call;
-                        dispatchTasks!.Add(Task.Run(() => dispatchTool.Invoke(call, cancellationToken).AsTask(), cancellationToken));
-                    }
-                    break;
-                case IModelCompletionResponse completion:
-                    tokenCount = completion.TokenCount;
-                    break;
+                switch (fragment)
+                {
+                    case IModelThoughtResponse thought:
+                        thinking.Append(thought.Content);
+                        thoughtStreamSeen = true;
+                        await _eventPublisher.PublishAsync(
+                            Event.WellKnown.Agent.Thought with { Id = eventId },
+                            new AgentThoughtFragment(thinking.ToString(), Final: false),
+                            correlationId,
+                            cancellationToken).ConfigureAwait(false);
+                        break;
+                    case IModelTextResponse text:
+                        content.Append(text.Content);
+                        textStreamSeen = true;
+                        await _eventPublisher.PublishAsync(
+                            Event.WellKnown.Agent.Message with { Id = eventId },
+                            new AgentMessageFragment(content.ToString(), Final: false),
+                            correlationId,
+                            cancellationToken).ConfigureAwait(false);
+                        break;
+                    case IModelToolCallFragment toolFragment:
+                        toolCalls.Add(toolFragment.Call);
+                        await _eventPublisher.PublishAsync(
+                            Event.WellKnown.Agent.ToolCall with { Id = eventId },
+                            new AgentToolCallFragment(
+                                toolFragment.Call.Source,
+                                toolFragment.Call.Name,
+                                toolFragment.Call.ArgumentsJson,
+                                toolFragment.Call.CallId),
+                            correlationId,
+                            cancellationToken).ConfigureAwait(false);
+                        if (dispatchTool is not null)
+                        {
+                            var call = toolFragment.Call;
+                            dispatchTasks!.Add(Task.Run(() => dispatchTool.Invoke(call, cancellationToken).AsTask(), cancellationToken));
+                        }
+                        break;
+                    case IModelCompletionResponse completion:
+                        tokenCount = completion.TokenCount;
+                        break;
+                }
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            interrupted = true;
+        }
+
+        // From here on the original cancellation token may already be
+        // tripped. On interrupt, swap to a fresh CTS with a fixed
+        // budget for the "we're closing out the partial state"
+        // publishes — long enough for in-process subscribers (the
+        // persister, the UI) to record what the model produced before
+        // the cancel; short enough that a wedged subscriber can't make
+        // /interrupt look like a hang.
+        using var finalizeTokenSource = interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
+        var finalizeToken = interrupted ? finalizeTokenSource!.Token : cancellationToken;
 
         if (thoughtStreamSeen)
         {
@@ -96,7 +121,7 @@ public sealed class InferenceRunner : IInferenceRunner
                 Event.WellKnown.Agent.Thought with { Id = eventId },
                 new AgentThoughtFragment(thinking.ToString(), Final: true),
                 correlationId,
-                cancellationToken).ConfigureAwait(false);
+                finalizeToken).ConfigureAwait(false);
         }
         if (textStreamSeen)
         {
@@ -104,7 +129,7 @@ public sealed class InferenceRunner : IInferenceRunner
                 Event.WellKnown.Agent.Message with { Id = eventId },
                 new AgentMessageFragment(content.ToString(), Final: true),
                 correlationId,
-                cancellationToken).ConfigureAwait(false);
+                finalizeToken).ConfigureAwait(false);
         }
 
         if (emitTurns)
@@ -116,7 +141,7 @@ public sealed class InferenceRunner : IInferenceRunner
                     Event.WellKnown.Agent.Turn with { Id = eventId },
                     thoughtTurn,
                     correlationId,
-                    cancellationToken).ConfigureAwait(false);
+                    finalizeToken).ConfigureAwait(false);
             }
             // Emit an assistant turn whenever there is anything to remember:
             // textual content, tool calls, or both. A pure tool-call response
@@ -133,15 +158,16 @@ public sealed class InferenceRunner : IInferenceRunner
                     Event.WellKnown.Agent.Turn with { Id = eventId },
                     assistantTurn,
                     correlationId,
-                    cancellationToken).ConfigureAwait(false);
+                    finalizeToken).ConfigureAwait(false);
             }
         }
 
         var toolResults = ImmutableArray<ToolCallResult>.Empty;
         if (dispatchTasks is { Count: > 0 })
         {
-            var results = await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
-            toolResults = ImmutableArray.Create(results);
+            toolResults = interrupted
+                ? CollapseInterruptedDispatchTasks(dispatchTasks)
+                : ImmutableArray.Create(await Task.WhenAll(dispatchTasks).ConfigureAwait(false));
         }
 
         return new InferenceOutcome(
@@ -149,6 +175,38 @@ public sealed class InferenceRunner : IInferenceRunner
             content.ToString(),
             tokenCount,
             toolCalls.ToImmutable(),
-            toolResults);
+            toolResults,
+            Interrupted: interrupted);
+    }
+
+    // On interrupt we don't await pending tool tasks: the dispatcher's
+    // own cancellation has already torn them down, and re-awaiting would
+    // re-throw OperationCanceledException. Each in-flight slot becomes
+    // an error result so the caller can persist a paired Tool turn for
+    // every assistant tool_call. Faulting tasks are observed via a
+    // continuation to keep the unobserved-exception finalizer silent.
+    private static ImmutableArray<ToolCallResult> CollapseInterruptedDispatchTasks(
+        IReadOnlyList<Task<ToolCallResult>> dispatchTasks)
+    {
+        var builder = ImmutableArray.CreateBuilder<ToolCallResult>(dispatchTasks.Count);
+        for (var i = 0; i < dispatchTasks.Count; i++)
+        {
+            var task = dispatchTasks[i];
+            if (task.IsCompletedSuccessfully)
+            {
+                builder.Add(task.Result);
+                continue;
+            }
+            if (!task.IsCompleted)
+            {
+                _ = task.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+            }
+            else if (task.IsFaulted)
+            {
+                _ = task.Exception;
+            }
+            builder.Add(new ToolCallResult(InterruptedToolResultContent, IsError: true));
+        }
+        return builder.MoveToImmutable();
     }
 }

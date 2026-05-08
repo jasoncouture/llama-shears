@@ -404,9 +404,37 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 dispatchTool: Dispatcher,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
+            // On interrupt, the inference runner has already flushed
+            // partial fragments and persisted the assistant turn (with
+            // whatever ToolCalls had been dispatched at cancel time).
+            // Pair every dispatched tool_call with the synthetic error
+            // result the runner collapsed it into, log, then exit. The
+            // run-loop returns to its idle wait; the next inbound
+            // message resumes the agent. Post-interrupt persistence
+            // runs on a fresh CTS with a fixed budget so a wedged
+            // subscriber can't make /interrupt hang the agent.
+            using var interruptedTokenSource = outcome.Interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
+            var publishToken = outcome.Interrupted ? interruptedTokenSource!.Token : cancellationToken;
+
             if (outcome.TokenCount is { } tokens)
             {
-                await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), cancellationToken).ConfigureAwait(false);
+                await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), publishToken).ConfigureAwait(false);
+            }
+
+            if (!outcome.ToolCalls.IsDefaultOrEmpty)
+            {
+                // Strict-provider ordering: assistant(tool_calls) is
+                // already in context (published by the inference
+                // runner). Tool result turns must land contiguously
+                // next, in original call order, before any user turn
+                // or the next assistant turn.
+                await PublishToolTurnsAsync(outcome.ToolCalls, outcome.ToolResults, correlationId, publishToken).ConfigureAwait(false);
+            }
+
+            if (outcome.Interrupted)
+            {
+                LogTurnInterrupted(_logger, Id, correlationId);
+                return;
             }
 
             if (outcome.ToolCalls.IsDefaultOrEmpty)
@@ -417,12 +445,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 }
                 return;
             }
-
-            // Strict-provider ordering: assistant(tool_calls) is already
-            // in context (published by the inference runner). Tool result
-            // turns must land contiguously next, in original call order,
-            // before any user turn or the next assistant turn.
-            await PublishToolTurnsAsync(outcome.ToolCalls, outcome.ToolResults, correlationId, cancellationToken).ConfigureAwait(false);
 
             // Drain any user messages that arrived while the model and
             // tools were running. They append after the tool turns and
@@ -486,12 +508,34 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         Guid correlationId,
         CancellationToken cancellationToken)
     {
-        var result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
+        ToolCallResult result;
+        var interrupted = false;
+        try
+        {
+            result = await _toolDispatcher.DispatchAsync(call, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Synthesize an error result so the caller can pair every
+            // tool_call with a tool_result in persisted history. Strict
+            // providers (OpenAI, Anthropic) reject any assistant
+            // tool_call that has no matching tool_result on the next
+            // re-prompt; an interrupted call counts as failed, not
+            // skipped.
+            result = new ToolCallResult("Tool call interrupted by user.", IsError: true);
+            interrupted = true;
+        }
         // Publish the result event the moment dispatch completes. This
         // can land *while* the model is still streaming subsequent tool
         // calls — that's intentional. The UI sees results in real
         // arrival order; the conversation history is still assembled in
-        // call order in PublishToolTurnsAsync.
+        // call order in PublishToolTurnsAsync. On interrupt, fall back
+        // to a fresh CTS with a fixed budget — long enough for the
+        // in-process persister/UI to record the failure, short enough
+        // that a wedged subscriber can't make /interrupt look like a
+        // hang.
+        using var interruptedTokenSource = interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
+        var publishToken = interrupted ? interruptedTokenSource!.Token : cancellationToken;
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.ToolResult with { Id = Id },
             new AgentToolResultFragment(
@@ -501,9 +545,14 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 result.IsError,
                 call.CallId),
             correlationId,
-            cancellationToken).ConfigureAwait(false);
+            publishToken).ConfigureAwait(false);
         return result;
     }
+
+    // Budget for flushing the synthetic interrupt-failure tool-result
+    // event after a per-turn cancel. See InferenceRunner for the same
+    // pattern on partial-fragment finalize publishes.
+    private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     // The ephemeral system block anchors against the latest contiguous
     // run of user turns. Walk back from the tail to the most recent
