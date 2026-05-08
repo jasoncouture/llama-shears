@@ -84,12 +84,6 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
     private static ToolDescriptor MapTool(McpClientTool tool) =>
         new(tool.Name, tool.Description ?? string.Empty, ParseSchema(tool.JsonSchema));
 
-    // Pull parameter names, types, descriptions, and required-set out of
-    // the MCP tool's JSON Schema so the model sees the same parameter
-    // names the C# server-side binder expects. Without this the model
-    // guesses arg names from the description text (often snake_case)
-    // and the binder silently falls through to defaults when the casing
-    // doesn't line up.
     private static ImmutableArray<ToolParameter> ParseSchema(JsonElement schema)
     {
         if (schema.ValueKind != JsonValueKind.Object)
