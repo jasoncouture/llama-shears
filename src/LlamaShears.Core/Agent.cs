@@ -746,8 +746,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
         new(
             AgentId: _config.Id,
-            WorkspacePath: _config.WorkspacePath,
-            ToolCallTurns: _config.Tools.TurnLimit);
+            WorkspacePath: _config.WorkspacePath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
