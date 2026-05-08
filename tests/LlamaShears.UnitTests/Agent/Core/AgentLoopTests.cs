@@ -58,13 +58,6 @@ public sealed class AgentLoopTests
 
         using var agent = BuildAgent("alice", provider, ctx, model);
 
-        // Channel-message subscription on Agent is Awaited, so the
-        // publish completes only after every subscriber's HandleAsync
-        // has run. Alice's HandleAsync filters by AgentId and drops
-        // bob-targeted messages without queuing — by the time Publish
-        // returns there is nothing in alice's inbox for her run loop
-        // to act on, so the assertion below is observing the settled
-        // post-dispatch state with no extra wait required.
         await PublishChannelMessageAsync(publisher, "bob", "not for alice");
 
         await Assert.That(model.PromptInvocations).IsEqualTo(0);
