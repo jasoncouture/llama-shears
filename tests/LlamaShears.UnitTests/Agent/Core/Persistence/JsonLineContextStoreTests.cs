@@ -97,7 +97,6 @@ public sealed class JsonLineContextStoreTests
         var existing = Turn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
         await first.AppendAsync(existing, CancellationToken.None);
 
-        // New store instance over the same data root simulates a process restart.
         var rebooted = fixture.NewStore();
         var rehydrated = await rebooted.OpenAsync(AgentId, CancellationToken.None);
 
