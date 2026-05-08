@@ -26,9 +26,6 @@ internal sealed class VariableDimensionEmbeddingModel : IEmbeddingModel
         return ValueTask.FromResult<IReadOnlyList<ReadOnlyMemory<float>>>(results);
     }
 
-    // Same hash-shaped scheme as StubEmbeddingModel, but the dimension
-    // comes from the supplied accessor so a test can change it between
-    // calls (simulating a swap of the underlying embedding model).
     private ReadOnlyMemory<float> Embed(string text)
     {
         var dim = _getDimensions();
