@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
-using System.Threading.Channels;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -20,6 +20,12 @@ namespace LlamaShears.Core;
 
 public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyncDisposable
 {
+    // Channel id portion of the agent's default SessionId. Wiring more
+    // channels (and routing inbound events to per-channel sessions)
+    // lands in a follow-up; for now every agent has exactly one
+    // session and it lives at this slot.
+    private const string DefaultChannel = "default";
+
     private readonly AgentConfig _config;
     private readonly ILanguageModel _model;
     private readonly ILogger _logger;
@@ -27,7 +33,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly ISystemPromptProvider _systemPrompt;
     private readonly TimeProvider _time;
     private readonly IDisposable _subscription;
-    private readonly Channel<ModelTurn> _inbound;
+    private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
     private readonly Task _loop;
     private readonly SemaphoreSlim _processGate = new(1, 1);
@@ -49,6 +55,14 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     // scope teardown can't recurse if a service inside the scope ever
     // tries to dispose the agent during its own disposal.
     private IAsyncDisposable? _scope;
+
+    // Memories live across iterations of the run loop. The model's
+    // tool round-trips don't carry user content, so re-running the
+    // embedding search on each iteration would be wasted work; we
+    // cache against the last user message and refresh only when a
+    // new user message arrives.
+    private IReadOnlyList<PromptContextMemory>? _cachedMemories;
+    private string? _cachedMemoryQuery;
 
     // When Memory.Prefetch is enabled, a search task is installed by
     // HandleAsync the moment a ChannelMessage is observed and consumed
@@ -76,6 +90,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         ICurrentAgentAccessor currentAgent,
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
+        ISessionFactory sessionFactory,
         AsyncServiceScope scope,
         ImmutableArray<ToolGroup> tools = default)
     {
@@ -100,10 +115,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _tools = tools.IsDefault ? [] : tools;
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
-        _inbound = Channel.CreateUnbounded<ModelTurn>(new UnboundedChannelOptions
-        {
-            SingleReader = true,
-        });
+        _sessionQueue = sessionFactory.Get(new SessionId(config.Id, DefaultChannel));
         _shutdown = new CancellationTokenSource();
         _subscription = bus.Subscribe(
             $"{Event.WellKnown.Channel.Message}:+",
@@ -178,7 +190,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         _subscription.Dispose();
         _shutdown.Cancel();
-        _inbound.Writer.TryComplete();
+        // Note: do not delete the session from the factory or dispose
+        // the queue here. Sessions outlive the agent instance — an
+        // agent reload reuses the same session/queue so any in-flight
+        // user input survives the reconfigure.
         try
         {
             await _loop.ConfigureAwait(false);
@@ -217,7 +232,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         {
             Attachments = data.Attachments,
         };
-        await _inbound.Writer.WriteAsync(turn, cancellationToken).ConfigureAwait(false);
+        await _sessionQueue.EnqueueAsync(turn, cancellationToken).ConfigureAwait(false);
     }
 
     private void TryStartPrefetch(string text)
@@ -248,8 +263,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         {
             try
             {
-                var batch = await WaitForNextBatchAsync(cancellationToken).ConfigureAwait(false);
-                if (batch.Count == 0)
+                var batch = await _sessionQueue.DequeueBatchAsync(cancellationToken).ConfigureAwait(false);
+                if (batch.IsDefaultOrEmpty)
                 {
                     return;
                 }
@@ -264,7 +279,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 }
                 try
                 {
-                    await ProcessTurnAsync(batch, correlationId, cancellationToken, turnCts.Token).ConfigureAwait(false);
+                    await ProcessIterationAsync(batch, correlationId, cancellationToken, turnCts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (turnCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
@@ -291,188 +306,154 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
     }
 
-    // Blocks for the first message, then drains every subsequent message
-    // in the channel that shares the same ChannelId. The same-channel rule
-    // mirrors the prior batching behavior (which keyed off envelope.Type)
-    // and keeps batches scoped to a single conversational source.
-    private async Task<List<ModelTurn>> WaitForNextBatchAsync(CancellationToken cancellationToken)
-    {
-        var reader = _inbound.Reader;
-        if (!await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        {
-            return [];
-        }
-        if (!reader.TryRead(out var first))
-        {
-            return [];
-        }
-        return DrainSameChannel(first);
-    }
-
-    // Non-blocking drain. Returns an empty list when nothing is queued.
-    // Used between inference iterations to fold in user messages that
-    // arrived during tool dispatch — they land contiguously after the
-    // tool result turns and before the next assistant turn, which is
-    // the only ordering strict providers (OpenAI, Anthropic) accept.
-    private List<ModelTurn> TryGetNextBatch()
-    {
-        var reader = _inbound.Reader;
-        if (!reader.TryRead(out var first))
-        {
-            return [];
-        }
-        return DrainSameChannel(first);
-    }
-
-    private List<ModelTurn> DrainSameChannel(ModelTurn first)
-    {
-        var batch = new List<ModelTurn> { first };
-        var reader = _inbound.Reader;
-        while (reader.TryPeek(out var next)
-            && string.Equals(next.ChannelId, first.ChannelId, StringComparison.Ordinal))
-        {
-            if (!reader.TryRead(out var taken))
-            {
-                break;
-            }
-            batch.Add(taken);
-        }
-        return batch;
-    }
-
-    private async Task ProcessTurnAsync(
-        IReadOnlyList<ModelTurn> initialBatch,
+    // One inference round-trip. The session queue is the single source
+    // of truth for everything the model still needs to see — user
+    // batches and tool-result turns both arrive via DequeueBatchAsync,
+    // already in strict-provider order (tools first, then a same-channel
+    // user batch). Each iteration:
+    //   1. publishes the dequeued batch into context (events → persister);
+    //   2. refreshes memories iff a new user query landed;
+    //   3. runs inference;
+    //   4. on outcome with tool calls, enqueues tool result turns so the
+    //      next outer dequeue picks them up immediately;
+    //   5. on outcome without tool calls, returns and the outer loop
+    //      blocks for the next user batch.
+    private async Task ProcessIterationAsync(
+        ImmutableArray<ModelTurn> batch,
         Guid correlationId,
         CancellationToken outerCancellationToken,
         CancellationToken cancellationToken)
     {
-        // Nested per-turn scope: every tool call and inner inference
-        // iteration in this run sees the same scoped instances; the next
-        // top-level turn starts fresh. Resolve scoped services from
-        // loopScope.ServiceProvider when they need to land here.
         await using var loopScope = _scopedServices.CreateAsyncScope();
 
-        // Initial batch: publish each user turn so subscribers (UI,
-        // history persister) see them and the persister appends them
-        // into _agentContext. Use the outer cancellation token so an
-        // /interrupt issued mid-publish can't drop the user input that
-        // is already off the queue.
-        await PublishUserBatchAsync(initialBatch, correlationId, outerCancellationToken).ConfigureAwait(false);
+        // Publish each turn so subscribers (UI, history persister) see
+        // them and the persister appends them into _agentContext.
+        // Outer CT so an /interrupt issued mid-publish can't drop user
+        // input that's already been dequeued.
+        foreach (var turn in batch)
+        {
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.Turn with { Id = Id },
+                turn,
+                correlationId,
+                outerCancellationToken).ConfigureAwait(false);
+        }
+
+        // Memory: re-search only when a new user query arrived in this
+        // batch. Tool-only batches reuse the cached memories from the
+        // user turn that started the conversation.
+        var latestUser = LatestUserTurn(batch);
+        if (latestUser is not null
+            && !string.Equals(latestUser.Content, _cachedMemoryQuery, StringComparison.Ordinal))
+        {
+            _cachedMemories = await ConsumePrefetchOrSearchAsync(latestUser, cancellationToken).ConfigureAwait(false);
+            _cachedMemoryQuery = latestUser.Content;
+        }
+        var memories = _cachedMemories ?? [];
 
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
-        // Memory query keyed off the latest user message we've seen.
-        // Initial entry consumes the prefetch (if armed); mid-loop user
-        // arrivals re-search inline against their newest message.
-        var memories = await ConsumePrefetchOrSearchAsync(initialBatch[^1], cancellationToken).ConfigureAwait(false);
-
         // Loopback bearer minting reads from ICurrentAgentAccessor; the
-        // scope must be active before tool dispatch fires, and dispatch
-        // starts inside the inference runner the moment a tool call
-        // arrives (so it overlaps with continued model streaming).
-        // Hoisting the scope to the whole turn keeps every dispatched
-        // tool — across every iteration of the inference loop — seeing
-        // the right agent. AsyncLocal flows into the inner tasks because
-        // they capture the current ExecutionContext at start.
+        // scope must be active before tool dispatch fires. Inference
+        // and any tool dispatch it spawns complete before this method
+        // returns, so a per-iteration scope covers everything.
         var agentInfo = new AgentInfo(
             AgentId: Id,
             ModelId: _modelConfiguration.ModelId,
             ContextWindowSize: _modelConfiguration.ContextLength ?? 0);
         using var agentScope = _currentAgent.BeginScope(agentInfo);
 
-        while (true)
+        var turns = _agentContext.Turns;
+        var prompt = new ModelPrompt([systemTurn, .. turns]);
+        var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
+        prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
+        prompt = FormatUserTurns(prompt);
+        prompt = await InjectPromptContextAsync(prompt, ResolveAnchorChannelId(prompt.Turns), memories, cancellationToken).ConfigureAwait(false);
+
+        ValueTask<ToolCallResult> Dispatcher(ToolCall call, CancellationToken callCancellationToken)
+            => DispatchToolAsync(call, correlationId, callCancellationToken);
+
+        var outcome = await _inferenceRunner.RunAsync(
+            eventId: Id,
+            model: _model,
+            prompt: prompt,
+            options: new PromptOptions(Tools: _tools),
+            emitTurns: true,
+            correlationId: correlationId,
+            dispatchTool: Dispatcher,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        // On interrupt, the inference runner has already flushed
+        // partial fragments and persisted the assistant turn (with
+        // whatever ToolCalls had been dispatched at cancel time).
+        // Pair every dispatched tool_call with the synthetic error
+        // result the runner collapsed it into, log, then exit. The
+        // run-loop returns to its idle wait; the next inbound message
+        // resumes the agent. Post-interrupt persistence runs on a fresh
+        // CTS with a fixed budget so a wedged subscriber can't make
+        // /interrupt hang the agent.
+        using var interruptedTokenSource = outcome.Interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
+        var publishToken = outcome.Interrupted ? interruptedTokenSource!.Token : cancellationToken;
+
+        if (outcome.TokenCount is { } tokens)
         {
-            var turns = _agentContext.Turns;
-            var prompt = new ModelPrompt([systemTurn, .. turns]);
-            var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
-            prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
-            prompt = FormatUserTurns(prompt);
-            prompt = await InjectPromptContextAsync(prompt, ResolveAnchorChannelId(prompt.Turns), memories, cancellationToken).ConfigureAwait(false);
+            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), publishToken).ConfigureAwait(false);
+        }
 
-            ValueTask<ToolCallResult> Dispatcher(ToolCall call, CancellationToken callCancellationToken)
-                => DispatchToolAsync(call, correlationId, callCancellationToken);
-
-            var outcome = await _inferenceRunner.RunAsync(
-                eventId: Id,
-                model: _model,
-                prompt: prompt,
-                options: new PromptOptions(Tools: _tools),
-                emitTurns: true,
-                correlationId: correlationId,
-                dispatchTool: Dispatcher,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            // On interrupt, the inference runner has already flushed
-            // partial fragments and persisted the assistant turn (with
-            // whatever ToolCalls had been dispatched at cancel time).
-            // Pair every dispatched tool_call with the synthetic error
-            // result the runner collapsed it into, log, then exit. The
-            // run-loop returns to its idle wait; the next inbound
-            // message resumes the agent. Post-interrupt persistence
-            // runs on a fresh CTS with a fixed budget so a wedged
-            // subscriber can't make /interrupt hang the agent.
-            using var interruptedTokenSource = outcome.Interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
-            var publishToken = outcome.Interrupted ? interruptedTokenSource!.Token : cancellationToken;
-
-            if (outcome.TokenCount is { } tokens)
-            {
-                await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), publishToken).ConfigureAwait(false);
-            }
-
+        if (outcome.Interrupted)
+        {
+            // Publish tool turns directly — bypassing the queue —
+            // because we don't want another inference iteration. The
+            // assistant tool_calls in context still get paired tool
+            // results so the persisted history stays strict-provider
+            // legal for whatever future user message resumes the
+            // session.
             if (!outcome.ToolCalls.IsDefaultOrEmpty)
             {
-                // Strict-provider ordering: assistant(tool_calls) is
-                // already in context (published by the inference
-                // runner). Tool result turns must land contiguously
-                // next, in original call order, before any user turn
-                // or the next assistant turn.
                 await PublishToolTurnsAsync(outcome.ToolCalls, outcome.ToolResults, correlationId, publishToken).ConfigureAwait(false);
             }
+            LogTurnInterrupted(_logger, Id, correlationId);
+            return;
+        }
 
-            if (outcome.Interrupted)
+        if (outcome.ToolCalls.IsDefaultOrEmpty)
+        {
+            if (outcome.Content.Length == 0)
             {
-                LogTurnInterrupted(_logger, Id, correlationId);
-                return;
+                LogEmptyResponse(_logger, Id);
             }
+            return;
+        }
 
-            if (outcome.ToolCalls.IsDefaultOrEmpty)
+        // Enqueue tool result turns. The next outer-loop dequeue drains
+        // the tool lane non-blocking (plus any newly-arrived user
+        // batch) and runs the next inference iteration.
+        for (var i = 0; i < outcome.ToolCalls.Length; i++)
+        {
+            var toolTurn = new ModelTurn(
+                ModelRole.Tool,
+                outcome.ToolResults[i].Content,
+                _time.GetLocalNow())
             {
-                if (outcome.Content.Length == 0)
-                {
-                    LogEmptyResponse(_logger, Id);
-                }
-                return;
-            }
-
-            // Drain any user messages that arrived while the model and
-            // tools were running. They append after the tool turns and
-            // are visible to the next inference iteration. Use the outer
-            // CT so /interrupt can't cause dequeued user input to be
-            // dropped on the floor.
-            var nextBatch = TryGetNextBatch();
-            if (nextBatch.Count > 0)
-            {
-                await PublishUserBatchAsync(nextBatch, correlationId, outerCancellationToken).ConfigureAwait(false);
-                memories = await SearchMemoriesAsync(nextBatch[^1], cancellationToken).ConfigureAwait(false);
-            }
+                ToolCall = outcome.ToolCalls[i],
+                IsError = outcome.ToolResults[i].IsError,
+            };
+            await _sessionQueue.EnqueueAsync(toolTurn, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task PublishUserBatchAsync(
-        IReadOnlyList<ModelTurn> turns,
-        Guid correlationId,
-        CancellationToken cancellationToken)
+    private static ModelTurn? LatestUserTurn(ImmutableArray<ModelTurn> batch)
     {
-        for (var i = 0; i < turns.Count; i++)
+        for (var i = batch.Length - 1; i >= 0; i--)
         {
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = Id },
-                turns[i],
-                correlationId,
-                cancellationToken).ConfigureAwait(false);
+            if (batch[i].Role == ModelRole.User)
+            {
+                return batch[i];
+            }
         }
+        return null;
     }
 
     private async Task PublishToolTurnsAsync(
@@ -529,11 +510,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         // can land *while* the model is still streaming subsequent tool
         // calls — that's intentional. The UI sees results in real
         // arrival order; the conversation history is still assembled in
-        // call order in PublishToolTurnsAsync. On interrupt, fall back
-        // to a fresh CTS with a fixed budget — long enough for the
-        // in-process persister/UI to record the failure, short enough
-        // that a wedged subscriber can't make /interrupt look like a
-        // hang.
+        // call order. On interrupt, fall back to a fresh CTS with a
+        // fixed budget — long enough for the in-process persister/UI to
+        // record the failure, short enough that a wedged subscriber
+        // can't make /interrupt look like a hang.
         using var interruptedTokenSource = interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
         var publishToken = interrupted ? interruptedTokenSource!.Token : cancellationToken;
         await _eventPublisher.PublishAsync(

@@ -1,5 +1,6 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -11,6 +12,7 @@ using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Persistence;
+using LlamaShears.Core.Sessions;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -139,6 +141,7 @@ public sealed class AgentEventPublishingTests
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
             memorySearcher: Substitute.For<IMemorySearcher>(),
+            sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
 
         await capturing.PublishAsync(
@@ -157,6 +160,7 @@ public sealed class AgentEventPublishingTests
         services.AddEventingFramework();
         services.AddSingleton<IContextStore>(new FakeContextStore());
         services.AddEventHandler<AgentTurnContextPersister>();
+        services.AddSingleton<ISessionFactory, SessionFactory>();
         var provider = services.BuildServiceProvider();
         provider.GetRequiredService<AgentTurnContextPersister>();
         return provider;

@@ -1,6 +1,8 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
@@ -181,6 +183,7 @@ public sealed class AgentLoopTests
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
             memorySearcher: memorySearcher ?? Substitute.For<IMemorySearcher>(),
+            sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }
 
@@ -199,6 +202,7 @@ public sealed class AgentLoopTests
         services.AddEventingFramework();
         services.AddSingleton<IContextStore>(new FakeContextStore());
         services.AddEventHandler<AgentTurnContextPersister>();
+        services.AddSingleton<ISessionFactory, SessionFactory>();
         var provider = services.BuildServiceProvider();
         provider.GetRequiredService<AgentTurnContextPersister>();
         return provider;
