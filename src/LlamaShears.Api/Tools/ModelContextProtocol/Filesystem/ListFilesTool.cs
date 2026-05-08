@@ -122,7 +122,6 @@ public sealed partial class ListFilesTool
                 }
                 catch (IOException)
                 {
-                    // size 0 if the file vanished between enumerate and stat
                 }
                 builder.Append('\n');
                 builder.AppendFormat(CultureInfo.InvariantCulture, "{0} ({1} bytes)", rel, size);

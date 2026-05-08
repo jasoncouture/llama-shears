@@ -68,8 +68,6 @@ public sealed class LifetimeCache<TKey, TValue> : IAsyncDisposable
         }
         catch
         {
-            // Best-effort disposal; a faulted factory task or a disposal that
-            // throws is not allowed to take down sweep/shutdown.
         }
     }
 

@@ -27,10 +27,6 @@ internal static class TestAgentConfigs
             Tools: new ToolContext([]),
             Plugins: new PluginContext([]));
 
-    // Default substitute returns null for IReadOnlyList<MemorySearchResult>;
-    // Agent.SearchMemoriesAsync would NRE on hits.Count. Standard fixture
-    // returns an empty list so any test that doesn't care about memory
-    // enrichment behaves like an indexer-empty agent.
     public static IMemorySearcher EmptyMemorySearcher()
     {
         var searcher = Substitute.For<IMemorySearcher>();

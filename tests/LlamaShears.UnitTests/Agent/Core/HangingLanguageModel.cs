@@ -16,9 +16,6 @@ internal sealed class HangingLanguageModel : ILanguageModel
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         _invoked.TrySetResult();
-        // Block until the caller cancels. ThrowIfCancellationRequested
-        // surfaces OperationCanceledException, which the agent's run-loop
-        // converts to "turn interrupted".
         await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
         yield break;
     }

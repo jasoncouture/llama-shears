@@ -34,11 +34,6 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
     {
         if (IsLoopback(request.RequestUri))
         {
-            // McpClient.DisposeAsync fires a DELETE during shutdown to tear
-            // down its session. Acknowledge it locally — the listener is on
-            // its way out, and pushing the request through would 401 (we
-            // have no agent scope at that point) and spam an "MCP shutdown
-            // failed" log line.
             if (_appLifetime.ApplicationStopping.IsCancellationRequested
                 && request.Method == HttpMethod.Delete)
             {

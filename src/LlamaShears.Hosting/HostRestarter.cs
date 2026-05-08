@@ -32,11 +32,6 @@ public sealed partial class HostRestarter : IHostRestarter
 
         LogRestartRequested(_logger, inContainer);
 
-        // Hooked on ApplicationStopped so the re-exec / non-zero exit
-        // happens after every hosted service has finished shutting down
-        // (release ports, flush state). Inside the callback we step out
-        // of the .NET runtime via Environment.Exit; the spawned child
-        // is independent.
         _lifetime.ApplicationStopped.Register(() => FinalizeRestart(inContainer));
         _lifetime.StopApplication();
     }
@@ -45,8 +40,6 @@ public sealed partial class HostRestarter : IHostRestarter
     {
         if (inContainer)
         {
-            // Container supervisor (Docker restart policy, k8s) handles
-            // the actual restart; non-zero exit is the only signal we owe.
             LogContainerExit(_logger);
             Environment.Exit(1);
             return;
@@ -55,9 +48,6 @@ public sealed partial class HostRestarter : IHostRestarter
         var entrypoint = Environment.ProcessPath;
         if (string.IsNullOrEmpty(entrypoint))
         {
-            // Should not happen on supported runtimes; fall back to a
-            // non-zero exit and rely on whatever launched the host to
-            // notice.
             LogNoEntrypoint(_logger);
             Environment.Exit(1);
             return;
@@ -72,8 +62,6 @@ public sealed partial class HostRestarter : IHostRestarter
                 UseShellExecute = false,
                 WorkingDirectory = Environment.CurrentDirectory,
             };
-            // GetCommandLineArgs[0] is the program path itself; argv[1..]
-            // is what the user actually passed. Re-pass that verbatim.
             for (var i = 1; i < args.Length; i++)
             {
                 psi.ArgumentList.Add(args[i]);
@@ -82,10 +70,6 @@ public sealed partial class HostRestarter : IHostRestarter
             using var spawned = Process.Start(psi);
             if (spawned is null)
             {
-                // Process.Start returns null when the OS reports the
-                // process couldn't be started without throwing; treat
-                // it as a re-exec failure so we don't bring the host
-                // down with exit 0 and no replacement.
                 LogReExecReturnedNull(_logger, entrypoint);
                 Environment.Exit(1);
                 return;

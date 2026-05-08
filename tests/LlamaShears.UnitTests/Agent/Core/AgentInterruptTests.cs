@@ -31,7 +31,6 @@ public sealed class AgentInterruptTests
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
         using var agent = BuildAgent("alice", provider, ctx, new ScriptedLanguageModel("immediate"));
 
-        // No turn in flight. InterruptAsync should be silently idempotent.
         await agent.InterruptAsync(CancellationToken.None);
         await agent.InterruptAsync(CancellationToken.None);
     }
@@ -52,9 +51,6 @@ public sealed class AgentInterruptTests
 
         await agent.InterruptAsync(CancellationToken.None);
 
-        // After the interrupt, the run-loop should release the processing
-        // gate; another lock acquire must succeed promptly. Failure here
-        // means we're still stuck inside ProcessBatchAsync.
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await agent.LockAsync(timeout.Token);
         await agent.UnlockAsync();

@@ -8,7 +8,6 @@ public sealed class HelloWorldPlugin : IPlugin
 {
     public void Register(IServiceCollection services)
     {
-        // Nothing to register — Hello World is stateless.
     }
 
     public Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken)

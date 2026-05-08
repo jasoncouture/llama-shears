@@ -28,7 +28,6 @@ public class OllamaProviderFactory : IProviderFactory
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // Listing has no agent context; use host defaults.
         var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
         var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
 

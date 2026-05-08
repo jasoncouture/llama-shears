@@ -85,10 +85,6 @@ public sealed partial class CronScheduler : ICronScheduler
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         ArgumentNullException.ThrowIfNull(edit);
-        // Reject whitespace-only fields up front. Schedule rejects blank
-        // values; Edit must be the same — otherwise an edit can leave a
-        // job persisted with a blank name/prompt/expression that
-        // schedule would never have allowed in the first place.
         if (edit.Name is not null && string.IsNullOrWhiteSpace(edit.Name))
         {
             throw new ArgumentException("Cron job name must not be blank.", nameof(edit));
@@ -177,8 +173,6 @@ public sealed partial class CronScheduler : ICronScheduler
             }
             catch (Exception ex)
             {
-                // One bad job (e.g. invalid expression from a manual
-                // file edit) must not stop the rest of the tick.
                 LogFireFailed(_logger, job.Id, job.AgentId, ex);
             }
         }
@@ -186,11 +180,6 @@ public sealed partial class CronScheduler : ICronScheduler
 
     private async Task FireSingleAsync(CronJob job, DateTimeOffset firedAt, bool manual, CancellationToken cancellationToken)
     {
-        // STUB: log the would-have-been agent input. When the executor
-        // graduates from stub to real, this is where the channel publish
-        // (or whatever execution surface lands) goes. The prompt body is
-        // intentionally not logged — it is user/agent-provided text that
-        // can carry secrets; only the length is recorded.
         LogStubFire(_logger, job.Id, job.AgentId, manual, job.Prompt.Length);
 
         var parsed = ParseOrThrow(job.CronExpression);

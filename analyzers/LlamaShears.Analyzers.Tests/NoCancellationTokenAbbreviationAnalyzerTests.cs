@@ -201,10 +201,6 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     [Test]
     public async Task UnrelatedNameContainingTheLettersCtDoesNotReport()
     {
-        // We strip leading underscores and compare the remainder to "ct"
-        // or "cts" case-insensitively. Identifiers that merely contain
-        // those letters (e.g. "context", "connect", "contents") are
-        // unaffected.
         const string source = """
             public class Foo
             {

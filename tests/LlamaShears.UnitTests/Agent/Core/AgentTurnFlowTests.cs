@@ -45,9 +45,6 @@ public sealed class AgentTurnFlowTests
 
         var userTurns = ctx.Turns.Where(t => t.Role == ModelRole.User).ToArray();
         await Assert.That(userTurns).Count().IsEqualTo(2);
-        // User turns are formatted with [timestamp] / [sourceChannel]
-        // wrappers at HandleAsync time and stored that way; the original
-        // text appears as the body of the formatted block.
         await Assert.That(userTurns[0].Content).Contains("first");
         await Assert.That(userTurns[1].Content).Contains("second");
     }
@@ -82,26 +79,16 @@ public sealed class AgentTurnFlowTests
 
         using var captured = new CapturingTurnSubscriber(bus, "alice");
 
-        // Two-stage scripted model: first call emits a tool call, second call
-        // emits text and stops. Drives the inference loop through one tool
-        // round-trip — long enough for a mid-loop user message to land.
         var model = new TwoStageScriptedModel(
             stageOne: [ScriptedLanguageModel.ToolCallFragment("test", "noop", "{}", "1")],
             stageTwo: [TextResponseFragment("done")]);
 
-        // Dispatcher publishes a second user message inline before
-        // returning. ChannelMessage subscription is awaited, so by the
-        // time the dispatcher's PublishAsync completes the message is
-        // queued in the agent's inbound channel and will be picked up
-        // by the next-iteration drain.
         var dispatcher = new InlinePublishingDispatcher(publisher, "alice", "during-tool");
 
         using var agent = BuildAgent("alice", provider, ctx, model, dispatcher: dispatcher);
 
         await PublishChannelMessageAsync(publisher, "alice", "first");
 
-        // Two assistant turns expected: assistant(tool_calls) + assistant(text).
-        // Wait until ctx.Turns settles with the post-second-iteration assistant.
         await WaitForAsync(() =>
             ctx.Turns.Count(t => t.Role == ModelRole.Assistant) >= 2,
             TimeSpan.FromSeconds(5));

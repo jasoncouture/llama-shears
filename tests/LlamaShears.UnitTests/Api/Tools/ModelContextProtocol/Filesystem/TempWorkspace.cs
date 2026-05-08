@@ -35,7 +35,6 @@ internal sealed class TempWorkspace : IDisposable
         }
         catch (IOException)
         {
-            // best-effort cleanup; tests should not fail on transient FS issues
         }
     }
 }

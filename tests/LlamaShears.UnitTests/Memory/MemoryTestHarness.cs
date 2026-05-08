@@ -76,9 +76,6 @@ internal sealed class MemoryTestHarness : IDisposable
     {
         try
         {
-            // Microsoft.Data.Sqlite holds the file open via its connection
-            // pool; clear it before deleting the workspace, otherwise
-            // Linux is happy and Windows isn't.
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(Root))
             {

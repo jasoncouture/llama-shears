@@ -18,7 +18,6 @@ public sealed class CronSchedulerTests
         var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
         var scheduler = NewScheduler(fixture, time);
 
-        // Fire at 11:00 UTC every day
         var job = await scheduler.ScheduleAsync("agent-a", "hourly-ish", "0 11 * * *", "wake up");
 
         await Assert.That(job.NextFireAt).IsEqualTo(new DateTimeOffset(2026, 5, 7, 11, 0, 0, TimeSpan.Zero));
@@ -65,7 +64,6 @@ public sealed class CronSchedulerTests
 
         await Assert.That(await scheduler.CancelAsync("agent-a", bJob.Id)).IsFalse();
 
-        // job is still there
         var bAfter = await scheduler.ListByAgentAsync("agent-b");
         await Assert.That(bAfter).HasSingleItem();
     }

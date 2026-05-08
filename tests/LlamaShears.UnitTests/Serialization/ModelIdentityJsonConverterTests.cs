@@ -28,9 +28,6 @@ public sealed class ModelIdentityJsonConverterTests
     [Test]
     public async Task SplitsOnFirstSlashOnly()
     {
-        // Model ids may legitimately contain slashes (registry paths, etc.).
-        // The provider name is constrained to the IProviderFactory.Name regex
-        // (no slashes), so the first slash is unambiguously the separator.
         var identity = JsonSerializer.Deserialize<ModelIdentity>("\"OLLAMA/owner/repo:tag\"");
 
         await Assert.That(identity).IsNotNull();

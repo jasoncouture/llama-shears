@@ -51,9 +51,6 @@ public static class AgentProviderOptions
                     baseObj[key] = null;
                     continue;
                 }
-                // Detach overlay value from its parent so it can be
-                // re-attached to the base — JsonNode disallows multiple
-                // parents.
                 overlayObj.Remove(key);
                 if (baseObj.TryGetPropertyValue(key, out var existing) && existing is not null)
                 {
@@ -66,7 +63,6 @@ public static class AgentProviderOptions
             }
             return baseObj;
         }
-        // Arrays and scalars at any leaf replace wholesale.
         return overlay;
     }
 }

@@ -13,8 +13,6 @@ namespace LlamaShears.Provider.OpenAI;
 
 public partial class OpenAILanguageModel : ILanguageModel
 {
-    // Same flatten convention as the Ollama provider so multi-MCP
-    // tool routing is identical across backends.
     internal const string ToolNameSeparator = "__";
 
     private const string ChatCompletionsPath = "v1/chat/completions";
@@ -75,10 +73,6 @@ public partial class OpenAILanguageModel : ILanguageModel
                 $"OpenAI-compatible chat request failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {errorBody}");
         }
 
-        // Streaming tool calls arrive as deltas — each delta carries
-        // an index and possibly partial id/name/arguments. We
-        // accumulate per-index and emit a single ToolCall fragment
-        // when finish_reason hits.
         var toolCallAccumulator = new Dictionary<int, ToolCallAccumulator>();
         int? totalTokens = null;
 
@@ -118,9 +112,6 @@ public partial class OpenAILanguageModel : ILanguageModel
                 continue;
             }
 
-            // OpenAI emits usage on a separate trailer chunk when
-            // `stream_options.include_usage` is set; some backends
-            // (llama-server) include it on the final delta inline.
             if (eventObject["usage"] is JsonObject usage)
             {
                 totalTokens =
@@ -139,8 +130,6 @@ public partial class OpenAILanguageModel : ILanguageModel
             }
         }
 
-        // Drain any tool calls that didn't get flushed by an explicit
-        // finish_reason — some backends end the stream without one.
         foreach (var pending in toolCallAccumulator.Values.OrderBy(static a => a.Index))
         {
             if (pending.TryBuild(_configuration.ModelId, _logger, out var call))
@@ -177,10 +166,6 @@ public partial class OpenAILanguageModel : ILanguageModel
                     emitted.Add(new OpenAIResponseFragment(content));
                 }
 
-                // Reasoning surface naming varies: llama-server with
-                // jinja templates emits `reasoning_content`, OpenAI's
-                // o-series uses the same key, some adapters use
-                // `reasoning`. Accept either.
                 var reasoning = delta["reasoning_content"]?.GetValue<string?>()
                     ?? delta["reasoning"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(reasoning))
@@ -201,9 +186,6 @@ public partial class OpenAILanguageModel : ILanguageModel
                 }
             }
 
-            // Flush tool calls when this choice ends with tool_calls.
-            // Some backends (notably llama-server) terminate the stream
-            // without a finish_reason; the post-loop drain covers that.
             var finishReason = choice["finish_reason"]?.GetValue<string?>();
             if (string.Equals(finishReason, "tool_calls", StringComparison.Ordinal))
             {
@@ -224,9 +206,6 @@ public partial class OpenAILanguageModel : ILanguageModel
         JsonObject delta,
         Dictionary<int, ToolCallAccumulator> accumulator)
     {
-        // OpenAI's streaming protocol uses `index` to disambiguate
-        // which tool the delta belongs to. Some backends omit it on
-        // single-tool calls — fall back to index 0.
         var index = delta["index"]?.GetValue<int?>() ?? 0;
         if (!accumulator.TryGetValue(index, out var entry))
         {
@@ -259,8 +238,6 @@ public partial class OpenAILanguageModel : ILanguageModel
     private JsonObject BuildRequestBody(ModelPrompt prompt, PromptOptions? options)
     {
         var messages = new JsonArray();
-        // Thought turns stay in agent context for visibility but are
-        // never resubmitted — same rule as the Ollama provider.
         foreach (var turn in prompt.Turns)
         {
             if (turn.Role == ModelRole.Thought)
@@ -280,11 +257,6 @@ public partial class OpenAILanguageModel : ILanguageModel
         var tokenLimit = ResolveTokenLimit(options);
         if (tokenLimit is { } limit)
         {
-            // `max_tokens` is deprecated in favor of
-            // `max_completion_tokens` on api.openai.com; llama-server
-            // and most compat servers still accept the older field.
-            // Send the older one for max compatibility — callers who
-            // need the new field can override via ExtraRequestParams.
             body["max_tokens"] = limit;
         }
 
@@ -294,14 +266,8 @@ public partial class OpenAILanguageModel : ILanguageModel
             body["tools"] = tools;
         }
 
-        // Ask for usage on the trailer chunk; servers that don't
-        // support it ignore the field, ones that do (OpenAI,
-        // llama-server) emit a final usage delta.
         body["stream_options"] = new JsonObject { ["include_usage"] = true };
 
-        // Layer extras last so callers can override anything above —
-        // including swapping `max_tokens` for `max_completion_tokens`
-        // when targeting api.openai.com directly.
         MergeExtras(body, _options.ExtraRequestParams);
 
         return body;
@@ -311,9 +277,6 @@ public partial class OpenAILanguageModel : ILanguageModel
     {
         foreach (var (key, value) in extras)
         {
-            // Clone — extras is config-level state and the merged body
-            // becomes part of an outgoing request; sharing nodes risks
-            // double-parenting on the next call.
             target[key] = value?.DeepClone();
         }
     }
@@ -325,8 +288,6 @@ public partial class OpenAILanguageModel : ILanguageModel
 
         if (turn.Role == ModelRole.Tool)
         {
-            // Tool result message: link via tool_call_id and serialize
-            // text content; OpenAI doesn't accept attachments here.
             if (turn.ToolCall is { CallId: { Length: > 0 } callId })
             {
                 message["tool_call_id"] = callId;
@@ -368,10 +329,6 @@ public partial class OpenAILanguageModel : ILanguageModel
 
     private static JsonArray BuildMultimodalContent(ModelTurn turn)
     {
-        // OpenAI's vision shape: content is an array of typed parts;
-        // text first, image_url parts after. Non-image attachments are
-        // dropped here — they belong to whatever non-vision channel
-        // the provider grows next.
         var parts = new JsonArray
         {
             new JsonObject { ["type"] = "text", ["text"] = turn.Content },
@@ -398,9 +355,6 @@ public partial class OpenAILanguageModel : ILanguageModel
         ModelRole.User or ModelRole.FrameworkUser or ModelRole.SystemEphemeral => "user",
         ModelRole.Assistant or ModelRole.FrameworkAssistant => "assistant",
         ModelRole.Tool => "tool",
-        // Thought is filtered upstream; if it ever reaches here something
-        // is wrong with the caller — fall through to assistant rather
-        // than silently dropping.
         ModelRole.Thought => "assistant",
         _ => "user",
     };
@@ -516,9 +470,6 @@ public partial class OpenAILanguageModel : ILanguageModel
             }
             var (source, name) = SplitToolName(Name);
             var arguments = Arguments.Length == 0 ? "{}" : Arguments.ToString();
-            // Synthesize an id when the backend doesn't surface one
-            // (some llama-server builds, some MCP shims) so paired
-            // tool-result messages have a stable handle.
             var callId = string.IsNullOrEmpty(Id) ? Guid.CreateVersion7().ToString() : Id;
             LogToolCallReceived(logger, modelId, source, name);
             call = new ToolCall(source, name, arguments, callId);

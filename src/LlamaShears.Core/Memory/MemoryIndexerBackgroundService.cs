@@ -57,8 +57,6 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
 
             try
             {
-                // Task.Delay over PeriodicTimer so a long scan doesn't
-                // queue ticks behind it — the gap is *between* scans.
                 await Task.Delay(indexerOptions.Interval, _time, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

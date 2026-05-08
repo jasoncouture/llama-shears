@@ -97,7 +97,6 @@ public sealed class ContextCompactorTests
 
         await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
-        // Cap = max(window/3, 256) = max(300, 256) = 300.
         _ = model.Received().PromptAsync(
             Arg.Any<ModelPrompt>(),
             Arg.Is<PromptOptions?>(o => o!.TokenLimit == 300),
@@ -114,7 +113,6 @@ public sealed class ContextCompactorTests
 
         await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
-        // Cap = max(600/3, 256) = max(200, 256) = 256.
         _ = model.Received().PromptAsync(
             Arg.Any<ModelPrompt>(),
             Arg.Is<PromptOptions?>(o => o!.TokenLimit == 256),
@@ -190,10 +188,6 @@ public sealed class ContextCompactorTests
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)
     {
-        // Mirror the old per-turn coarse estimate so the budget arithmetic the
-        // tests pin (window/3 caps, floor checks, over/under thresholds) keeps
-        // the same numeric meaning under the new "real cumulative count from
-        // context" code path.
         var totalEstimate = 0;
         foreach (var turn in prompt.Turns)
         {
@@ -229,8 +223,6 @@ public sealed class ContextCompactorTests
 
     private static void StubEstimate(ILanguageModel model)
     {
-        // Mirror the default-interface-method formula so the budget math
-        // matches what real implementations would yield.
         model.EstimateAsync(Arg.Any<ModelTurn>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {

@@ -6,17 +6,11 @@ namespace LlamaShears.UnitTests.Serialization;
 
 public sealed class AgentConfigSerializationTests
 {
-    // Match AgentManager's deserializer settings exactly so regressions
-    // here mirror what the host actually does at runtime.
     private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
 
     [Test]
     public async Task RegressionThinkAcceptsStringValueInAgentJson()
     {
-        // Regression for the JsonException seen on agent load:
-        //   "The JSON value could not be converted to ... ThinkLevel"
-        // when the agent JSON had `"think": "High"`. STJ's default for
-        // enums is the integer underlying value; humans write strings.
         const string json = """
             {
               "model": {
@@ -239,8 +233,6 @@ public sealed class AgentConfigSerializationTests
     [Test]
     public async Task McpServersEmptyArrayDeserializesAsEmptyHashSet()
     {
-        // Distinct from null: an explicit `[]` whitelists nothing,
-        // including the framework's internal MCP server.
         const string json = """
             { "model": { "id": "OLLAMA/x" }, "mcpServers": [] }
             """;
@@ -254,9 +246,6 @@ public sealed class AgentConfigSerializationTests
     [Test]
     public async Task ModelKeepAliveNegativeMeansNeverUnload()
     {
-        // Convention: any negative TimeSpan means "never unload." STJ
-        // parses "-00:00:01" into a negative TimeSpan via the standard
-        // invariant format; no custom converter needed.
         const string json = """
             { "model": { "id": "OLLAMA/x", "keepAlive": "-00:00:01" } }
             """;

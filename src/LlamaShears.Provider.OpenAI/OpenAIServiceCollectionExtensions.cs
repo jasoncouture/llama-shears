@@ -17,9 +17,6 @@ public static class OpenAIServiceCollectionExtensions
         services.AddOptions<OpenAIProviderOptions>()
             .BindConfiguration(configurationSection);
 
-        // Single named client shared between the language model and the
-        // provider factory's /v1/models call. Keeps connection pooling
-        // tight and lets the host apply HttpClientFactory policies once.
         services.AddHttpClient(nameof(OpenAILanguageModel));
 
         services.AddSingleton<IProviderFactory, OpenAIProviderFactory>();

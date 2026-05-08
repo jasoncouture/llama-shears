@@ -25,13 +25,6 @@ public sealed class InternalModelContextProtocolServer : IInternalModelContextPr
             {
                 return null;
             }
-            // The bound address is whatever Kestrel ended up listening
-            // on — frequently a wildcard like `http://[::]:8080` (the
-            // resolved form of `+`). Wildcards are valid bind targets
-            // but invalid dial targets (HttpClient throws on `[::]` /
-            // `0.0.0.0`). Self-discovery only ever needs to reach the
-            // loopback, so we keep the port and scheme but force the
-            // host to localhost.
             var listen = new Uri(first);
             var builder = new UriBuilder(listen)
             {

@@ -42,7 +42,6 @@ public sealed class AgentInterruptGracefulTests
 
         await agent.InterruptAsync(CancellationToken.None);
 
-        // Run-loop releases the gate once the turn unwinds.
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await agent.LockAsync(lockTimeout.Token);
         await agent.UnlockAsync();

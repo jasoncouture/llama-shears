@@ -97,10 +97,6 @@ public class PluginContext<T> : IPluginContext<T> where T : class
         var tasks = new List<Task<ImmutableArray<T>>>();
         foreach (var loader in _context.Assemblies.SelectMany(i => CollectLoaderTypes(i.GetTypes())))
         {
-            // Outer WaitAsync guards against a misbehaving loader that blocks synchronously
-            // before its task is ever returned (e.g., long-running setup before the first
-            // await). The inner WaitAsync inside LoadFromAsync handles the case where the
-            // loader's task is returned but never completes.
             tasks.Add(LoadFromAsync(loader, cancellationToken).WaitAsync(cancellationToken));
         }
 
@@ -120,9 +116,6 @@ public class PluginContext<T> : IPluginContext<T> where T : class
 
     private async Task<ImmutableArray<T>> LoadFromAsync(IPluginLoader<T> loader, CancellationToken cancellationToken)
     {
-        // We can't trust that a loader will actually switch to async. Force entry into
-        // the async state machine immediately so the returned Task can be awaited /
-        // wrapped externally even if the loader's synchronous portion is long-running.
         await Task.Yield();
         try
         {

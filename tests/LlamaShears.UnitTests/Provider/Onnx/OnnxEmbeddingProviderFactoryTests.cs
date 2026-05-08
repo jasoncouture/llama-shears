@@ -125,8 +125,6 @@ public sealed class OnnxEmbeddingProviderFactoryTests
             var opts = new OnnxEmbeddingsProviderOptions { ModelsRoot = root };
             configure?.Invoke(opts);
             var monitor = new StaticOptionsMonitor<OnnxEmbeddingsProviderOptions>(opts);
-            // ModelsRoot is set, so the IShearsPaths fallback is unused
-            // here. A stub that throws on GetPath proves that.
             var paths = new ThrowingPaths();
             return new OnnxFactoryFixture
             {

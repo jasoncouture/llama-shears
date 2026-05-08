@@ -21,9 +21,6 @@ internal sealed class StubEmbeddingModel : IEmbeddingModel
         return ValueTask.FromResult<IReadOnlyList<ReadOnlyMemory<float>>>(results);
     }
 
-    // Deterministic, hash-shaped embedding. Identical text → identical
-    // vector; lexically similar text → similar vector. Coarse but
-    // sufficient to exercise cosine ranking in tests.
     private static ReadOnlyMemory<float> Embed(string text)
     {
         var v = new float[Dimensions];

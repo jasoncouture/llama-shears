@@ -50,11 +50,6 @@ public sealed partial class EagerCompactor : BackgroundService,
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        // Interlocked.Exchange so a second StopAsync (the host calls it
-        // during graceful shutdown and again on disposal in some test
-        // teardown paths) doesn't double-dispose the same subscription —
-        // MessagePipe's FreeList.Remove is not idempotent and throws
-        // KeyNotFoundException on the second remove.
         Interlocked.Exchange(ref _messageSubscription, null)?.Dispose();
         Interlocked.Exchange(ref _thoughtSubscription, null)?.Dispose();
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
@@ -78,9 +73,6 @@ public sealed partial class EagerCompactor : BackgroundService,
         {
             return;
         }
-        // Compaction's own fragment events fire under "<agentId>-compaction".
-        // Recording those would re-trigger compaction on every scan, which is
-        // its own infinite loop.
         if (eventId.EndsWith("-compaction", StringComparison.Ordinal))
         {
             return;
@@ -95,10 +87,6 @@ public sealed partial class EagerCompactor : BackgroundService,
             await ScanAsync(stoppingToken).ConfigureAwait(false);
             try
             {
-                // Task.Delay (vs PeriodicTimer) so the gap is *between*
-                // scans rather than a wall-clock cadence — a scan that
-                // touches many agents and runs long can't pile up ticks
-                // behind it.
                 await Task.Delay(_scanInterval, _time, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -123,9 +111,6 @@ public sealed partial class EagerCompactor : BackgroundService,
                 _lastSeen.TryRemove(agentId, out _);
                 continue;
             }
-            // Drop the entry before triggering — a real new fragment after
-            // compaction will re-add it. This keeps the dictionary from
-            // pinning a stale timestamp that retriggers next scan.
             _lastSeen.TryRemove(agentId, out _);
             try
             {

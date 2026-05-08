@@ -106,10 +106,6 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
                 return ValueTask.CompletedTask;
             });
 
-        // Subscribe-then-check covers the already-loaded case: if the
-        // agent landed before this method ran, the publish is in the
-        // past and our subscription would never see it; the Contains
-        // check shortcuts in that case.
         if (manager.Contains(agentId))
         {
             return;
@@ -132,11 +128,6 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        // MapStaticAssets reads its manifest from the host project's
-        // build output. In a published or `dotnet run` flow the SDK
-        // hooks this up automatically; under WebApplicationFactory
-        // (Testing environment, non-published) we have to opt in
-        // explicitly or `_framework/blazor.web.js` and friends 404.
         builder.UseStaticWebAssets();
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -150,12 +141,6 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
         });
         builder.ConfigureTestServices(services =>
         {
-            // Strip every real IProviderFactory and IEmbeddingProviderFactory
-            // the host registered (Ollama, future cloud providers) and
-            // substitute in-process stubs. No matter what an agent JSON
-            // references, the resolved chat model is StubLanguageModel and
-            // the resolved embedding model is StubEmbeddingModel — live
-            // network calls are structurally impossible under test.
             for (var i = services.Count - 1; i >= 0; i--)
             {
                 var t = services[i].ServiceType;
@@ -189,7 +174,6 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
         }
         catch (IOException)
         {
-            // Best-effort cleanup; ignore tail-end file locks.
         }
         catch (UnauthorizedAccessException)
         {

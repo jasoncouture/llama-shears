@@ -363,9 +363,6 @@ public sealed class ChatSession :
             }
             if (string.IsNullOrEmpty(fragment.CallId))
             {
-                // Without an id we can't correlate the eventual result
-                // back to this call. Drop it rather than render a bubble
-                // we can never clear.
                 return;
             }
 
@@ -397,10 +394,6 @@ public sealed class ChatSession :
                 return;
             }
 
-            // Remove from the in-flight summary, then insert a result
-            // bubble immediately ABOVE that summary so the running
-            // indicator stays anchored at the bottom while completed
-            // calls stack above it in completion order.
             var inFlightBubble = _inFlightToolBubbles.GetValueOrDefault(correlationId);
             var inFlightCall = inFlightBubble is not null
                 ? FindInFlight(inFlightBubble, fragment.CallId)
@@ -516,11 +509,6 @@ public sealed class ChatSession :
 
     private void DropStreamingBubbles()
     {
-        // /interrupt aborts an in-flight turn without changing persisted
-        // history. The model.cpp side won't deliver a final fragment, so
-        // any open streaming bubble (assistant text, thought, in-flight
-        // tool) would otherwise sit forever marked "streaming". Drop
-        // exactly those without touching the persistent conversation.
         lock (_gate)
         {
             _streamingBubbles.Clear();
@@ -542,17 +530,8 @@ public sealed class ChatSession :
 
     private static ChatBubble? HistoryBubbleFromTurn(ModelTurn turn)
     {
-        // Live turn-arrival is the source of truth for Assistant/Thought;
-        // for history backfill we additionally render User turns so the
-        // user sees their side of the prior conversation, and Tool turns
-        // so prior tool activity replays as result bubbles. System and
-        // framework-injected turns stay hidden — they're prompt plumbing,
-        // not chat content.
         if (turn.Role == ModelRole.Tool)
         {
-            // Older persisted Tool turns may pre-date the ToolCall field;
-            // skip those rather than render a bubble with no header
-            // anchor.
             if (turn.ToolCall is not { } persistedCall)
             {
                 return null;
@@ -576,9 +555,6 @@ public sealed class ChatSession :
         {
             return null;
         }
-        // Empty-content assistant/user/thought turns are skipped UNLESS
-        // they carry attachments — an image-only message has empty text
-        // by design and we still want to render the picture.
         var hasContent = !string.IsNullOrEmpty(turn.Content);
         var hasAttachments = !turn.Attachments.IsDefaultOrEmpty;
         if (!hasContent && !hasAttachments)

@@ -43,8 +43,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         var messages = _messageListPool.Get();
         try
         {
-            // Thought turns are kept in agent context for visibility but
-            // must not be resubmitted to the model — see ModelRole.Thought.
             foreach (var turn in prompt.Turns)
             {
                 if (turn.Role == ModelRole.Thought)
@@ -99,10 +97,6 @@ public partial class OllamaLanguageModel : ILanguageModel
 
                         var (source, name) = SplitToolName(flatName);
                         var argumentsJson = SerializeArguments(ollamaCall.Function.Arguments);
-                        // Ollama's ToolCall.Id is optional and we routinely
-                        // see it null. Synthesize one so the UI (and any
-                        // future positional-tolerant routing) has a stable
-                        // handle for the call -> result pairing.
                         var callId = string.IsNullOrEmpty(ollamaCall.Id)
                             ? Guid.CreateVersion7().ToString()
                             : ollamaCall.Id;
@@ -124,10 +118,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         }
     }
 
-    // Ollama's chat API takes a flat tool list, so we collapse the
-    // (source, name) pair the abstraction layer hands us into a single
-    // wire name as `source__name`, and split the same way when the
-    // model echoes a function name back in a tool call.
     internal const string ToolNameSeparator = "__";
 
     private static (string Source, string Name) SplitToolName(string flatName)
@@ -135,10 +125,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         var separatorIndex = flatName.IndexOf(ToolNameSeparator, StringComparison.Ordinal);
         if (separatorIndex < 0)
         {
-            // No prefix — the model emitted a name that doesn't follow
-            // our flattening convention. Surface it with an empty source
-            // so downstream dispatch can refuse loudly rather than
-            // guessing which server it belongs to.
             return (string.Empty, flatName);
         }
         return (
@@ -219,9 +205,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         };
     }
 
-    // Per-call options.TokenLimit overrides config.TokenLimit; both must be
-    // > 0 to be meaningful, otherwise we hand null to OllamaSharp and let
-    // the server pick its default.
     private int? ResolveTokenLimit(PromptOptions? options)
     {
         if (options?.TokenLimit is { } overrideLimit && overrideLimit > 0)
@@ -244,10 +227,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         }
         if (turn.Role == ModelRole.Tool && turn.ToolCall is { } resolved)
         {
-            // Provider does its own flattening — the abstraction layer
-            // hands us the (source, name) split and we mirror the same
-            // separator used on the outbound side so chat templates
-            // that surface ToolName see a consistent identifier.
             message.ToolName = $"{resolved.Source}{ToolNameSeparator}{resolved.Name}";
         }
         if (!turn.Attachments.IsDefaultOrEmpty)
@@ -259,10 +238,6 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     private static string[]? ExtractImages(ImmutableArray<Attachment> attachments)
     {
-        // Ollama's Message.Images is base64 strings only; non-image
-        // attachments (when we add them) get sent through whatever
-        // their kind-specific channel is. For now, drop anything that
-        // isn't an Image.
         List<string>? images = null;
         foreach (var attachment in attachments)
         {
@@ -316,8 +291,6 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     private static ThinkValue? MapThinkLevel(ThinkLevel level) => level switch
     {
-        // Explicit false disables thinking; null would let the model's default
-        // through, which still emits thought tokens for reasoning-capable models.
         ThinkLevel.None => false,
         ThinkLevel.Low => ThinkValue.Low,
         ThinkLevel.Medium => ThinkValue.Medium,

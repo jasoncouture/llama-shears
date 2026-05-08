@@ -32,9 +32,6 @@ public interface ILanguageModel
     /// </summary>
     ValueTask<int> EstimateAsync(ModelTurn turn, CancellationToken cancellationToken)
     {
-        // length * 1.5 / 2 — pessimistic for English BPE (~3x real),
-        // pessimistic enough for code/Unicode (~1.5x real). Ceiling so
-        // single-character turns still register as ≥ 1.
         var estimate = (int)Math.Ceiling(turn.Content.Length * 1.5 / 2.0);
         return ValueTask.FromResult(estimate);
     }

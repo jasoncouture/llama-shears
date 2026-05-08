@@ -67,9 +67,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
         catch (Exception ex) when (ex is VectorStoreException or InvalidOperationException or HttpRequestException)
         {
-            // The file is the source of truth; the next reconcile picks
-            // it up. Do not fail StoreAsync just because indexing didn't
-            // land — surface the error to the log and move on.
             LogIndexingFailed(_logger, agentId, relativePath, ex.Message, ex);
         }
 
@@ -89,12 +86,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return [];
         }
 
-        // Best-effort: an agent without a workspace, an embedding
-        // model, or a registered embedding-provider factory simply
-        // has no memory index to search. StoreAsync / ReconcileAsync
-        // still surface those as InvalidOperationException because
-        // the caller asked to write — the search path should answer
-        // "nothing here" instead of taking down the agent's loop.
         MemoryContext ctx;
         try
         {
@@ -122,17 +113,11 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         var ranked = new List<MemorySearchResult>();
         var scanned = 0;
         var topRawScore = double.NegativeInfinity;
-        // Over-fetch: minScore filtering and missing-file dropping
-        // happen post-rank, so pull a few extra so we still hit the
-        // requested limit after filtering.
         await foreach (var hit in collection
             .SearchAsync(queryVector, top: effectiveLimit * 4, cancellationToken: cancellationToken)
             .ConfigureAwait(false))
         {
             scanned++;
-            // SqliteVec returns cosine *distance* (lower is better; 0 =
-            // identical) in VectorSearchResult.Score. Translate to the
-            // similarity scale callers expect (1.0 = identical).
             var score = 1.0 - hit.Score ?? 0.0;
             if (score > topRawScore)
             {
@@ -142,8 +127,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             {
                 continue;
             }
-            // Drop hits whose backing file is gone. Reconcile will GC
-            // the orphaned row later; the model never sees it.
             var relativePath = hit.Record.Path;
             var fullPath = Path.Combine(ctx.WorkspaceRoot, relativePath);
             var snapshot = await _fileCache.GetOrParseAsync<MemoryFileSnapshot, object?>(
@@ -181,11 +164,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
         catch (Exception ex) when (IsVectorDimensionMismatch(ex))
         {
-            // The agent's embedding model produces a different vector
-            // dimension than the existing index was built for. sqlite-vec
-            // surfaces this as a NOT NULL constraint failure on the
-            // vector column. Drop the index and rebuild from disk — the
-            // markdown files are the source of truth.
             LogIndexSchemaMismatchRebuilding(_logger, agentId, ctx.IndexDbPath);
             ResetIndex(ctx.IndexDbPath);
             return await ReconcileCoreAsync(agentId, force: true, ctx, cancellationToken).ConfigureAwait(false);
@@ -198,9 +176,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         MemoryContext ctx,
         CancellationToken cancellationToken)
     {
-        // Probe the embedder once so we know the dimension before
-        // touching the collection — needed even when no on-disk files
-        // exist (orphan-only reconcile case).
         var dimension = await ProbeDimensionAsync(ctx, cancellationToken).ConfigureAwait(false);
         var collection = await OpenCollectionAsync(ctx, dimension, cancellationToken).ConfigureAwait(false);
 
@@ -272,19 +247,10 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             if (ex is SqliteException sqlite)
             {
                 var msg = sqlite.Message;
-                // sqlite-vec's native dim check, fires on a properly-
-                // shaped vec0 table when an upsert vector size disagrees
-                // with the column's declared FLOAT[N]. Manifests as
-                // SQLITE_ERROR with a "Dimension mismatch" message.
                 if (msg.Contains("Dimension mismatch", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
-                // Legacy hand-rolled schema (pre-VectorData migration)
-                // being read by sqlite-vec. The underlying memories
-                // table doesn't match what vec0 expects, so the upsert
-                // surfaces as a NOT NULL violation on the vector column
-                // (SQLITE_CONSTRAINT, error code 19).
                 if (sqlite.SqliteErrorCode == 19
                     && msg.Contains($"{CollectionName}.vector", StringComparison.Ordinal))
                 {
@@ -301,11 +267,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
 
     private static void ResetIndex(string indexDbPath)
     {
-        // Microsoft.Data.Sqlite caches connections per connection-string
-        // in a process-wide pool. Clear it before deleting the file or
-        // Windows refuses the unlink (Linux happily lets a held inode
-        // be unlinked, so this is mostly a Windows guard, but harmless
-        // either way).
         SqliteConnection.ClearAllPools();
         if (File.Exists(indexDbPath))
         {
@@ -360,14 +321,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             Directory.CreateDirectory(dir);
         }
 
-        // Pooling=False: SqliteConnection.ClearAllPools (called from
-        // ResetIndex on dim-mismatch rebuild) is process-wide. With
-        // pooling on, a clear in one agent's reconcile can dispose
-        // pooled handles held by an in-flight call for a different
-        // agent, surfacing as ObjectDisposedException inside
-        // SqliteVec's LoadExtension. Memory ops are infrequent and
-        // dominated by embedding latency, so the per-call open cost
-        // is well below the noise floor.
         var connectionString = $"Data Source={ctx.IndexDbPath};Pooling=False";
         var definition = new VectorStoreCollectionDefinition
         {
@@ -443,9 +396,6 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         int SearchLimit,
         double SearchMinScore);
 
-    // Cache record for one memory file: first line + full body, both
-    // taken from a single read. IFileParserCache keys on path + mtime
-    // + length, so an edit invalidates naturally on the next call.
     private sealed record MemoryFileSnapshot(string Summary, string Content);
 
     private static async ValueTask<MemoryFileSnapshot?> ParseSnapshotAsync(
