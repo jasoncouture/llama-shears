@@ -500,3 +500,6 @@ compose.override.yml
 # Per-host bake override (auto-loaded alongside docker-bake.hcl)
 docker-bake.override.hcl
 docker-bake.override.json
+
+# Local Claude Code per-project state
+.claude/
