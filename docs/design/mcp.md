@@ -62,7 +62,7 @@ The single-use property is what makes the loopback dispatch story safe (next sec
 
 ## Outbound: dispatching tool calls
 
-When the agent loop has tool calls to dispatch (see [agent-loop.md](agent-loop.md), step 8), it calls [`IToolCallDispatcher.DispatchAsync(ToolCall, ct)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/IToolCallDispatcher.cs). The implementation is [`ModelContextProtocolToolCallDispatcher`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolCallDispatcher.cs).
+When the agent loop has tool calls to dispatch (see [agent-loop.md](agent-loop.md), step 8), it calls [`IToolCallDispatcher.DispatchAsync(ToolCall, cancellationToken)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/IToolCallDispatcher.cs). The implementation is [`ModelContextProtocolToolCallDispatcher`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolCallDispatcher.cs).
 
 ```
 ToolCall(Source = "github", Name = "list_issues", ArgumentsJson = "{...}")
@@ -128,7 +128,7 @@ The `ICurrentAgentAccessor` scope is opened by `Agent.DispatchToolCallsAsync` *a
 
 ### Tool discovery
 
-[`ModelContextProtocolToolDiscovery.DiscoverAsync(servers, ct)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolDiscovery.cs) is called once per agent at load (from `AgentManager.DiscoverToolsAsync`). For each `(name, uri)` pair in the resolved registry it acquires (or reuses) the cached `McpClient`, lists the server's tools, and translates each into a `ToolDescriptor`. The result is grouped per server (`ToolGroup(Source, Tools)`) and handed to the `Agent` constructor as `ImmutableArray<ToolGroup>`.
+[`ModelContextProtocolToolDiscovery.DiscoverAsync(servers, cancellationToken)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolDiscovery.cs) is called once per agent at load (from `AgentManager.DiscoverToolsAsync`). For each `(name, uri)` pair in the resolved registry it acquires (or reuses) the cached `McpClient`, lists the server's tools, and translates each into a `ToolDescriptor`. The result is grouped per server (`ToolGroup(Source, Tools)`) and handed to the `Agent` constructor as `ImmutableArray<ToolGroup>`.
 
 Discovery uses its own named HTTP client (`nameof(ModelContextProtocolToolDiscovery)`) and therefore picks up `LoopbackBearerHandler` independently of the dispatcher. Calls to `llamashears` during discovery mint and consume a one-shot token just like every other loopback call. There is no "discovery-only" auth path. Discovery's `McpClient` cache is the same `LifetimeCache` shape as the dispatcher's, so an agent that discovers tools once at load and then makes calls a few minutes later reuses the connection.
 

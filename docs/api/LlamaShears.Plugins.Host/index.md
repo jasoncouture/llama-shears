@@ -5,8 +5,8 @@ Host-side DI plumbing for the [LlamaShears](https://github.com/jasoncouture/llam
 ## Public surface
 
 - **`PluginServiceCollectionExtensions`** —
-  - `LoadPluginsAsync(this IServiceCollection, failureCallback, ct, params IPluginLocator<IPlugin>[])` — drive the full discovery → load → register pipeline from the host's composition root.
-  - `UsePluginsAsync(this IApplicationBuilder, ct)` — sweep the loaded `IPlugin` singletons through `InitializeAsync` and `Build` once the app is built.
+  - `LoadPluginsAsync(this IServiceCollection, failureCallback, cancellationToken, params IPluginLocator<IPlugin>[])` — drive the full discovery → load → register pipeline from the host's composition root.
+  - `UsePluginsAsync(this IApplicationBuilder, cancellationToken)` — sweep the loaded `IPlugin` singletons through `InitializeAsync` and `Build` once the app is built.
   - `TryApplyPluginsAsync(this IServiceCollection, IPluginContext<IPlugin>, …)` — single-context apply path for callers that already own plugin contexts.
   - `AddPluginDefferedLogger(this IServiceCollection, Assembly?)` — wires `DefaultPluginContextLogger.Instance` to a `DeferredPluginHostLogger` that buffers calls until DI is built.
   - `Snapshot(this IServiceCollection)` — transactional snapshot used internally by `TryApplyPlugin`; safe to use directly when an external caller needs the same atomic-register behaviour.
