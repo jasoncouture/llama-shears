@@ -11,7 +11,7 @@ Both are Scriban templates. The renderer is [`TemplateRenderer`](../../src/Llama
 
 ### What it is
 
-`Agent` calls `_systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), ct)` once per batch and uses the result as the `Content` of the `System`-role turn at position 0 of `prompt.Turns`. The system prompt is *not* persisted — it's reconstructed every batch.
+`Agent` calls `_systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken)` once per batch and uses the result as the `Content` of the `System`-role turn at position 0 of `prompt.Turns`. The system prompt is *not* persisted — it's reconstructed every batch.
 
 `AgentConfig.SystemPrompt` selects the template by name (no extension, no path separators). Default is `"DEFAULT"`.
 
@@ -57,7 +57,7 @@ The bundled prompt at [`src/LlamaShears/content/templates/workspace/system/DEFAU
 
 ### What it is
 
-`Agent.InjectPromptContextAsync` calls `_promptContext.GetAsync(_config.PromptContext, parameters, ct)` once per *iteration*, finds the most recent `User`-roled turn in the prompt, and inserts a `SystemEphemeral`-roled turn immediately before it.
+`Agent.InjectPromptContextAsync` calls `_promptContext.GetAsync(_config.PromptContext, parameters, cancellationToken)` once per *iteration*, finds the most recent `User`-roled turn in the prompt, and inserts a `SystemEphemeral`-roled turn immediately before it.
 
 This block is the framework's single coherent place to inject *everything that's true right now* without having to chain it through the persistent context:
 

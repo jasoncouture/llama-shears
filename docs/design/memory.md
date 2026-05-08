@@ -24,7 +24,7 @@ The on-disk shape was chosen so that an agent never has to manage the index. The
 
 ## Three operations
 
-### `IMemoryStore.StoreAsync(agentId, content, ct)`
+### `IMemoryStore.StoreAsync(agentId, content, cancellationToken)`
 
 1. Resolve the agent's workspace and embedding model.
 2. Pick a path under `memory/YYYY-MM-DD/<unix-seconds>.md`, create the directory if needed, write the file (UTF-8).
@@ -34,7 +34,7 @@ The on-disk shape was chosen so that an agent never has to manage the index. The
 
 If indexing fails (`VectorStoreException`, `InvalidOperationException`, network failure on the embedder), the file write still wins — the file is on disk and the next reconciliation pass will catch it. Indexing failures are logged at `Warning`.
 
-### `IMemorySearcher.SearchAsync(agentId, query, limit, minScore, ct)`
+### `IMemorySearcher.SearchAsync(agentId, query, limit, minScore, cancellationToken)`
 
 1. Resolve workspace + embedding model.
 2. If `<workspace>/system/.memory.db` doesn't exist, return `[]`.
@@ -48,7 +48,7 @@ Step 6 is the **retrieval-time self-healing**: orphaned index entries never make
 
 `Agent.SearchMemoriesAsync` (the agent loop's caller) reads the file contents for each hit and surfaces them into the per-turn ephemeral block — see [agent-loop.md](agent-loop.md), step 3, and [prompt-context.md](prompt-context.md). Defaults: `limit = 5`, `minScore = 0.30`. Matched memories are injected with their first-line summary rather than full body, to keep the per-turn block tight; the agent can still reach the full content via the file path.
 
-### `IMemoryIndexer.ReconcileAsync(agentId, force, ct)`
+### `IMemoryIndexer.ReconcileAsync(agentId, force, cancellationToken)`
 
 The periodic / on-demand sync. For one agent:
 

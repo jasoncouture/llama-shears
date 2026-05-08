@@ -17,7 +17,7 @@ The summary is an `Assistant`-role turn — written *to itself*, with the framin
 
 ### Auto-compaction (per-iteration, soft)
 
-Every iteration of the agent loop calls `_compactor.CompactAsync(snapshot, prompt, model, modelConfig, force: false, ct)`. With `force: false` the compactor short-circuits unless **all** of the following hold:
+Every iteration of the agent loop calls `_compactor.CompactAsync(snapshot, prompt, model, modelConfig, force: false, cancellationToken)`. With `force: false` the compactor short-circuits unless **all** of the following hold:
 
 - `prompt.Turns.Count >= 5` (one system + at least two user + two assistant — below this the cost of a summarization call isn't worth what it would save).
 - `ModelConfiguration.ContextLength` is set on the agent (no configured window → no budget to enforce).
