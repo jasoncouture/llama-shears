@@ -94,10 +94,6 @@ public static class CoreServiceCollectionExtensions
 
         services.AddCron();
 
-        // Single registry of live session queues across the host. The
-        // SessionId key already carries AgentId, so partitioning per
-        // agent is implicit. Sessions live for the application's
-        // lifetime; explicit DeleteAsync removes one early.
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
