@@ -14,9 +14,6 @@ public sealed class InferenceRunnerToolDispatchTests
     [Test]
     public async Task DispatcherFiresAsToolFragmentsArriveAndOutcomeCarriesResultsInOrder()
     {
-        // Three tool fragments in a row. Assert each was dispatched and
-        // the final InferenceOutcome.ToolResults aligns with ToolCalls
-        // in count and order.
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
