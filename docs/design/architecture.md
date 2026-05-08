@@ -10,7 +10,7 @@ The codebase is split along one structural line: **`src/public/` is the NuGet-sh
 
 | Project | Role |
 |---------|------|
-| [src/LlamaShears](../../src/LlamaShears/) | ASP.NET Core entry point. `Program.cs`, `appsettings.json`, bundled workspace templates under `content/templates/workspace/`, the `TemplateSeedingStartupTask` that copies them into `<Templates>` on first boot, and the in-host plugin wire-up (`PathPluginLoader` + `LoadPluginsAsync`/`UsePluginsAsync`). |
+| [src/LlamaShears](../../src/LlamaShears/) | ASP.NET Core entry point. `Program.cs`, `appsettings.json`, bundled workspace templates under `content/templates/workspace/`, the `TemplateSeedingStartupTask` that copies them into `<Templates>` on first boot, and the in-host plugin wire-up (`PathPluginLoader` + `LoadPluginsAsync`/`UsePluginsAsync`). `Program.cs` resolves `<DataRoot>` (defaulting to `~/.llama-shears`, with `~` expansion) before any service registration and inserts a reload-on-change `JsonConfigurationSource` for `<DataRoot>/appsettings.json` immediately after the bundled JSON sources — i.e. it overrides `appsettings.json` / `appsettings.{Env}.json` / user-secrets, but environment variables and command-line args still win. |
 
 ### API surface
 
@@ -26,13 +26,14 @@ The codebase is split along one structural line: **`src/public/` is the NuGet-sh
 | [src/LlamaShears.Core](../../src/LlamaShears.Core/) | Default implementations of the contracts in `Core.Abstractions`. Owns the agent loop (`Agent`), agent lifecycle (`AgentManager`), persistence (`JsonLineContextStore`), memory (`SqliteMemoryService` over `Microsoft.Extensions.VectorData` + sqlite-vec), system-tick service, eager compactor, the MCP outbound dispatch (with `LifetimeCache`-pooled `McpClient` connections), and the in-process `LifetimeCache<TKey, TValue>` primitive. |
 | [src/LlamaShears.Core.Eventing](../../src/LlamaShears.Core.Eventing/) | MessagePipe-backed `IEventBus` / `IEventPublisher` with a pattern-matched subscription wrapper and per-mode publish-side filtering via `IEventFilter`. The only project allowed to take a MessagePipe dependency. |
 | [src/LlamaShears.Core.Eventing.Extensions](../../src/LlamaShears.Core.Eventing.Extensions/) | DI helpers (`AddEventHandler<T>()` etc.) for projects that want to subscribe to events without taking a direct MessagePipe dependency. |
-| [src/LlamaShears.Hosting](../../src/LlamaShears.Hosting/) | Generic-host helpers: `IHostStartupTask` / `HostStartupTaskRunner`, the registration extension that runs them. Used by `TemplateSeedingStartupTask` and `AgentManager`. |
+| [src/LlamaShears.Hosting](../../src/LlamaShears.Hosting/) | Generic-host helpers: `IHostStartupTask` / `HostStartupTaskRunner`, the registration extension that runs them, and `IHostRestarter` (graceful self-restart — re-spawns the entrypoint outside containers, exits non-zero so the supervisor brings the process back inside one). Used by `TemplateSeedingStartupTask`, `AgentManager`, and the `/restart` slash command. |
 
 ### Providers
 
 | Project | Role |
 |---------|------|
 | [src/LlamaShears.Provider.Ollama](../../src/LlamaShears.Provider.Ollama/) | Ollama implementation of `IProviderFactory` (chat) and `IEmbeddingProviderFactory`. `IOllamaApiClientFactory` builds `OllamaApiClient`s from `IHttpClientFactory`-pooled handlers. Per-agent provider options layer over host defaults. |
+| [src/LlamaShears.Provider.OpenAI](../../src/LlamaShears.Provider.OpenAI/) | OpenAI-compatible chat provider. Speaks `/v1/chat/completions` (streaming) and `/v1/models`, so it covers any OpenAI-API-compatible backend — `llama-server`, vLLM, LM Studio, TabbyAPI, the real OpenAI endpoint. `OpenAIProviderOptions.ExtraRequestParams` is a free-form `JsonObject` merged into every request body so vendor knobs round-trip without forking the provider; per-agent options deep-merge over host defaults. Single `IHttpClientFactory` named client (`nameof(OpenAILanguageModel)`) is shared between the language model and the listing call. |
 | [src/LlamaShears.Provider.Onnx.Embeddings](../../src/LlamaShears.Provider.Onnx.Embeddings/) | In-process embeddings provider for sentence-transformers-style ONNX models (currently scoped to all-MiniLM family). Convention-based per-model layout under `<Templates>`/configured paths; pooling strategy + max-sequence-length per model. |
 
 ### Public abstractions (`src/public/`)
@@ -43,6 +44,7 @@ The `LlamaShears.Core.Abstractions` package is a metapackage with a wildcard `Pr
 |-------------|-------|
 | `LlamaShears.Core.Abstractions.Agent` | `AgentConfig`, `AgentInfo`, `IAgent`, `IAgentManager`, `IAgentTokenStore`, `Persistence/IContextStore`, `SystemTick`, the per-agent config records. |
 | `LlamaShears.Core.Abstractions.Caching` | `IShearsCache<T>`, `IFileParserCache`, `CacheResult`. |
+| `LlamaShears.Core.Abstractions.Commands` | `ISlashCommand`, `ISlashCommandRegistry`, `SlashCommandContext`, `SlashCommandParameter`, `SlashCommandResult`. The chat surface dispatches `/foo`-shaped tokens against this registry; plugins can ship new commands by implementing `ISlashCommand` and registering it in DI. |
 | `LlamaShears.Core.Abstractions.Content` | `Attachment`, `AttachmentKind` — the message-content primitives shared by Events and Provider. |
 | `LlamaShears.Core.Abstractions.Context` | `AgentContext`, `IAgentContextProvider`, `IContextCompactor`, `LanguageModelContext`, `PluginContext`, `SystemContext`, `ToolContext`. |
 | `LlamaShears.Core.Abstractions.Events` | `IEventBus`, `IEventPublisher`, `IEventEnvelope`, `IEventHandler<T>`, `IEventFilter`, `EventDeliveryMode`, plus the framework's typed event payloads (`AgentMessageFragment`, `AgentToolCallFragment`, `ChannelMessage`, etc.). |
@@ -145,6 +147,26 @@ Each agent gets its workspace seeded (if empty) from `<Templates>/workspace/`, i
 ### Authentication
 
 The MCP listener at `/mcp` is gated by a custom bearer scheme (`AgentBearerHandler`). Tokens are minted by `InMemoryAgentTokenStore` (32 random bytes, base64), are **single-use** (the lookup `TryRemove`s the entry), and expire on a configurable lifetime. Outbound calls back into the host's own MCP listener go through `LoopbackBearerHandler`, which detects loopback URIs and mints a fresh token on the fly using `ICurrentAgentAccessor.Current`. During shutdown (`IHostApplicationLifetime.ApplicationStopping`), `LoopbackBearerHandler` short-circuits the cached `McpClient`'s teardown DELETE to a synthesized 200 so the dispose path doesn't 401-spam the log. See [mcp.md](mcp.md).
+
+### Slash commands
+
+`ISlashCommand` lives in `Core.Abstractions.Commands`; the chat UI dispatches a `/foo` token to whichever implementation `ISlashCommandRegistry.Find` returns. Bundled commands ship from `LlamaShears.Api.Web.Services.SlashCommands` and are registered as a DI enumerable so a plugin can simply `services.TryAddEnumerable(...)` to add another.
+
+| Command | Effect |
+|---------|--------|
+| `/clear` | Clears the agent's live context. |
+| `/archive` | Archives the live context (rename `current.json` → `<unix-ms>.json`). |
+| `/compact` | Forces a compaction pass on the live context. |
+| `/restart` | Calls `IHostRestarter.RequestRestart()` — graceful shutdown then re-spawn or non-zero exit. |
+| `/interrupt` | Cancels the agent's in-flight turn. Persisted context is preserved; partial assistant text or thought fragments are dropped. The agent stays live and resumes on the next inbound message. |
+
+These currently sit in front of `IAgentDirectory` (clear/archive/compact/interrupt) and `IHostRestarter` (restart). Migrating clear/archive/compact onto the event bus so they serialise through the agent's gate is tracked as followup; see [TASKS.md](../../TASKS.md).
+
+### Cron
+
+`Core.Cron` is the agent-scheduled-prompt subsystem. `CronScheduler` (the public surface, `ICronScheduler`) parses Cronos expressions and persists `CronJob` records via `JsonCronStore` (a single `<Data>/cron.json` file written atomically). `CronExecutor` subscribes to `system:tick` and asks the scheduler to fire any due jobs. The MCP tool surface (`cron_schedule`/`cron_list`/`cron_edit`/`cron_cancel`/`cron_trigger`) lives in `LlamaShears.Api.Tools.ModelContextProtocol.Cron`.
+
+`FireSingleAsync` is a stub today: it logs a "would have fired" line and rolls `NextFireAt` forward, but does not actually drive the agent. Real firing is gated on the channel see/unsee model — see [TASKS.md](../../TASKS.md). The lost-update window in `JsonCronStore` (read-modify-write across the full file with no per-job version check) is also tracked there.
 
 ### Plugin chassis
 
