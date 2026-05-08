@@ -26,11 +26,6 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Ollama's /api/tags doesn't tag embedding-vs-chat capability,
-        // so this listing is a superset; a richer filter (via
-        // ShowModelAsync's Capabilities) can come later when we have a
-        // reason to discriminate beyond what the operator picks via
-        // config.
         var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
         var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
 
