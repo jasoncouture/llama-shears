@@ -30,7 +30,6 @@ public sealed partial class OpenAIProviderFactory : IProviderFactory
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // Listing has no agent context; use host defaults.
         var options = _hostOptions.CurrentValue;
         var requestUri = new Uri(options.BaseUri, "v1/models");
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
