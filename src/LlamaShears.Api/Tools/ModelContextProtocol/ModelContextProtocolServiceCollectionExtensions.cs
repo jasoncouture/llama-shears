@@ -38,6 +38,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<WriteFileTool>()
             .WithTools<AppendFileTool>()
             .WithTools<DeleteFileTool>()
+            .WithTools<MoveFileTool>()
             .WithTools<RegexReplaceFileTool>()
             .WithTools<GrepTool>()
             .WithTools<StoreMemoryTool>()
