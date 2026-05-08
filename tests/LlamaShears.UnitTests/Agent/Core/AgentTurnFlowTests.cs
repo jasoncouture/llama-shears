@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -137,7 +138,12 @@ public sealed class AgentTurnFlowTests
             _text = text;
         }
 
-        public async ValueTask<ToolCallResult> DispatchAsync(ToolCall call, CancellationToken cancellationToken)
+        public async ValueTask<ToolCallResult> DispatchAsync(
+            ToolCall call,
+            ImmutableArray<ToolGroup> tools,
+            string eventId,
+            Guid correlationId,
+            CancellationToken cancellationToken)
         {
             await _publisher.PublishAsync(
                 Event.WellKnown.Channel.Message with { Id = TestChannelId },
@@ -232,8 +238,7 @@ public sealed class AgentTurnFlowTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(publisher, TimeProvider.System),
-            toolDispatcher: dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+            inferenceRunner: new InferenceRunner(publisher, dispatcher ?? Substitute.For<IToolCallDispatcher>(), TimeProvider.System),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
             memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),

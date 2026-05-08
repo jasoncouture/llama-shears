@@ -27,6 +27,5 @@ public interface IInferenceRunner
         PromptOptions? options,
         bool emitTurns,
         Guid correlationId,
-        Func<ToolCall, CancellationToken, ValueTask<ToolCallResult>>? dispatchTool,
         CancellationToken cancellationToken);
 }

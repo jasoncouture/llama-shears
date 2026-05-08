@@ -5,6 +5,7 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -165,7 +166,7 @@ public sealed class ContextCompactorTests
         store.OpenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
-        var runner = new InferenceRunner(publisher, TimeProvider.System);
+        var runner = new InferenceRunner(publisher, Substitute.For<IToolCallDispatcher>(), TimeProvider.System);
         return new ContextCompactor(provider, store, runner, publisher, NullLogger<ContextCompactor>.Instance);
     }
 
