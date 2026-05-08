@@ -88,10 +88,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     public ValueTask StartAsync(CancellationToken cancellationToken)
     {
-        // Defer reconciliation until the host has fully started: agent
-        // bring-up calls into the in-process MCP listener over loopback,
-        // and Kestrel binds at the tail of hosted-service startup. Ticking
-        // before that wins us a doomed first-pass discovery.
         _appStartedRegistration = _appLifetime.ApplicationStarted.Register(OnApplicationStarted);
         return ValueTask.CompletedTask;
     }
@@ -136,11 +132,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private async ValueTask ReconcileIfIdleAsync(CancellationToken cancellationToken)
     {
-        // Skip if a previous reconcile is still running. Disk I/O on a
-        // 30s tick should never overlap, but a slow filesystem could
-        // queue up handlers; collapsing the backlog is correct. The
-        // post-startup initial reconcile uses the same gate so a tick
-        // that fires mid-bringup doesn't race it.
         if (Interlocked.CompareExchange(ref _reconciling, 1, 0) != 0)
         {
             return;
@@ -252,8 +243,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         var newSlot = await ReloadBuildAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (newSlot is null)
         {
-            // Keep the previous slot intact: a build failure shouldn't
-            // blow away a working agent.
             return;
         }
 
@@ -317,11 +306,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
 
-        // Each agent owns its own DI scope; per-batch nested scopes live
-        // inside the agent's run loop. Pass scope.ServiceProvider to
-        // ActivatorUtilities so the agent's auto-injected dependencies
-        // resolve from this scope, and the AsyncServiceScope itself as
-        // an explicit param so the agent can dispose it on teardown.
         var scope = _scopeFactory.CreateAsyncScope();
         try
         {
