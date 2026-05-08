@@ -14,6 +14,13 @@ namespace LlamaShears.Core.Abstractions.Agent.Sessions;
 public interface ISessionQueue
 {
     /// <summary>
+    /// <see langword="true"/> when at least one tool or user turn is
+    /// queued. Useful for callers that want to peek at backlog without
+    /// committing to a dequeue.
+    /// </summary>
+    bool HasQueuedMessages();
+
+    /// <summary>
     /// Appends <paramref name="turn"/> to the appropriate internal lane.
     /// User turns batch by <see cref="ModelTurn.ChannelId"/>; tool turns
     /// drain ahead of any pending user batch on the next dequeue.

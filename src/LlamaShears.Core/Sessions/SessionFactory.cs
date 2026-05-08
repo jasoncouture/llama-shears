@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.Core.Sessions;
 
-internal sealed class SessionFactory : ISessionFactory, IAsyncDisposable
+public sealed class SessionFactory : ISessionFactory, IAsyncDisposable
 {
     private readonly IServiceProvider _services;
     private readonly ConcurrentDictionary<SessionId, ISessionQueue> _sessions = new();

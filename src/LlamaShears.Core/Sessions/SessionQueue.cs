@@ -8,11 +8,12 @@ namespace LlamaShears.Core.Sessions;
 internal sealed class SessionQueue : ISessionQueue, IAsyncDisposable
 {
     private readonly Channel<ModelTurn> _userLane = Channel.CreateUnbounded<ModelTurn>(
-        new UnboundedChannelOptions { SingleReader = true });
+        new UnboundedChannelOptions { SingleReader = false });
 
     private readonly Channel<ModelTurn> _toolLane = Channel.CreateUnbounded<ModelTurn>(
-        new UnboundedChannelOptions { SingleReader = true });
-
+        new UnboundedChannelOptions { SingleReader = false });
+    public bool HasQueuedMessages() => _userLane.Reader.Count > 0 || _toolLane.Reader.Count > 0;
+    
     public ValueTask EnqueueAsync(ModelTurn turn, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(turn);

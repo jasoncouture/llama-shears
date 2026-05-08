@@ -35,3 +35,9 @@ drain ahead of any pending user batch on the next dequeue.
 - `turn` — The turn to queue. Must have `Role` set to ModelRole.`User` or ModelRole.`Tool`.
 - `cancellationToken` — Cancellation for the underlying channel write (typically completes synchronously).
 
+### `HasQueuedMessages`
+
+`true` when at least one tool or user turn is
+queued. Useful for callers that want to peek at backlog without
+committing to a dequeue.
+
