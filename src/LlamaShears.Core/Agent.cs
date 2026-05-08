@@ -542,10 +542,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         string query,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return [];
-        }
         var hits = await _memorySearcher
             .SearchAsync(_config.Id, query, limit: null, minScore: null, cancellationToken)
             .ConfigureAwait(false);

@@ -84,7 +84,10 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
 
         // Best-effort: an agent without a workspace, an embedding
         // model, or a registered embedding-provider factory simply
