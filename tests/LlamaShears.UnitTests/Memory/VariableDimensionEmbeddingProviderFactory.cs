@@ -3,9 +3,6 @@ using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Memory;
 
-// Stub embedding provider whose vector dimension is mutable at runtime,
-// so a single test can index at one dim and then reconcile at another to
-// exercise the schema-mismatch recovery path in SqliteMemoryService.
 internal sealed class VariableDimensionEmbeddingProviderFactory : IEmbeddingProviderFactory
 {
     private int _dimensions;
