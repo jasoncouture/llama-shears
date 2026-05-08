@@ -22,6 +22,11 @@ COPY --from=build /app/publish ./
 
 # All persistent state lives under Paths:DataRoot. /data is mounted by
 # compose; nothing should land outside it.
+#
+# The host also layers /data/appsettings.json and
+# /data/appsettings.{Environment}.json on top of the bundled defaults
+# (both optional, both reload-on-change). Drop a file into the mounted
+# volume to override config without rebuilding.
 ENV Paths__DataRoot=/data
 ENV ASPNETCORE_URLS=http://+:8080
 ENV DOTNET_RUNNING_IN_CONTAINER=true
