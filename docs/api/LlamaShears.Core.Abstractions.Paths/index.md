@@ -21,6 +21,11 @@ Filesystem-path contracts for [LlamaShears](https://github.com/jasoncouture/llam
 
 ## LlamaShears.Core.Abstractions.Paths
 
+- [FileType](LlamaShears/Core/Abstractions/Paths/FileType.md)
+- [IFileProtectionPolicy](LlamaShears/Core/Abstractions/Paths/IFileProtectionPolicy.md)
+- [IPathExpander](LlamaShears/Core/Abstractions/Paths/IPathExpander.md)
 - [IShearsPaths](LlamaShears/Core/Abstractions/Paths/IShearsPaths.md)
 - [PathKind](LlamaShears/Core/Abstractions/Paths/PathKind.md)
+- [ProtectedFile](LlamaShears/Core/Abstractions/Paths/ProtectedFile.md)
+- [ProtectionMode](LlamaShears/Core/Abstractions/Paths/ProtectionMode.md)
 
