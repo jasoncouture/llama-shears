@@ -56,22 +56,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     // tries to dispose the agent during its own disposal.
     private IAsyncDisposable? _scope;
 
-    // Memories live across iterations of the run loop. The model's
-    // tool round-trips don't carry user content, so re-running the
-    // embedding search on each iteration would be wasted work; we
-    // cache against the last user message and refresh only when a
-    // new user message arrives.
-    private IReadOnlyList<PromptContextMemory>? _cachedMemories;
-    private string? _cachedMemoryQuery;
-
-    // When Memory.Prefetch is enabled, a search task is installed by
-    // HandleAsync the moment a ChannelMessage is observed and consumed
-    // by the run loop on entry to the next inference cycle. Only one
-    // is in flight at a time — if more messages arrive during the same
-    // window they coalesce onto the existing task rather than racing
-    // fresh embeddings.
-    private Task<IReadOnlyList<PromptContextMemory>>? _prefetchTask;
-
 
     public Agent(
         AgentConfig config,
@@ -177,11 +161,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     public async ValueTask DisposeAsync()
     {
-        // Interlocked-null guards against re-entrant disposal: a service
-        // resolved from this scope that holds a back-reference to the
-        // agent could otherwise drag dispose into a loop on its own
-        // teardown. First disposer wins; subsequent calls observe null
-        // and return immediately.
         var scope = Interlocked.Exchange(ref _scope, null);
         if (scope is null)
         {
@@ -190,10 +169,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         _subscription.Dispose();
         _shutdown.Cancel();
-        // Note: do not delete the session from the factory or dispose
-        // the queue here. Sessions outlive the agent instance — an
-        // agent reload reuses the same session/queue so any in-flight
-        // user input survives the reconfigure.
         try
         {
             await _loop.ConfigureAwait(false);
@@ -220,13 +195,9 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         {
             return;
         }
-        if (_config.Memory.Prefetch && !string.IsNullOrWhiteSpace(data.Text))
-        {
-            TryStartPrefetch(data.Text);
-        }
         var turn = new ModelTurn(
             ModelRole.User,
-            data.Text,
+            FormatUserContent(data.Text, data.Timestamp, envelope.Type.Id),
             data.Timestamp,
             ChannelId: envelope.Type.Id)
         {
@@ -235,25 +206,20 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         await _sessionQueue.EnqueueAsync(turn, cancellationToken).ConfigureAwait(false);
     }
 
-    private void TryStartPrefetch(string text)
+    private static string FormatUserContent(string text, DateTimeOffset timestamp, string? channelId)
     {
-        // CompareExchange so the first message in a window wins; later
-        // messages don't fire redundant embedding round-trips. The
-        // prefetch's lifetime is tied to agent shutdown, not to whatever
-        // CT delivered the channel event.
-        var task = RunPrefetchAsync(text, _shutdown.Token);
-        if (Interlocked.CompareExchange(ref _prefetchTask, task, null) is not null)
+        var sb = new StringBuilder();
+        sb.Append("[timestamp]");
+        sb.Append(timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+        sb.Append("[/timestamp]\n");
+        if (!string.IsNullOrEmpty(channelId))
         {
-            // Another prefetch is already in flight. Observe to avoid
-            // an UnobservedTaskException if it faults.
-            _ = task.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+            sb.Append("[sourceChannel]");
+            sb.Append(channelId);
+            sb.Append("[/sourceChannel]\n");
         }
-    }
-
-    private async Task<IReadOnlyList<PromptContextMemory>> RunPrefetchAsync(string text, CancellationToken cancellationToken)
-    {
-        var stub = new ModelTurn(ModelRole.User, text, _time.GetLocalNow());
-        return await SearchMemoriesAsync(stub, cancellationToken).ConfigureAwait(false);
+        sb.Append(text);
+        return sb.ToString();
     }
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
@@ -343,13 +309,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         // batch. Tool-only batches reuse the cached memories from the
         // user turn that started the conversation.
         var latestUser = LatestUserTurn(batch);
-        if (latestUser is not null
-            && !string.Equals(latestUser.Content, _cachedMemoryQuery, StringComparison.Ordinal))
-        {
-            _cachedMemories = await ConsumePrefetchOrSearchAsync(latestUser, cancellationToken).ConfigureAwait(false);
-            _cachedMemoryQuery = latestUser.Content;
-        }
-        var memories = _cachedMemories ?? [];
+        var memories = latestUser is null ? [] : await SearchMemoriesAsync(latestUser.Content, cancellationToken).ConfigureAwait(false);
 
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
@@ -369,7 +329,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
-        prompt = FormatUserTurns(prompt);
         prompt = await InjectPromptContextAsync(prompt, ResolveAnchorChannelId(prompt.Turns), memories, cancellationToken).ConfigureAwait(false);
 
         ValueTask<ToolCallResult> Dispatcher(ToolCall call, CancellationToken callCancellationToken)
@@ -426,10 +385,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             }
             return;
         }
-
-        // Enqueue tool result turns. The next outer-loop dequeue drains
-        // the tool lane non-blocking (plus any newly-arrived user
-        // batch) and runs the next inference iteration.
+        
         for (var i = 0; i < outcome.ToolCalls.Length; i++)
         {
             var toolTurn = new ModelTurn(
@@ -444,17 +400,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
     }
 
-    private static ModelTurn? LatestUserTurn(ImmutableArray<ModelTurn> batch)
-    {
-        for (var i = batch.Length - 1; i >= 0; i--)
-        {
-            if (batch[i].Role == ModelRole.User)
-            {
-                return batch[i];
-            }
-        }
-        return null;
-    }
+    private static ModelTurn? LatestUserTurn(ImmutableArray<ModelTurn> batch) => batch.Where(i => i.Role == ModelRole.User).Reverse().FirstOrDefault();
 
     private async Task PublishToolTurnsAsync(
         ImmutableArray<ToolCall> calls,
@@ -462,10 +408,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         Guid correlationId,
         CancellationToken cancellationToken)
     {
-        // Persist Tool turns in original call order. Re-prompt history
-        // stays deterministic regardless of which tool finished first,
-        // which matters for any model that pairs tool_calls to
-        // tool_results positionally rather than by id.
         for (var i = 0; i < calls.Length; i++)
         {
             var toolTurn = new ModelTurn(
@@ -497,23 +439,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Synthesize an error result so the caller can pair every
-            // tool_call with a tool_result in persisted history. Strict
-            // providers (OpenAI, Anthropic) reject any assistant
-            // tool_call that has no matching tool_result on the next
-            // re-prompt; an interrupted call counts as failed, not
-            // skipped.
             result = new ToolCallResult("Tool call interrupted by user.", IsError: true);
             interrupted = true;
         }
-        // Publish the result event the moment dispatch completes. This
-        // can land *while* the model is still streaming subsequent tool
-        // calls — that's intentional. The UI sees results in real
-        // arrival order; the conversation history is still assembled in
-        // call order. On interrupt, fall back to a fresh CTS with a
-        // fixed budget — long enough for the in-process persister/UI to
-        // record the failure, short enough that a wedged subscriber
-        // can't make /interrupt look like a hang.
+
         using var interruptedTokenSource = interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
         var publishToken = interrupted ? interruptedTokenSource!.Token : cancellationToken;
         await _eventPublisher.PublishAsync(
@@ -563,49 +492,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         return anchor < 0 ? null : turns[anchor].ChannelId;
     }
 
-    // Per-channel-message format applied at prompt-build, not at storage.
-    // Storage keeps user content clean so a future format change doesn't
-    // rewrite history; replays render with the formatter active at the
-    // time of the replay. System / SystemEphemeral / Assistant / Thought
-    // / Tool / FrameworkUser / FrameworkAssistant are left untouched.
-    private static ModelPrompt FormatUserTurns(ModelPrompt prompt)
-    {
-        var turns = prompt.Turns;
-        List<ModelTurn>? rebuilt = null;
-        for (var i = 0; i < turns.Count; i++)
-        {
-            var turn = turns[i];
-            if (turn.Role != ModelRole.User)
-            {
-                rebuilt?.Add(turn);
-                continue;
-            }
-            rebuilt ??= new List<ModelTurn>(turns.Count);
-            for (var j = rebuilt.Count; j < i; j++)
-            {
-                rebuilt.Add(turns[j]);
-            }
-            rebuilt.Add(turn with { Content = FormatUserContent(turn) });
-        }
-        return rebuilt is null ? prompt : new ModelPrompt(rebuilt);
-    }
-
-    private static string FormatUserContent(ModelTurn turn)
-    {
-        var sb = new StringBuilder();
-        sb.Append("[timestamp]");
-        sb.Append(turn.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
-        sb.Append("[/timestamp]\n");
-        if (!string.IsNullOrEmpty(turn.ChannelId))
-        {
-            sb.Append("[sourceChannel]");
-            sb.Append(turn.ChannelId);
-            sb.Append("[/sourceChannel]\n");
-        }
-        sb.Append(turn.Content);
-        return sb.ToString();
-    }
-
     private async Task<ModelPrompt> InjectPromptContextAsync(
         ModelPrompt prompt,
         string? channelId,
@@ -652,124 +538,18 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         return new ModelPrompt(augmented);
     }
 
-    private const int MemorySearchLimit = 5;
-    // Empirical with embeddinggemma:latest + task prefixes: relevant
-    // matches land in ~0.40-0.60, unrelated noise stays under ~0.10.
-    // Threshold sits comfortably in the gap; short queries occasionally
-    // skim 0.40, so anything above 0.30 is conservative-but-safe.
-    private const double MemorySearchMinScore = 0.30;
-
-    private async ValueTask<IReadOnlyList<PromptContextMemory>> ConsumePrefetchOrSearchAsync(
-        ModelTurn userTurn,
-        CancellationToken cancellationToken)
-    {
-        var pending = Interlocked.Exchange(ref _prefetchTask, null);
-        if (pending is not null)
-        {
-            // Best-effort: if the prefetch faulted, fall through to the
-            // inline search rather than deny memories for this turn.
-            try
-            {
-                return await pending.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                LogMemorySearchFailed(_logger, Id, ex.Message, ex);
-            }
-        }
-        return await SearchMemoriesAsync(userTurn, cancellationToken).ConfigureAwait(false);
-    }
-
-    // Build a query out of the last assistant turn (if any) plus the
-    // freshly-arrived user turn, then surface the matching memory
-    // bodies into the per-turn ephemeral block. Best-effort: if the
-    // embedding model is unreachable, the misconfiguration is logged
-    // and the turn proceeds without memory enrichment.
     private async ValueTask<IReadOnlyList<PromptContextMemory>> SearchMemoriesAsync(
-        ModelTurn userTurn,
+        string query,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(_config.WorkspacePath))
-        {
-            return [];
-        }
-
-        var query = BuildMemoryQuery(userTurn);
         if (string.IsNullOrWhiteSpace(query))
         {
             return [];
         }
-
-        try
-        {
-            var hits = await _memorySearcher
-                .SearchAsync(_config.Id, query, MemorySearchLimit, MemorySearchMinScore, cancellationToken)
-                .ConfigureAwait(false);
-            if (hits.Count == 0)
-            {
-                return [];
-            }
-
-            var results = new List<PromptContextMemory>(hits.Count);
-            foreach (var hit in hits)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var fullPath = Path.Combine(_config.WorkspacePath, hit.RelativePath);
-                if (!File.Exists(fullPath))
-                {
-                    continue;
-                }
-                var summary = await ReadFirstLineAsync(fullPath, cancellationToken).ConfigureAwait(false);
-                results.Add(new PromptContextMemory(hit.RelativePath, summary, hit.Score));
-            }
-            return results;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            LogMemorySearchFailed(_logger, Id, ex.Message, ex);
-            return [];
-        }
-    }
-
-    // Surfaces only the first line of each memory file into the per-turn
-    // ephemeral block. Authors are expected to write a meaningful first
-    // line (typically a markdown H1 title); the model can pull the full
-    // body on demand via file_read.
-    private static async ValueTask<string> ReadFirstLineAsync(string path, CancellationToken cancellationToken)
-    {
-        await using var stream = new FileStream(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize: 4096,
-            useAsync: true);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-        return line ?? string.Empty;
-    }
-
-    private string BuildMemoryQuery(ModelTurn userTurn)
-    {
-        ModelTurn? lastAssistant = null;
-        var turns = _agentContext.Turns;
-        for (var i = turns.Count - 1; i >= 0; i--)
-        {
-            if (turns[i].Role == ModelRole.Assistant)
-            {
-                lastAssistant = turns[i];
-                break;
-            }
-        }
-        if (lastAssistant is null)
-        {
-            return userTurn.Content;
-        }
-        return $"{lastAssistant.Content}\n\n{userTurn.Content}";
+        var hits = await _memorySearcher
+            .SearchAsync(_config.Id, query, limit: null, minScore: null, cancellationToken)
+            .ConfigureAwait(false);
+        return [.. hits.Select(i => new PromptContextMemory(i.RelativePath, i.Summary, i.Score))];
     }
 
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
@@ -785,9 +565,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
     private partial void LogProcessOnceFailed(string agentId, Exception ex);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Memory search failed for agent '{AgentId}': {Message}. Proceeding without memory enrichment.")]
-    private static partial void LogMemorySearchFailed(ILogger logger, string agentId, string message, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
     private static partial void LogTurnInterrupted(ILogger logger, string agentId, Guid correlationId);
