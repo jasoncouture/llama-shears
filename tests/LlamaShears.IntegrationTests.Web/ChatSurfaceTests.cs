@@ -6,13 +6,6 @@ namespace LlamaShears.IntegrationTests.Web;
 
 public sealed class ChatSurfaceTests
 {
-    // Read-only tests share one host + one HttpClient — booting the
-    // WebApplicationFactory is a multi-second cold path (DI graph,
-    // hosted services, static-asset manifest) and these tests don't
-    // mutate any host state, so amortizing across them is safe.
-    // State-mutating tests (SeededAgent..., RealOllamaProvider...,
-    // StubModelIsNotInvoked..., the data-root / dispose tests) keep
-    // their own factories.
     private static IsolatedAppFactory _sharedFactory = null!;
     private static HttpClient _sharedClient = null!;
 
@@ -36,8 +29,6 @@ public sealed class ChatSurfaceTests
     [Test]
     public async Task GetRootRedirectsToChat()
     {
-        // Custom client (no auto-redirect) but the factory itself
-        // is shared — a no-redirect client is cheap to build.
         using var client = _sharedFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
@@ -56,22 +47,10 @@ public sealed class ChatSurfaceTests
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        // The Chat page sets <PageTitle>LlamaShears</PageTitle>, which Blazor
-        // renders into the document <title>. The page itself no longer has
-        // an h1 — the old header bar was replaced by a hamburger nav drawer.
         await Assert.That(html).Contains("<title>LlamaShears</title>");
         await Assert.That(html).Contains("agent-select");
         await Assert.That(html).Contains("class=\"composer\"");
     }
-
-    // Regression: the build-time heuristic that auto-aggregates the
-    // Blazor framework JS into a project's static-web-assets manifest
-    // requires the host project to contain at least one .razor file.
-    // Our host has none — every component lives in the RCL — so the
-    // manifest came up empty and `/_framework/blazor.web.js` 404'd. No
-    // JS, no SignalR, no interactivity, no re-renders. Fix:
-    // <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets> on the
-    // host csproj. The next two tests guard that fix.
 
     [Test]
     public async Task RegressionChatPageHtmlLinksToBlazorWebJsUnderFramework()
@@ -79,9 +58,6 @@ public sealed class ChatSurfaceTests
         using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
-        // `@Assets["_framework/blazor.web.js"]` rewrites to a
-        // fingerprinted path at render time; the bare path is the
-        // canonical one. Either form is acceptable in the rendered HTML.
         await Assert.That(html).Contains("/_framework/blazor.web");
         await Assert.That(html).Contains(".js");
     }
@@ -101,11 +77,6 @@ public sealed class ChatSurfaceTests
     [Test]
     public async Task RefreshButtonRendersTheArrowClockwiseIconBody()
     {
-        // Guards the IconProvider <-> WebRootFileProvider <-> RCL static
-        // assets path: if any of those break, the inner svg comes back
-        // empty and the icon button is invisible (page still renders 200,
-        // so a generic "page loads" test wouldn't catch it). The path
-        // data below is verbatim from wwwroot/icons/arrow-clockwise.svg.
         using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
@@ -130,16 +101,12 @@ public sealed class ChatSurfaceTests
             { "model": { "id": "TEST/dummy" } }
             """);
 
-        // Build the HTTP client first so the host starts; then nudge the
-        // tick so the AgentManager picks up the seeded JSON.
         using var client = factory.CreateClient();
         await factory.WaitForAgentAsync("alpha");
 
         using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
-        // The <option> may carry a Blazor scoped-CSS attribute between
-        // `value="alpha"` and the closing tag; assert on the two anchors.
         await Assert.That(html).Contains("value=\"alpha\"");
         await Assert.That(html).Contains(">alpha</option>");
     }
@@ -148,9 +115,6 @@ public sealed class ChatSurfaceTests
     public async Task RealOllamaProviderIsNotResolvableUnderTest()
     {
         await using var factory = new IsolatedAppFactory();
-        // The host registers OllamaProviderFactory in production. Tests
-        // strip every real IProviderFactory and substitute a stub, so an
-        // agent referencing OLLAMA must fail to load — no live calls.
         factory.SeedAgent("ollama-only", """
             { "model": { "id": "OLLAMA/dummy" } }
             """);
@@ -158,8 +122,6 @@ public sealed class ChatSurfaceTests
         using var client = factory.CreateClient();
         await factory.TickAsync();
 
-        // The agent never makes it into the manager's loaded set; the
-        // build path logs a warning and skips it. Picker stays empty.
         using var response = await client.GetAsync("/chat", CancellationToken.None);
         var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
@@ -177,11 +139,6 @@ public sealed class ChatSurfaceTests
 
         using var client = factory.CreateClient();
         await factory.WaitForAgentAsync("alpha");
-        // Once WaitForAgentAsync has returned the agent is loaded and
-        // its run loop is idle in WaitToReadAsync — no inbound channel
-        // messages, no further ticks delivered before the assertion.
-        // The model's invocation count is the settled post-load value;
-        // there is no pending work to wait on.
 
         await Assert.That(factory.Model.InvocationCount).IsEqualTo(0);
     }
