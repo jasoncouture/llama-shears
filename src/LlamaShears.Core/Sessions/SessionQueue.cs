@@ -31,11 +31,6 @@ internal sealed class SessionQueue : ISessionQueue, IAsyncDisposable
         var tools = DrainAll(_toolLane.Reader);
         if (tools.Length > 0)
         {
-            // Tools draining first satisfies strict-provider ordering:
-            // assistant(tool_calls) -> tool(s) -> user(s) -> assistant.
-            // Any user turns that landed during the inference / dispatch
-            // window get appended after the tool turns and surface to
-            // the next inference iteration.
             var users = TryDrainUserBatch(_userLane.Reader);
             return users.Length == 0 ? tools : [.. tools, .. users];
         }
@@ -83,10 +78,6 @@ internal sealed class SessionQueue : ISessionQueue, IAsyncDisposable
         return DrainSameChannel(reader, first);
     }
 
-    // Drain consecutive user turns sharing the first turn's ChannelId.
-    // Cross-channel boundaries split into separate batches so a user
-    // dropping a discord message mid-flight doesn't get merged with a
-    // telegram conversation.
     private static ImmutableArray<ModelTurn> DrainSameChannel(ChannelReader<ModelTurn> reader, ModelTurn first)
     {
         var batch = ImmutableArray.CreateBuilder<ModelTurn>();
