@@ -11,7 +11,6 @@ stays the single point of authorship.
 
 - `AgentId` — Identifier of the agent the prompt is being rendered for; `null` when not bound to a specific agent.
 - `WorkspacePath` — Absolute workspace path; `null` when not bound to a workspace.
-- `ToolCallTurns` — Configured tool-call turn budget for the agent.
 
 ## Properties
 
@@ -23,17 +22,13 @@ Identifier of the agent the prompt is being rendered for; `null` when not bound 
 
 Workspace files surfaced to the template (e.g. `AGENTS.md`, agent-specific manifests).
 
-### `ToolCallTurns`
-
-Configured tool-call turn budget for the agent.
-
 ### `WorkspacePath`
 
 Absolute workspace path; `null` when not bound to a workspace.
 
 ## Methods
 
-### `SystemPromptTemplateParameters`(string AgentId, string WorkspacePath, int ToolCallTurns)
+### `SystemPromptTemplateParameters`(string AgentId, string WorkspacePath)
 
 Inputs the system-prompt template has access to when rendered by
 [ISystemPromptProvider](ISystemPromptProvider.md). Templates are Scriban; new
@@ -44,5 +39,4 @@ stays the single point of authorship.
 
 - `AgentId` — Identifier of the agent the prompt is being rendered for; `null` when not bound to a specific agent.
 - `WorkspacePath` — Absolute workspace path; `null` when not bound to a workspace.
-- `ToolCallTurns` — Configured tool-call turn budget for the agent.
 

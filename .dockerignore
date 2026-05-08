@@ -15,3 +15,7 @@
 **/.DS_Store
 **/*.user
 **/*.suo
+
+Dockerfile
+compose*.yaml
+compose*.yml
