@@ -117,9 +117,6 @@ public sealed partial class JsonCronStore : ICronStore
             _cache = [];
             foreach (var job in loaded)
             {
-                // Last-write-wins on duplicate ids (manual edits, merge
-                // conflicts). The earlier entry is dropped with a log so
-                // the mismatch is visible without preventing startup.
                 if (_cache.ContainsKey(job.Id))
                 {
                     LogDuplicateJobId(_logger, path, job.Id);
