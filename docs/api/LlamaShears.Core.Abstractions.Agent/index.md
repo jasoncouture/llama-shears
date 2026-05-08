@@ -50,3 +50,9 @@ Agent-identity, configuration, and persistence contracts for [LlamaShears](https
 - [IAgentContext](LlamaShears/Core/Abstractions/Agent/Persistence/IAgentContext.md)
 - [IContextStore](LlamaShears/Core/Abstractions/Agent/Persistence/IContextStore.md)
 
+## LlamaShears.Core.Abstractions.Agent.Sessions
+
+- [ISessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionFactory.md)
+- [ISessionQueue](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionQueue.md)
+- [SessionId](LlamaShears/Core/Abstractions/Agent/Sessions/SessionId.md)
+
