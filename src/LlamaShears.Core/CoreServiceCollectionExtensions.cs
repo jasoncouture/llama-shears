@@ -69,6 +69,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
         services.TryAddSingleton<ITemplateRenderer, TemplateRenderer>();
+        services.TryAddSingleton<ITemplateFileLocator, TemplateFileLocator>();
         services.AddOptions<FilesystemSystemPromptOptions>();
         services.TryAddSingleton<ISystemPromptProvider, FilesystemSystemPromptProvider>();
         services.AddOptions<FilesystemPromptContextOptions>();

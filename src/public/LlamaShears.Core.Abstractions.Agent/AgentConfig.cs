@@ -12,7 +12,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="Model">Language model selection and per-call options.</param>
 /// <param name="Id">Stable agent identifier; populated from the file name and not serialized back into the JSON body.</param>
 /// <param name="WorkspacePath">Absolute or workspace-relative path to the agent's workspace overlay; <see langword="null"/> falls back to the framework default.</param>
-/// <param name="SystemPrompt">Name of the system-prompt template to render; <see langword="null"/> uses <c>DEFAULT</c>.</param>
+/// <param name="SystemPrompt">File name (including extension) of the system-prompt template to render, e.g. <c>DEFAULT.md</c>; <see langword="null"/> uses <c>DEFAULT.md</c>.</param>
 /// <param name="PromptContext">Name of the per-turn prompt-context template; <see langword="null"/> uses <c>PROMPT</c>.</param>
 /// <param name="Embedding">Embedding model selection used for memory search; <see langword="null"/> disables memory features.</param>
 /// <param name="ModelContextProtocolServers">Set of MCP server names this agent is allowed to call; <see langword="null"/> grants no MCP access.</param>

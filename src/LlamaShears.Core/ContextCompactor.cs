@@ -20,24 +20,11 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const int DefaultPredictDivisor = 6;
     private const int SummaryDivisor = 3;
 
-    private const string CompactionTemplateName = "COMPACTION";
+    private const string CompactionTemplateFileName = "COMPACTION.md";
     private const string MemoryToolSource = "llamashears";
     private const string MemoryToolName = "memory_store";
-    private const string SummarizeKicker = """
-    # Context Compaction Protocol
-
-    Your context is full. Compress the current conversation state following these strict directives. Do not output conversational filler.
-
-    ## Conversation Summary
-    This summary completely replaces the conversation history. It must contain the exact technical state needed to resume work.
-    * **Include:** The overarching goal, the last executed step, pending blockers, active file paths, and unresolved errors.
-    * **Exclude:** Conversational filler, step-by-step history, and pleasantries.
-
-    ## Permanent Memories
-    Memories are strictly for permanent, immutable facts (e.g., architectural decisions, environment constants).
-    * **DO NOT** generate memories for transient state, task progress, or conversational flow.
-    * If no new permanent facts were established during this context window, output absolutely nothing for this section. Do not hallucinate memories just to fill space.
-    """;
+    private const string KickerFileName = "PROMPT.md";
+    private const string KickerSubFolder = "compaction";
 
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
@@ -47,6 +34,8 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
     private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly ITemplateFileLocator _locator;
+    private readonly ITemplateRenderer _templateRenderer;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
@@ -58,6 +47,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
         ICurrentAgentAccessor currentAgent,
+        ITemplateFileLocator locator,
+        ITemplateRenderer templateRenderer,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
@@ -68,6 +59,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         _serverRegistry = serverRegistry;
         _toolDiscovery = toolDiscovery;
         _currentAgent = currentAgent;
+        _locator = locator;
+        _templateRenderer = templateRenderer;
         _logger = logger;
     }
 
@@ -204,6 +197,18 @@ public sealed partial class ContextCompactor : IContextCompactor
         return [];
     }
 
+    private async ValueTask<string> LoadKickerAsync(string agentId, CancellationToken cancellationToken)
+    {
+        var resolved = _locator.Locate(KickerSubFolder, KickerFileName, KickerFileName)
+            ?? throw new FileNotFoundException(
+                $"Compaction kicker template '{KickerFileName}' not found in workspace, templates, or bundled '{KickerSubFolder}/' folder.");
+        var input = new SystemPromptTemplateParameters(AgentId: agentId);
+        var rendered = await _templateRenderer.RenderAsync(resolved, input, cancellationToken).ConfigureAwait(false)
+            ?? throw new FileNotFoundException(
+                $"Compaction kicker template '{resolved}' could not be rendered.");
+        return rendered;
+    }
+
     private async ValueTask<string> SummarizeAsync(
         string agentId,
         ModelPrompt prompt,
@@ -222,7 +227,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
         var systemBody = await _systemPrompt.GetAsync(
-            CompactionTemplateName,
+            CompactionTemplateFileName,
             new SystemPromptTemplateParameters(AgentId: agentId),
             cancellationToken).ConfigureAwait(false);
         var historyTurns = new List<ModelTurn>(historyCount + 2);
@@ -243,7 +248,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         }
         if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
         {
-            historyTurns.Add(new ModelTurn(ModelRole.User, SummarizeKicker, prompt.Turns[^1].Timestamp));
+            var kicker = await LoadKickerAsync(agentId, cancellationToken).ConfigureAwait(false);
+            historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
         }
 
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);

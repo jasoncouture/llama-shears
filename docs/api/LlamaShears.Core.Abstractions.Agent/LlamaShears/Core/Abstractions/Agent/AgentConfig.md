@@ -12,7 +12,7 @@ turn sees one consistent configuration end-to-end.
 - `Model` — Language model selection and per-call options.
 - `Id` — Stable agent identifier; populated from the file name and not serialized back into the JSON body.
 - `WorkspacePath` — Absolute or workspace-relative path to the agent's workspace overlay; `null` falls back to the framework default.
-- `SystemPrompt` — Name of the system-prompt template to render; `null` uses `DEFAULT`.
+- `SystemPrompt` — File name (including extension) of the system-prompt template to render, e.g. `DEFAULT.md`; `null` uses `DEFAULT.md`.
 - `PromptContext` — Name of the per-turn prompt-context template; `null` uses `PROMPT`.
 - `Embedding` — Embedding model selection used for memory search; `null` disables memory features.
 - `ModelContextProtocolServers` — Set of MCP server names this agent is allowed to call; `null` grants no MCP access.
@@ -49,7 +49,7 @@ Name of the per-turn prompt-context template; `null` uses `PROMPT`.
 
 ### `SystemPrompt`
 
-Name of the system-prompt template to render; `null` uses `DEFAULT`.
+File name (including extension) of the system-prompt template to render, e.g. `DEFAULT.md`; `null` uses `DEFAULT.md`.
 
 ### `Tools`
 
@@ -73,7 +73,7 @@ turn sees one consistent configuration end-to-end.
 - `Model` — Language model selection and per-call options.
 - `Id` — Stable agent identifier; populated from the file name and not serialized back into the JSON body.
 - `WorkspacePath` — Absolute or workspace-relative path to the agent's workspace overlay; `null` falls back to the framework default.
-- `SystemPrompt` — Name of the system-prompt template to render; `null` uses `DEFAULT`.
+- `SystemPrompt` — File name (including extension) of the system-prompt template to render, e.g. `DEFAULT.md`; `null` uses `DEFAULT.md`.
 - `PromptContext` — Name of the per-turn prompt-context template; `null` uses `PROMPT`.
 - `Embedding` — Embedding model selection used for memory search; `null` disables memory features.
 - `ModelContextProtocolServers` — Set of MCP server names this agent is allowed to call; `null` grants no MCP access.

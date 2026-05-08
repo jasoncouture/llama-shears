@@ -180,7 +180,12 @@ public sealed class ContextCompactorTests
         toolDiscovery.DiscoverAsync(Arg.Any<IReadOnlyDictionary<string, Uri>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
         var currentAgent = Substitute.For<ICurrentAgentAccessor>();
-        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, NullLogger<ContextCompactor>.Instance);
+        var locator = Substitute.For<ITemplateFileLocator>();
+        locator.Locate(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>()).Returns("/tmp/llamashears-test/PROMPT.md");
+        var templateRenderer = Substitute.For<ITemplateRenderer>();
+        templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
+        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

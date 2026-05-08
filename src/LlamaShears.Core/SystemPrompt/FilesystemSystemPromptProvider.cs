@@ -1,16 +1,11 @@
 using System.Collections.Immutable;
-using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.SystemPrompt;
-using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Core.SystemPrompt;
 
 public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
 {
-    private const string DefaultName = "DEFAULT";
-    private const string TemplateExtension = ".md";
-    private const string WorkspaceSystemSubpath = "workspace/system";
-    private const string DefaultBundledSubpath = "content/templates/workspace/system";
+    private const string DefaultFileName = "DEFAULT.md";
 
     // Conventional workspace files surfaced into the system prompt as
     // `files`. Order matters: the template renders Files in this order,
@@ -25,36 +20,30 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
         "USER.md"
     ];
 
-    private readonly IShearsPaths _paths;
     private readonly ITemplateRenderer _renderer;
-    private readonly string _bundledRoot;
+    private readonly ITemplateFileLocator _locator;
 
     public FilesystemSystemPromptProvider(
-        IShearsPaths paths,
         ITemplateRenderer renderer,
-        IOptions<FilesystemSystemPromptOptions> options)
+        ITemplateFileLocator locator)
     {
-        _paths = paths;
         _renderer = renderer;
-        var configured = options.Value.BundledRoot;
-        _bundledRoot = string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(AppContext.BaseDirectory, DefaultBundledSubpath)
-            : configured;
+        _locator = locator;
     }
 
     public async ValueTask<string> GetAsync(
-        string? templateName,
+        string? templateFileName,
         SystemPromptTemplateParameters parameters,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
-        var name = string.IsNullOrWhiteSpace(templateName) ? DefaultName : templateName;
-        if (name.AsSpan().IndexOfAny('/', '\\') >= 0)
+        var fileName = string.IsNullOrWhiteSpace(templateFileName) ? DefaultFileName : templateFileName;
+        if (fileName.AsSpan().IndexOfAny('/', '\\') >= 0)
         {
             throw new ArgumentException(
-                $"System prompt template name must not contain path separators (got '{templateName}').",
-                nameof(templateName));
+                $"System prompt template name must not contain path separators (got '{templateFileName}').",
+                nameof(templateFileName));
         }
 
         var enriched = parameters with
@@ -63,29 +52,14 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
                 .ConfigureAwait(false),
         };
 
-        var workspaceRoot = _paths.GetPath(PathKind.Templates, WorkspaceSystemSubpath);
-        var fileName = $"{name}{TemplateExtension}";
-        var defaultFileName = $"{DefaultName}{TemplateExtension}";
+        var resolved = _locator.Locate(subFolder: null, fileName, DefaultFileName)
+            ?? throw new FileNotFoundException(
+                $"No system prompt template found for '{fileName}' across workspace, templates, or bundled roots.");
 
-        string[] candidates =
-        [
-            Path.Combine(workspaceRoot, fileName),
-            Path.Combine(workspaceRoot, defaultFileName),
-            Path.Combine(_bundledRoot, fileName),
-            Path.Combine(_bundledRoot, defaultFileName),
-        ];
-
-        foreach (var path in candidates)
-        {
-            var rendered = await _renderer.RenderAsync(path, enriched, cancellationToken).ConfigureAwait(false);
-            if (rendered is not null)
-            {
-                return rendered;
-            }
-        }
-
-        throw new FileNotFoundException(
-            $"No system prompt template found for '{name}'. Looked under '{workspaceRoot}' and '{_bundledRoot}'.");
+        var rendered = await _renderer.RenderAsync(resolved, enriched, cancellationToken).ConfigureAwait(false)
+            ?? throw new FileNotFoundException(
+                $"System prompt template '{resolved}' could not be rendered.");
+        return rendered;
     }
 
     private static async ValueTask<IReadOnlyList<WorkspaceFile>> ReadWorkspaceFilesAsync(
