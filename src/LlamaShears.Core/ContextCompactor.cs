@@ -100,17 +100,9 @@ public sealed partial class ContextCompactor : IContextCompactor
         var preserveTrailingUser = lastTurn.Role is ModelRole.User or ModelRole.FrameworkUser;
         if (!preserveTrailingUser && !force)
         {
-            // Auto-compaction's rebuild assumes a user-anchored prompt
-            // (the just-arrived message is preserved while everything
-            // before it is summarized). User-forced /compact takes the
-            // force path and skips this requirement.
             return prompt;
         }
 
-        // Surface the start/finish of compaction so the UI can show a
-        // busy indicator while the model produces the summary. Finish
-        // fires in finally so a thrown summarization doesn't strand the
-        // UI in a permanent compacting state.
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.CompactingStarted with { Id = agentContext.AgentId },
             new AgentCompactionMarker(),
@@ -144,9 +136,6 @@ public sealed partial class ContextCompactor : IContextCompactor
             }
             var rebuiltPrompt = new ModelPrompt(rebuilt);
 
-            // Compaction succeeded: archive the old persisted context and
-            // re-seed it with the rebuilt non-system turns. The system turn
-            // is reconstructed per-call by the caller and never persisted.
             LogContextCompacted(_logger, agentContext.AgentId);
             await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken).ConfigureAwait(false);
             var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken).ConfigureAwait(false);
@@ -218,11 +207,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         ImmutableArray<ToolGroup> tools,
         CancellationToken cancellationToken)
     {
-        // Auto-compaction excludes the trailing user message (it gets
-        // re-attached to the rebuilt prompt). User-forced compaction
-        // has no trailing user to preserve, so all turns go into the
-        // summary input. Either way the call ends with a fresh
-        // user-role instruction asking for the summary.
         var historyCount = preserveTrailingUser
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
