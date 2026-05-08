@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
@@ -14,16 +15,24 @@ public sealed partial class RegexReplaceFileTool
     private static readonly TimeSpan _regexTimeout = TimeSpan.FromSeconds(2);
 
     private readonly IAgentWorkspaceLocator _workspace;
+    private readonly IPathExpander _pathExpander;
+    private readonly IFileProtectionPolicy _protection;
     private readonly ILogger<RegexReplaceFileTool> _logger;
 
-    public RegexReplaceFileTool(IAgentWorkspaceLocator workspace, ILogger<RegexReplaceFileTool> logger)
+    public RegexReplaceFileTool(
+        IAgentWorkspaceLocator workspace,
+        IPathExpander pathExpander,
+        IFileProtectionPolicy protection,
+        ILogger<RegexReplaceFileTool> logger)
     {
         _workspace = workspace;
+        _pathExpander = pathExpander;
+        _protection = protection;
         _logger = logger;
     }
 
     [McpServerTool(Name = "file_regex_replace")]
-    [Description("Edits a file in place by applying a .NET regex replacement. Returns the number of replacements made. Files in the protected 'system/' subfolder cannot be edited. Hard-capped to files <= 4 MiB.")]
+    [Description("Edits a file in place by applying a .NET regex replacement. Returns the number of replacements made. Files in the protected 'system/' subfolder, or any path matched by the workspace file-protection policy (e.g. root '.gitignore'), cannot be edited. Hard-capped to files <= 4 MiB.")]
     public async Task<string> RegexReplaceFile(
         [Description("Path to edit. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,
         [Description(".NET regex pattern to match.")] string pattern,
@@ -53,6 +62,13 @@ public sealed partial class RegexReplaceFileTool
         if (!File.Exists(resolution.FullPath))
         {
             return $"File not found: {path}";
+        }
+
+        var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
+        var protection = _protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Write);
+        if (protection is not null)
+        {
+            return ProtectionRefusal.Format(path, ProtectionMode.Write, protection);
         }
 
         var info = new FileInfo(resolution.FullPath);

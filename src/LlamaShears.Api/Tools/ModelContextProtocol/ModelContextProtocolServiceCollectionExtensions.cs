@@ -1,6 +1,8 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
+using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Paths;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,6 +18,18 @@ public static class ModelContextProtocolServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.TryAddSingleton<IInternalModelContextProtocolServer, InternalModelContextProtocolServer>();
         services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
+
+        services
+            .AddPathExpander()
+            .AddFileProtectionPolicy(options =>
+            {
+                options.Rules.Add(new ProtectedFile(".git", ProtectionMode.Delete, FileType.Directory, "git metadata"));
+                options.Rules.Add(new ProtectedFile(".git/**", ProtectionMode.Delete, FileType.Any, "git metadata"));
+                options.Rules.Add(new ProtectedFile("**/.git", ProtectionMode.Delete, FileType.Directory, "nested git metadata"));
+                options.Rules.Add(new ProtectedFile("**/.git/**", ProtectionMode.Delete, FileType.Any, "nested git metadata"));
+                options.Rules.Add(new ProtectedFile("*.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile(".gitignore", ProtectionMode.Delete | ProtectionMode.Write, FileType.File, "workspace .gitignore"));
+            });
 
         services.AddMcpServer()
             .WithHttpTransport()
