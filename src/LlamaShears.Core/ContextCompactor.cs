@@ -3,6 +3,7 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -30,15 +31,13 @@ public sealed partial class ContextCompactor : IContextCompactor
     // context so a runaway summary can't itself blow the window.
     private const int SummaryDivisor = 3;
 
-    private const string SummarizeInstruction =
-        "This conversation is being compacted to free context. Summarize what came before " +
-        "as concise notes — important context, decisions, user goals, and open threads. " +
-        "Write it as you would write a note to yourself, since this summary will be your " +
-        "only memory of what came before.";
+    private const string CompactionTemplateName = "COMPACTION";
+
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IEventPublisher _eventPublisher;
+    private readonly ISystemPromptProvider _systemPrompt;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
@@ -46,12 +45,14 @@ public sealed partial class ContextCompactor : IContextCompactor
         IContextStore contextStore,
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
+        ISystemPromptProvider systemPrompt,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
         _inferenceRunner = inferenceRunner;
         _eventPublisher = eventPublisher;
+        _systemPrompt = systemPrompt;
         _logger = logger;
     }
 
@@ -172,12 +173,21 @@ public sealed partial class ContextCompactor : IContextCompactor
         var historyCount = preserveTrailingUser
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
+        var systemBody = await _systemPrompt.GetAsync(
+            CompactionTemplateName,
+            new SystemPromptTemplateParameters(AgentId: agentId),
+            cancellationToken).ConfigureAwait(false);
         var historyTurns = new List<ModelTurn>(historyCount + 1);
+        historyTurns.Add(new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
         for (var i = 0; i < historyCount; i++)
         {
-            historyTurns.Add(prompt.Turns[i]);
+            var turn = prompt.Turns[i];
+            if (turn.Role == ModelRole.System)
+            {
+                continue;
+            }
+            historyTurns.Add(turn);
         }
-        historyTurns.Add(new ModelTurn(ModelRole.User, SummarizeInstruction, prompt.Turns[^1].Timestamp));
 
         var summarizationPrompt = new ModelPrompt(historyTurns);
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);

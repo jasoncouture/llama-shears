@@ -5,6 +5,7 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -132,7 +133,7 @@ public sealed class ContextCompactorTests
     }
 
     [Test]
-    public async Task SummarizationPromptOmitsTrailingUserTurnAndAppendsInstruction()
+    public async Task SummarizationPromptDropsTrailingUserAndReplacesSystemWithCompactionTemplate()
     {
         var capturedPrompts = new List<ModelPrompt>();
         var model = Substitute.For<ILanguageModel>();
@@ -151,11 +152,12 @@ public sealed class ContextCompactorTests
 
         await Assert.That(capturedPrompts.Count).IsEqualTo(1);
         var sent = capturedPrompts[0];
-        await Assert.That(sent.Turns.Count).IsEqualTo(prompt.Turns.Count);
-        await Assert.That(sent.Turns[^1].Role).IsEqualTo(ModelRole.User);
-        await Assert.That(sent.Turns[^1].Content).Contains("Summarize");
+        await Assert.That(sent.Turns[0].Role).IsEqualTo(ModelRole.System);
+        await Assert.That(sent.Turns[0].Content).IsEqualTo("compaction-system");
         var originalUserContent = prompt.Turns[^1].Content;
         await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalUserContent);
+        var originalSystemContent = prompt.Turns[0].Content;
+        await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalSystemContent);
     }
 
     private static ContextCompactor BuildCompactor()
@@ -167,7 +169,10 @@ public sealed class ContextCompactorTests
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
         var runner = new InferenceRunner(publisher, Substitute.For<IToolCallDispatcher>(), TimeProvider.System);
-        return new ContextCompactor(provider, store, runner, publisher, NullLogger<ContextCompactor>.Instance);
+        var systemPrompt = Substitute.For<ISystemPromptProvider>();
+        systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult("compaction-system"));
+        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)
