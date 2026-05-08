@@ -18,9 +18,11 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
     // on), then identity, then soul.
     private static readonly ImmutableArray<string> _workspaceFileNames =
     [
+        "AGENTS.md",
         "BOOTSTRAP.md",
         "IDENTITY.md",
         "SOUL.md",
+        "USER.md"
     ];
 
     private readonly IShearsPaths _paths;

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
@@ -8,16 +9,24 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 public sealed partial class DeleteFileTool
 {
     private readonly IAgentWorkspaceLocator _workspace;
+    private readonly IPathExpander _pathExpander;
+    private readonly IFileProtectionPolicy _protection;
     private readonly ILogger<DeleteFileTool> _logger;
 
-    public DeleteFileTool(IAgentWorkspaceLocator workspace, ILogger<DeleteFileTool> logger)
+    public DeleteFileTool(
+        IAgentWorkspaceLocator workspace,
+        IPathExpander pathExpander,
+        IFileProtectionPolicy protection,
+        ILogger<DeleteFileTool> logger)
     {
         _workspace = workspace;
+        _pathExpander = pathExpander;
+        _protection = protection;
         _logger = logger;
     }
 
     [McpServerTool(Name = "file_delete")]
-    [Description("Deletes a file or directory inside the agent's workspace. Directories require recursive=true. Deletes inside the protected 'system/' subfolder are refused.")]
+    [Description("Deletes a file or directory inside the agent's workspace. Directories require recursive=true. Deletes inside the protected 'system/' subfolder, or any path matched by the workspace file-protection policy (e.g. '.git', root '*.md', '.gitignore'), are refused.")]
     public async Task<string> DeleteFile(
         [Description("Path to delete. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,
         [Description("If true, allow deleting a non-empty directory recursively. Defaults to false.")] bool recursive = false,
@@ -40,6 +49,14 @@ public sealed partial class DeleteFileTool
         if (!isDir && !isFile)
         {
             return $"Path not found: {path}";
+        }
+
+        var actualType = isDir ? FileType.Directory : FileType.File;
+        var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
+        var protection = _protection.Match(workspace.Root, fullPath, actualType, ProtectionMode.Delete);
+        if (protection is not null)
+        {
+            return ProtectionRefusal.Format(path, ProtectionMode.Delete, protection);
         }
 
         try
