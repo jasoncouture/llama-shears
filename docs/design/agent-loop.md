@@ -72,7 +72,7 @@ If `AgentConfig.Memory.Prefetch` is enabled, the search is **kicked off when the
 
 ### 5. Compaction runs every iteration
 
-Each iteration calls `IContextCompactor.CompactAsync(snapshot, prompt, model, modelConfig, force: false, ct)` before sending the prompt. With `force: false` the compactor short-circuits unless the token-estimate-plus-predict-budget would exceed the model's context window — so the steady state is "compaction is a no-op." When the budget is blown, it rewrites the prompt to `[system, summary, last-user-turn]`, archives `current.json` to `<unix-ms>.json`, and rebuilds it from the rebuilt prompt. See [compaction.md](compaction.md).
+Each iteration calls `IContextCompactor.CompactAsync(snapshot, prompt, model, modelConfig, force: false, cancellationToken)` before sending the prompt. With `force: false` the compactor short-circuits unless the token-estimate-plus-predict-budget would exceed the model's context window — so the steady state is "compaction is a no-op." When the budget is blown, it rewrites the prompt to `[system, summary, last-user-turn]`, archives `current.json` to `<unix-ms>.json`, and rebuilds it from the rebuilt prompt. See [compaction.md](compaction.md).
 
 ### 6. Inject the per-turn ephemeral block
 
@@ -88,7 +88,7 @@ The conventional persona files (`BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md`) used t
 
 `InferenceRunner.RunAsync` consumes `ILanguageModel.PromptAsync(prompt, options)` as an `IAsyncEnumerable<IModelResponseFragment>`. As it streams it accumulates text into one `StringBuilder`, thoughts into another, and tool calls into a builder; it publishes a `FireAndForget` event for each fragment so the chat UI streams in real time.
 
-The runner takes an optional `dispatchTool` callback. When a tool-call fragment lands in the stream, the runner immediately spawns `Task.Run(() => dispatchTool(call, ct))` for that call and continues consuming the stream. Tool execution overlaps with the rest of the model's output instead of waiting for the stream to finish — by the time the model emits its next text fragment or completes the turn, the earliest tool call may already have a result. After the stream completes, the runner `Task.WhenAll`s the dispatched tasks before returning, so the `InferenceOutcome` carries both the captured tool calls *and* their results in original call order.
+The runner takes an optional `dispatchTool` callback. When a tool-call fragment lands in the stream, the runner immediately spawns `Task.Run(() => dispatchTool(call, cancellationToken))` for that call and continues consuming the stream. Tool execution overlaps with the rest of the model's output instead of waiting for the stream to finish — by the time the model emits its next text fragment or completes the turn, the earliest tool call may already have a result. After the stream completes, the runner `Task.WhenAll`s the dispatched tasks before returning, so the `InferenceOutcome` carries both the captured tool calls *and* their results in original call order.
 
 When the stream completes the runner also publishes a final `agent:turn` event for the assistant turn (carrying both the streamed text and the captured `ToolCalls`, which is what `AgentTurnContextPersister` writes to `current.json`).
 
@@ -118,8 +118,8 @@ After dispatching, the loop continues. It returns when any of:
 
 The processing gate (`SemaphoreSlim`) is exposed on `IAgent`:
 
-- **`LockAsync(ct) / UnlockAsync()`** — for callers that want to block the loop while they do something to the agent's state out-of-band. Pairs 1:1.
-- **`RequestCompactionAsync(ct)`** — locks the gate, runs `IContextCompactor.CompactAsync(force: true)` against the agent's current context, releases the gate. Skips the under-budget guard so a healthy-but-aged context will still be compacted; the compactor's other guards (min turn count, no `ContextLength` configured) still apply. This is what `EagerCompactor` calls after 15 minutes of idle.
+- **`LockAsync(cancellationToken) / UnlockAsync()`** — for callers that want to block the loop while they do something to the agent's state out-of-band. Pairs 1:1.
+- **`RequestCompactionAsync(cancellationToken)`** — locks the gate, runs `IContextCompactor.CompactAsync(force: true)` against the agent's current context, releases the gate. Skips the under-budget guard so a healthy-but-aged context will still be compacted; the compactor's other guards (min turn count, no `ContextLength` configured) still apply. This is what `EagerCompactor` calls after 15 minutes of idle.
 
 The `LastActivity` property reads the timestamp of the most recent persisted turn. The eager compactor uses it together with its own per-agent `ConcurrentDictionary<string, DateTimeOffset>` of message-fragment arrivals to decide which agents are idle.
 
