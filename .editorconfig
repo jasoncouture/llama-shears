@@ -31,6 +31,13 @@ dotnet_diagnostic.IDE0303.severity = error
 dotnet_diagnostic.IDE0304.severity = error
 dotnet_diagnostic.IDE0305.severity = error
 
+# IDE0001 ("Name can be simplified") promoted to error so `System.Guid`,
+# `System.Collections.Generic.Dictionary<,>`, etc. fail the build instead
+# of riding as IDE-only hints. Forces the matching using/global-using or
+# the unqualified name to be used.
+dotnet_style_qualification_for_field = false:error
+dotnet_diagnostic.IDE0001.severity = error
+
 # Consts are PascalCase, no leading underscore. Listed *before* the
 # private-fields rule so it wins on `private const`; without this the
 # field-kind rule below would demand the `_camelCase` prefix on consts.
