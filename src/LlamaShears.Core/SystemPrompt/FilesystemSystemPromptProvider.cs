@@ -7,10 +7,6 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
 {
     private const string DefaultFileName = "DEFAULT.md";
 
-    // Conventional workspace files surfaced into the system prompt as
-    // `files`. Order matters: the template renders Files in this order,
-    // so BOOTSTRAP comes first when present (a one-shot the agent acts
-    // on), then identity, then soul.
     private static readonly ImmutableArray<string> _workspaceFileNames =
     [
         "AGENTS.md",
