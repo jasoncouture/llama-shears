@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Memory;
@@ -15,6 +16,7 @@ using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.PromptContext;
 using LlamaShears.Core.Seeding;
+using LlamaShears.Core.Sessions;
 using LlamaShears.Core.SystemPrompt;
 using LlamaShears.Core.Templating;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -92,6 +94,12 @@ public static class CoreServiceCollectionExtensions
         services.AddHostedService<MemoryIndexerBackgroundService>();
 
         services.AddCron();
+
+        // Single registry of live session queues across the host. The
+        // SessionId key already carries AgentId, so partitioning per
+        // agent is implicit. Sessions live for the application's
+        // lifetime; explicit DeleteAsync removes one early.
+        services.TryAddSingleton<ISessionFactory, SessionFactory>();
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();
