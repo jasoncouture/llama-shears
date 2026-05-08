@@ -25,6 +25,10 @@ public sealed class AgentTurnContextPersister : IEventHandler<ModelTurn>, IDispo
         {
             return;
         }
+        if (envelope.Data.Ephemeral)
+        {
+            return;
+        }
 
         var context = await _store.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
         await context.AppendAsync(envelope.Data, cancellationToken).ConfigureAwait(false);

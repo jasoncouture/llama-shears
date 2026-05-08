@@ -525,7 +525,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             return prompt;
         }
 
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, now);
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, now, Ephemeral: true);
         var augmented = new List<ModelTurn>(turns.Count + 1);
         for (var i = 0; i < turns.Count; i++)
         {
