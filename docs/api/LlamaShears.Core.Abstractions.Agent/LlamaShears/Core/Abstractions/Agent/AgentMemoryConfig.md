@@ -2,43 +2,33 @@
 
 Assembly: `LlamaShears.Core.Abstractions.Agent`
 
-Per-agent memory-subsystem options.
+Per-agent memory-subsystem options. Read by the memory searcher
+when a caller does not pass explicit per-call overrides.
 
 ## Parameters
 
-- `Prefetch` — When `true`, the agent kicks off the per-batch memory
-search the moment an inbound `ChannelMessage` lands at its event
-handler — concurrently with whatever the agent is doing right then —
-instead of waiting until the batch reaches the search step. The win is
-overlap: embedding-model latency hides behind work the agent was doing
-anyway. Falls back to a synchronous search if the prefetch slot is
-missing on a given batch.
+- `SearchLimit` — Default maximum number of hits to return from a memory search. Callers may override per call.
+- `SearchMinScore` — Default minimum cosine similarity (0.0–1.0); hits scoring below are dropped. Callers may override per call. The default of 0.30 sits in the empirical gap between "noise" (under ~0.10) and "relevant" (~0.40–0.60) for embeddinggemma-class encoders with task prefixes.
 
 ## Properties
 
-### `Prefetch`
+### `SearchLimit`
 
-When `true`, the agent kicks off the per-batch memory
-search the moment an inbound `ChannelMessage` lands at its event
-handler — concurrently with whatever the agent is doing right then —
-instead of waiting until the batch reaches the search step. The win is
-overlap: embedding-model latency hides behind work the agent was doing
-anyway. Falls back to a synchronous search if the prefetch slot is
-missing on a given batch.
+Default maximum number of hits to return from a memory search. Callers may override per call.
+
+### `SearchMinScore`
+
+Default minimum cosine similarity (0.0–1.0); hits scoring below are dropped. Callers may override per call. The default of 0.30 sits in the empirical gap between "noise" (under ~0.10) and "relevant" (~0.40–0.60) for embeddinggemma-class encoders with task prefixes.
 
 ## Methods
 
-### `AgentMemoryConfig`(bool Prefetch)
+### `AgentMemoryConfig`(int SearchLimit, double SearchMinScore)
 
-Per-agent memory-subsystem options.
+Per-agent memory-subsystem options. Read by the memory searcher
+when a caller does not pass explicit per-call overrides.
 
 #### Parameters
 
-- `Prefetch` — When `true`, the agent kicks off the per-batch memory
-search the moment an inbound `ChannelMessage` lands at its event
-handler — concurrently with whatever the agent is doing right then —
-instead of waiting until the batch reaches the search step. The win is
-overlap: embedding-model latency hides behind work the agent was doing
-anyway. Falls back to a synchronous search if the prefetch slot is
-missing on a given batch.
+- `SearchLimit` — Default maximum number of hits to return from a memory search. Callers may override per call.
+- `SearchMinScore` — Default minimum cosine similarity (0.0–1.0); hits scoring below are dropped. Callers may override per call. The default of 0.30 sits in the empirical gap between "noise" (under ~0.10) and "relevant" (~0.40–0.60) for embeddinggemma-class encoders with task prefixes.
 

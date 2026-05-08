@@ -44,8 +44,11 @@ public sealed class AgentTurnFlowTests
 
         var userTurns = ctx.Turns.Where(t => t.Role == ModelRole.User).ToArray();
         await Assert.That(userTurns).Count().IsEqualTo(2);
-        await Assert.That(userTurns[0].Content).IsEqualTo("first");
-        await Assert.That(userTurns[1].Content).IsEqualTo("second");
+        // User turns are formatted with [timestamp] / [sourceChannel]
+        // wrappers at HandleAsync time and stored that way; the original
+        // text appears as the body of the formatted block.
+        await Assert.That(userTurns[0].Content).Contains("first");
+        await Assert.That(userTurns[1].Content).Contains("second");
     }
 
     [Test]
@@ -233,7 +236,7 @@ public sealed class AgentTurnFlowTests
             toolDispatcher: dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>(),
+            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }

@@ -140,7 +140,7 @@ public sealed class AgentEventPublishingTests
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>(),
+            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
 

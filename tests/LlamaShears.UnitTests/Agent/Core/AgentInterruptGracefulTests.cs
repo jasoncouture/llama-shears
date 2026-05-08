@@ -190,7 +190,7 @@ public sealed class AgentInterruptGracefulTests
             toolDispatcher: dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>(),
+            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }

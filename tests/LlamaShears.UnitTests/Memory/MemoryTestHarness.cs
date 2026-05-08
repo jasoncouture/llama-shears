@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -63,6 +64,7 @@ internal sealed class MemoryTestHarness : IDisposable
             factories,
             time,
             options,
+            new PassthroughFileParserCache<SqliteMemoryService>(),
             NullLogger<SqliteMemoryService>.Instance);
 
         return new MemoryTestHarness(root, agentId, service, time, variableDim);

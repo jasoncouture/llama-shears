@@ -8,14 +8,18 @@ namespace LlamaShears.Core.Abstractions.Memory;
 public interface IMemorySearcher
 {
     /// <summary>
-    /// Returns the top <paramref name="limit"/> hits whose cosine
-    /// similarity to <paramref name="query"/> is at least
-    /// <paramref name="minScore"/>, ordered by descending score.
+    /// Returns the top hits whose cosine similarity to
+    /// <paramref name="query"/> meets the score floor, ordered by
+    /// descending score. <paramref name="limit"/> and
+    /// <paramref name="minScore"/> default to the agent's
+    /// <c>AgentMemoryConfig</c> values when left <see langword="null"/>;
+    /// callers (e.g. the memory tool) pass explicit overrides when
+    /// they need different bounds.
     /// </summary>
     ValueTask<IReadOnlyList<MemorySearchResult>> SearchAsync(
         string agentId,
         string query,
-        int limit,
-        double minScore,
+        int? limit,
+        double? minScore,
         CancellationToken cancellationToken);
 }

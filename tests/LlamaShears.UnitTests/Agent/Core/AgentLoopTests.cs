@@ -72,7 +72,7 @@ public sealed class AgentLoopTests
     }
 
     [Test]
-    public async Task PrefetchEnabledAgentInvokesSearcherOnceAndStillProducesTurn()
+    public async Task UserMessageInvokesMemorySearcherOnceAndStillProducesTurn()
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventPublisher>();
@@ -83,13 +83,12 @@ public sealed class AgentLoopTests
         var model = new ScriptedLanguageModel("hi back");
         var memorySearcher = Substitute.For<IMemorySearcher>();
         memorySearcher
-            .SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<double>(), Arg.Any<CancellationToken>())
+            .SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<double?>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyList<MemorySearchResult>>([]));
 
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice") with
         {
-            Memory = new AgentMemoryConfig(Prefetch: true),
-            WorkspacePath = Path.Combine(Path.GetTempPath(), $"prefetch-{Guid.NewGuid():N}"),
+            WorkspacePath = Path.Combine(Path.GetTempPath(), $"memory-search-{Guid.NewGuid():N}"),
         };
 
         using var agent = BuildAgent("alice", provider, ctx, model, config, memorySearcher);
@@ -105,8 +104,8 @@ public sealed class AgentLoopTests
             .SearchAsync(
                 "alice",
                 Arg.Any<string>(),
-                Arg.Any<int>(),
-                Arg.Any<double>(),
+                Arg.Any<int?>(),
+                Arg.Any<double?>(),
                 Arg.Any<CancellationToken>());
     }
 
@@ -182,7 +181,7 @@ public sealed class AgentLoopTests
             toolDispatcher: Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: memorySearcher ?? Substitute.For<IMemorySearcher>(),
+            memorySearcher: memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }
