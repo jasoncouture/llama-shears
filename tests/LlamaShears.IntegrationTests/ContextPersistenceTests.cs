@@ -31,9 +31,6 @@ public sealed class ContextPersistenceTests
         await Assert.That(File.Exists(contextPath)).IsTrue();
 
         var entries = await ReadContextEntriesAsync(contextPath);
-        // User content is wrapped with [timestamp]/[sourceChannel] markers
-        // at HandleAsync time and stored that way; the original "hello"
-        // appears as the body of the formatted block.
         await Assert.That(entries).Contains(e =>
             e.GetProperty("kind").GetString() == "turn"
             && e.GetProperty("role").GetString() == "User"
@@ -157,12 +154,6 @@ public sealed class ContextPersistenceTests
         var contextStore = factory.Services.GetRequiredService<IContextStore>();
         var context = await contextStore.OpenAsync(AgentId, CancellationToken.None).ConfigureAwait(false);
 
-        // Wait on the persistence signal — IAgentContext.Appended fires
-        // *after* the entry is committed to both disk and the in-memory
-        // snapshot. Subscribing to the bus's `agent:turn:<id>` event is
-        // not equivalent: the bus uses parallel async dispatch, so the
-        // assistant-turn event can fire while the persister is still
-        // mid-append, leaving directory.GetTurnsAsync racing the writer.
         var done = new TaskCompletionSource<ModelTurn>(TaskCreationOptions.RunContinuationsAsynchronously);
         EventHandler<IContextEntry> handler = (_, entry) =>
         {
