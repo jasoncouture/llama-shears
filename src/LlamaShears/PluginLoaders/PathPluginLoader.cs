@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using LlamaShears.Plugins;
-using StrangeSoft.Plugins.Abstractions;
 using StrangeSoft.Plugins.Host;
 
 namespace LlamaShears.PluginLoaders;

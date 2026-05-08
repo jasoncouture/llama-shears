@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using LlamaShears.Core.Abstractions.Events;
+﻿using LlamaShears.Core.Abstractions.Events;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

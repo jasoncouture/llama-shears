@@ -3,6 +3,7 @@
 ## Namespaces
 
 - [LlamaShears.Core.Abstractions.Agent.Persistence](Persistence/index.md)
+- [LlamaShears.Core.Abstractions.Agent.Sessions](Sessions/index.md)
 
 ## Types
 
@@ -10,7 +11,7 @@
 - [AgentConfiguration](AgentConfiguration.md) — Construction-time inputs for [IAgentFactory](IAgentFactory.md).`CreateAgent`. Carries the agent identifier and a free-form parameter bag so plugin factories can receive options without growing the framework contract.
 - [AgentEmbeddingConfig](AgentEmbeddingConfig.md) — Per-agent embedding-model selection used for memory search. Asymmetric prefixes are supplied here so the framework, not the caller, knows whether to decorate "this is a query" vs "this is a document being indexed".
 - [AgentInfo](AgentInfo.md) — Catalog entry returned by [IAgentFactory](IAgentFactory.md).`ListAgentsAsync`: enough metadata to surface an agent in a list without loading it.
-- [AgentMemoryConfig](AgentMemoryConfig.md) — Per-agent memory-subsystem options.
+- [AgentMemoryConfig](AgentMemoryConfig.md) — Per-agent memory-subsystem options. Read by the memory searcher when a caller does not pass explicit per-call overrides.
 - [AgentModelConfig](AgentModelConfig.md) — Per-agent language-model selection and per-call options.
 - [AgentToolConfig](AgentToolConfig.md) — Per-agent tool-loop guardrails.
 - [IAgent](IAgent.md) — An autonomous component that ingests input turns, drives a model, and produces output turns. Identified by [IAgent](IAgent.md).`Id`; the rest of its surface — heartbeat cadence, channels, conversation state — is internal and reachable through the services that own it (config provider, context store, message bus).

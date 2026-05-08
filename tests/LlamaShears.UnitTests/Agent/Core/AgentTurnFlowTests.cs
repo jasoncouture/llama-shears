@@ -1,6 +1,6 @@
 using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
@@ -11,6 +11,7 @@ using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Persistence;
+using LlamaShears.Core.Sessions;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -43,8 +44,11 @@ public sealed class AgentTurnFlowTests
 
         var userTurns = ctx.Turns.Where(t => t.Role == ModelRole.User).ToArray();
         await Assert.That(userTurns).Count().IsEqualTo(2);
-        await Assert.That(userTurns[0].Content).IsEqualTo("first");
-        await Assert.That(userTurns[1].Content).IsEqualTo("second");
+        // User turns are formatted with [timestamp] / [sourceChannel]
+        // wrappers at HandleAsync time and stored that way; the original
+        // text appears as the body of the formatted block.
+        await Assert.That(userTurns[0].Content).Contains("first");
+        await Assert.That(userTurns[1].Content).Contains("second");
     }
 
     [Test]
@@ -232,7 +236,8 @@ public sealed class AgentTurnFlowTests
             toolDispatcher: dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             currentAgent: Substitute.For<ICurrentAgentAccessor>(),
             promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: Substitute.For<IMemorySearcher>(),
+            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
+            sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }
 
@@ -251,6 +256,7 @@ public sealed class AgentTurnFlowTests
         services.AddEventingFramework();
         services.AddSingleton<IContextStore>(new FakeContextStore());
         services.AddEventHandler<AgentTurnContextPersister>();
+        services.AddSingleton<ISessionFactory, SessionFactory>();
         var provider = services.BuildServiceProvider();
         provider.GetRequiredService<AgentTurnContextPersister>();
         return provider;

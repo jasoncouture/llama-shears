@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Data.Sqlite;
@@ -25,6 +26,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     private readonly IEnumerable<IEmbeddingProviderFactory> _embeddingFactories;
     private readonly TimeProvider _time;
     private readonly MemoryServiceOptions _options;
+    private readonly IFileParserCache<SqliteMemoryService> _fileCache;
     private readonly ILogger<SqliteMemoryService> _logger;
 
     public SqliteMemoryService(
@@ -32,12 +34,14 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         IEnumerable<IEmbeddingProviderFactory> embeddingFactories,
         TimeProvider time,
         IOptions<MemoryServiceOptions> options,
+        IFileParserCache<SqliteMemoryService> fileCache,
         ILogger<SqliteMemoryService> logger)
     {
         _configs = configs;
         _embeddingFactories = embeddingFactories;
         _time = time;
         _options = options.Value;
+        _fileCache = fileCache;
         _logger = logger;
     }
 
@@ -75,18 +79,37 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     public async ValueTask<IReadOnlyList<MemorySearchResult>> SearchAsync(
         string agentId,
         string query,
-        int limit,
-        double minScore,
+        int? limit,
+        double? minScore,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(query);
-        if (limit <= 0)
+        if (string.IsNullOrWhiteSpace(query))
         {
             return [];
         }
 
-        var ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
+        // Best-effort: an agent without a workspace, an embedding
+        // model, or a registered embedding-provider factory simply
+        // has no memory index to search. StoreAsync / ReconcileAsync
+        // still surface those as InvalidOperationException because
+        // the caller asked to write — the search path should answer
+        // "nothing here" instead of taking down the agent's loop.
+        MemoryContext ctx;
+        try
+        {
+            ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            return [];
+        }
+        var effectiveLimit = limit ?? ctx.SearchLimit;
+        var effectiveMinScore = minScore ?? ctx.SearchMinScore;
+        if (effectiveLimit <= 0)
+        {
+            return [];
+        }
         if (!File.Exists(ctx.IndexDbPath))
         {
             return [];
@@ -99,8 +122,11 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         var ranked = new List<MemorySearchResult>();
         var scanned = 0;
         var topRawScore = double.NegativeInfinity;
+        // Over-fetch: minScore filtering and missing-file dropping
+        // happen post-rank, so pull a few extra so we still hit the
+        // requested limit after filtering.
         await foreach (var hit in collection
-            .SearchAsync(queryVector, top: Math.Max(limit * 4, limit), cancellationToken: cancellationToken)
+            .SearchAsync(queryVector, top: effectiveLimit * 4, cancellationToken: cancellationToken)
             .ConfigureAwait(false))
         {
             scanned++;
@@ -112,26 +138,32 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             {
                 topRawScore = score;
             }
-            if (score < minScore)
+            if (score < effectiveMinScore)
             {
                 continue;
             }
             // Drop hits whose backing file is gone. Reconcile will GC
             // the orphaned row later; the model never sees it.
             var relativePath = hit.Record.Path;
-            if (!File.Exists(Path.Combine(ctx.WorkspaceRoot, relativePath)))
+            var fullPath = Path.Combine(ctx.WorkspaceRoot, relativePath);
+            var snapshot = await _fileCache.GetOrParseAsync<MemoryFileSnapshot, object?>(
+                fullPath,
+                state: null,
+                parser: ParseSnapshotAsync,
+                cancellationToken).ConfigureAwait(false);
+            if (snapshot is null)
             {
                 continue;
             }
-            ranked.Add(new MemorySearchResult(relativePath, score));
+            ranked.Add(new MemorySearchResult(relativePath, score, snapshot.Summary, snapshot.Content));
         }
 
         ranked.Sort(static (a, b) => b.Score.CompareTo(a.Score));
         var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
-        LogSearchScored(_logger, agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, minScore, elapsedMs);
-        if (ranked.Count > limit)
+        LogSearchScored(_logger, agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, effectiveMinScore, elapsedMs);
+        if (ranked.Count > effectiveLimit)
         {
-            ranked.RemoveRange(limit, ranked.Count - limit);
+            ranked.RemoveRange(effectiveLimit, ranked.Count - effectiveLimit);
         }
         return ranked;
     }
@@ -307,7 +339,14 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             KeepAlive: keepAlive,
             AgentOptions: config.Embedding?.Options));
 
-        return new MemoryContext(workspace, indexPath, embedding, queryPrefix, documentPrefix);
+        return new MemoryContext(
+            workspace,
+            indexPath,
+            embedding,
+            queryPrefix,
+            documentPrefix,
+            config.Memory.SearchLimit,
+            config.Memory.SearchMinScore);
     }
 
     private async ValueTask<VectorStoreCollection<string, MemoryVectorRecord>> OpenCollectionAsync(
@@ -400,7 +439,30 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         string IndexDbPath,
         IEmbeddingModel Embedding,
         string QueryPrefix,
-        string DocumentPrefix);
+        string DocumentPrefix,
+        int SearchLimit,
+        double SearchMinScore);
+
+    // Cache record for one memory file: first line + full body, both
+    // taken from a single read. IFileParserCache keys on path + mtime
+    // + length, so an edit invalidates naturally on the next call.
+    private sealed record MemoryFileSnapshot(string Summary, string Content);
+
+    private static async ValueTask<MemoryFileSnapshot?> ParseSnapshotAsync(
+        Stream? stream,
+        object? state,
+        CancellationToken cancellationToken)
+    {
+        if (stream is null)
+        {
+            return null;
+        }
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var firstLineEnd = content.IndexOfAny(['\r', '\n']);
+        var summary = firstLineEnd < 0 ? content : content[..firstLineEnd];
+        return new MemoryFileSnapshot(summary, content);
+    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Stored memory for agent '{AgentId}' at '{Path}'.")]
     private static partial void LogStored(ILogger logger, string agentId, string path);

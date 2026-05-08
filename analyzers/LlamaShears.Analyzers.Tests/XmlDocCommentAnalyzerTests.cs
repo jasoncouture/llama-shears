@@ -1,4 +1,3 @@
-using System.Linq;
 using LlamaShears.Analyzers.Diagnostics;
 using Microsoft.CodeAnalysis;
 

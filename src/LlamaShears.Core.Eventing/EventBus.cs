@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Events;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;

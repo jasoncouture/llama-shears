@@ -31,10 +31,13 @@ public sealed class ContextPersistenceTests
         await Assert.That(File.Exists(contextPath)).IsTrue();
 
         var entries = await ReadContextEntriesAsync(contextPath);
+        // User content is wrapped with [timestamp]/[sourceChannel] markers
+        // at HandleAsync time and stored that way; the original "hello"
+        // appears as the body of the formatted block.
         await Assert.That(entries).Contains(e =>
             e.GetProperty("kind").GetString() == "turn"
             && e.GetProperty("role").GetString() == "User"
-            && e.GetProperty("content").GetString() == "hello");
+            && e.GetProperty("content").GetString()!.Contains("hello"));
         await Assert.That(entries).Contains(e =>
             e.GetProperty("role").GetString() == "Assistant");
     }
@@ -53,7 +56,7 @@ public sealed class ContextPersistenceTests
         var directory = factory.Services.GetRequiredService<IAgentDirectory>();
         var turns = await directory.GetTurnsAsync(AgentId, CancellationToken.None);
 
-        await Assert.That(turns).Contains(t => t.Role == ModelRole.User && t.Content == "remember me");
+        await Assert.That(turns).Contains(t => t.Role == ModelRole.User && t.Content.Contains("remember me"));
         await Assert.That(turns).Contains(t => t.Role == ModelRole.Assistant);
     }
 

@@ -2,9 +2,9 @@
 
 Assembly: `LlamaShears.Core.Abstractions.Provider`
 
-One persisted entry in an agent's conversation log. Carries the
-speaker role, body text, and any tool-call or attachment metadata
-associated with the turn.
+One entry in an agent's conversation log. Carries the speaker role,
+body text, and any tool-call or attachment metadata associated with
+the turn.
 
 ## Parameters
 
@@ -12,6 +12,10 @@ associated with the turn.
 - `Content` — Body text of the turn.
 - `Timestamp` — When the turn was recorded.
 - `ChannelId` — Channel correlation id for routing turns back into a multi-channel UI; `null` when the turn has no channel context.
+- `Ephemeral` — When `true`, the turn is transient: subscribers may
+observe it (e.g. UI streaming) but persisters skip it. Drives the
+"don't record this" decision from the turn itself instead of from a
+central filter.
 
 ## Properties
 
@@ -26,6 +30,13 @@ Channel correlation id for routing turns back into a multi-channel UI; `null` wh
 ### `Content`
 
 Body text of the turn.
+
+### `Ephemeral`
+
+When `true`, the turn is transient: subscribers may
+observe it (e.g. UI streaming) but persisters skip it. Drives the
+"don't record this" decision from the turn itself instead of from a
+central filter.
 
 ### `IsError`
 
@@ -49,11 +60,11 @@ Tool calls the model emitted on this turn (assistant turns only).
 
 ## Methods
 
-### `ModelTurn`([ModelRole](ModelRole.md) Role, string Content, DateTimeOffset Timestamp, string ChannelId)
+### `ModelTurn`([ModelRole](ModelRole.md) Role, string Content, DateTimeOffset Timestamp, string ChannelId, bool Ephemeral)
 
-One persisted entry in an agent's conversation log. Carries the
-speaker role, body text, and any tool-call or attachment metadata
-associated with the turn.
+One entry in an agent's conversation log. Carries the speaker role,
+body text, and any tool-call or attachment metadata associated with
+the turn.
 
 #### Parameters
 
@@ -61,4 +72,8 @@ associated with the turn.
 - `Content` — Body text of the turn.
 - `Timestamp` — When the turn was recorded.
 - `ChannelId` — Channel correlation id for routing turns back into a multi-channel UI; `null` when the turn has no channel context.
+- `Ephemeral` — When `true`, the turn is transient: subscribers may
+observe it (e.g. UI streaming) but persisters skip it. Drives the
+"don't record this" decision from the turn itself instead of from a
+central filter.
 
