@@ -134,7 +134,7 @@ public sealed class ContextCompactorTests
     }
 
     [Test]
-    public async Task SummarizationPromptDropsTrailingUserAndReplacesSystemWithCompactionTemplate()
+    public async Task SummarizationPromptDropsTrailingUserAndAddsCompactionSystemAfterAgentSystem()
     {
         var capturedPrompts = new List<ModelPrompt>();
         var model = Substitute.For<ILanguageModel>();
@@ -154,11 +154,11 @@ public sealed class ContextCompactorTests
         await Assert.That(capturedPrompts.Count).IsEqualTo(1);
         var sent = capturedPrompts[0];
         await Assert.That(sent.Turns[0].Role).IsEqualTo(ModelRole.System);
-        await Assert.That(sent.Turns[0].Content).IsEqualTo("compaction-system");
+        await Assert.That(sent.Turns[0].Content).IsEqualTo(prompt.Turns[0].Content);
+        await Assert.That(sent.Turns[1].Role).IsEqualTo(ModelRole.System);
+        await Assert.That(sent.Turns[1].Content).IsEqualTo("compaction-system");
         var originalUserContent = prompt.Turns[^1].Content;
         await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalUserContent);
-        var originalSystemContent = prompt.Turns[0].Content;
-        await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalSystemContent);
     }
 
     private static ContextCompactor BuildCompactor()

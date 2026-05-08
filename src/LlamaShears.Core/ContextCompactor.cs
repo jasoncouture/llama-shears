@@ -36,6 +36,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const string CompactionTemplateName = "COMPACTION";
     private const string MemoryToolSource = "llamashears";
     private const string MemoryToolName = "memory_store";
+    private const string SummarizeKicker = "Save important memories with memory_store, then produce the summary.";
 
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
@@ -215,16 +216,25 @@ public sealed partial class ContextCompactor : IContextCompactor
             CompactionTemplateName,
             new SystemPromptTemplateParameters(AgentId: agentId),
             cancellationToken).ConfigureAwait(false);
-        var historyTurns = new List<ModelTurn>(historyCount + 1);
-        historyTurns.Add(new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
+        var historyTurns = new List<ModelTurn>(historyCount + 2);
+        var compactionInserted = false;
         for (var i = 0; i < historyCount; i++)
         {
             var turn = prompt.Turns[i];
-            if (turn.Role == ModelRole.System)
-            {
-                continue;
-            }
             historyTurns.Add(turn);
+            if (turn.Role == ModelRole.System && !compactionInserted)
+            {
+                historyTurns.Add(new ModelTurn(ModelRole.System, systemBody, turn.Timestamp));
+                compactionInserted = true;
+            }
+        }
+        if (!compactionInserted)
+        {
+            historyTurns.Insert(0, new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
+        }
+        if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
+        {
+            historyTurns.Add(new ModelTurn(ModelRole.User, SummarizeKicker, prompt.Turns[^1].Timestamp));
         }
 
         var summarizationPrompt = new ModelPrompt(historyTurns);
