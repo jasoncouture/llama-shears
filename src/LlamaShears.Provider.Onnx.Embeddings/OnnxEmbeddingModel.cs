@@ -4,10 +4,6 @@ using Microsoft.ML.Tokenizers;
 
 namespace LlamaShears.Provider.Onnx.Embeddings;
 
-// Single-instance per (modelPath, vocabPath). Heavy state (the
-// InferenceSession + tokenizer) is loaded once and reused; Run is
-// thread-safe per ONNX Runtime documentation, the BertTokenizer is
-// immutable after construction.
 public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
 {
     private readonly InferenceSession _session;
@@ -32,9 +28,6 @@ public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
     {
         ArgumentNullException.ThrowIfNull(text);
         cancellationToken.ThrowIfCancellationRequested();
-        // Tokenization and tensor work is CPU-bound and fast for a
-        // single sentence — keep it on the calling thread instead of
-        // bouncing through Task.Run.
         return await ValueTask.FromResult(EmbedCore(text)).ConfigureAwait(false);
     }
 
@@ -47,9 +40,6 @@ public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
         {
             return [];
         }
-        // First-cut implementation: one inference per text. Real batching
-        // requires padding to the longest sequence in the batch; until a
-        // hot path actually demands it, the loop keeps the code simple.
         var results = new ReadOnlyMemory<float>[texts.Count];
         for (var i = 0; i < texts.Count; i++)
         {
@@ -113,8 +103,6 @@ public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
             using var outputs = _session.Run(runOptions, inputNames, inputValues, [OutputName]);
             var output = outputs[0];
             var hidden = output.GetTensorDataAsSpan<float>();
-            // Shape: [batch=1, seqLen, hiddenDim]. hiddenDim is the
-            // model's pooling dimension (384 for minilm-l6-v2).
             var hiddenDim = hidden.Length / seqLen;
             var pooled = _options.Pooling switch
             {
