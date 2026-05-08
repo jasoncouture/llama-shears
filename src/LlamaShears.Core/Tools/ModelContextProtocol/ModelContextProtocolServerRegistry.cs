@@ -46,11 +46,6 @@ public sealed partial class ModelContextProtocolServerRegistry : IModelContextPr
         return resolved;
     }
 
-    // The "all known" view includes the host's own internal MCP
-    // endpoint under a fixed name. It is published into the registry
-    // like any user-configured server, so an agent that wants it has
-    // to either omit a whitelist (default = all known) or name it
-    // explicitly.
     private Dictionary<string, Uri> BuildAllKnown()
     {
         var configured = _options.CurrentValue.Servers;
