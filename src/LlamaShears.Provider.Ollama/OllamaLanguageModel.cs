@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Content;
-using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;

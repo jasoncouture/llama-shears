@@ -2,7 +2,6 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Provider.Ollama;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace LlamaShears.UnitTests;

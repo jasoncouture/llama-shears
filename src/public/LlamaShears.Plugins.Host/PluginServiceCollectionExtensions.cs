@@ -1,8 +1,6 @@
 using System.Reflection;
-using LlamaShears.Plugins;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StrangeSoft.Plugins.Host;

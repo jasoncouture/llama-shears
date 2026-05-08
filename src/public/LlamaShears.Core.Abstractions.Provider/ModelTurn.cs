@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Content;
-using LlamaShears.Core.Abstractions.Events;
 
 namespace LlamaShears.Core.Abstractions.Provider;
 

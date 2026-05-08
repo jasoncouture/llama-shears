@@ -1,10 +1,8 @@
-using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Caching;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 

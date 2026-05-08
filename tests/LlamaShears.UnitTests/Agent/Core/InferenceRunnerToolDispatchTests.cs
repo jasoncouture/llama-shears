@@ -2,7 +2,6 @@ using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
-using LlamaShears.Core.Eventing.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.UnitTests.Agent.Core;

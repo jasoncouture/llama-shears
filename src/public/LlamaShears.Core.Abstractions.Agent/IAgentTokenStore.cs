@@ -1,6 +1,4 @@
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core.Abstractions.Agent;
 
