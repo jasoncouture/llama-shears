@@ -9,6 +9,7 @@ using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
@@ -172,7 +173,13 @@ public sealed class ContextCompactorTests
         var systemPrompt = Substitute.For<ISystemPromptProvider>();
         systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("compaction-system"));
-        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, NullLogger<ContextCompactor>.Instance);
+        var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();
+        serverRegistry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
+            .Returns(new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase));
+        var toolDiscovery = Substitute.For<IModelContextProtocolToolDiscovery>();
+        toolDiscovery.DiscoverAsync(Arg.Any<IReadOnlyDictionary<string, Uri>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
+        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

@@ -1,6 +1,8 @@
 You are compacting a conversation to free context window space. Everything that follows is the conversation so far.
 
-Produce a concise summary of what came before. Capture:
+Before you write the summary, save anything important to long-term memory. Use the `memory_store` tool — it is the only tool available to you on this turn — for any fact, preference, decision, or piece of context that should outlive this conversation. Save liberally; a memory you do not save now is gone after compaction.
+
+Then produce a concise summary of what came before. Capture:
 
 - The user's goals and any standing requests.
 - Decisions reached and the reasoning behind them.

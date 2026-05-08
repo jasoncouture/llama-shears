@@ -1,9 +1,11 @@
+using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -32,12 +34,16 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const int SummaryDivisor = 3;
 
     private const string CompactionTemplateName = "COMPACTION";
+    private const string MemoryToolSource = "llamashears";
+    private const string MemoryToolName = "memory_store";
 
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IEventPublisher _eventPublisher;
     private readonly ISystemPromptProvider _systemPrompt;
+    private readonly IModelContextProtocolServerRegistry _serverRegistry;
+    private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
@@ -46,6 +52,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
         ISystemPromptProvider systemPrompt,
+        IModelContextProtocolServerRegistry serverRegistry,
+        IModelContextProtocolToolDiscovery toolDiscovery,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
@@ -53,6 +61,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         _inferenceRunner = inferenceRunner;
         _eventPublisher = eventPublisher;
         _systemPrompt = systemPrompt;
+        _serverRegistry = serverRegistry;
+        _toolDiscovery = toolDiscovery;
         _logger = logger;
     }
 
@@ -109,12 +119,14 @@ public sealed partial class ContextCompactor : IContextCompactor
             cancellationToken).ConfigureAwait(false);
         try
         {
+            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken).ConfigureAwait(false);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
                 model,
                 window,
                 preserveTrailingUser,
+                memoryTools,
                 cancellationToken).ConfigureAwait(false);
 
             var rebuilt = new List<ModelTurn>(3);
@@ -157,12 +169,38 @@ public sealed partial class ContextCompactor : IContextCompactor
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private static partial void LogContextCompacted(ILogger logger, string agentId);
 
+    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
+    {
+        var servers = _serverRegistry.Resolve(whitelist: [MemoryToolSource]);
+        if (servers.Count == 0)
+        {
+            return [];
+        }
+        var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken).ConfigureAwait(false);
+        foreach (var group in groups)
+        {
+            if (!string.Equals(group.Source, MemoryToolSource, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            foreach (var descriptor in group.Tools)
+            {
+                if (string.Equals(descriptor.Name, MemoryToolName, StringComparison.Ordinal))
+                {
+                    return [new ToolGroup(MemoryToolSource, [descriptor])];
+                }
+            }
+        }
+        return [];
+    }
+
     private async ValueTask<string> SummarizeAsync(
         string agentId,
         ModelPrompt prompt,
         ILanguageModel model,
         int window,
         bool preserveTrailingUser,
+        ImmutableArray<ToolGroup> tools,
         CancellationToken cancellationToken)
     {
         // Auto-compaction excludes the trailing user message (it gets
@@ -191,7 +229,7 @@ public sealed partial class ContextCompactor : IContextCompactor
 
         var summarizationPrompt = new ModelPrompt(historyTurns);
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
-        var options = new PromptOptions(TokenLimit: summaryCap);
+        var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
 
         var outcome = await _inferenceRunner.RunAsync(
             eventId: $"{agentId}-compaction",
