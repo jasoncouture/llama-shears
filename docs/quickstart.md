@@ -6,7 +6,9 @@ Five minutes from `git clone` to talking to an agent. Two paths:
 
 You will need:
 
-- An Ollama instance reachable on the network with at least one chat model pulled (e.g. `ollama pull llama3.1`).
+- A chat backend the host can reach. Pick one:
+    - **Ollama** with at least one model pulled (e.g. `ollama pull llama3.1`).
+    - Anything OpenAI-compatible — `llama-server`, vLLM, LM Studio, TabbyAPI, the real OpenAI endpoint — exposing `/v1/chat/completions` and `/v1/models`. Configure via `Providers:OpenAI:BaseUri` (and `ApiKey` if the endpoint enforces it).
 - For memory, either an Ollama embedding model (e.g. `ollama pull embeddinggemma`) **or** the bundled in-process ONNX embedder — see [Embeddings](#embeddings) below. Either works; pick what fits the deployment.
 - Either Docker (Compose path) or the .NET 10 SDK (`dotnet run` path).
 
@@ -38,7 +40,7 @@ You will need:
     }
     ```
 
-    The filename (without `.json`) is the agent id. The agent picks up automatically on the next system tick — no restart.
+    The filename (without `.json`) is the agent id. The agent picks up automatically on the next system tick — no restart. To use the OpenAI-compatible provider instead, change the model id prefix: `"id": "OPENAI/<model-name-from-/v1/models>"`.
 
 4. **Open the chat UI** at `http://localhost:5125`, select `claudia`, talk.
 

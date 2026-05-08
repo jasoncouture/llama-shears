@@ -94,6 +94,20 @@ Other knobs that interact with these paths:
 - **`AgentTokenStoreOptions`** (`AgentTokenStore`) — bearer token lifetime; defaults are in `AgentTokenStoreOptions`.
 - **`FileParserCacheOptions`** (`FileParserCache`) — TTL on the parser cache used by template renderer + agent config provider.
 - **`OllamaProviderOptions`** (`Providers:Ollama`) — `BaseUri` and `RequestTimeout` for the Ollama HTTP client.
+- **`OpenAIProviderOptions`** (`Providers:OpenAI`) — `BaseUri`, `ApiKey`, `RequestTimeout`, and a free-form `ExtraRequestParams` `JsonObject` deep-merged into every chat-completions body so vendor knobs (llama-server's `cache_prompt`/`slot_id`/`samplers`/`n_probs`, vLLM's `guided_choice`, etc.) round-trip without forking the provider per backend. Per-agent overrides via the agent's `Options` blob layer on top with the same deep-merge semantics.
+
+## `<DataRoot>/appsettings.json` overlay
+
+The host wires one extra config source on top of the bundled chain. After resolving `<DataRoot>` (`Paths:DataRoot` if set, else `~/.llama-shears`), `Program.cs` inserts a reload-on-change `JsonConfigurationSource` pointing at `<DataRoot>/appsettings.json`. The insert position is *after* the last bundled JSON source and *before* any non-JSON source, so the precedence is:
+
+1. Command-line args
+2. Environment variables
+3. **`<DataRoot>/appsettings.json`** ← overlay
+4. user-secrets
+5. `appsettings.{Environment}.json`
+6. `appsettings.json`
+
+The file is optional (`Optional = true`) and `ReloadOnChange = true`, so an operator can drop in `<DataRoot>/appsettings.json` to relocate `<Context>`, point a provider at a different host, or tune any other knob without touching the image. Env vars and command-line args still win.
 
 ## Why `IShearsPaths` instead of `IFileSystem` or string constants
 
