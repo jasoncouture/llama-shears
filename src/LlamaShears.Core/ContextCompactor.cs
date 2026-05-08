@@ -13,25 +13,11 @@ namespace LlamaShears.Core;
 
 public sealed partial class ContextCompactor : IContextCompactor
 {
-    // 1 system + 2 user + 2 assistant. Below this the trade-off (one model
-    // call to produce a summary that wouldn't have been near the limit
-    // anyway) isn't worth it; also avoids the pathological case where the
-    // summary itself triggers the next compaction.
     private const int MinTurnsForCompaction = 5;
 
-    // Floor for any predict-budget calculation. The compactor never
-    // assumes there's less than this many tokens of headroom on either
-    // the agent's next response or the summary it requests.
     private const int MinTokenLimitFloor = 256;
 
-    // Default fraction of the context window reserved for the model's
-    // response when ModelConfiguration.TokenLimit is unset. Must match
-    // the provider's own default reasoning so the budget check stays
-    // honest; widen the divisor for larger windows in a follow-up.
     private const int DefaultPredictDivisor = 6;
-
-    // Cap on the summarization call's response. Bounds the rebuilt
-    // context so a runaway summary can't itself blow the window.
     private const int SummaryDivisor = 3;
 
     private const string CompactionTemplateName = "COMPACTION";
@@ -246,26 +232,53 @@ public sealed partial class ContextCompactor : IContextCompactor
             historyTurns.Add(new ModelTurn(ModelRole.User, SummarizeKicker, prompt.Turns[^1].Timestamp));
         }
 
-        var summarizationPrompt = new ModelPrompt(historyTurns);
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
         var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
+        var correlationId = Guid.CreateVersion7();
 
-        var outcome = await _inferenceRunner.RunAsync(
-            eventId: $"{agentId}-compaction",
-            model: model,
-            prompt: summarizationPrompt,
-            options: options,
-            emitTurns: false,
-            correlationId: Guid.CreateVersion7(),
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        var summary = outcome.Content.Trim();
-        if (summary.Length == 0)
+        while (true)
         {
-            throw new CompactionFailedException(
-                "Model produced an empty summary; cannot compact context.");
+            var summarizationPrompt = new ModelPrompt(historyTurns);
+            var outcome = await _inferenceRunner.RunAsync(
+                eventId: $"{agentId}-compaction",
+                model: model,
+                prompt: summarizationPrompt,
+                options: options,
+                emitTurns: false,
+                correlationId: correlationId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (outcome.Interrupted)
+            {
+                throw new CompactionFailedException("Compaction was interrupted before the model produced a summary.");
+            }
+
+            if (!outcome.ToolCalls.IsDefaultOrEmpty)
+            {
+                var assistantTurn = new ModelTurn(ModelRole.Assistant, outcome.Content, prompt.Turns[^1].Timestamp)
+                {
+                    ToolCalls = outcome.ToolCalls,
+                };
+                historyTurns.Add(assistantTurn);
+                for (var i = 0; i < outcome.ToolCalls.Length; i++)
+                {
+                    historyTurns.Add(new ModelTurn(ModelRole.Tool, outcome.ToolResults[i].Content, prompt.Turns[^1].Timestamp)
+                    {
+                        ToolCall = outcome.ToolCalls[i],
+                        IsError = outcome.ToolResults[i].IsError,
+                    });
+                }
+                continue;
+            }
+
+            var summary = outcome.Content.Trim();
+            if (summary.Length == 0)
+            {
+                throw new CompactionFailedException(
+                    "Model produced an empty summary; cannot compact context.");
+            }
+            return summary;
         }
-        return summary;
     }
 
     private static int ResolvePredictBudget(ModelConfiguration configuration, int window)
