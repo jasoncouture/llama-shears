@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Text.RegularExpressions;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -17,11 +18,16 @@ public sealed partial class GrepTool
     private static readonly TimeSpan _regexTimeout = TimeSpan.FromSeconds(2);
 
     private readonly IAgentWorkspaceLocator _workspace;
+    private readonly IFileProtectionPolicy _protection;
     private readonly ILogger<GrepTool> _logger;
 
-    public GrepTool(IAgentWorkspaceLocator workspace, ILogger<GrepTool> logger)
+    public GrepTool(
+        IAgentWorkspaceLocator workspace,
+        IFileProtectionPolicy protection,
+        ILogger<GrepTool> logger)
     {
         _workspace = workspace;
+        _protection = protection;
         _logger = logger;
     }
 
@@ -89,6 +95,10 @@ public sealed partial class GrepTool
 
             var fullPath = Path.GetFullPath(Path.Combine(workspace.Root, hit.Path));
             if (!File.Exists(fullPath))
+            {
+                continue;
+            }
+            if (_protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Read) is not null)
             {
                 continue;
             }
