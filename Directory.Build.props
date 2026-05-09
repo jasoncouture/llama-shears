@@ -18,7 +18,7 @@
       at the repo root, so MSBuildThisFileDirectory is exactly that.
     -->
     <LlamaShearsRepoRoot>$(MSBuildThisFileDirectory)</LlamaShearsRepoRoot>
-    <NoWarn>$(NoWarn);CA1859</NoWarn>
+    <NoWarn>$(NoWarn);CA1859;CA1822</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" Condition="!Exists('packages.config')">
