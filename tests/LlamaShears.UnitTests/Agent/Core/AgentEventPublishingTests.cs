@@ -1,4 +1,5 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
@@ -124,6 +125,7 @@ public sealed class AgentEventPublishingTests
 
         using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
 
+        var currentAgent = new CurrentAgentAccessor();
         using var agent = new global::LlamaShears.Core.Agent(
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId),
             model: model,
@@ -136,10 +138,15 @@ public sealed class AgentEventPublishingTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
-            inferenceRunner: new InferenceRunner(capturing, Substitute.For<IToolCallDispatcher>(), TimeProvider.System),
-            currentAgent: Substitute.For<ICurrentAgentAccessor>(),
-            promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
+            inferenceRunner: new InferenceRunner(
+                capturing,
+                Substitute.For<IToolCallDispatcher>(),
+                TimeProvider.System,
+                Substitute.For<IPromptContextProvider>(),
+                TestAgentConfigs.EmptyMemorySearcher(),
+                Substitute.For<IAgentConfigProvider>(),
+                currentAgent),
+            currentAgent: currentAgent,
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
 

@@ -158,8 +158,14 @@ public sealed class AgentLoopTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
+        var currentAgent = new CurrentAgentAccessor();
+        var resolvedMemorySearcher = memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher();
+        var resolvedConfig = config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
+        var agentConfigProvider = Substitute.For<IAgentConfigProvider>();
+        agentConfigProvider.GetConfigAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<AgentConfig?>(resolvedConfig));
         return new global::LlamaShears.Core.Agent(
-            config: config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
+            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
             loggerFactory: NullLoggerFactory.Instance,
@@ -170,10 +176,15 @@ public sealed class AgentLoopTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(publisher, Substitute.For<IToolCallDispatcher>(), TimeProvider.System),
-            currentAgent: Substitute.For<ICurrentAgentAccessor>(),
-            promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
+            inferenceRunner: new InferenceRunner(
+                publisher,
+                Substitute.For<IToolCallDispatcher>(),
+                TimeProvider.System,
+                Substitute.For<IPromptContextProvider>(),
+                resolvedMemorySearcher,
+                agentConfigProvider,
+                currentAgent),
+            currentAgent: currentAgent,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }

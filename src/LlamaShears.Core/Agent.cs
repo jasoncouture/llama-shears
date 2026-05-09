@@ -1,13 +1,10 @@
 using System.Collections.Immutable;
-using System.Globalization;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
-using LlamaShears.Core.Abstractions.Memory;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -39,8 +36,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly ICurrentAgentAccessor _currentAgent;
-    private readonly IPromptContextProvider _promptContext;
-    private readonly IMemorySearcher _memorySearcher;
     private readonly ImmutableArray<ToolGroup> _tools;
     private readonly IServiceProvider _scopedServices;
     private IAsyncDisposable? _scope;
@@ -60,8 +55,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
         ICurrentAgentAccessor currentAgent,
-        IPromptContextProvider promptContext,
-        IMemorySearcher memorySearcher,
         ISessionFactory sessionFactory,
         AsyncServiceScope scope,
         ImmutableArray<ToolGroup> tools = default)
@@ -81,8 +74,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
         _currentAgent = currentAgent;
-        _promptContext = promptContext;
-        _memorySearcher = memorySearcher;
         _tools = tools.IsDefault ? [] : tools;
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
@@ -254,9 +245,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 outerCancellationToken).ConfigureAwait(false);
         }
 
-        var latestUser = LatestUserTurn(batch);
-        var memories = latestUser is null ? [] : await SearchMemoriesAsync(latestUser.Content, cancellationToken).ConfigureAwait(false);
-
         var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
@@ -271,13 +259,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         var agentContextSnapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
-        prompt = await InjectPromptContextAsync(prompt, ResolveAnchorChannelId(prompt.Turns), memories, cancellationToken).ConfigureAwait(false);
 
         var outcome = await _inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,
             prompt: prompt,
-            options: new PromptOptions(Tools: _tools),
+            options: new PromptOptions(Tools: _tools, InjectEphemeralContext: true),
             emitTurns: true,
             correlationId: correlationId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -292,10 +279,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         if (outcome.Interrupted)
         {
-            if (!outcome.ToolCalls.IsDefaultOrEmpty)
-            {
-                await PublishToolTurnsAsync(outcome.ToolCalls, outcome.ToolResults, correlationId, publishToken).ConfigureAwait(false);
-            }
             LogTurnInterrupted(_logger, Id, correlationId);
             return;
         }
@@ -323,110 +306,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
     }
 
-    private static ModelTurn? LatestUserTurn(ImmutableArray<ModelTurn> batch) => batch.Where(i => i.Role == ModelRole.User).Reverse().FirstOrDefault();
-
-    private async Task PublishToolTurnsAsync(
-        ImmutableArray<ToolCall> calls,
-        ImmutableArray<ToolCallResult> results,
-        Guid correlationId,
-        CancellationToken cancellationToken)
-    {
-        for (var i = 0; i < calls.Length; i++)
-        {
-            var toolTurn = new ModelTurn(
-                ModelRole.Tool,
-                results[i].Content,
-                _time.GetLocalNow())
-            {
-                ToolCall = calls[i],
-                IsError = results[i].IsError,
-            };
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = Id },
-                toolTurn,
-                correlationId,
-                cancellationToken).ConfigureAwait(false);
-        }
-    }
-
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
-
-    private static int FindLatestUserBatchStart(IReadOnlyList<ModelTurn> turns)
-    {
-        var i = turns.Count - 1;
-        while (i >= 0 && turns[i].Role != ModelRole.User)
-        {
-            i--;
-        }
-        if (i < 0)
-        {
-            return -1;
-        }
-        while (i - 1 >= 0 && turns[i - 1].Role == ModelRole.User)
-        {
-            i--;
-        }
-        return i;
-    }
-
-    private static string? ResolveAnchorChannelId(IReadOnlyList<ModelTurn> turns)
-    {
-        var anchor = FindLatestUserBatchStart(turns);
-        return anchor < 0 ? null : turns[anchor].ChannelId;
-    }
-
-    private async Task<ModelPrompt> InjectPromptContextAsync(
-        ModelPrompt prompt,
-        string? channelId,
-        IReadOnlyList<PromptContextMemory> memories,
-        CancellationToken cancellationToken)
-    {
-        var now = _time.GetLocalNow();
-        var parameters = new PromptContextParameters(
-            Now: now.ToString("o", CultureInfo.InvariantCulture),
-            Timezone: TimeZoneInfo.Local.Id,
-            DayOfWeek: now.DayOfWeek.ToString(),
-            ChannelId: channelId,
-            ImportantMessage: null,
-            WorkspacePath: _config.WorkspacePath)
-        {
-            Memories = memories,
-        };
-        var body = await _promptContext.GetAsync(_config.PromptContext, parameters, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(body))
-        {
-            return prompt;
-        }
-
-        var turns = prompt.Turns;
-        var anchor = FindLatestUserBatchStart(turns);
-        if (anchor < 0)
-        {
-            return prompt;
-        }
-
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, now, Ephemeral: true);
-        var augmented = new List<ModelTurn>(turns.Count + 1);
-        for (var i = 0; i < turns.Count; i++)
-        {
-            if (i == anchor)
-            {
-                augmented.Add(ephemeral);
-            }
-            augmented.Add(turns[i]);
-        }
-        return new ModelPrompt(augmented);
-    }
-
-    private async ValueTask<IReadOnlyList<PromptContextMemory>> SearchMemoriesAsync(
-        string query,
-        CancellationToken cancellationToken)
-    {
-        var hits = await _memorySearcher
-            .SearchAsync(_config.Id, query, limit: null, minScore: null, cancellationToken)
-            .ConfigureAwait(false);
-        return [.. hits.Select(i => new PromptContextMemory(i.RelativePath, i.Summary, i.Score))];
-    }
 
     private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
         new(
