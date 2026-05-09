@@ -217,6 +217,7 @@ PublishScripts/
 
 # Microsoft Azure Build Output
 csx/
+!.husky/csx/
 *.build.csdef
 
 # Microsoft Azure Emulator

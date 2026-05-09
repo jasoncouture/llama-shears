@@ -1,39 +1,23 @@
 {
    "$schema": "https://alirezanet.github.io/Husky.Net/schema.json",
    "tasks": [
-//      {
-//         "name": "dotnet-build-on-source-change",
-//         "group": "pre-commit",
-//         "include": [
-//            "**/*.cs",
-//            "**/*.razor",
-//            "**/*.csproj",
-//            "**/*.sln",
-//            "**/*.slnx",
-//            "**/*.props"
-//         ],
-//         "command": "bash",
-//         "args": [ "-c", "dotnet clean && dotnet build", "_", "${staged}" ]
-//      },
       {
-         "name": "dotnet-test-on-source-change",
+         "name": "remind-build-and-test",
          "group": "pre-commit",
-         "include": [
-            "**/*.cs",
-            "**/*.razor",
-            "**/*.csproj",
-            "**/*.sln",
-            "**/*.slnx",
-            "**/*.props"
-         ],
          "command": "bash",
-         "args": [ "-c", "dotnet clean -v quiet && dotnet test", "_", "${staged}" ]
+         "args": [ "-c", "echo '[reminder] make sure dotnet build + dotnet test pass for this commit.'" ]
       },
       {
-         "name": "docs-api-up-to-date",
+         "name": "remind-docs-up-to-date",
          "group": "pre-push",
          "command": "bash",
-         "args": [ ".husky/scripts/check-docs-up-to-date.sh" ]
+         "args": [ "-c", "echo '[reminder] make sure docs/api/ is up to date before pushing (run .husky/scripts/check-docs-up-to-date.sh).'" ]
+      },
+      {
+         "name": "commit-message-linter",
+         "group": "commit-msg",
+         "command": "dotnet",
+         "args": [ "husky", "exec", ".husky/csx/commit-lint.csx", "--args", "${args}" ]
       }
    ]
 }
