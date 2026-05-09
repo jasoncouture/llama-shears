@@ -243,10 +243,6 @@ public partial class OpenAILanguageModel : ILanguageModel
         var messages = new JsonArray();
         foreach (var turn in prompt.Turns)
         {
-            if (turn.Role == ModelRole.Thought)
-            {
-                continue;
-            }
             messages.Add(ToMessage(turn, _textFormatter));
         }
 
