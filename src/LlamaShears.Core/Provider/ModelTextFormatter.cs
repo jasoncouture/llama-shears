@@ -15,7 +15,7 @@ public sealed class ModelTextFormatter : IModelTextFormatter
         }
         var sb = new StringBuilder();
         sb.Append("[timestamp]");
-        sb.Append(turn.Timestamp.ToLocalTime().ToString("O", CultureInfo.InvariantCulture));
+        sb.Append(turn.Timestamp.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture));
         sb.Append("[/timestamp]\n");
         if (!string.IsNullOrEmpty(turn.ChannelId))
         {

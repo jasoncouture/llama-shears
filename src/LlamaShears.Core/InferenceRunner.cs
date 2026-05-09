@@ -147,21 +147,21 @@ public sealed class InferenceRunner : IInferenceRunner
                     cancellationToken);
             }
         }
-        if (content.Length > 0 || toolCalls.Count > 0)
+        if (content.Length > 0)
         {
             await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: ChannelId.Value, Final: true), cancellationToken);
-            if (emitTurns)
+        }
+        if (emitTurns && (content.Length > 0 || toolCalls.Count > 0))
+        {
+            var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow(), ChannelId: ChannelId.Value)
             {
-                var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow(), ChannelId: ChannelId.Value)
-                {
-                    ToolCalls = toolCalls.ToImmutable(),
-                };
-                await _eventPublisher.PublishAsync(
-                    Event.WellKnown.Agent.Turn with { Id = eventId },
-                    assistantTurn,
-                    correlationId,
-                    cancellationToken);
-            }
+                ToolCalls = toolCalls.ToImmutable(),
+            };
+            await _eventPublisher.PublishAsync(
+                Event.WellKnown.Agent.Turn with { Id = eventId },
+                assistantTurn,
+                correlationId,
+                cancellationToken);
         }
 
 
