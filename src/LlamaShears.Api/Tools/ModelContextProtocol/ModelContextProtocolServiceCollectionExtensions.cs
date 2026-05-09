@@ -51,7 +51,8 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<ListCronTool>()
             .WithTools<CancelCronTool>()
             .WithTools<EditCronTool>()
-            .WithTools<TriggerCronTool>();
+            .WithTools<TriggerCronTool>()
+            .WithTools<TodoTools>();
 
         return services;
     }
