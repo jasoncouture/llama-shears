@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Core.Abstractions.Memory;
 using Microsoft.Extensions.Logging;
@@ -40,13 +39,7 @@ public sealed partial class IndexMemoryTool
             var summary = await _indexer.ReconcileAsync(workspace.AgentId, force, cancellationToken).ConfigureAwait(false);
             var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
             LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Reconciled memory index: {0} added, {1} updated, {2} removed, {3} total.",
-                summary.Added,
-                summary.Updated,
-                summary.Removed,
-                summary.Total);
+            return $"Reconciled memory index: {summary.Added} added, {summary.Updated} updated, {summary.Removed} removed, {summary.Total} total.";
         }
         catch (InvalidOperationException ex)
         {
