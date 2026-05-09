@@ -11,5 +11,6 @@ namespace LlamaShears.Core.Abstractions.Provider;
 /// <param name="Tools">Tool groups visible to the model for this call; default = no tools.</param>
 public sealed record PromptOptions(
     int? TokenLimit = null,
-    ImmutableArray<ToolGroup> Tools = default
+    ImmutableArray<ToolGroup> Tools = default,
+    bool InjectEphemeralContext = false
 );
