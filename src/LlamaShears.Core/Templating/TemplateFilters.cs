@@ -1,4 +1,3 @@
-using System.Globalization;
 using Scriban.Runtime;
 
 namespace LlamaShears.Core.Templating;
@@ -12,5 +11,5 @@ public static class TemplateFilters
     }
 
     private static string FormatDateTimeOffset(DateTimeOffset? value, string format)
-        => value.HasValue ? value.Value.ToString(format, CultureInfo.InvariantCulture) : string.Empty;
+        => value.HasValue ? value.Value.ToString(format) : string.Empty;
 }
