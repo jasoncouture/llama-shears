@@ -1,6 +1,7 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
+using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -18,6 +19,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.TryAddSingleton<IInternalModelContextProtocolServer, InternalModelContextProtocolServer>();
         services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
+        services.TryAddScoped<ITodoStorage, TodoStorage>();
 
         services
             .AddPathExpander()
