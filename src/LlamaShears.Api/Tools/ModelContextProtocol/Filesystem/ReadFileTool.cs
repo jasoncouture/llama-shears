@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -64,14 +63,7 @@ public sealed partial class ReadFileTool
             LogRead(_logger, workspace.AgentId, resolved, content.Length, truncated);
             if (truncated)
             {
-                content = string.Concat(
-                    content,
-                    "\n",
-                    string.Format(
-                        CultureInfo.InvariantCulture,
-                        "[... truncated; exceeded {0}-byte cap. Re-call with a tighter line range or a higher byte_cap (max {1}) to see more.]",
-                        cap,
-                        MaxByteCap));
+                content = $"{content}\n[... truncated; exceeded {cap}-byte cap. Re-call with a tighter line range or a higher byte_cap (max {MaxByteCap}) to see more.]";
             }
             return content;
         }
