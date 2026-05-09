@@ -98,6 +98,7 @@ public sealed class OllamaLanguageModelToolFlatteningTests
             new ModelConfiguration(ModelId: "test", Think: ThinkLevel.None),
             hostOptions,
             pool,
+            new LlamaShears.Core.Provider.ModelTextFormatter(),
             NullLogger<OllamaLanguageModel>.Instance);
 
         var prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]);

@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -179,29 +178,13 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
         var turn = new ModelTurn(
             ModelRole.User,
-            FormatUserContent(data.Text, data.Timestamp, envelope.Type.Id),
+            data.Text,
             data.Timestamp,
             ChannelId: envelope.Type.Id)
         {
             Attachments = data.Attachments,
         };
         await _sessionQueue.EnqueueAsync(turn, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static string FormatUserContent(string text, DateTimeOffset timestamp, string? channelId)
-    {
-        var sb = new StringBuilder();
-        sb.Append("[timestamp]");
-        sb.Append(timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
-        sb.Append("[/timestamp]\n");
-        if (!string.IsNullOrEmpty(channelId))
-        {
-            sb.Append("[sourceChannel]");
-            sb.Append(channelId);
-            sb.Append("[/sourceChannel]\n");
-        }
-        sb.Append(text);
-        return sb.ToString();
     }
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)

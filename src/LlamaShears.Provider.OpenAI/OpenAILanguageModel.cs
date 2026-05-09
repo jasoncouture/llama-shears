@@ -26,16 +26,19 @@ public partial class OpenAILanguageModel : ILanguageModel
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly OpenAIProviderOptions _options;
     private readonly ModelConfiguration _configuration;
+    private readonly IModelTextFormatter _textFormatter;
     private readonly ILogger<OpenAILanguageModel> _logger;
 
     public OpenAILanguageModel(
         IHttpClientFactory httpClientFactory,
         IOptionsMonitor<OpenAIProviderOptions> hostOptions,
         ModelConfiguration configuration,
+        IModelTextFormatter textFormatter,
         ILogger<OpenAILanguageModel> logger)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
+        _textFormatter = textFormatter;
         _logger = logger;
         _options = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.AgentOptions);
     }
@@ -244,7 +247,7 @@ public partial class OpenAILanguageModel : ILanguageModel
             {
                 continue;
             }
-            messages.Add(ToMessage(turn));
+            messages.Add(ToMessage(turn, _textFormatter));
         }
 
         var body = new JsonObject
@@ -281,10 +284,11 @@ public partial class OpenAILanguageModel : ILanguageModel
         }
     }
 
-    private static JsonObject ToMessage(ModelTurn turn)
+    private static JsonObject ToMessage(ModelTurn turn, IModelTextFormatter textFormatter)
     {
         var role = MapRole(turn.Role);
         var message = new JsonObject { ["role"] = role };
+        var content = textFormatter.Format(turn);
 
         if (turn.Role == ModelRole.Tool)
         {
@@ -292,17 +296,17 @@ public partial class OpenAILanguageModel : ILanguageModel
             {
                 message["tool_call_id"] = callId;
             }
-            message["content"] = turn.Content;
+            message["content"] = content;
             return message;
         }
 
         if (!turn.Attachments.IsDefaultOrEmpty && turn.Role == ModelRole.User)
         {
-            message["content"] = BuildMultimodalContent(turn);
+            message["content"] = BuildMultimodalContent(turn, content);
         }
         else
         {
-            message["content"] = turn.Content;
+            message["content"] = content;
         }
 
         if (!turn.ToolCalls.IsDefaultOrEmpty)
@@ -327,11 +331,11 @@ public partial class OpenAILanguageModel : ILanguageModel
         return message;
     }
 
-    private static JsonArray BuildMultimodalContent(ModelTurn turn)
+    private static JsonArray BuildMultimodalContent(ModelTurn turn, string text)
     {
         var parts = new JsonArray
         {
-            new JsonObject { ["type"] = "text", ["text"] = turn.Content },
+            new JsonObject { ["type"] = "text", ["text"] = text },
         };
         foreach (var attachment in turn.Attachments)
         {
