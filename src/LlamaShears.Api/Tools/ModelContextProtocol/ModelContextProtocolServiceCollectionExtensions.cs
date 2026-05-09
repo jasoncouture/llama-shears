@@ -1,6 +1,7 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
+using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -18,6 +19,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.TryAddSingleton<IInternalModelContextProtocolServer, InternalModelContextProtocolServer>();
         services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
+        services.TryAddScoped<ITodoStorage, TodoStorage>();
 
         services
             .AddPathExpander()
@@ -29,6 +31,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
                 options.Rules.Add(new ProtectedFile("**/.git/**", ProtectionMode.Delete, FileType.Any, "nested git metadata"));
                 options.Rules.Add(new ProtectedFile("*.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
                 options.Rules.Add(new ProtectedFile(".gitignore", ProtectionMode.Delete | ProtectionMode.Write, FileType.File, "workspace .gitignore"));
+                options.Rules.Add(new ProtectedFile("TODO.md", ProtectionMode.Read | ProtectionMode.Write | ProtectionMode.Delete, FileType.File, "host-owned TODO list"));
             });
 
         services.AddMcpServer()
@@ -48,7 +51,8 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<ListCronTool>()
             .WithTools<CancelCronTool>()
             .WithTools<EditCronTool>()
-            .WithTools<TriggerCronTool>();
+            .WithTools<TriggerCronTool>()
+            .WithTools<TodoTools>();
 
         return services;
     }
