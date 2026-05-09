@@ -11,6 +11,13 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Shell;
 public sealed partial class ShellTools
 {
     private static readonly TimeSpan _timeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _tempFileTtl = TimeSpan.FromMinutes(30);
+    private const string TempFilePrefix = "llamashears-shell-";
+    private const string TempFileSuffix = ".log";
+    private const string TempFileGlob = "llamashears-shell-*.log";
+    private const int OutputCap = 64 * 1024;
+    private const int HeadCap = OutputCap / 2;
+    private const int TailCap = OutputCap / 2;
 
     private readonly IAgentWorkspaceLocator _workspace;
     private readonly ILogger<ShellTools> _logger;
@@ -22,14 +29,14 @@ public sealed partial class ShellTools
     }
 
     [McpServerTool(Name = "shell_sh")]
-    [Description("Runs a shell command in the agent's workspace via /bin/sh -c. Combined stdout+stderr is captured at the byte level under a lock, preserving shell-like arrival order. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
+    [Description("Runs a shell command in the agent's workspace via /bin/sh -c. Combined stdout+stderr is captured at the byte level under a lock and streamed to a temp file, preserving shell-like arrival order. Output exceeding 64 KiB is truncated to a head+tail snippet at line boundaries with a '[Truncated]' marker, and the full log is preserved at the path reported in 'fullOutput'. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
     public Task<string> RunShellAsync(
         [Description("Shell command to execute. Passed verbatim to /bin/sh -c.")] string command,
         CancellationToken cancellationToken = default)
         => RunAsync("/bin/sh", command, cancellationToken);
 
     [McpServerTool(Name = "shell_bash")]
-    [Description("Runs a bash command in the agent's workspace via /bin/bash -c. Combined stdout+stderr is captured at the byte level under a lock, preserving shell-like arrival order. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
+    [Description("Runs a bash command in the agent's workspace via /bin/bash -c. Combined stdout+stderr is captured at the byte level under a lock and streamed to a temp file, preserving shell-like arrival order. Output exceeding 64 KiB is truncated to a head+tail snippet at line boundaries with a '[Truncated]' marker, and the full log is preserved at the path reported in 'fullOutput'. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
     public Task<string> RunBashAsync(
         [Description("Bash command to execute. Passed verbatim to /bin/bash -c.")] string command,
         CancellationToken cancellationToken = default)
@@ -58,6 +65,10 @@ public sealed partial class ShellTools
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add(command);
 
+        SweepStaleTempFiles();
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{TempFilePrefix}{Guid.NewGuid():N}{TempFileSuffix}");
+        var startedAt = Stopwatch.GetTimestamp();
+
         using var process = new Process { StartInfo = startInfo };
         if (!process.Start())
         {
@@ -65,41 +76,143 @@ public sealed partial class ShellTools
         }
         process.StandardInput.Close();
 
-        var sink = new MemoryStream();
-        var sync = new object();
-        var stdoutPump = PumpAsync(process.StandardOutput.BaseStream, sink, sync);
-        var stderrPump = PumpAsync(process.StandardError.BaseStream, sink, sync);
-
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(_timeout);
-        var timedOut = false;
+        var sink = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
         try
         {
-            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            var sync = new object();
+            var stdoutPump = PumpAsync(process.StandardOutput.BaseStream, sink, sync);
+            var stderrPump = PumpAsync(process.StandardError.BaseStream, sink, sync);
+
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(_timeout);
+            var timedOut = false;
+            try
+            {
+                await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                timedOut = true;
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { }
+                try { await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false); }
+                catch (InvalidOperationException) { }
+            }
+
+            await Task.WhenAll(stdoutPump, stderrPump).ConfigureAwait(false);
+            await sink.FlushAsync(CancellationToken.None).ConfigureAwait(false);
+            var fileLength = sink.Length;
+            await sink.DisposeAsync().ConfigureAwait(false);
+
+            var elapsed = Stopwatch.GetElapsedTime(startedAt);
+            var exitCode = process.HasExited ? process.ExitCode : -1;
+            var truncated = fileLength > OutputCap;
+
+            string body;
+            if (truncated)
+            {
+                body = await ReadHeadAndTailAsync(tempPath, fileLength).ConfigureAwait(false);
+            }
+            else
+            {
+                body = await File.ReadAllTextAsync(tempPath, Encoding.UTF8, CancellationToken.None).ConfigureAwait(false);
+                try { File.Delete(tempPath); }
+                catch (IOException) { }
+            }
+
+            LogFinished(_logger, workspace.AgentId, shellPath, command, exitCode, timedOut, fileLength, truncated);
+            var header = BuildHeader(exitCode, elapsed, timedOut, truncated, tempPath);
+            return $"{header}\n{body}";
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        catch
         {
-            timedOut = true;
-            try { process.Kill(entireProcessTree: true); }
-            catch (InvalidOperationException) { }
-            try { await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false); }
-            catch (InvalidOperationException) { }
+            await sink.DisposeAsync().ConfigureAwait(false);
+            try { File.Delete(tempPath); }
+            catch (IOException) { }
+            throw;
         }
-
-        await Task.WhenAll(stdoutPump, stderrPump).ConfigureAwait(false);
-
-        var exitCode = process.HasExited ? process.ExitCode : -1;
-        var captured = Encoding.UTF8.GetString(sink.GetBuffer(), 0, (int)sink.Length);
-        LogFinished(_logger, workspace.AgentId, shellPath, command, exitCode, timedOut, captured.Length);
-
-        if (timedOut)
-        {
-            return $"[timed out after {_timeout.TotalMinutes:0} minutes; process tree killed]\n{captured}";
-        }
-        return $"[exit {exitCode}]\n{captured}";
     }
 
-    private static async Task PumpAsync(Stream source, MemoryStream sink, object sync)
+    private static string BuildHeader(int exitCode, TimeSpan elapsed, bool timedOut, bool truncated, string tempPath)
+    {
+        var ms = (long)elapsed.TotalMilliseconds;
+        var status = timedOut ? "timed out" : $"exit code {exitCode}";
+        if (truncated)
+        {
+            var ttlMinutes = (long)_tempFileTtl.TotalMinutes;
+            return $"[{status}, execution time {ms}ms, fullOutput: {tempPath} (available {ttlMinutes} minutes)]";
+        }
+        return $"[{status}, execution time {ms}ms]";
+    }
+
+    private static void SweepStaleTempFiles()
+    {
+        var threshold = DateTime.UtcNow - _tempFileTtl;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), TempFileGlob))
+            {
+                try
+                {
+                    var info = new FileInfo(file);
+                    if (info.LastWriteTimeUtc < threshold)
+                    {
+                        info.Delete();
+                    }
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    private static async Task<string> ReadHeadAndTailAsync(string path, long totalLength)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+
+        var headBuffer = new byte[HeadCap];
+        var headRead = await stream.ReadAtLeastAsync(headBuffer, HeadCap, throwOnEndOfStream: false).ConfigureAwait(false);
+        var headEnd = SnapToLastNewline(headBuffer.AsSpan(0, headRead));
+        var head = Encoding.UTF8.GetString(headBuffer, 0, headEnd);
+
+        var tailStart = totalLength - TailCap;
+        stream.Position = tailStart;
+        var tailBuffer = new byte[TailCap];
+        var tailRead = await stream.ReadAtLeastAsync(tailBuffer, TailCap, throwOnEndOfStream: false).ConfigureAwait(false);
+        var tailOffset = SnapToFirstNewline(tailBuffer.AsSpan(0, tailRead));
+        var tail = Encoding.UTF8.GetString(tailBuffer, tailOffset, tailRead - tailOffset);
+
+        var droppedBytes = totalLength - headEnd - (tailRead - tailOffset);
+        return $"{head}[Truncated {droppedBytes} bytes; see fullOutput]\n{tail}";
+    }
+
+    private static int SnapToLastNewline(ReadOnlySpan<byte> span)
+    {
+        for (var i = span.Length - 1; i >= 0; i--)
+        {
+            if (span[i] == (byte)'\n')
+            {
+                return i + 1;
+            }
+        }
+        return span.Length;
+    }
+
+    private static int SnapToFirstNewline(ReadOnlySpan<byte> span)
+    {
+        for (var i = 0; i < span.Length; i++)
+        {
+            if (span[i] == (byte)'\n')
+            {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
+    private static async Task PumpAsync(Stream source, FileStream sink, object sync)
     {
         var buffer = new byte[4096];
         while (true)
@@ -131,6 +244,6 @@ public sealed partial class ShellTools
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' running {Shell}: {Command}")]
     private static partial void LogStarting(ILogger logger, string? agentId, string shell, string command);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' {Shell} finished (exit={ExitCode}, timedOut={TimedOut}, bytes={Bytes}): {Command}")]
-    private static partial void LogFinished(ILogger logger, string? agentId, string shell, string command, int exitCode, bool timedOut, int bytes);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' {Shell} finished (exit={ExitCode}, timedOut={TimedOut}, bytes={Bytes}, truncated={Truncated}): {Command}")]
+    private static partial void LogFinished(ILogger logger, string? agentId, string shell, string command, int exitCode, bool timedOut, long bytes, bool truncated);
 }
