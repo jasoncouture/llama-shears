@@ -21,36 +21,39 @@ public interface ITodoStorage
     ValueTask<TodoCommandResult> ClearAsync(bool includeCompleted, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Appends a new item to the list with a fresh sequential index.
+    /// Appends a batch of items to the list with fresh sequential indices.
+    /// All items in <paramref name="items"/> share the same
+    /// <paramref name="done"/> flag; for a mixed batch, call twice.
     /// </summary>
-    /// <param name="text">
-    /// Item text. Must not contain newline characters and must not exceed
-    /// the configured maximum length.
+    /// <param name="items">
+    /// Item texts. Each must be non-empty, must not contain newline
+    /// characters, and must not exceed the configured maximum length.
+    /// The whole batch is rejected if any item is invalid.
     /// </param>
     /// <param name="done">
-    /// <see langword="true"/> records the new item as already completed.
+    /// <see langword="true"/> records every new item as already completed.
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<TodoCommandResult> AddAsync(string text, bool done = false, CancellationToken cancellationToken = default);
+    ValueTask<TodoCommandResult> AddAsync(IReadOnlyList<string> items, bool done = false, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Toggles the completion state of the item at <paramref name="index"/>.
-    /// No-ops when the item already matches <paramref name="isCompleted"/>;
-    /// refuses when no item exists at the given index.
+    /// Applies a batch of completion-state changes. The whole batch is
+    /// rejected if any update names a missing index. Updates that match
+    /// the current state are silently no-ops; the rewrite still happens
+    /// only when at least one change took effect.
     /// </summary>
-    /// <param name="index">1-based index of the item to update.</param>
-    /// <param name="isCompleted">Target completion state.</param>
+    /// <param name="updates">1-based index plus the target state for each item.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<TodoCommandResult> UpdateAsync(int index, bool isCompleted, CancellationToken cancellationToken = default);
+    ValueTask<TodoCommandResult> UpdateAsync(IReadOnlyList<TodoItemUpdate> updates, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes the item at <paramref name="index"/>. Remaining items are
-    /// renumbered to preserve a contiguous 1-based sequence. Refuses when
-    /// no item exists at the given index.
+    /// Removes a batch of items by 1-based index and renumbers the
+    /// remainder. Duplicate indices are deduped. The whole batch is
+    /// rejected if any index is missing.
     /// </summary>
-    /// <param name="index">1-based index of the item to delete.</param>
+    /// <param name="indices">1-based indices of items to delete.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<TodoCommandResult> DeleteAsync(int index, CancellationToken cancellationToken = default);
+    ValueTask<TodoCommandResult> DeleteAsync(IReadOnlyList<int> indices, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the current list, optionally paginated.
