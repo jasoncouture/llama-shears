@@ -8,4 +8,4 @@ namespace LlamaShears.Core.Abstractions.Events.Agent;
 /// </summary>
 /// <param name="Content">Body text of this fragment.</param>
 /// <param name="ChannelId">Optional channel correlation id; <see langword="null"/> when not channel-bound.</param>
-public abstract record AgentMessageBase(string Content, string? ChannelId = null);
+public abstract record AgentMessageBase(string Content, string? ChannelId = null) : IAgentMessage;

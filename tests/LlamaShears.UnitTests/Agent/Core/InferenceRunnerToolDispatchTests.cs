@@ -1,6 +1,9 @@
 using System.Collections.Immutable;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Memory;
+using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -42,7 +45,16 @@ public sealed class InferenceRunnerToolDispatchTests
                 return new ValueTask<ToolCallResult>(new ToolCallResult($"result-{c.CallId}", IsError: false));
             });
 
-        var runner = new InferenceRunner(publisher, dispatcher, TimeProvider.System);
+        var currentAgent = new CurrentAgentAccessor();
+        var runner = new InferenceRunner(
+            publisher,
+            dispatcher,
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            Substitute.For<IMemorySearcher>(),
+            Substitute.For<IAgentConfigProvider>(),
+            currentAgent);
+        using var scope = currentAgent.BeginScope(new AgentInfo("test", "test", 0));
         var outcome = await runner.RunAsync(
             eventId: "alpha",
             model: model,
@@ -75,7 +87,16 @@ public sealed class InferenceRunnerToolDispatchTests
         var model = ScriptedLanguageModel.WithFragments(
             ScriptedLanguageModel.ToolCallFragment("llamashears", "file_read", "{}", "1"));
 
-        var runner = new InferenceRunner(publisher, dispatcher, TimeProvider.System);
+        var currentAgent = new CurrentAgentAccessor();
+        var runner = new InferenceRunner(
+            publisher,
+            dispatcher,
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            Substitute.For<IMemorySearcher>(),
+            Substitute.For<IAgentConfigProvider>(),
+            currentAgent);
+        using var scope = currentAgent.BeginScope(new AgentInfo("test", "test", 0));
         var outcome = await runner.RunAsync(
             eventId: "alpha",
             model: model,

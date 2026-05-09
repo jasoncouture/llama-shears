@@ -4,6 +4,8 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Memory;
+using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -167,7 +169,15 @@ public sealed class ContextCompactorTests
         store.OpenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
-        var runner = new InferenceRunner(publisher, Substitute.For<IToolCallDispatcher>(), TimeProvider.System);
+        var compactorCurrentAgent = new CurrentAgentAccessor();
+        var runner = new InferenceRunner(
+            publisher,
+            Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            Substitute.For<IMemorySearcher>(),
+            Substitute.For<IAgentConfigProvider>(),
+            compactorCurrentAgent);
         var systemPrompt = Substitute.For<ISystemPromptProvider>();
         systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("compaction-system"));
@@ -177,7 +187,7 @@ public sealed class ContextCompactorTests
         var toolDiscovery = Substitute.For<IModelContextProtocolToolDiscovery>();
         toolDiscovery.DiscoverAsync(Arg.Any<IReadOnlyDictionary<string, Uri>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
-        var currentAgent = Substitute.For<ICurrentAgentAccessor>();
+        var currentAgent = compactorCurrentAgent;
         var locator = Substitute.For<ITemplateFileLocator>();
         locator.Locate(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>()).Returns("/tmp/llamashears-test/PROMPT.md");
         var templateRenderer = Substitute.For<ITemplateRenderer>();

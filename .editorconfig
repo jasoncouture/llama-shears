@@ -13,6 +13,12 @@ dotnet_diagnostic.IDE0290.severity = none
 # repo-wide.
 dotnet_diagnostic.CA1859.severity = none
 
+# CA1822 ("Mark members as static") creates refactor churn that costs
+# more than the trivial dispatch savings it chases (see ADR-0025).
+# Disabled repo-wide; methods are static when the author wrote them
+# static, not because the analyzer asked.
+dotnet_diagnostic.CA1822.severity = none
+
 # Collections must use the collection expression form (`[]`) wherever it
 # applies. Promoted to error per-diagnostic so the build (not just the IDE)
 # fails on `new[] { ... }`, `Type<...>.Empty`, `Array.Empty<T>()`,

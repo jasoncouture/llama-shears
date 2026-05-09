@@ -48,11 +48,6 @@ public partial class OllamaLanguageModel : ILanguageModel
         {
             foreach (var turn in prompt.Turns)
             {
-                if (turn.Role == ModelRole.Thought)
-                {
-                    continue;
-                }
-
                 messages.Add(ToMessage(turn, _textFormatter));
             }
 

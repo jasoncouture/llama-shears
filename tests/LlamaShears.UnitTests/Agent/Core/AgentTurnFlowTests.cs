@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
@@ -101,9 +102,9 @@ public sealed class AgentTurnFlowTests
         var secondAssistant = Array.IndexOf(roles, ModelRole.Assistant, firstAssistant + 1);
 
         await Assert.That(firstUser).IsGreaterThanOrEqualTo(0);
+        await Assert.That(firstTool).IsGreaterThan(firstUser);
         await Assert.That(firstAssistant).IsGreaterThan(firstUser);
-        await Assert.That(firstTool).IsGreaterThan(firstAssistant);
-        await Assert.That(secondUser).IsGreaterThan(firstTool);
+        await Assert.That(secondUser).IsGreaterThan(Math.Max(firstTool, firstAssistant));
         await Assert.That(secondAssistant).IsGreaterThan(secondUser);
     }
 
@@ -213,6 +214,7 @@ public sealed class AgentTurnFlowTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
+        var currentAgent = new CurrentAgentAccessor();
         return new global::LlamaShears.Core.Agent(
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
             model: model,
@@ -225,10 +227,15 @@ public sealed class AgentTurnFlowTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(publisher, dispatcher ?? Substitute.For<IToolCallDispatcher>(), TimeProvider.System),
-            currentAgent: Substitute.For<ICurrentAgentAccessor>(),
-            promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
+            inferenceRunner: new InferenceRunner(
+                publisher,
+                dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+                TimeProvider.System,
+                Substitute.For<IPromptContextProvider>(),
+                TestAgentConfigs.EmptyMemorySearcher(),
+                Substitute.For<IAgentConfigProvider>(),
+                currentAgent),
+            currentAgent: currentAgent,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }

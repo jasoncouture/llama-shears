@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
@@ -84,6 +85,7 @@ public sealed class AgentInterruptTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
+        var currentAgent = new CurrentAgentAccessor();
         return new global::LlamaShears.Core.Agent(
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
             model: model,
@@ -96,10 +98,15 @@ public sealed class AgentInterruptTests
             modelConfiguration: new ModelConfiguration("test"),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(publisher, Substitute.For<IToolCallDispatcher>(), TimeProvider.System),
-            currentAgent: Substitute.For<ICurrentAgentAccessor>(),
-            promptContext: Substitute.For<IPromptContextProvider>(),
-            memorySearcher: TestAgentConfigs.EmptyMemorySearcher(),
+            inferenceRunner: new InferenceRunner(
+                publisher,
+                Substitute.For<IToolCallDispatcher>(),
+                TimeProvider.System,
+                Substitute.For<IPromptContextProvider>(),
+                TestAgentConfigs.EmptyMemorySearcher(),
+                Substitute.For<IAgentConfigProvider>(),
+                currentAgent),
+            currentAgent: currentAgent,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }
