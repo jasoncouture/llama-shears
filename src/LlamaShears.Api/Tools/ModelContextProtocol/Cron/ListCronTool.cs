@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Core.Cron;
@@ -36,26 +35,17 @@ public sealed class ListCronTool
         }
 
         var builder = new StringBuilder();
-        builder.AppendFormat(CultureInfo.InvariantCulture, "{0} cron job(s):", jobs.Count);
+        builder.Append($"{jobs.Count} cron job(s):");
         foreach (var job in jobs)
         {
             builder.Append('\n');
-            builder.AppendFormat(
-                CultureInfo.InvariantCulture,
-                "{0:D}  enabled={1}  expr='{2}'  next={3}  last={4}  name='{5}'  prompt='{6}'",
-                job.Id,
-                job.Enabled,
-                job.CronExpression,
-                Format(job.NextFireAt),
-                Format(job.LastFiredAt),
-                job.Name,
-                Truncate(job.Prompt, 80));
+            builder.Append($"{job.Id:D}  enabled={job.Enabled}  expr='{job.CronExpression}'  next={Format(job.NextFireAt)}  last={Format(job.LastFiredAt)}  name='{job.Name}'  prompt='{Truncate(job.Prompt, 80)}'");
         }
         return builder.ToString();
     }
 
     private static string Format(DateTimeOffset? when) =>
-        when is null ? "n/a" : when.Value.ToString("u", CultureInfo.InvariantCulture);
+        when is null ? "n/a" : when.Value.ToString("u");
 
     private static string Truncate(string value, int max) =>
         value.Length <= max ? value : string.Concat(value.AsSpan(0, max - 1), "…");

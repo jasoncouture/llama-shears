@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Core.Abstractions.Memory;
@@ -64,27 +63,16 @@ public sealed partial class SearchMemoryTool
     {
         if (hits.Count == 0)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "No memories matched '{0}' at min_score={1:F2} (limit={2}).",
-                query,
-                minScore,
-                limit);
+            return $"No memories matched '{query}' at min_score={minScore:F2} (limit={limit}).";
         }
 
         var builder = new StringBuilder();
-        builder.AppendFormat(
-            CultureInfo.InvariantCulture,
-            "{0} match{1} for '{2}' (min_score={3:F2}, limit={4}):",
-            hits.Count,
-            hits.Count == 1 ? string.Empty : "es",
-            query,
-            minScore,
-            limit);
+        var matchSuffix = hits.Count == 1 ? string.Empty : "es";
+        builder.Append($"{hits.Count} match{matchSuffix} for '{query}' (min_score={minScore:F2}, limit={limit}):");
         foreach (var hit in hits)
         {
             builder.Append('\n');
-            builder.AppendFormat(CultureInfo.InvariantCulture, "{0:F4}  {1}", hit.Score, hit.RelativePath);
+            builder.Append($"{hit.Score:F4}  {hit.RelativePath}");
             if (!string.IsNullOrEmpty(hit.Summary))
             {
                 builder.Append("  — ");

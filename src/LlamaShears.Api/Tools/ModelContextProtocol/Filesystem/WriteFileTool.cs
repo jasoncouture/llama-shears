@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
@@ -48,11 +47,7 @@ public sealed partial class WriteFileTool
         var byteCount = Encoding.UTF8.GetByteCount(content);
         if (byteCount > MaxContentBytes)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Refused: content is {0} bytes; the per-write cap is {1} bytes.",
-                byteCount,
-                MaxContentBytes);
+            return $"Refused: content is {byteCount} bytes; the per-write cap is {MaxContentBytes} bytes.";
         }
 
         if (Directory.Exists(resolution.FullPath))
@@ -81,11 +76,7 @@ public sealed partial class WriteFileTool
             }
             await File.WriteAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
             LogWrite(_logger, workspace.AgentId, resolution.FullPath, byteCount, overwrite);
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Wrote {0} bytes to '{1}'.",
-                byteCount,
-                path);
+            return $"Wrote {byteCount} bytes to '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

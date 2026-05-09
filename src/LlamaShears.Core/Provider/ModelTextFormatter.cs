@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using LlamaShears.Core.Abstractions.Provider;
 
@@ -15,7 +14,7 @@ public sealed class ModelTextFormatter : IModelTextFormatter
         }
         var sb = new StringBuilder();
         sb.Append("[timestamp]");
-        sb.Append(turn.Timestamp.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture));
+        sb.Append(turn.Timestamp.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz"));
         sb.Append("[/timestamp]\n");
         if (!string.IsNullOrEmpty(turn.ChannelId))
         {

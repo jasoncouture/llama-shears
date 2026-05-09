@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
@@ -47,11 +46,7 @@ public sealed partial class AppendFileTool
         var byteCount = Encoding.UTF8.GetByteCount(content);
         if (byteCount > MaxContentBytes)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Refused: content is {0} bytes; the per-call append cap is {1} bytes.",
-                byteCount,
-                MaxContentBytes);
+            return $"Refused: content is {byteCount} bytes; the per-call append cap is {MaxContentBytes} bytes.";
         }
 
         if (Directory.Exists(resolution.FullPath))
@@ -75,11 +70,7 @@ public sealed partial class AppendFileTool
             }
             await File.AppendAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
             LogAppend(_logger, workspace.AgentId, resolution.FullPath, byteCount);
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Appended {0} bytes to '{1}'.",
-                byteCount,
-                path);
+            return $"Appended {byteCount} bytes to '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

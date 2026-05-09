@@ -49,7 +49,7 @@ public sealed partial class ScheduleCronTool
     }
 
     private static string Format(DateTimeOffset? when) =>
-        when is null ? "n/a" : when.Value.ToString("u", System.Globalization.CultureInfo.InvariantCulture);
+        when is null ? "n/a" : when.Value.ToString("u");
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "cron_schedule failed for agent '{AgentId}': {Message}")]
     private static partial void LogScheduleFailed(ILogger logger, string agentId, string message, Exception ex);

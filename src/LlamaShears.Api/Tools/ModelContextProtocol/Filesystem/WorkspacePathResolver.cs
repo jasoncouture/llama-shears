@@ -1,4 +1,3 @@
-using System.Globalization;
 
 namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 
@@ -23,20 +22,15 @@ internal static class WorkspacePathResolver
             || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             || Path.IsPathRooted(relative))
         {
-            return WorkspacePathResolution.Failure(string.Format(
-                CultureInfo.InvariantCulture,
-                "Refused: '{0}' resolves outside the agent workspace; writes are confined to the workspace.",
-                requestedPath));
+            return WorkspacePathResolution.Failure(
+                $"Refused: '{requestedPath}' resolves outside the agent workspace; writes are confined to the workspace.");
         }
 
         var firstSegment = relative.Split(Path.DirectorySeparatorChar, 2)[0];
         if (firstSegment.Equals(ProtectedSubfolder, StringComparison.OrdinalIgnoreCase))
         {
-            return WorkspacePathResolution.Failure(string.Format(
-                CultureInfo.InvariantCulture,
-                "Refused: '{0}' is inside the protected '{1}/' subfolder; writes there are not permitted.",
-                requestedPath,
-                ProtectedSubfolder));
+            return WorkspacePathResolution.Failure(
+                $"Refused: '{requestedPath}' is inside the protected '{ProtectedSubfolder}/' subfolder; writes there are not permitted.");
         }
 
         return WorkspacePathResolution.Success(full);
@@ -59,10 +53,8 @@ internal static class WorkspacePathResolver
             || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             || Path.IsPathRooted(relative))
         {
-            return WorkspacePathResolution.Failure(string.Format(
-                CultureInfo.InvariantCulture,
-                "Refused: '{0}' resolves outside the agent workspace.",
-                requestedPath));
+            return WorkspacePathResolution.Failure(
+                $"Refused: '{requestedPath}' resolves outside the agent workspace.");
         }
 
         return WorkspacePathResolution.Success(full);

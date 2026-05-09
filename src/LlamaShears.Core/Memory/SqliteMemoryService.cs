@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Diagnostics;
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
@@ -349,8 +348,8 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     private (string Relative, string Full) AllocateMemoryPath(string workspaceRoot)
     {
         var now = _time.GetUtcNow();
-        var date = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var ts = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        var date = now.ToString("yyyy-MM-dd");
+        var ts = now.ToUnixTimeSeconds().ToString();
         var dir = Path.Combine(workspaceRoot, MemoryFolder, date);
         var name = $"{ts}.md";
         var full = Path.Combine(dir, name);

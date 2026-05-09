@@ -56,7 +56,7 @@ public sealed partial class EditCronTool
     }
 
     private static string Format(DateTimeOffset? when) =>
-        when is null ? "n/a" : when.Value.ToString("u", System.Globalization.CultureInfo.InvariantCulture);
+        when is null ? "n/a" : when.Value.ToString("u");
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "cron_edit failed for agent '{AgentId}', job '{JobId}': {Message}")]
     private static partial void LogEditFailed(ILogger logger, string agentId, Guid jobId, string message, Exception ex);
