@@ -14,4 +14,4 @@ public sealed record AgentToolCallFragment(
     string Source,
     string Name,
     string ArgumentsJson,
-    string? CallId = null);
+    string? CallId = null) : IAgentMessage;
