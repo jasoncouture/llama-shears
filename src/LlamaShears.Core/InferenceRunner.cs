@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Events;
@@ -79,7 +78,6 @@ public sealed class InferenceRunner : IInferenceRunner
         var tools = options?.Tools ?? [];
         var dispatchTasks = new List<Task<ToolCallResult>>();
         var interrupted = false;
-        var pendingDispatchTasks = new List<Task<ToolCallResult>>();
 
         var errorStateCancellationToken = new CancellationTokenSource();
 
@@ -99,21 +97,19 @@ public sealed class InferenceRunner : IInferenceRunner
                         break;
                     case IModelToolCallFragment toolFragment:
                         toolCalls.Add(toolFragment.Call);
-                        var agentToolCallFragmnet = new AgentToolCallFragment(
+                        var agentToolCallFragment = new AgentToolCallFragment(
                                 toolFragment.Call.Source,
                                 toolFragment.Call.Name,
                                 toolFragment.Call.ArgumentsJson,
                                 toolFragment.Call.CallId);
-                        await PublishModelFragment(ModelRole.Tool, agentToolCallFragmnet, cancellationToken);
-                        dispatchTasks.Add(_toolDispatcher.DispatchAsync(toolFragment.Call, tools, eventId, correlationId, cancellationToken).AsTask());
-                        pendingDispatchTasks.Add(dispatchTasks[^1]);
+                        await PublishModelFragment(ModelRole.Tool, agentToolCallFragment, cancellationToken);
+                        var predecessor = dispatchTasks.Count > 0 ? dispatchTasks[^1] : Task.CompletedTask;
+                        dispatchTasks.Add(EnqueueDispatchAsync(predecessor, toolFragment.Call));
                         break;
                     case IModelCompletionResponse completion:
                         tokenCount = completion.TokenCount;
                         break;
                 }
-                // If any tools are complete, publish their turns.
-                await PublishAndRemoveCompletedToolCallsAsync(pendingDispatchTasks, dispatchTasks, toolCalls, cancellationToken);
             }
             // Wait for any dangling tasks, and publish them.
         }
@@ -125,9 +121,7 @@ public sealed class InferenceRunner : IInferenceRunner
         }
         finally
         {
-            await Task.WhenAll(pendingDispatchTasks);
-            await PublishAndRemoveCompletedToolCallsAsync(pendingDispatchTasks, dispatchTasks, toolCalls, cancellationToken);
-            Debug.Assert(pendingDispatchTasks.Count == 0);
+            await Task.WhenAll(dispatchTasks);
         }
 
 
@@ -171,6 +165,14 @@ public sealed class InferenceRunner : IInferenceRunner
             toolCalls.ToImmutable(),
             [.. await Task.WhenAll(dispatchTasks)],
             Interrupted: interrupted);
+
+        Task<ToolCallResult> EnqueueDispatchAsync(Task predecessor, ToolCall call)
+            => predecessor.ContinueWith(async _ =>
+            {
+                var result = await _toolDispatcher.DispatchAsync(call, tools, eventId, correlationId, cancellationToken);
+                await PublishCompletedToolCallAsync(result, call, cancellationToken);
+                return result;
+            }, cancellationToken).Unwrap();
     }
 
     private static AsyncLocal<Guid?> CorrelationId { get; } = new AsyncLocal<Guid?>();
@@ -198,35 +200,23 @@ public sealed class InferenceRunner : IInferenceRunner
             cancellationToken);
     }
 
-    private async ValueTask PublishAndRemoveCompletedToolCallsAsync(
-        List<Task<ToolCallResult>> pending,
-        List<Task<ToolCallResult>> allDispatchTasks,
-        ImmutableArray<ToolCall>.Builder allToolCalls,
+    private async ValueTask PublishCompletedToolCallAsync(
+        ToolCallResult result,
+        ToolCall toolCall,
         CancellationToken cancellationToken)
     {
         var correlationId = CorrelationId.Value ?? throw new InvalidOperationException("Correlation ID scope is not set");
         var eventId = EventId.Value ?? throw new InvalidOperationException("Event ID scope is not set");
-        while (true)
+        var toolTurn = new ModelTurn(ModelRole.Tool, result.Content, _time.GetLocalNow(), ChannelId: ChannelId.Value)
         {
-            var pendingIndex = pending.FindIndex(t => t.IsCompleted);
-            if (pendingIndex < 0)
-            {
-                return;
-            }
-            var task = pending[pendingIndex];
-            pending.RemoveAt(pendingIndex);
-            var result = await task;
-            var toolTurn = new ModelTurn(ModelRole.Tool, result.Content, _time.GetLocalNow(), ChannelId: ChannelId.Value)
-            {
-                ToolCall = allToolCalls[allDispatchTasks.IndexOf(task)],
-                IsError = result.IsError,
-            };
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = eventId },
-                toolTurn,
-                correlationId,
-                cancellationToken);
-        }
+            ToolCall = toolCall,
+            IsError = result.IsError,
+        };
+        await _eventPublisher.PublishAsync(
+            Event.WellKnown.Agent.Turn with { Id = eventId },
+            toolTurn,
+            correlationId,
+            cancellationToken);
     }
 
     private async Task<ModelPrompt> InjectEphemeralAsync(ModelPrompt prompt, CancellationToken cancellationToken)
@@ -274,8 +264,6 @@ public sealed class InferenceRunner : IInferenceRunner
     // returns turns in reverse order, which doesn't matter because this is intended for memory searches, and order does not matter.
     private IEnumerable<string> GetMemorySearchQueries(IEnumerable<ModelTurn> turns)
     {
-        var turnArray = turns.ToArray();
-
         return turns.Reverse().Aggregate(new PromptSearchState(false, false, []), AggregateMemoryMessages, (state) => state.Turns.Select(i => i.Content));
 
         PromptSearchState AggregateMemoryMessages(PromptSearchState state, ModelTurn turn)
@@ -299,6 +287,8 @@ public sealed class InferenceRunner : IInferenceRunner
     private ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
     {
         var insertAt = GetLastUserMessageIndex(turns);
+
+        if(insertAt == 0) insertAt = turns.Count;
 
 
         var preUserTurns = turns.Take(insertAt);
