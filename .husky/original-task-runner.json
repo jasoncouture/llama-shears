@@ -1,0 +1,39 @@
+{
+   "$schema": "https://alirezanet.github.io/Husky.Net/schema.json",
+   "tasks": [
+     {
+        "name": "dotnet-build-on-source-change",
+        "group": "pre-commit",
+        "include": [
+           "**/*.cs",
+           "**/*.razor",
+           "**/*.csproj",
+           "**/*.sln",
+           "**/*.slnx",
+           "**/*.props"
+        ],
+        "command": "bash",
+        "args": [ "-c", "dotnet clean && dotnet build", "_", "${staged}" ]
+     },
+      {
+         "name": "dotnet-test-on-source-change",
+         "group": "pre-commit",
+         "include": [
+            "**/*.cs",
+            "**/*.razor",
+            "**/*.csproj",
+            "**/*.sln",
+            "**/*.slnx",
+            "**/*.props"
+         ],
+         "command": "bash",
+         "args": [ "-c", "dotnet clean -v quiet && dotnet test", "_", "${staged}" ]
+      },
+      {
+         "name": "docs-api-up-to-date",
+         "group": "pre-push",
+         "command": "bash",
+         "args": [ ".husky/scripts/check-docs-up-to-date.sh" ]
+      }
+   ]
+}
