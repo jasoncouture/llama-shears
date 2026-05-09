@@ -37,12 +37,13 @@ dotnet_diagnostic.IDE0303.severity = error
 dotnet_diagnostic.IDE0304.severity = error
 dotnet_diagnostic.IDE0305.severity = error
 
-# IDE0001 ("Name can be simplified") promoted to error so `System.Guid`,
-# `System.Collections.Generic.Dictionary<,>`, etc. fail the build instead
-# of riding as IDE-only hints. Forces the matching using/global-using or
-# the unqualified name to be used.
-dotnet_style_qualification_for_field = false:error
-dotnet_diagnostic.IDE0001.severity = error
+# IDE0001 ("Name can be simplified") surfaces as a warning. EnforceCodeStyleInBuild
+# does not run IDE0001 at build time (Microsoft docs: a handful of IDE-only style
+# rules are skipped on build for perf), so escalating to error is dishonest — the
+# IDE shows it, the build can't fail on it. Warning keeps the IDE squiggle without
+# pretending it's build-enforced.
+dotnet_style_qualification_for_field = false:warning
+dotnet_diagnostic.IDE0001.severity = warning
 
 # Consts are PascalCase, no leading underscore. Listed *before* the
 # private-fields rule so it wins on `private const`; without this the
