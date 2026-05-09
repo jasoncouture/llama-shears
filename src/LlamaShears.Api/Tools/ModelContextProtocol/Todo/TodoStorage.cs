@@ -61,94 +61,130 @@ internal sealed partial class TodoStorage : ITodoStorage
         return new TodoCommandResult(items, TodoResultState.Success);
     }
 
-    public async ValueTask<TodoCommandResult> AddAsync(string text, bool done = false, CancellationToken cancellationToken = default)
+    public async ValueTask<TodoCommandResult> AddAsync(IReadOnlyList<string> items, bool done = false, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(text))
+        if (items is null || items.Count == 0)
         {
-            return new TodoCommandResult([], TodoResultState.Refused, "Todo item text is required");
+            return new TodoCommandResult([], TodoResultState.Refused, "At least one todo item is required");
         }
-        if (text.Contains('\n', StringComparison.Ordinal) || text.Contains('\r', StringComparison.Ordinal))
+        for (var i = 0; i < items.Count; i++)
         {
-            return new TodoCommandResult([], TodoResultState.Refused, "Todo item text cannot contain new lines");
-        }
-        if (text.Length > MaxTextLength)
-        {
-            return new TodoCommandResult([], TodoResultState.Refused, $"Todo item text cannot be more than {MaxTextLength} characters");
+            var text = items[i];
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return new TodoCommandResult([], TodoResultState.Refused, $"Todo item text is required (items[{i}])");
+            }
+            if (text.Contains('\n', StringComparison.Ordinal) || text.Contains('\r', StringComparison.Ordinal))
+            {
+                return new TodoCommandResult([], TodoResultState.Refused, $"Todo item text cannot contain new lines (items[{i}])");
+            }
+            if (text.Length > MaxTextLength)
+            {
+                return new TodoCommandResult([], TodoResultState.Refused, $"Todo item text cannot be more than {MaxTextLength} characters (items[{i}])");
+            }
         }
 
         var path = await GetPathAsync(cancellationToken).ConfigureAwait(false);
         var parsed = await ParseAsync(path, cancellationToken).ConfigureAwait(false);
         if (parsed.Corrupt)
         {
-            var recovered = new TodoItem(1, text, done);
-            await File.WriteAllTextAsync(path, $"{_header}{recovered}\n", cancellationToken).ConfigureAwait(false);
+            var recovered = BuildBatch(items, done, startIndex: 1);
+            await File.WriteAllTextAsync(path, $"{_header}{RenderItems(recovered)}", cancellationToken).ConfigureAwait(false);
             LogRecovered(_logger, path);
-            return new TodoCommandResult([recovered], TodoResultState.Corrupt);
+            return new TodoCommandResult(recovered, TodoResultState.Corrupt);
         }
 
-        var nextIndex = parsed.Items.IsEmpty ? 1 : parsed.Items[^1].Index + 1;
-        var newItem = new TodoItem(nextIndex, text, done);
+        var startIndex = parsed.Items.IsEmpty ? 1 : parsed.Items[^1].Index + 1;
+        var newItems = BuildBatch(items, done, startIndex);
+        var rendered = RenderItems(newItems);
 
         if (parsed.Items.IsEmpty)
         {
-            await File.WriteAllTextAsync(path, $"{_header}{newItem}\n", cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(path, $"{_header}{rendered}", cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            await File.AppendAllTextAsync(path, $"{newItem}\n", cancellationToken).ConfigureAwait(false);
+            await File.AppendAllTextAsync(path, rendered, cancellationToken).ConfigureAwait(false);
         }
-        return new TodoCommandResult(parsed.Items.Add(newItem), TodoResultState.Success);
+        return new TodoCommandResult(parsed.Items.AddRange(newItems), TodoResultState.Success);
     }
 
-    public async ValueTask<TodoCommandResult> UpdateAsync(int index, bool isCompleted, CancellationToken cancellationToken = default)
+    public async ValueTask<TodoCommandResult> UpdateAsync(IReadOnlyList<TodoItemUpdate> updates, CancellationToken cancellationToken = default)
     {
+        if (updates is null || updates.Count == 0)
+        {
+            return new TodoCommandResult([], TodoResultState.Refused, "At least one update is required");
+        }
+
         var path = await GetPathAsync(cancellationToken).ConfigureAwait(false);
         var parsed = await ParseAsync(path, cancellationToken).ConfigureAwait(false);
         if (parsed.Corrupt)
         {
             await WriteHeaderOnlyAsync(path, cancellationToken).ConfigureAwait(false);
             LogRecovered(_logger, path);
-            return new TodoCommandResult([], TodoResultState.Corrupt, $"No todo item at index {index}.");
+            return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to update.");
         }
 
-        var existing = FindByIndex(parsed.Items, index);
-        if (existing is null)
+        var working = parsed.Items.ToBuilder();
+        var changed = false;
+        foreach (var update in updates)
         {
-            return new TodoCommandResult(parsed.Items, TodoResultState.Refused, $"No todo item at index {index}.");
+            var slot = IndexOfItem(working, update.Index);
+            if (slot < 0)
+            {
+                return new TodoCommandResult(parsed.Items, TodoResultState.Refused, $"No todo item at index {update.Index}.");
+            }
+            if (working[slot].Completed == update.IsCompleted)
+            {
+                continue;
+            }
+            working[slot] = working[slot] with { Completed = update.IsCompleted };
+            changed = true;
         }
-        if (existing.Completed == isCompleted)
+
+        if (!changed)
         {
             return new TodoCommandResult(parsed.Items, TodoResultState.Success);
         }
 
-        var updated = parsed.Items.Replace(existing, existing with { Completed = isCompleted });
+        var updated = working.ToImmutable();
         await RewriteAsync(path, updated, cancellationToken).ConfigureAwait(false);
         return new TodoCommandResult(updated, TodoResultState.Success);
     }
 
-    public async ValueTask<TodoCommandResult> DeleteAsync(int index, CancellationToken cancellationToken = default)
+    public async ValueTask<TodoCommandResult> DeleteAsync(IReadOnlyList<int> indices, CancellationToken cancellationToken = default)
     {
+        if (indices is null || indices.Count == 0)
+        {
+            return new TodoCommandResult([], TodoResultState.Refused, "At least one index is required");
+        }
+
         var path = await GetPathAsync(cancellationToken).ConfigureAwait(false);
         var parsed = await ParseAsync(path, cancellationToken).ConfigureAwait(false);
         if (parsed.Corrupt)
         {
             await WriteHeaderOnlyAsync(path, cancellationToken).ConfigureAwait(false);
             LogRecovered(_logger, path);
-            return new TodoCommandResult([], TodoResultState.Corrupt, $"No todo item at index {index}.");
+            return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to delete.");
         }
 
-        var existing = FindByIndex(parsed.Items, index);
-        if (existing is null)
+        var targets = new HashSet<int>();
+        foreach (var index in indices)
         {
-            return new TodoCommandResult(parsed.Items, TodoResultState.Refused, $"No todo item at index {index}.");
+            if (FindByIndex(parsed.Items, index) is null)
+            {
+                return new TodoCommandResult(parsed.Items, TodoResultState.Refused, $"No todo item at index {index}.");
+            }
+            targets.Add(index);
         }
 
-        var renumbered = Renumber(parsed.Items.Remove(existing));
+        var remaining = parsed.Items.Where(item => !targets.Contains(item.Index)).ToImmutableArray();
+        var renumbered = Renumber(remaining);
         await RewriteAsync(path, renumbered, cancellationToken).ConfigureAwait(false);
         return new TodoCommandResult(renumbered, TodoResultState.Success);
     }
 
-    public async ValueTask<TodoCommandResult> ClearAsync(bool includeCompleted, CancellationToken cancellationToken = default)
+    public async ValueTask<TodoCommandResult> ClearAsync(bool includeIncomplete, CancellationToken cancellationToken = default)
     {
         var path = await GetPathAsync(cancellationToken).ConfigureAwait(false);
         var parsed = await ParseAsync(path, cancellationToken).ConfigureAwait(false);
@@ -163,7 +199,7 @@ internal sealed partial class TodoStorage : ITodoStorage
             return new TodoCommandResult([], TodoResultState.Success);
         }
 
-        var kept = includeCompleted
+        var kept = includeIncomplete
             ? ImmutableArray<TodoItem>.Empty
             : [.. parsed.Items.Where(static item => !item.Completed)];
         if (kept.Length == parsed.Items.Length)
@@ -270,6 +306,38 @@ internal sealed partial class TodoStorage : ITodoStorage
             }
         }
         return null;
+    }
+
+    private static int IndexOfItem(ImmutableArray<TodoItem>.Builder items, int index)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (items[i].Index == index)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static ImmutableArray<TodoItem> BuildBatch(IReadOnlyList<string> items, bool done, int startIndex)
+    {
+        var builder = ImmutableArray.CreateBuilder<TodoItem>();
+        for (var i = 0; i < items.Count; i++)
+        {
+            builder.Add(new TodoItem(startIndex + i, items[i], done));
+        }
+        return builder.ToImmutable();
+    }
+
+    private static string RenderItems(ImmutableArray<TodoItem> items)
+    {
+        var stringBuilder = new StringBuilder();
+        foreach (var item in items)
+        {
+            stringBuilder.Append(item.ToString()).Append('\n');
+        }
+        return stringBuilder.ToString();
     }
 
     private static ImmutableArray<TodoItem> Renumber(ImmutableArray<TodoItem> items)

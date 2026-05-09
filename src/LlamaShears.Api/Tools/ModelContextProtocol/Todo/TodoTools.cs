@@ -14,44 +14,43 @@ public sealed class TodoTools
     }
 
     [McpServerTool(Name = "todo_add")]
-    [Description("Appends a new item to the agent's TODO list. Returns the full list after the addition.")]
+    [Description("Appends a batch of items to the agent's TODO list. All items in the batch share the same 'done' flag; for a mixed batch, call twice. Pass an array of one to add a single item. Returns the full list after the addition. The whole batch is rejected if any item is empty, contains newlines, or exceeds 200 characters.")]
     public async Task<string> AddAsync(
-        [Description("Item text. Must not contain newline characters. Must not exceed 200 characters.")] string text,
-        [Description("Set to true to record the new item as already completed. Defaults to false.")] bool done = false,
+        [Description("Items to add. Each must be non-empty, must not contain newline characters, and must not exceed 200 characters.")] string[] items,
+        [Description("Set to true to record every new item as already completed. Defaults to false.")] bool done = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.AddAsync(text, done, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.AddAsync(items, done, cancellationToken).ConfigureAwait(false);
         return result.ToString();
     }
 
     [McpServerTool(Name = "todo_update")]
-    [Description("Toggles the completion state of the item at the given 1-based index. No-ops when the state already matches; refuses when no item exists at the index.")]
+    [Description("Applies a batch of completion-state changes. Pass an array of one to update a single item. Updates that match the current state are silently no-ops. The whole batch is rejected if any update names a missing index.")]
     public async Task<string> UpdateAsync(
-        [Description("1-based index of the item to update.")] int index,
-        [Description("Target completion state.")] bool isCompleted,
+        [Description("Updates to apply. Each entry has a 1-based 'index' and a target 'isCompleted' state.")] TodoItemUpdate[] updates,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.UpdateAsync(index, isCompleted, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.UpdateAsync(updates, cancellationToken).ConfigureAwait(false);
         return result.ToString();
     }
 
     [McpServerTool(Name = "todo_delete")]
-    [Description("Removes the item at the given 1-based index. Remaining items are renumbered. Returns the full list after the deletion.")]
+    [Description("Removes a batch of items by 1-based index. Remaining items are renumbered. Pass an array of one to delete a single item. Duplicate indices are deduped; the whole batch is rejected if any index is missing.")]
     public async Task<string> DeleteAsync(
-        [Description("1-based index of the item to delete.")] int index,
+        [Description("1-based indices of items to delete.")] int[] indices,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.DeleteAsync(index, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.DeleteAsync(indices, cancellationToken).ConfigureAwait(false);
         return result.ToString();
     }
 
     [McpServerTool(Name = "todo_clear")]
-    [Description("Removes items from the list. By default only completed items are removed; pass include_completed=true to wipe everything.")]
+    [Description("Removes items from the list. By default only completed items are removed; pass include_incomplete=true to also remove incomplete items (wipes everything).")]
     public async Task<string> ClearAsync(
-        [Description("False (default) clears completed items only; true clears every item.")] bool includeCompleted = false,
+        [Description("False (default) clears completed items only; true also clears incomplete items.")] bool includeIncomplete = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.ClearAsync(includeCompleted, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.ClearAsync(includeIncomplete, cancellationToken).ConfigureAwait(false);
         return result.ToString();
     }
 
