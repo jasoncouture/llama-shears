@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using LlamaShears.Core.Abstractions.Paths;
@@ -74,11 +73,7 @@ public sealed partial class RegexReplaceFileTool
         var info = new FileInfo(resolution.FullPath);
         if (info.Length > MaxFileBytes)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Refused: file is {0} bytes; the regex-replace cap is {1} bytes.",
-                info.Length,
-                MaxFileBytes);
+            return $"Refused: file is {info.Length} bytes; the regex-replace cap is {MaxFileBytes} bytes.";
         }
 
         Regex regex;
@@ -127,11 +122,7 @@ public sealed partial class RegexReplaceFileTool
 
             await File.WriteAllTextAsync(resolution.FullPath, updated, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
             LogReplace(_logger, workspace.AgentId, resolution.FullPath, count);
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Replaced {0} match(es) in '{1}'.",
-                count,
-                path);
+            return $"Replaced {count} match(es) in '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
