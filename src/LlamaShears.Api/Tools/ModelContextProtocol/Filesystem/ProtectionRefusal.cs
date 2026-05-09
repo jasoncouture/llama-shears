@@ -1,4 +1,3 @@
-using System.Globalization;
 using LlamaShears.Core.Abstractions.Paths;
 
 namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
@@ -16,11 +15,6 @@ internal static class ProtectionRefusal
             _ => "modify",
         };
         var reason = string.IsNullOrWhiteSpace(rule.Reason) ? rule.Glob : rule.Reason;
-        return string.Format(
-            CultureInfo.InvariantCulture,
-            "Refused: '{0}' is protected from {1} ({2}).",
-            requestedPath,
-            modeName,
-            reason);
+        return $"Refused: '{requestedPath}' is protected from {modeName} ({reason}).";
     }
 }
