@@ -9,16 +9,17 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 public interface ITodoStorage
 {
     /// <summary>
-    /// Removes items from the list. When <paramref name="includeCompleted"/>
-    /// is <see langword="false"/> only completed items are removed; when
-    /// <see langword="true"/> all items are removed.
+    /// Removes items from the list. By default only completed items are
+    /// removed; when <paramref name="includeIncomplete"/> is
+    /// <see langword="true"/> incomplete items are also removed,
+    /// effectively wiping the list.
     /// </summary>
-    /// <param name="includeCompleted">
+    /// <param name="includeIncomplete">
     /// <see langword="false"/> (default) clears completed items only.
-    /// <see langword="true"/> clears every item.
+    /// <see langword="true"/> also clears incomplete items.
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<TodoCommandResult> ClearAsync(bool includeCompleted, CancellationToken cancellationToken = default);
+    ValueTask<TodoCommandResult> ClearAsync(bool includeIncomplete, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Appends a batch of items to the list with fresh sequential indices.

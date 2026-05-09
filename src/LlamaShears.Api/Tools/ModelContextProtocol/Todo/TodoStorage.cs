@@ -184,7 +184,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         return new TodoCommandResult(renumbered, TodoResultState.Success);
     }
 
-    public async ValueTask<TodoCommandResult> ClearAsync(bool includeCompleted, CancellationToken cancellationToken = default)
+    public async ValueTask<TodoCommandResult> ClearAsync(bool includeIncomplete, CancellationToken cancellationToken = default)
     {
         var path = await GetPathAsync(cancellationToken).ConfigureAwait(false);
         var parsed = await ParseAsync(path, cancellationToken).ConfigureAwait(false);
@@ -199,7 +199,7 @@ internal sealed partial class TodoStorage : ITodoStorage
             return new TodoCommandResult([], TodoResultState.Success);
         }
 
-        var kept = includeCompleted
+        var kept = includeIncomplete
             ? ImmutableArray<TodoItem>.Empty
             : [.. parsed.Items.Where(static item => !item.Completed)];
         if (kept.Length == parsed.Items.Length)

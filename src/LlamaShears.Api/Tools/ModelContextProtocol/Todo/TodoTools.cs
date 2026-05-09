@@ -45,12 +45,12 @@ public sealed class TodoTools
     }
 
     [McpServerTool(Name = "todo_clear")]
-    [Description("Removes items from the list. By default only completed items are removed; pass include_completed=true to wipe everything.")]
+    [Description("Removes items from the list. By default only completed items are removed; pass include_incomplete=true to also remove incomplete items (wipes everything).")]
     public async Task<string> ClearAsync(
-        [Description("False (default) clears completed items only; true clears every item.")] bool includeCompleted = false,
+        [Description("False (default) clears completed items only; true also clears incomplete items.")] bool includeIncomplete = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.ClearAsync(includeCompleted, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.ClearAsync(includeIncomplete, cancellationToken).ConfigureAwait(false);
         return result.ToString();
     }
 
