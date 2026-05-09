@@ -221,6 +221,11 @@ public sealed class InferenceRunner : IInferenceRunner
 
     private async Task<ModelPrompt> InjectEphemeralAsync(ModelPrompt prompt, CancellationToken cancellationToken)
     {
+        if (prompt.Turns.Count == 0 || prompt.Turns[^1].Role != ModelRole.User)
+        {
+            return prompt;
+        }
+
         var agentId = _currentAgent.Current?.AgentId!;
         var config = await _agentConfigProvider.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
         if (config is null)
