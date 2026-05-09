@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
@@ -12,11 +13,16 @@ public sealed partial class ListFilesTool
     private const int HardMaxEntries = 1000;
 
     private readonly IAgentWorkspaceLocator _workspace;
+    private readonly IFileProtectionPolicy _protection;
     private readonly ILogger<ListFilesTool> _logger;
 
-    public ListFilesTool(IAgentWorkspaceLocator workspace, ILogger<ListFilesTool> logger)
+    public ListFilesTool(
+        IAgentWorkspaceLocator workspace,
+        IFileProtectionPolicy protection,
+        ILogger<ListFilesTool> logger)
     {
         _workspace = workspace;
+        _protection = protection;
         _logger = logger;
     }
 
@@ -57,7 +63,7 @@ public sealed partial class ListFilesTool
 
         try
         {
-            var rendered = Render(resolved, displayPath, recursive, cap, out var entryCount, out var truncated);
+            var rendered = Render(resolved, workspace.Root, displayPath, recursive, cap, _protection, out var entryCount, out var truncated);
             LogList(_logger, workspace.AgentId, resolved, entryCount, truncated);
             return rendered;
         }
@@ -70,18 +76,22 @@ public sealed partial class ListFilesTool
 
     private static string Render(
         string root,
+        string workspaceRoot,
         string requestedPath,
         bool recursive,
         int cap,
+        IFileProtectionPolicy protection,
         out int emitted,
         out bool truncated)
     {
         var option = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         var directories = Directory
             .EnumerateDirectories(root, "*", option)
+            .Where(p => protection.Match(workspaceRoot, p, FileType.Directory, ProtectionMode.Read) is null)
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase);
         var files = Directory
             .EnumerateFiles(root, "*", option)
+            .Where(p => protection.Match(workspaceRoot, p, FileType.File, ProtectionMode.Read) is null)
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase);
 
         var builder = new StringBuilder();

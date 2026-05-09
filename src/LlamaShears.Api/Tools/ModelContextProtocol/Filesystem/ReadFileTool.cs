@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
@@ -12,11 +13,19 @@ public sealed partial class ReadFileTool
     private const int MaxByteCap = 256 * 1024;
 
     private readonly IAgentWorkspaceLocator _workspace;
+    private readonly IPathExpander _pathExpander;
+    private readonly IFileProtectionPolicy _protection;
     private readonly ILogger<ReadFileTool> _logger;
 
-    public ReadFileTool(IAgentWorkspaceLocator workspace, ILogger<ReadFileTool> logger)
+    public ReadFileTool(
+        IAgentWorkspaceLocator workspace,
+        IPathExpander pathExpander,
+        IFileProtectionPolicy protection,
+        ILogger<ReadFileTool> logger)
     {
         _workspace = workspace;
+        _pathExpander = pathExpander;
+        _protection = protection;
         _logger = logger;
     }
 
@@ -55,6 +64,13 @@ public sealed partial class ReadFileTool
         if (!File.Exists(resolved))
         {
             return $"File not found: {path}";
+        }
+
+        var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
+        var protection = _protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Read);
+        if (protection is not null)
+        {
+            return ProtectionRefusal.Format(path, ProtectionMode.Read, protection);
         }
 
         try

@@ -1,5 +1,7 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
+using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace LlamaShears.UnitTests.Api.Tools.ModelContextProtocol.Filesystem;
 
@@ -12,7 +14,7 @@ public sealed class GrepToolTests
         Directory.CreateDirectory(temp.PathOf("src"));
         await File.WriteAllTextAsync(temp.PathOf("src", "a.txt"), "alpha\nbeta needle gamma\n");
         await File.WriteAllTextAsync(temp.PathOf("src", "b.txt"), "no hits here\n");
-        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), NullLogger<GrepTool>.Instance);
+        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), Substitute.For<IFileProtectionPolicy>(), NullLogger<GrepTool>.Instance);
 
         var result = await tool.Grep(
             "needle",
@@ -29,7 +31,7 @@ public sealed class GrepToolTests
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "Hello World\n");
-        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), NullLogger<GrepTool>.Instance);
+        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), Substitute.For<IFileProtectionPolicy>(), NullLogger<GrepTool>.Instance);
 
         var result = await tool.Grep(
             "hello",
@@ -46,7 +48,7 @@ public sealed class GrepToolTests
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "nothing\n");
-        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), NullLogger<GrepTool>.Instance);
+        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), Substitute.For<IFileProtectionPolicy>(), NullLogger<GrepTool>.Instance);
 
         var result = await tool.Grep(
             "absent",
@@ -64,7 +66,7 @@ public sealed class GrepToolTests
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.cs"), "needle\n");
         await File.WriteAllTextAsync(temp.PathOf("b.txt"), "needle\n");
-        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), NullLogger<GrepTool>.Instance);
+        var tool = new GrepTool(new StubAgentWorkspaceLocator(temp.Workspace), Substitute.For<IFileProtectionPolicy>(), NullLogger<GrepTool>.Instance);
 
         var result = await tool.Grep(
             "needle",
