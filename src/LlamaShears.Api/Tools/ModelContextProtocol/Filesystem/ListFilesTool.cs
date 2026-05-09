@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -86,7 +85,7 @@ public sealed partial class ListFilesTool
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase);
 
         var builder = new StringBuilder();
-        builder.AppendFormat(CultureInfo.InvariantCulture, "Listing '{0}':", requestedPath);
+        builder.Append($"Listing '{requestedPath}':");
 
         emitted = 0;
         truncated = false;
@@ -124,7 +123,7 @@ public sealed partial class ListFilesTool
                 {
                 }
                 builder.Append('\n');
-                builder.AppendFormat(CultureInfo.InvariantCulture, "{0} ({1} bytes)", rel, size);
+                builder.Append($"{rel} ({size} bytes)");
                 emitted++;
             }
         }
@@ -136,11 +135,7 @@ public sealed partial class ListFilesTool
 
         if (truncated)
         {
-            builder.AppendFormat(
-                CultureInfo.InvariantCulture,
-                "\n[... truncated; exceeded {0}-entry cap. Re-call with a tighter path or a higher max_entries (max {1}) to see more.]",
-                cap,
-                HardMaxEntries);
+            builder.Append($"\n[... truncated; exceeded {cap}-entry cap. Re-call with a tighter path or a higher max_entries (max {HardMaxEntries}) to see more.]");
         }
 
         return builder.ToString();
