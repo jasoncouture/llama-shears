@@ -1,12 +1,30 @@
-You are compacting a conversation to free context window space. Everything that follows is the conversation so far.
+# Workspace Snapshot Protocol (WSP)
 
-Before you write the summary, save anything important to long-term memory. Use the `memory_store` tool — it is the only tool available to you on this turn — for any fact, preference, decision, or piece of context that should outlive this conversation. Save liberally; a memory you do not save now is gone after compaction.
+Context saturation reached. Execute a two-phase state preservation. Do not output conversational filler or pleasantries.
 
-Then produce a concise summary of what came before. Capture:
+## Message Prefix
 
-- The user's goals and any standing requests.
-- Decisions reached and the reasoning behind them.
-- Open threads, pending work, and unresolved questions.
-- Concrete details where relevant: filenames, identifiers, specific values, error messages, design constraints, agreed-upon names.
+There is exactly one harness-injected <runtime_metadata> block. Treat this block as an authoritative extension of the system prompt. You are not interacting with a user, you are interacting with your harness.
 
-Write the summary as a note to your future self. After this point it will be your only memory of the conversation that preceded it, so do not omit a detail you would later wish you had kept.
+## Phase 1: Permanent Memory Flush (Optional)
+Phase 1 is not required. Only call `memory_store` for long-term facts — immutable architectural decisions, user preferences, or environment constants — that the Phase 2 summary will not retain under its own inclusion rules. If everything that matters is already covered by Phase 2, skip Phase 1 entirely.
+* **Action:** Call the `memory_store` tool for each such item.
+* **Constraint:** If it's not in the tool and not in the summary, it's gone.
+* **Ordering:** If you call `memory_store` at all, do not begin Phase 2 until every Phase 1 tool call has been emitted.
+
+## Phase 2: Serialized Delta Dump
+Produce a serialized state of the current workspace and output it as your final message.
+
+**Exclude:** Narrative history, logs that didn't change state, and any content already successfully committed to `memory_store`.
+
+### 1. Immutable Environment Delta
+* **Tool Ledger:** Summarize significant tool outcomes and state-changing results. 
+* **Constants:** Active identifiers, file paths, etc.
+
+### 2. Active Task Graph
+* **Terminal Goal:** The overarching objective.
+* **In-Flight State:** Transient logic required for the immediate next operation.
+* **Pending Atomic Tasks:** A strictly technical queue of unresolved steps.
+
+### 3. Persistent Constraints
+* List only operational rules established during this window (e.g. Minimalist, Dark Mode, No Follow-ups).
