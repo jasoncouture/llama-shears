@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Provider;
 using LlamaShears.Provider.Ollama;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public class OllamaProviderTests
             .Build();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
+        services.AddSingleton<IModelTextFormatter, ModelTextFormatter>();
         return services;
     }
 

@@ -15,6 +15,7 @@ using LlamaShears.Core.Memory;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.PromptContext;
+using LlamaShears.Core.Provider;
 using LlamaShears.Core.Seeding;
 using LlamaShears.Core.Sessions;
 using LlamaShears.Core.SystemPrompt;
@@ -78,6 +79,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
         services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
+        services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();
 

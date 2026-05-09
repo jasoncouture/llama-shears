@@ -18,6 +18,7 @@ public partial class OllamaLanguageModel : ILanguageModel
     private readonly IOllamaApiClient _client;
     private readonly ModelConfiguration _configuration;
     private readonly ObjectPool<List<Message>> _messageListPool;
+    private readonly IModelTextFormatter _textFormatter;
     private readonly ILogger<OllamaLanguageModel> _logger;
 
     public OllamaLanguageModel(
@@ -25,10 +26,12 @@ public partial class OllamaLanguageModel : ILanguageModel
         ModelConfiguration configuration,
         IOptionsMonitor<OllamaProviderOptions> hostOptions,
         ObjectPool<List<Message>> messageListPool,
+        IModelTextFormatter textFormatter,
         ILogger<OllamaLanguageModel> logger)
     {
         _configuration = configuration;
         _messageListPool = messageListPool;
+        _textFormatter = textFormatter;
         _logger = logger;
 
         var merged = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.AgentOptions);
@@ -50,7 +53,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                     continue;
                 }
 
-                messages.Add(ToMessage(turn));
+                messages.Add(ToMessage(turn, _textFormatter));
             }
 
             var request = new ChatRequest
@@ -218,9 +221,9 @@ public partial class OllamaLanguageModel : ILanguageModel
         return null;
     }
 
-    private static Message ToMessage(ModelTurn turn)
+    private static Message ToMessage(ModelTurn turn, IModelTextFormatter textFormatter)
     {
-        var message = new Message(MapRole(turn.Role), turn.Content);
+        var message = new Message(MapRole(turn.Role), textFormatter.Format(turn));
         if (!turn.ToolCalls.IsDefaultOrEmpty)
         {
             message.ToolCalls = ToOllamaToolCalls(turn.ToolCalls);

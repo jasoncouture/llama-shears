@@ -185,6 +185,7 @@ public sealed class OpenAILanguageModelTests
             httpClientFactory,
             optionsMonitor,
             new ModelConfiguration(ModelId: "test-model"),
+            new LlamaShears.Core.Provider.ModelTextFormatter(),
             NullLogger<OpenAILanguageModel>.Instance);
     }
 
