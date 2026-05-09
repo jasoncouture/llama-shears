@@ -1,6 +1,7 @@
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using Scriban;
+using Scriban.Runtime;
 
 namespace LlamaShears.Core.Templating;
 
@@ -29,7 +30,10 @@ public sealed class TemplateRenderer : ITemplateRenderer
             return null;
         }
 
-        return template.Render(input);
+        var globals = new ScriptObject();
+        globals.Import(input);
+        TemplateFilters.Register(globals);
+        return template.Render(globals);
     }
 
     private static async ValueTask<Template?> ParseAsync(Stream? stream, string path, CancellationToken cancellationToken)

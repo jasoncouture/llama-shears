@@ -3,7 +3,7 @@
 {{- if important_message }}
 - IMPORTANT: {{ important_message }}
 {{- end }}
-- Current date and time: {{ now }}
+- Current date and time: {{ now | format_datetimeoffset 'yyyy-MM-ddTHH:mm:sszzz' }}
 - Current timezone:{{ timezone }}
 - Current day of week: {{ day_of_week }}
 {{- if channel_id }}

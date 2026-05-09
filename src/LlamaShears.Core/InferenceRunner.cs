@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Globalization;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Events;
@@ -243,7 +242,7 @@ public sealed class InferenceRunner : IInferenceRunner
 
         var now = _time.GetLocalNow();
         var parameters = new PromptContextParameters(
-            Now: now.ToString("o", CultureInfo.InvariantCulture),
+            Now: now,
             Timezone: TimeZoneInfo.Local.Id,
             DayOfWeek: now.DayOfWeek.ToString(),
             ChannelId: ChannelId.Value,

@@ -10,7 +10,7 @@ point of authorship.
 
 ## Parameters
 
-- `Now` — Current wall-clock time formatted by the host (string so the template renders verbatim).
+- `Now` — Current wall-clock time as a DateTimeOffset; the template formats it (Scriban `date.to_string`) so the wire format stays in template authorship rather than C#.
 - `Timezone` — Host timezone display name.
 - `DayOfWeek` — Current day of week as text.
 - `ChannelId` — Channel correlation id when the turn originates from a channel; `null` otherwise.
@@ -37,7 +37,7 @@ Memory hits surfaced to the template (typically prefetch results).
 
 ### `Now`
 
-Current wall-clock time formatted by the host (string so the template renders verbatim).
+Current wall-clock time as a DateTimeOffset; the template formats it (Scriban `date.to_string`) so the wire format stays in template authorship rather than C#.
 
 ### `Timezone`
 
@@ -49,7 +49,7 @@ The agent's workspace path; `null` when unbound.
 
 ## Methods
 
-### `PromptContextParameters`(string Now, string Timezone, string DayOfWeek, string ChannelId, string ImportantMessage, string WorkspacePath)
+### `PromptContextParameters`(Nullable<DateTimeOffset> Now, string Timezone, string DayOfWeek, string ChannelId, string ImportantMessage, string WorkspacePath)
 
 Inputs the per-turn prompt-context template renders against. The
 template (Scriban) decides how to format these into the
@@ -59,7 +59,7 @@ point of authorship.
 
 #### Parameters
 
-- `Now` — Current wall-clock time formatted by the host (string so the template renders verbatim).
+- `Now` — Current wall-clock time as a DateTimeOffset; the template formats it (Scriban `date.to_string`) so the wire format stays in template authorship rather than C#.
 - `Timezone` — Host timezone display name.
 - `DayOfWeek` — Current day of week as text.
 - `ChannelId` — Channel correlation id when the turn originates from a channel; `null` otherwise.
