@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.FileSystemGlobbing;
@@ -117,12 +116,12 @@ public sealed partial class GrepTool
             catch (RegexMatchTimeoutException)
             {
                 output.Append('\n');
-                output.AppendFormat(CultureInfo.InvariantCulture, "[{0}: regex timeout — skipped]", hit.Path);
+                output.Append($"[{hit.Path}: regex timeout — skipped]");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 output.Append('\n');
-                output.AppendFormat(CultureInfo.InvariantCulture, "[{0}: {1}]", hit.Path, ex.Message);
+                output.Append($"[{hit.Path}: {ex.Message}]");
             }
 
             if (matchCount >= cap)
@@ -141,11 +140,7 @@ public sealed partial class GrepTool
         if (truncated)
         {
             output.Append('\n');
-            output.AppendFormat(
-                CultureInfo.InvariantCulture,
-                "[... truncated; exceeded {0}-match cap. Re-call with a tighter glob/pattern or a higher max_matches (max {1}).]",
-                cap,
-                HardMaxMatches);
+            output.Append($"[... truncated; exceeded {cap}-match cap. Re-call with a tighter glob/pattern or a higher max_matches (max {HardMaxMatches}).]");
         }
 
         LogGrep(_logger, workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
@@ -182,13 +177,7 @@ public sealed partial class GrepTool
                     return emitted;
                 }
                 output.Append('\n');
-                output.AppendFormat(
-                    CultureInfo.InvariantCulture,
-                    "{0}:{1}:{2}: {3}",
-                    relativePath,
-                    lineNumber,
-                    match.Index + 1,
-                    line);
+                output.Append($"{relativePath}:{lineNumber}:{match.Index + 1}: {line}");
                 emitted++;
                 if (match.Length == 0)
                 {
