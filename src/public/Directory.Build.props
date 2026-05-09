@@ -9,12 +9,14 @@
     <IsPackable>true</IsPackable> required.
 
     The compiler's strict CS1591 (missing public doc) / CS1574 (broken
-    cref) gates are elevated to errors on shipped surface; packable.editorconfig
-    flips the LlamaShears LS XML-doc heuristics off in favour of those.
+    cref) / CS1573 (param documented in summary but missing from member
+    docs) gates are elevated to errors on shipped surface;
+    packable.editorconfig flips the LlamaShears LS XML-doc heuristics off
+    in favour of those.
   -->
   <PropertyGroup>
     <IsPackable>true</IsPackable>
-    <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1574</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1574;CS1573</WarningsAsErrors>
   </PropertyGroup>
 
 </Project>
