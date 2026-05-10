@@ -333,10 +333,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             {
                 var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
                 var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
-                var dataContextScope = await dataContextFactory.StartContextAsync(config.Id, dataProviders, cancellationToken);
-                dataContextScope.SetItems(agentGlobalDataContext);
-                if (!dataContextScope.Any()) throw new InvalidOperationException();
-                dataContextFactory.Current = dataContextScope;
+                dataContextFactory.CreateContext(config.Id);
+                await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
+                    cancellationToken);
                 var agent = ActivatorUtilities.CreateInstance<Agent>(
                     scope.ServiceProvider,
                     model,
@@ -345,8 +344,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                     scope,
                     tools);
                 agent.Start();
-                // The data context scope should now be captured, and we should be able to let go of it.
-                GC.KeepAlive(dataContextScope);
+                
                 return agent;
             }
             catch

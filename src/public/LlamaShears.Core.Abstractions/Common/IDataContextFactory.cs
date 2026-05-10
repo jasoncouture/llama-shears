@@ -20,13 +20,24 @@ public interface IDataContextFactory
     /// when no scope with that key is alive.
     /// </summary>
     bool TryJoinContextScope(string key, [NotNullWhen(true)] out IDataContextScope? context);
+    
+    /// <summary>
+    /// Creates a new empty scope keyed by <paramref name="key"/> and sets it
+    /// as the current call chain's active scope. Throws when a live scope
+    /// already claims that key. The returned scope must be populated via
+    /// <see cref="InitializeAsync"/> before consumers read from it.
+    /// </summary>
+    IDataContextScope CreateContext(string key);
 
     /// <summary>
-    /// Creates a new scope keyed by <paramref name="key"/>, populates it
-    /// from <paramref name="providers"/>. Throws when a live scope already
-    /// claims that key.
+    /// Populates the scope keyed by <paramref name="key"/>: <paramref name="values"/>
+    /// are written first (so providers can observe them), singleton item
+    /// providers contribute next (only when the scope is otherwise empty),
+    /// then call-site scoped providers (<paramref name="scopeProviders"/>)
+    /// contribute on top.
     /// </summary>
-    Task<IDataContextScope> StartContextAsync(string key, IEnumerable<IDataContextItemProvider> providers, CancellationToken cancellationToken);
+    ValueTask InitializeAsync(string key, IEnumerable<IDataContextItemProvider> scopeProviders,
+        IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken);
 
     /// <summary>Forcibly removes the scope keyed by <paramref name="key"/>.</summary>
     void DeleteContext(string key);

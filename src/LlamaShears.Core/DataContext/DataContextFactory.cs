@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices.ComTypes;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,6 +8,8 @@ namespace LlamaShears.Core.DataContext;
 
 internal sealed class DataContextFactory : IDataContextFactory
 {
+    private readonly ImmutableArray<IDataContextItemProvider> _providers;
+
     public DataContextFactory(
         [FromKeyedServices(DataContextConstants.SingletonKey)] IEnumerable<IDataContextItemProvider> providers)
     {
@@ -19,7 +22,6 @@ internal sealed class DataContextFactory : IDataContextFactory
     private readonly object _lock = new object();
 
     private readonly AsyncLocal<IDataContextScope?> _current = new AsyncLocal<IDataContextScope?>();
-    private readonly ImmutableArray<IDataContextItemProvider> _providers;
 
     public IDataContextScope? Current
     {
@@ -27,11 +29,9 @@ internal sealed class DataContextFactory : IDataContextFactory
         set => _current.Value = value;
     }
 
-    public async Task<IDataContextScope> StartContextAsync(string key, IEnumerable<IDataContextItemProvider> providers,
-        CancellationToken cancellationToken)
+    public IDataContextScope CreateContext(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        ArgumentNullException.ThrowIfNull(providers);
         SweepDeadEntries();
 
         var scope = new DataContextScope(key);
@@ -43,30 +43,39 @@ internal sealed class DataContextFactory : IDataContextFactory
             }
 
             _scopes[key] = new WeakReference<IDataContextScope>(scope);
+            return _current.Value = scope;
+        }
+    }
+
+    public async ValueTask InitializeAsync(string key,IEnumerable<IDataContextItemProvider> scopeProviders, IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        IDataContextScope? scope;
+        lock (_lock)
+        {
+            if (!_scopes.TryGetValue(key, out var weakScopeReference) || !weakScopeReference.TryGetTarget(out scope) ||
+                scope is null)
+            {
+                throw new InvalidOperationException($"No such scope exists: {key}");
+            }
         }
 
-        try
+        var hadAny = scope.Any();
+        scope.SetItems(values); // Values are always set first, because providers might need them.
+        if (!hadAny)
         {
-            foreach (var provider in _providers.Concat(providers))
+            foreach (var provider in _providers)
             {
                 await scope.SetItemsAsync(provider, cancellationToken);
             }
         }
-        catch
+
+        foreach (var provider in scopeProviders)
         {
-            lock (_lock)
-            {
-                _scopes.Remove(key);
-                if (ReferenceEquals(_current.Value, scope))
-                {
-                    _current.Value = null;
-                }
-            }
-
-            throw;
+            await scope.SetItemsAsync(provider, cancellationToken);
         }
-
-        return scope;
+        
+        
     }
 
     public bool TryJoinContextScope(string key, [NotNullWhen(true)] out IDataContextScope? context)

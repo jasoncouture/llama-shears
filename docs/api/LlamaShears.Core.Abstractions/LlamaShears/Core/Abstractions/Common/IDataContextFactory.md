@@ -21,15 +21,24 @@ Detaches the current scope from this call chain. When
 `owner` is `true` the underlying
 scope is also removed from the factory's registry.
 
+### `CreateContext`(string key)
+
+Creates a new empty scope keyed by `key` and sets it
+as the current call chain's active scope. Throws when a live scope
+already claims that key. The returned scope must be populated via
+[IDataContextFactory](IDataContextFactory.md).`InitializeAsync` before consumers read from it.
+
 ### `DeleteContext`(string key)
 
 Forcibly removes the scope keyed by `key`.
 
-### `StartContextAsync`(string key, IEnumerable<[IDataContextItemProvider](IDataContextItemProvider.md)> providers, CancellationToken cancellationToken)
+### `InitializeAsync`(string key, IEnumerable<[IDataContextItemProvider](IDataContextItemProvider.md)> scopeProviders, IEnumerable<KeyValuePair<string, object>> values, CancellationToken cancellationToken)
 
-Creates a new scope keyed by `key`, populates it
-from `providers`. Throws when a live scope already
-claims that key.
+Populates the scope keyed by `key`: `values`
+are written first (so providers can observe them), singleton item
+providers contribute next (only when the scope is otherwise empty),
+then call-site scoped providers (`scopeProviders`)
+contribute on top.
 
 ### `TryJoinContextScope`(string key, [IDataContextScope](IDataContextScope.md)& context)
 
