@@ -284,20 +284,14 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         var workspace = Path.GetFullPath(config.WorkspacePath);
         var indexPath = Path.Combine(workspace, IndexFolder, IndexFileName);
 
-        var embeddingId = config.Embedding?.Id ?? _options.DefaultEmbeddingModel
-            ?? throw new InvalidOperationException(
-                $"Agent '{agentId}' has no embedding model and no host-level default is configured.");
-        var keepAlive = config.Embedding?.KeepAlive ?? _options.DefaultEmbeddingKeepAlive;
-        var queryPrefix = config.Embedding?.QueryPrefix ?? _options.DefaultEmbeddingQueryPrefix ?? string.Empty;
-        var documentPrefix = config.Embedding?.DocumentPrefix ?? _options.DefaultEmbeddingDocumentPrefix ?? string.Empty;
+        var embeddingModel = config.Embedding ?? BuildDefaultEmbeddingModel(agentId);
+        var queryPrefix = embeddingModel.GetQueryPrefix() ?? _options.DefaultEmbeddingQueryPrefix ?? string.Empty;
+        var documentPrefix = embeddingModel.GetDocumentPrefix() ?? _options.DefaultEmbeddingDocumentPrefix ?? string.Empty;
         var factory = _embeddingFactories.FirstOrDefault(f =>
-            string.Equals(f.Name, embeddingId.Provider, StringComparison.OrdinalIgnoreCase))
+            string.Equals(f.Name, embeddingModel.Id.Provider, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
-                $"No embedding provider factory registered with name '{embeddingId.Provider}'.");
-        var embedding = factory.CreateModel(new ModelConfiguration(
-            ModelId: embeddingId,
-            KeepAlive: keepAlive,
-            AgentOptions: config.Embedding?.Options));
+                $"No embedding provider factory registered with name '{embeddingModel.Id.Provider}'.");
+        var embedding = factory.CreateModel(embeddingModel);
 
         return new MemoryContext(
             workspace,
@@ -307,6 +301,14 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             documentPrefix,
             config.Memory.SearchLimit,
             config.Memory.SearchMinScore);
+    }
+
+    private ModelConfiguration BuildDefaultEmbeddingModel(string agentId)
+    {
+        var defaultId = _options.DefaultEmbeddingModel
+            ?? throw new InvalidOperationException(
+                $"Agent '{agentId}' has no embedding model and no host-level default is configured.");
+        return new ModelConfiguration(defaultId);
     }
 
     private async ValueTask<VectorStoreCollection<string, MemoryVectorRecord>> OpenCollectionAsync(

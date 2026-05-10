@@ -147,7 +147,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task ModelKeepAliveDefaultsToNullWhenAbsent()
+    public async Task ModelParametersDefaultsToNullWhenAbsent()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x" } }
@@ -155,11 +155,11 @@ public sealed class AgentConfigSerializationTests
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Model.KeepAlive).IsNull();
+        await Assert.That(config!.Model.Parameters).IsNull();
     }
 
     [Test]
-    public async Task ModelKeepAliveRoundTripsAsTimeSpanString()
+    public async Task ModelKeepAliveCapturedInParameters()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "keepAlive": "01:00:00" } }
@@ -167,19 +167,21 @@ public sealed class AgentConfigSerializationTests
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Model.KeepAlive).IsEqualTo(TimeSpan.FromHours(1));
+        await Assert.That(config!.Model.Parameters).IsNotNull();
+        await Assert.That(config!.Model.Parameters!["keepAlive"].GetString()).IsEqualTo("01:00:00");
     }
 
     [Test]
-    public async Task ModelKeepAliveZeroMeansUnloadImmediately()
+    public async Task ModelArbitraryUnknownPropertyCapturedInParameters()
     {
         const string json = """
-            { "model": { "id": "OLLAMA/x", "keepAlive": "00:00:00" } }
+            { "model": { "id": "OLLAMA/x", "temperature": 0.7 } }
             """;
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Model.KeepAlive).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(config!.Model.Parameters).IsNotNull();
+        await Assert.That(config!.Model.Parameters!["temperature"].GetDouble()).IsEqualTo(0.7);
     }
 
     [Test]
@@ -245,7 +247,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task ModelKeepAliveNegativeMeansNeverUnload()
+    public async Task ModelKeepAliveNegativeStringPreservedInParameters()
     {
         const string json = """
             { "model": { "id": "OLLAMA/x", "keepAlive": "-00:00:01" } }
@@ -253,7 +255,7 @@ public sealed class AgentConfigSerializationTests
 
         var config = JsonSerializer.Deserialize<AgentConfig>(json, _options);
 
-        await Assert.That(config!.Model.KeepAlive).IsNotNull();
-        await Assert.That(config!.Model.KeepAlive < TimeSpan.Zero).IsTrue();
+        await Assert.That(config!.Model.Parameters).IsNotNull();
+        await Assert.That(config!.Model.Parameters!["keepAlive"].GetString()).IsEqualTo("-00:00:01");
     }
 }

@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core.DataContext;
+
 internal sealed class DataContextScope : IDataContextScope
 {
     private readonly Stack<ConcurrentDictionary<string, object?>> _stack =

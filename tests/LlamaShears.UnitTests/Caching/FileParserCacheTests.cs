@@ -15,7 +15,7 @@ public sealed class FileParserCacheTests
         await File.WriteAllTextAsync(fixture.Path, "hello world");
 
         var calls = 0;
-        var parsed = await fixture.Cache.GetOrParseAsync<Payload, int>(
+        var parsed = await fixture.Cache.GetOrParseAsync(
             fixture.Path,
             state: 7,
             parser: async (stream, state, ct) =>
@@ -37,7 +37,7 @@ public sealed class FileParserCacheTests
         using var fixture = new Fixture();
 
         Stream? observedStream = null;
-        var parsed = await fixture.Cache.GetOrParseAsync<Payload, int>(
+        var parsed = await fixture.Cache.GetOrParseAsync(
             fixture.Path,
             state: 0,
             parser: (stream, _, _) =>
@@ -110,13 +110,13 @@ public sealed class FileParserCacheTests
         var payloadCalls = 0;
         var otherCalls = 0;
 
-        await fixture.Cache.GetOrParseAsync<Payload, int>(
+        await fixture.Cache.GetOrParseAsync(
             fixture.Path,
             state: 0,
             parser: (_, _, _) => { Interlocked.Increment(ref payloadCalls); return ValueTask.FromResult<Payload?>(new Payload("p", 0)); },
             cancellationToken: CancellationToken.None);
 
-        await fixture.Cache.GetOrParseAsync<OtherPayload, int>(
+        await fixture.Cache.GetOrParseAsync(
             fixture.Path,
             state: 0,
             parser: (_, _, _) => { Interlocked.Increment(ref otherCalls); return ValueTask.FromResult<OtherPayload?>(new OtherPayload(42)); },
@@ -130,7 +130,7 @@ public sealed class FileParserCacheTests
     public async Task TimeToLiveUpdateAppliesToFutureSetCalls()
     {
         using var memory = new MemoryCache(new MemoryCacheOptions());
-        IShearsCache<OwnerA> sharedCache = new Core.Caching.ShearsCache<OwnerA>(memory);
+        IShearsCache<OwnerA> sharedCache = new ShearsCache<OwnerA>(memory);
         var monitor = new MutableOptionsMonitor<FileParserCacheOptions>(
             new FileParserCacheOptions { TimeToLive = TimeSpan.FromMilliseconds(50) });
         using var cache = new FileParserCache<OwnerA>(sharedCache, monitor);
@@ -164,7 +164,7 @@ public sealed class FileParserCacheTests
     public async Task NonPositiveTimeToLiveUpdateIsIgnored()
     {
         using var memory = new MemoryCache(new MemoryCacheOptions());
-        IShearsCache<OwnerA> sharedCache = new Core.Caching.ShearsCache<OwnerA>(memory);
+        IShearsCache<OwnerA> sharedCache = new ShearsCache<OwnerA>(memory);
         var monitor = new MutableOptionsMonitor<FileParserCacheOptions>(
             new FileParserCacheOptions { TimeToLive = TimeSpan.FromMinutes(30) });
         using var cache = new FileParserCache<OwnerA>(sharedCache, monitor);
@@ -196,7 +196,7 @@ public sealed class FileParserCacheTests
     {
         using var fixture = new Fixture();
 
-        await Assert.That(() => fixture.Cache.GetOrParseAsync<Payload, int>(
+        await Assert.That(() => fixture.Cache.GetOrParseAsync(
                 path!,
                 state: 0,
                 parser: (_, _, _) => ValueTask.FromResult<Payload?>(null),
@@ -225,7 +225,7 @@ public sealed class FileParserCacheTests
         public Fixture()
         {
             _ownedMemory = new MemoryCache(new MemoryCacheOptions());
-            IShearsCache<OwnerA> shears = new Core.Caching.ShearsCache<OwnerA>(_ownedMemory);
+            IShearsCache<OwnerA> shears = new ShearsCache<OwnerA>(_ownedMemory);
             var monitor = new MutableOptionsMonitor<FileParserCacheOptions>(
                 new FileParserCacheOptions { TimeToLive = TimeSpan.FromMinutes(10) });
             _ownedCache = new FileParserCache<OwnerA>(shears, monitor);

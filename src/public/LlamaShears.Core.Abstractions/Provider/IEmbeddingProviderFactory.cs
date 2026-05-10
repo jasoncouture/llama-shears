@@ -27,7 +27,7 @@ public interface IEmbeddingProviderFactory
     /// <summary>
     /// Asks the provider to validate <paramref name="configuration"/>. Today
     /// the only check is that the model identified by
-    /// <see cref="ModelConfiguration.ModelId"/> exists in the provider's
+    /// <see cref="ModelConfiguration.Id"/> exists in the provider's
     /// catalogue; the contract is shaped so future implementations can
     /// surface additional reasons (token-limit ceilings, parameter
     /// compatibility, etc.) without an interface change.

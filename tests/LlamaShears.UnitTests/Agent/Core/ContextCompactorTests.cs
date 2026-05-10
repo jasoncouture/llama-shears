@@ -204,10 +204,7 @@ public sealed class ContextCompactorTests
             totalEstimate += (int)Math.Ceiling(turn.Content.Length * 1.5 / 2.0);
         }
         var agentConfig = new AgentConfig(
-            Model: new AgentModelConfig(
-                Id: config.ModelId,
-                ContextLength: config.ContextLength,
-                TokenLimit: config.TokenLimit),
+            Model: config,
             ModelContextProtocolServers: []);
         return new AgentContext(
             AgentId: "test",

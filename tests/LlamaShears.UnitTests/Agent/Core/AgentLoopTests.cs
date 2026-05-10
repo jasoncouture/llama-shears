@@ -138,7 +138,7 @@ public sealed class AgentLoopTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static global::LlamaShears.Core.Agent BuildAgent(
+    private static LlamaShears.Core.Agent BuildAgent(
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
@@ -163,11 +163,11 @@ public sealed class AgentLoopTests
         var resolvedMemorySearcher = memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher();
         var resolvedConfig = config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
-        var agent = new global::LlamaShears.Core.Agent(
+        var agent = new LlamaShears.Core.Agent(
             config: resolvedConfig,
             model: model,
             agentContext: agentContext,
-            logger: NullLogger<global::LlamaShears.Core.Agent>.Instance,
+            logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),

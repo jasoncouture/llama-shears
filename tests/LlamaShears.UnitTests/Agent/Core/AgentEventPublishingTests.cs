@@ -127,11 +127,11 @@ public sealed class AgentEventPublishingTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
-        using var agent = new global::LlamaShears.Core.Agent(
+        using var agent = new LlamaShears.Core.Agent(
             config: resolvedConfig,
             model: model,
             agentContext: ctx,
-            logger: NullLogger<global::LlamaShears.Core.Agent>.Instance,
+            logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: bus,
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),

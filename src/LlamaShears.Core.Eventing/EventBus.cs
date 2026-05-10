@@ -111,8 +111,8 @@ internal sealed partial class EventBus : IEventBus, IEventPublisher
 
         public async ValueTask HandleAsync(IEventEnvelope<T> envelope, CancellationToken cancellationToken)
         {
-            if(envelope.DeliveryMode != _deliveryMode) return;
-            if(!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
+            if (envelope.DeliveryMode != _deliveryMode) return;
+            if (!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
 
             try
             {

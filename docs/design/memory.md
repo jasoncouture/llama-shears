@@ -82,15 +82,17 @@ The service iterates `IAgentConfigProvider.ListAgentIds()` on each scan; agents 
 
 Two layers, with per-agent overriding host:
 
-- **Per-agent** (`AgentConfig.Embedding`) — `id` (provider/model), `keepAlive`, `queryPrefix`, `documentPrefix`. Optional; if absent, the host defaults are used.
-- **Host-level** (`Memory:DefaultEmbedding*` in `appsettings.json`):
+- **Per-agent** (`AgentConfig.Embedding`) — a full `ModelConfiguration` (`id`, `think`, `contextLength`, `tokenLimit`, plus any free-form keys like `queryPrefix`, `documentPrefix`, `keepAlive`). All unrecognized keys land in `ModelConfiguration.Parameters` and ride through to the provider. Optional; if absent, the host defaults are used.
+- **Host-level** (`Memory:DefaultEmbedding*` in `appsettings.json`) supplies the fallback `id` and prefix strings; provider-specific knobs (e.g. Ollama's `keepAlive`) live on the provider's own host options:
 
   ```json
   "Memory": {
     "DefaultEmbeddingModel": "OLLAMA/embeddinggemma:latest",
     "DefaultEmbeddingQueryPrefix": "task: search result | query: ",
-    "DefaultEmbeddingDocumentPrefix": "title: none | text: ",
-    "DefaultEmbeddingKeepAlive": "01:00:00"
+    "DefaultEmbeddingDocumentPrefix": "title: none | text: "
+  },
+  "Providers": {
+    "Ollama": { "KeepAlive": "01:00:00" }
   }
   ```
 

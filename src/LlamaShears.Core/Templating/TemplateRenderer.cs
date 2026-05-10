@@ -23,7 +23,7 @@ public sealed class TemplateRenderer : ITemplateRenderer
         ArgumentException.ThrowIfNullOrWhiteSpace(templatePath);
         ArgumentNullException.ThrowIfNull(data);
 
-        var template = await _cache.GetOrParseAsync<Template, string>(
+        var template = await _cache.GetOrParseAsync(
             templatePath,
             templatePath,
             ParseAsync,

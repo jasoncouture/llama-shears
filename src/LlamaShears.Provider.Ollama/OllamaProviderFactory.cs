@@ -49,28 +49,28 @@ public class OllamaProviderFactory : IProviderFactory
     public async ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(configuration.ModelId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+        ArgumentNullException.ThrowIfNull(configuration.Id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.Id.Model);
 
-        if (!string.Equals(configuration.ModelId.Provider, Name, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(configuration.Id.Provider, Name, StringComparison.OrdinalIgnoreCase))
         {
             return new ValidationResult(
-                $"Provider '{configuration.ModelId.Provider}' does not match this factory ('{Name}').",
-                [nameof(ModelConfiguration.ModelId)]);
+                $"Provider '{configuration.Id.Provider}' does not match this factory ('{Name}').",
+                [nameof(ModelConfiguration.Id)]);
         }
 
         var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
         var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
         foreach (var model in models)
         {
-            if (string.Equals(model.Name, configuration.ModelId.Model, StringComparison.Ordinal))
+            if (string.Equals(model.Name, configuration.Id.Model, StringComparison.Ordinal))
             {
                 return ValidationResult.Success;
             }
         }
         return new ValidationResult(
-            $"Ollama provider does not have a model named '{configuration.ModelId.Model}'.",
-            [nameof(ModelConfiguration.ModelId)]);
+            $"Ollama provider does not have a model named '{configuration.Id.Model}'.",
+            [nameof(ModelConfiguration.Id)]);
     }
 
     public ILanguageModel CreateModel(ModelConfiguration configuration)

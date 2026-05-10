@@ -34,10 +34,8 @@ The package is organised into namespaces by concern; each namespace was previous
 
 - [AgentConfig](LlamaShears/Core/Abstractions/Agent/AgentConfig.md)
 - [AgentConfigExtensions](LlamaShears/Core/Abstractions/Agent/AgentConfigExtensions.md)
-- [AgentEmbeddingConfig](LlamaShears/Core/Abstractions/Agent/AgentEmbeddingConfig.md)
 - [AgentInfo](LlamaShears/Core/Abstractions/Agent/AgentInfo.md)
 - [AgentMemoryConfig](LlamaShears/Core/Abstractions/Agent/AgentMemoryConfig.md)
-- [AgentModelConfig](LlamaShears/Core/Abstractions/Agent/AgentModelConfig.md)
 - [AgentToolConfig](LlamaShears/Core/Abstractions/Agent/AgentToolConfig.md)
 - [IAgent](LlamaShears/Core/Abstractions/Agent/IAgent.md)
 - [IAgentConfigProvider](LlamaShears/Core/Abstractions/Agent/IAgentConfigProvider.md)
@@ -173,6 +171,7 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions.Provider
 
 - [AgentProviderOptions](LlamaShears/Core/Abstractions/Provider/AgentProviderOptions.md)
+- [EmbeddingModelConfigurationExtensions](LlamaShears/Core/Abstractions/Provider/EmbeddingModelConfigurationExtensions.md)
 - [IContextEntry](LlamaShears/Core/Abstractions/Provider/IContextEntry.md)
 - [IEmbeddingModel](LlamaShears/Core/Abstractions/Provider/IEmbeddingModel.md)
 - [IEmbeddingProviderFactory](LlamaShears/Core/Abstractions/Provider/IEmbeddingProviderFactory.md)
@@ -189,6 +188,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [LanguageModelExtensions](LlamaShears/Core/Abstractions/Provider/LanguageModelExtensions.md)
 - [ModelConfiguration](LlamaShears/Core/Abstractions/Provider/ModelConfiguration.md)
 - [ModelConfigurationExtensions](LlamaShears/Core/Abstractions/Provider/ModelConfigurationExtensions.md)
+- [ModelConfigurationJsonConverter](LlamaShears/Core/Abstractions/Provider/ModelConfigurationJsonConverter.md)
 - [ModelInfo](LlamaShears/Core/Abstractions/Provider/ModelInfo.md)
 - [ModelPrompt](LlamaShears/Core/Abstractions/Provider/ModelPrompt.md)
 - [ModelRole](LlamaShears/Core/Abstractions/Provider/ModelRole.md)

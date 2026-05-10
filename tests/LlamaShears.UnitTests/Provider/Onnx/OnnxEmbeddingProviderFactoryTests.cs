@@ -117,7 +117,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.ErrorMessage).Contains("missing");
-        await Assert.That(result.MemberNames).Contains(nameof(ModelConfiguration.ModelId));
+        await Assert.That(result.MemberNames).Contains(nameof(ModelConfiguration.Id));
     }
 
     [Test]

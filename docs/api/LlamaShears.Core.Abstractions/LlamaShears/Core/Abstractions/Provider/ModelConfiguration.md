@@ -3,17 +3,17 @@
 Assembly: `LlamaShears.Core.Abstractions`
 
 Construction-time inputs for [IProviderFactory](IProviderFactory.md).`CreateModel`
-and [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md).`CreateModel`.
+and [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md).`CreateModel`. Doubles as the
+authored agent-config shape — the same record persists to disk and flows
+to providers verbatim.
 
 ## Parameters
 
-- `ModelId` — Globally unique model identifier (provider + provider-scoped model name).
+- `Id` — Globally unique model identifier (provider + provider-scoped model name).
 - `Think` — Thinking effort hint (chat models only).
 - `ContextLength` — Override for the model's context-window size; `null` uses provider default.
-- `KeepAlive` — Provider-specific keep-alive; `null` uses provider default.
-- `Parameters` — Free-form factory-level parameters.
 - `TokenLimit` — Maximum response tokens; `0` = unbounded.
-- `AgentOptions` — Agent-supplied JSON options merged on top of the provider's host defaults at request time.
+- `Parameters` — Free-form provider-specific overrides. Captures every JSON property that does not match a known field; providers consume entries (e.g. Ollama reads `keepAlive`).
 
 ## Fields
 
@@ -23,25 +23,17 @@ Key used to stash the active [ModelConfiguration](ModelConfiguration.md) in the 
 
 ## Properties
 
-### `AgentOptions`
-
-Agent-supplied JSON options merged on top of the provider's host defaults at request time.
-
 ### `ContextLength`
 
 Override for the model's context-window size; `null` uses provider default.
 
-### `KeepAlive`
-
-Provider-specific keep-alive; `null` uses provider default.
-
-### `ModelId`
+### `Id`
 
 Globally unique model identifier (provider + provider-scoped model name).
 
 ### `Parameters`
 
-Free-form factory-level parameters.
+Free-form provider-specific overrides. Captures every JSON property that does not match a known field; providers consume entries (e.g. Ollama reads `keepAlive`).
 
 ### `Think`
 
@@ -53,18 +45,18 @@ Maximum response tokens; `0` = unbounded.
 
 ## Methods
 
-### `ModelConfiguration`([CompositeIdentity](../Common/CompositeIdentity.md) ModelId, [ThinkLevel](ThinkLevel.md) Think, Nullable<int> ContextLength, Nullable<TimeSpan> KeepAlive, IReadOnlyDictionary<string, object> Parameters, int TokenLimit, Nullable<JsonElement> AgentOptions)
+### `ModelConfiguration`([CompositeIdentity](../Common/CompositeIdentity.md) Id, [ThinkLevel](ThinkLevel.md) Think, Nullable<int> ContextLength, int TokenLimit, ImmutableDictionary<string, JsonElement> Parameters)
 
 Construction-time inputs for [IProviderFactory](IProviderFactory.md).`CreateModel`
-and [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md).`CreateModel`.
+and [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md).`CreateModel`. Doubles as the
+authored agent-config shape — the same record persists to disk and flows
+to providers verbatim.
 
 #### Parameters
 
-- `ModelId` — Globally unique model identifier (provider + provider-scoped model name).
+- `Id` — Globally unique model identifier (provider + provider-scoped model name).
 - `Think` — Thinking effort hint (chat models only).
 - `ContextLength` — Override for the model's context-window size; `null` uses provider default.
-- `KeepAlive` — Provider-specific keep-alive; `null` uses provider default.
-- `Parameters` — Free-form factory-level parameters.
 - `TokenLimit` — Maximum response tokens; `0` = unbounded.
-- `AgentOptions` — Agent-supplied JSON options merged on top of the provider's host defaults at request time.
+- `Parameters` — Free-form provider-specific overrides. Captures every JSON property that does not match a known field; providers consume entries (e.g. Ollama reads `keepAlive`).
 

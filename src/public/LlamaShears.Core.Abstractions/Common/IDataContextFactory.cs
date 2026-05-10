@@ -4,7 +4,7 @@ namespace LlamaShears.Core.Abstractions.Common;
 
 /// <summary>
 /// Manages keyed <see cref="IDataContextScope"/> instances flowing on
-/// the current call chain via <see cref="System.Threading.AsyncLocal{T}"/>.
+/// the current call chain via <see cref="AsyncLocal{T}"/>.
 /// Other call chains looking up the same key can rejoin via
 /// <see cref="TryJoinContextScope"/>.
 /// </summary>

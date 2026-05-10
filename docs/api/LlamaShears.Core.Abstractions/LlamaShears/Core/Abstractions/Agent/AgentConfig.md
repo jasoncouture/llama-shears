@@ -67,7 +67,7 @@ Absolute or workspace-relative path to the agent's workspace overlay; `null` fal
 
 ## Methods
 
-### `AgentConfig`([AgentModelConfig](AgentModelConfig.md) Model, string Id, string WorkspacePath, string SystemPrompt, string PromptContext, [AgentEmbeddingConfig](AgentEmbeddingConfig.md) Embedding, ImmutableHashSet<string> ModelContextProtocolServers)
+### `AgentConfig`([ModelConfiguration](../Provider/ModelConfiguration.md) Model, string Id, string WorkspacePath, string SystemPrompt, string PromptContext, [ModelConfiguration](../Provider/ModelConfiguration.md) Embedding, ImmutableHashSet<string> ModelContextProtocolServers)
 
 Immutable on-disk configuration snapshot for one agent. Loaded from
 `<Data>/agents/<id>.json` by [IAgentConfigProvider](IAgentConfigProvider.md)

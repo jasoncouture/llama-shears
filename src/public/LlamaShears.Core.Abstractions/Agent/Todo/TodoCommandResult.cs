@@ -28,17 +28,17 @@ public sealed record TodoCommandResult(ImmutableArray<TodoItem> Items, TodoResul
             _ => throw new InvalidOperationException($"Unknown enum value {State:G} = {State}") // Intent - Show both string and numeric value.
         };
 
-        if(!string.IsNullOrWhiteSpace(messagePrefix))
+        if (!string.IsNullOrWhiteSpace(messagePrefix))
         {
             stringBuilder.Append(messagePrefix);
-            if(!string.IsNullOrWhiteSpace(Message))
+            if (!string.IsNullOrWhiteSpace(Message))
             {
                 stringBuilder.Append(": ").Append(Message);
             }
             stringBuilder.Append("\n\n");
         }
 
-        foreach(var item in Items.OrderBy(i => i.Index))
+        foreach (var item in Items.OrderBy(i => i.Index))
         {
             // \n is used here so that it's consistent across platforms.
             // Will read line handle this correctly? :grimace:

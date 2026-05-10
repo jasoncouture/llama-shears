@@ -9,7 +9,7 @@ internal sealed class DataContextFactory : IDataContextFactory
 {
     public DataContextFactory([FromKeyedServices(DataContextConstants.SingletonKey)] IEnumerable<IDataContextItemProvider> providers)
     {
-        _providers = [..providers];
+        _providers = [.. providers];
     }
     private readonly Dictionary<string, WeakReference<IDataContextScope>> _scopes =
         new Dictionary<string, WeakReference<IDataContextScope>>(StringComparer.OrdinalIgnoreCase);

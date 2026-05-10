@@ -47,7 +47,7 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         AgentConfig? raw;
         try
         {
-            raw = await _cache.GetOrParseAsync<AgentConfig, ParseState>(
+            raw = await _cache.GetOrParseAsync(
                 path,
                 state,
                 ParseAsync,

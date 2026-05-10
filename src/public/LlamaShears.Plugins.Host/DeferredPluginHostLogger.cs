@@ -80,7 +80,7 @@ public sealed class DeferredPluginHostLogger : IPluginContextLogger
     {
 
         var entry = new DeferredLogEntry(level, format, exception, [.. data]);
-        if(_logger is not null)
+        if (_logger is not null)
         {
             WriteEntry(_logger, entry);
             return;
