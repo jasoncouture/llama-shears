@@ -9,7 +9,7 @@ full [AgentConfig](AgentConfig.md).
 ## Parameters
 
 - `AgentId` — Stable identifier of the agent.
-- `ModelId` — Identifier of the language model the agent is wired to.
+- `ModelId` — Globally unique identifier of the language model the agent is wired to.
 - `ContextWindowSize` — Token budget the agent's model exposes for a single turn.
 - `Parameters` — Free-form metadata surfaced by the producer; `null` = none.
 
@@ -25,7 +25,7 @@ Token budget the agent's model exposes for a single turn.
 
 ### `ModelId`
 
-Identifier of the language model the agent is wired to.
+Globally unique identifier of the language model the agent is wired to.
 
 ### `Parameters`
 
@@ -33,7 +33,7 @@ Free-form metadata surfaced by the producer; `null` = none.
 
 ## Methods
 
-### `AgentInfo`(string AgentId, string ModelId, int ContextWindowSize, IReadOnlyDictionary<string, object> Parameters)
+### `AgentInfo`(string AgentId, [CompositeIdentity](../Common/CompositeIdentity.md) ModelId, int ContextWindowSize, IReadOnlyDictionary<string, object> Parameters)
 
 Lightweight catalog entry describing a known agent: enough metadata to
 render an agent in a list or pick one for routing without loading the
@@ -42,7 +42,7 @@ full [AgentConfig](AgentConfig.md).
 #### Parameters
 
 - `AgentId` — Stable identifier of the agent.
-- `ModelId` — Identifier of the language model the agent is wired to.
+- `ModelId` — Globally unique identifier of the language model the agent is wired to.
 - `ContextWindowSize` — Token budget the agent's model exposes for a single turn.
 - `Parameters` — Free-form metadata surfaced by the producer; `null` = none.
 

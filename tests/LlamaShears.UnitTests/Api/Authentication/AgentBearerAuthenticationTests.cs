@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Api.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Api.Authentication;
 
 public sealed class AgentBearerAuthenticationTests
@@ -108,6 +110,5 @@ public sealed class AgentBearerAuthenticationTests
         return await auth.AuthenticateAsync(ctx, AgentBearerDefaults.AuthenticationScheme);
     }
 
-    private static AgentInfo SampleAgent(string id = "alice")
-        => new(id, "ollama:llama3", 8192);
+    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, new CompositeIdentity("ollama", "llama3"), 8192);
 }

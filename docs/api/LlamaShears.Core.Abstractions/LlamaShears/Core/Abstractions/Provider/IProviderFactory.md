@@ -12,9 +12,8 @@ future cloud providers, etc.).
 
 ### `Name`
 
-Unique name of the provider factory. Must match
-`^[A-Z]([A-Z0-9-_]*)[A-Z0-9]+$`; factories with a non-matching
-name are ignored.
+Unique name of the provider factory. Compared case-insensitively
+against [CompositeIdentity](../Common/CompositeIdentity.md).`Provider` when routing.
 
 ## Methods
 
@@ -25,4 +24,25 @@ Creates a model instance from `configuration`.
 ### `ListModelsAsync`(CancellationToken cancellationToken)
 
 Lists every model the provider surfaces, with metadata.
+
+### `ValidateAsync`([ModelConfiguration](ModelConfiguration.md) configuration, CancellationToken cancellationToken)
+
+Asks the provider to validate `configuration`. Today
+the only check is that the model identified by
+[ModelConfiguration](ModelConfiguration.md).`ModelId` exists in the provider's
+catalogue; the contract is shaped so future implementations can
+surface additional reasons (token-limit ceilings, parameter
+compatibility, etc.) without an interface change.
+
+#### Parameters
+
+- `configuration` — Configuration to validate.
+- `cancellationToken` — Cancellation token.
+
+#### Returns
+
+ValidationResult.`Success` (i.e. `null`) when
+the configuration is valid; otherwise a populated
+ValidationResult whose ValidationResult.`ErrorMessage`
+explains the failure.
 

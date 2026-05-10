@@ -53,7 +53,7 @@ public partial class OllamaLanguageModel : ILanguageModel
 
             var request = new ChatRequest
             {
-                Model = _configuration.ModelId,
+                Model = _configuration.ModelId.Model,
                 Stream = true,
                 Messages = messages,
                 Think = MapThinkLevel(_configuration.Think),
@@ -72,14 +72,14 @@ public partial class OllamaLanguageModel : ILanguageModel
                 var thinking = chunk?.Message?.Thinking;
                 if (!string.IsNullOrEmpty(thinking))
                 {
-                    LogThoughtReceived(_logger, _configuration.ModelId, thinking);
+                    LogThoughtReceived(_logger, _configuration.ModelId.Model, thinking);
                     yield return new OllamaThoughtFragment(thinking);
                 }
 
                 var content = chunk?.Message?.Content;
                 if (!string.IsNullOrEmpty(content))
                 {
-                    LogTokenReceived(_logger, _configuration.ModelId, content);
+                    LogTokenReceived(_logger, _configuration.ModelId.Model, content);
                     yield return new OllamaResponseFragment(content);
                 }
 
@@ -98,7 +98,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                         var callId = string.IsNullOrEmpty(ollamaCall.Id)
                             ? Guid.CreateVersion7().ToString()
                             : ollamaCall.Id;
-                        LogToolCallReceived(_logger, _configuration.ModelId, source, name);
+                        LogToolCallReceived(_logger, _configuration.ModelId.Model, source, name);
                         yield return new OllamaToolCallFragment(
                             new ToolCall(source, name, argumentsJson, callId));
                     }
@@ -161,7 +161,8 @@ public partial class OllamaLanguageModel : ILanguageModel
         return tools.Count == 0 ? null : tools;
     }
 
-    private static Tool ToOllamaTool(string source, ToolDescriptor descriptor) => new()
+    private static Tool ToOllamaTool(string source, ToolDescriptor descriptor) =>
+        new Tool
     {
         Type = "function",
         Function = new Function

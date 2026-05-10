@@ -1,9 +1,8 @@
-@using LlamaShears.Api.Web.Services
 @implements IDisposable
 @inject IAgentDirectory Directory
 @inject IChatSession Session
 @inject NavigationManager Nav
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <div class="chat-header">
     <select id="agent-select" value="@Session.SelectedAgentId" @onchange="OnSelectionChangedAsync">
@@ -131,12 +130,12 @@
 
     private async ValueTask<bool?> ReadBoolAsync(string key)
     {
-        var raw = await JS.InvokeAsync<string?>("localStorage.getItem", key).ConfigureAwait(false);
+        var raw = await Js.InvokeAsync<string?>("localStorage.getItem", key).ConfigureAwait(false);
         return bool.TryParse(raw, out var v) ? v : null;
     }
 
     private ValueTask WriteBoolAsync(string key, bool value)
-        => JS.InvokeVoidAsync("localStorage.setItem", key, value ? "true" : "false");
+        => Js.InvokeVoidAsync("localStorage.setItem", key, value ? "true" : "false");
 
     private static string ThoughtsKey(string agentId) => $"llamashears:agent:{agentId}:showThoughts";
 

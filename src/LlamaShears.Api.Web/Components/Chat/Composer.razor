@@ -1,10 +1,8 @@
 @using System.Collections.Immutable
-@using LlamaShears.Api.Web.Services
 @using LlamaShears.Core.Abstractions.Content
-@using Microsoft.AspNetCore.Components.Forms
 @implements IDisposable
 @inject IChatSession Session
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <form class="composer" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
     @if (_pending.Count > 0)
@@ -73,7 +71,7 @@
     {
         if (!_registered && _selfRef is not null)
         {
-            await JS.InvokeVoidAsync("composerPaste.register", _pasteId, _selfRef).ConfigureAwait(false);
+            await Js.InvokeVoidAsync("composerPaste.register", _pasteId, _selfRef).ConfigureAwait(false);
             _registered = true;
         }
     }
@@ -145,7 +143,7 @@
         {
             try
             {
-                _ = JS.InvokeVoidAsync("composerPaste.unregister", _pasteId);
+                _ = Js.InvokeVoidAsync("composerPaste.unregister", _pasteId);
             }
             catch
             {

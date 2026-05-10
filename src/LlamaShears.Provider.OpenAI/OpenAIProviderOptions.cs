@@ -2,9 +2,9 @@ using System.Text.Json.Nodes;
 
 namespace LlamaShears.Provider.OpenAI;
 
-public class OpenAIProviderOptions
+public class OpenAiProviderOptions
 {
-    public Uri BaseUri { get; set; } = new("http://localhost:8080");
+    public Uri BaseUri { get; set; } = new Uri("http://localhost:8080");
 
     public string ApiKey { get; set; } = string.Empty;
 

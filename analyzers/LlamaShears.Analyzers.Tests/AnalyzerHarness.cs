@@ -14,7 +14,7 @@ namespace LlamaShears.Analyzers.Tests;
 /// </summary>
 internal static class AnalyzerHarness
 {
-    private static readonly MetadataReference[] DefaultReferences = BuildDefaultReferences();
+    private static readonly MetadataReference[] _defaultReferences = BuildDefaultReferences();
 
     /// <summary>
     /// Runs <paramref name="analyzer"/> against <paramref name="source"/>
@@ -69,7 +69,7 @@ internal static class AnalyzerHarness
         return CSharpCompilation.Create(
             assemblyName: "LlamaShears.Analyzers.Tests.Dynamic",
             syntaxTrees: [syntaxTree],
-            references: DefaultReferences,
+            references: _defaultReferences,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 

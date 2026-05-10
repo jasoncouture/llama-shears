@@ -18,7 +18,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task ConcreteClassWithDocReportsLS0008Warning()
+    public async Task ConcreteClassWithDocReportsLs0008Warning()
     {
         const string source =
             """
@@ -39,7 +39,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task RecordWithDocReportsLS0008()
+    public async Task RecordWithDocReportsLs0008()
     {
         const string source =
             """
@@ -58,7 +58,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task StructWithDocReportsLS0008()
+    public async Task StructWithDocReportsLs0008()
     {
         const string source =
             """
@@ -77,7 +77,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task EnumWithDocReportsLS0008()
+    public async Task EnumWithDocReportsLs0008()
     {
         const string source =
             """
@@ -96,7 +96,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task ConcreteMethodWithDocReportsLS0008()
+    public async Task ConcreteMethodWithDocReportsLs0008()
     {
         const string source =
             """
@@ -175,7 +175,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task PublicInterfaceWithoutDocReportsLS0009Error()
+    public async Task PublicInterfaceWithoutDocReportsLs0009Error()
     {
         const string source =
             """
@@ -199,7 +199,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task PublicInterfaceMemberWithoutDocReportsLS0011Error()
+    public async Task PublicInterfaceMemberWithoutDocReportsLs0011Error()
     {
         const string source =
             """
@@ -223,7 +223,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task NonPublicInterfaceMemberWithoutDocReportsLS0012Warning()
+    public async Task NonPublicInterfaceMemberWithoutDocReportsLs0012Warning()
     {
         const string source =
             """
@@ -247,7 +247,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task InternalInterfaceWithoutDocReportsLS0010Warning()
+    public async Task InternalInterfaceWithoutDocReportsLs0010Warning()
     {
         const string source =
             """
@@ -314,7 +314,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task DocumentationModeNotDiagnoseReportsLS0013()
+    public async Task DocumentationModeNotDiagnoseReportsLs0013()
     {
         const string source = "namespace N; public class Foo { }";
 
@@ -330,7 +330,7 @@ public sealed class XmlDocCommentAnalyzerTests
     }
 
     [Test]
-    public async Task DocumentationModeDiagnoseDoesNotReportLS0013()
+    public async Task DocumentationModeDiagnoseDoesNotReportLs0013()
     {
         const string source = "namespace N; public class Foo { }";
 

@@ -25,7 +25,7 @@ public static class WebApplicationBuilderExtensions
             o.ShutdownTimeout = TimeSpan.FromSeconds(3));
 
         builder.Services.AddOllamaProvider();
-        builder.Services.AddOpenAIProvider();
+        builder.Services.AddOpenAiProvider();
         builder.Services.AddOnnxEmbeddingsProvider();
         builder.Services.AddEventingFramework();
         builder.Services.AddCore();

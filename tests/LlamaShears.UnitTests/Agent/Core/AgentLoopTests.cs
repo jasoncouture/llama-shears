@@ -1,5 +1,4 @@
 using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -20,6 +19,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentLoopTests
@@ -172,7 +172,7 @@ public sealed class AgentLoopTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
-            modelConfiguration: new ModelConfiguration("test"),
+            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
             inferenceRunner: new InferenceRunner(

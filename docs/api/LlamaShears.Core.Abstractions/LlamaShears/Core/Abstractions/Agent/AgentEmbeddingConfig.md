@@ -39,7 +39,7 @@ Prefix prepended to texts being embedded as a query (asymmetric models only).
 
 ## Methods
 
-### `AgentEmbeddingConfig`([ModelIdentity](../Provider/ModelIdentity.md) Id, Nullable<TimeSpan> KeepAlive, string QueryPrefix, string DocumentPrefix, Nullable<JsonElement> Options)
+### `AgentEmbeddingConfig`([CompositeIdentity](../Common/CompositeIdentity.md) Id, Nullable<TimeSpan> KeepAlive, string QueryPrefix, string DocumentPrefix, Nullable<JsonElement> Options)
 
 Per-agent embedding-model selection used for memory search.
 Asymmetric prefixes are supplied here so the framework, not the

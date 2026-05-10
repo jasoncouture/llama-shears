@@ -7,14 +7,14 @@ namespace LlamaShears.UnitTests.Eventing;
 
 public sealed class EventFilterTests
 {
-    private static readonly EventType TestType = new("test", "filter");
+    private static readonly EventType _testType = new EventType("test", "filter");
 
     [Test]
     public async Task NoFiltersDeliversBothLegs()
     {
         var (publisher, bus, recorder) = BuildHarness();
 
-        await publisher.PublishAsync(TestType, new Payload("hi"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("hi"), Guid.NewGuid(), CancellationToken.None);
 
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(1);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(1);
@@ -30,7 +30,7 @@ public sealed class EventFilterTests
 
         var (publisher, bus, recorder) = BuildHarness(filter);
 
-        await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(0);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(1);
@@ -46,7 +46,7 @@ public sealed class EventFilterTests
 
         var (publisher, bus, recorder) = BuildHarness(filter);
 
-        await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(1);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(0);
@@ -62,7 +62,7 @@ public sealed class EventFilterTests
 
         var (publisher, bus, recorder) = BuildHarness(filter);
 
-        await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(0);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(0);
@@ -81,7 +81,7 @@ public sealed class EventFilterTests
 
         var (publisher, bus, recorder) = BuildHarness(fnf, awaited);
 
-        await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(0);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(0);
@@ -100,7 +100,7 @@ public sealed class EventFilterTests
 
         var (publisher, bus, _) = BuildHarness(first, second);
 
-        await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
         await second.DidNotReceive().GetDeniedModesAsync(Arg.Any<IEventEnvelope<object>>(), Arg.Any<CancellationToken>());
         GC.KeepAlive(bus);
@@ -116,7 +116,7 @@ public sealed class EventFilterTests
         var (publisher, bus, recorder) = BuildHarness(filter);
 
         await Assert.That(async () =>
-            await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None))
+            await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None))
             .Throws<InvalidOperationException>();
 
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(0);
@@ -142,7 +142,7 @@ public sealed class EventFilterTests
         cancellationTokenSource.Cancel();
 
         await Assert.That(async () =>
-            await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), cancellationTokenSource.Token))
+            await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), cancellationTokenSource.Token))
             .Throws<OperationCanceledException>();
 
         GC.KeepAlive(bus);
@@ -166,7 +166,7 @@ public sealed class EventFilterTests
         cancellationTokenSource.Cancel();
 
         await Assert.That(async () =>
-            await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), cancellationTokenSource.Token))
+            await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), cancellationTokenSource.Token))
             .Throws<OperationCanceledException>();
 
         GC.KeepAlive(bus);
@@ -186,7 +186,7 @@ public sealed class EventFilterTests
 
         var (publisher, bus, _) = BuildHarness(filter);
 
-        await publisher.PublishAsync(TestType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
+        await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
         await Assert.That(observed).IsEqualTo(EventDeliveryMode.FireAndForget);
         GC.KeepAlive(bus);

@@ -9,7 +9,7 @@ public sealed partial class JsonCronStore : ICronStore
 {
     private const string FileName = "cron.json";
 
-    private static readonly JsonSerializerOptions _jsonOptions = new()
+    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -17,7 +17,7 @@ public sealed partial class JsonCronStore : ICronStore
 
     private readonly IShearsPaths _paths;
     private readonly ILogger<JsonCronStore> _logger;
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
     private Dictionary<Guid, CronJob>? _cache;
 
     public JsonCronStore(IShearsPaths paths, ILogger<JsonCronStore> logger)

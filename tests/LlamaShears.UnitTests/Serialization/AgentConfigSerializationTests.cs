@@ -2,11 +2,12 @@ using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Serialization;
 
 public sealed class AgentConfigSerializationTests
 {
-    private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     [Test]
     public async Task RegressionThinkAcceptsStringValueInAgentJson()
@@ -52,7 +53,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task ModelIdDeserializesViaModelIdentityConverter()
+    public async Task ModelIdDeserializesViaCompositeIdentityConverter()
     {
         const string json = """
             { "model": { "id": "OLLAMA/owner/repo:tag" } }

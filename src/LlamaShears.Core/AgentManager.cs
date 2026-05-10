@@ -34,7 +34,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IHostApplicationLifetime _appLifetime;
-    private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AgentSlot> _loaded =
+        new Dictionary<string, AgentSlot>(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private CancellationTokenRegistration _appStartedRegistration;
     private int _reconciling;
@@ -214,7 +215,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         var agentInfo = new AgentInfo(
             AgentId: config.Id,
-            ModelId: config.Model.Id.Model,
+            ModelId: config.Model.Id,
             ContextWindowSize: config.Model.ContextLength ?? 0);
 
         using var scope = _currentAgent.BeginScope(agentInfo);
@@ -302,7 +303,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
         var modelConfig = new ModelConfiguration(
-            ModelId: config.Model.Id.Model,
+            ModelId: config.Model.Id,
             Think: config.Model.Think,
             ContextLength: config.Model.ContextLength,
             KeepAlive: config.Model.KeepAlive,

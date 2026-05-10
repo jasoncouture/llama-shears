@@ -81,6 +81,9 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Common
 
+- [CompositeIdentity](LlamaShears/Core/Abstractions/Common/CompositeIdentity.md)
+- [CompositeIdentityJsonConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityJsonConverter.md)
+- [CompositeIdentityTypeConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityTypeConverter.md)
 - [DataContextConstants](LlamaShears/Core/Abstractions/Common/DataContextConstants.md)
 - [DataContextServiceCollectionExtensions](LlamaShears/Core/Abstractions/Common/DataContextServiceCollectionExtensions.md)
 - [IDataContextFactory](LlamaShears/Core/Abstractions/Common/IDataContextFactory.md)
@@ -186,9 +189,6 @@ The package is organised into namespaces by concern; each namespace was previous
 - [LanguageModelExtensions](LlamaShears/Core/Abstractions/Provider/LanguageModelExtensions.md)
 - [ModelConfiguration](LlamaShears/Core/Abstractions/Provider/ModelConfiguration.md)
 - [ModelConfigurationExtensions](LlamaShears/Core/Abstractions/Provider/ModelConfigurationExtensions.md)
-- [ModelIdentity](LlamaShears/Core/Abstractions/Provider/ModelIdentity.md)
-- [ModelIdentityJsonConverter](LlamaShears/Core/Abstractions/Provider/ModelIdentityJsonConverter.md)
-- [ModelIdentityTypeConverter](LlamaShears/Core/Abstractions/Provider/ModelIdentityTypeConverter.md)
 - [ModelInfo](LlamaShears/Core/Abstractions/Provider/ModelInfo.md)
 - [ModelPrompt](LlamaShears/Core/Abstractions/Provider/ModelPrompt.md)
 - [ModelRole](LlamaShears/Core/Abstractions/Provider/ModelRole.md)

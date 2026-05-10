@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
@@ -12,7 +13,8 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
 
     private readonly IOptionsMonitor<OnnxEmbeddingsProviderOptions> _options;
     private readonly IShearsPaths _paths;
-    private readonly ConcurrentDictionary<string, OnnxEmbeddingModel> _models = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, OnnxEmbeddingModel> _models =
+        new ConcurrentDictionary<string, OnnxEmbeddingModel>(StringComparer.Ordinal);
 
     public OnnxEmbeddingProviderFactory(
         IOptionsMonitor<OnnxEmbeddingsProviderOptions> options,
@@ -41,11 +43,34 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
         }
     }
 
+    public ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(configuration.ModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!string.Equals(configuration.ModelId.Provider, Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return ValueTask.FromResult<ValidationResult?>(new ValidationResult(
+                $"Provider '{configuration.ModelId.Provider}' does not match this factory ('{Name}').",
+                [nameof(ModelConfiguration.ModelId)]));
+        }
+        if (_options.CurrentValue.Models.ContainsKey(configuration.ModelId.Model))
+        {
+            return ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
+        }
+        return ValueTask.FromResult<ValidationResult?>(new ValidationResult(
+            $"ONNX embeddings provider does not have a model named '{configuration.ModelId.Model}'.",
+            [nameof(ModelConfiguration.ModelId)]));
+    }
+
     public IEmbeddingModel CreateModel(ModelConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId);
-        return _models.GetOrAdd(configuration.ModelId, BuildModel);
+        ArgumentNullException.ThrowIfNull(configuration.ModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+        return _models.GetOrAdd(configuration.ModelId.Model, BuildModel);
     }
 
     private OnnxEmbeddingModel BuildModel(string modelId)

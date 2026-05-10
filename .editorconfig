@@ -19,6 +19,12 @@ dotnet_diagnostic.CA1859.severity = none
 # static, not because the analyzer asked.
 dotnet_diagnostic.CA1822.severity = none
 
+# IDE0090 ("Use 'new(...)'") rewrites `new List<T>()` to `new()` based on
+# target type. The explicit form reads better at the call site; disabled
+# repo-wide.
+csharp_style_implicit_object_creation_when_type_is_apparent = false
+dotnet_diagnostic.IDE0090.severity = none
+
 # Collections must use the collection expression form (`[]`) wherever it
 # applies. Promoted to error per-diagnostic so the build (not just the IDE)
 # fails on `new[] { ... }`, `Type<...>.Empty`, `Array.Empty<T>()`,

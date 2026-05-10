@@ -8,7 +8,8 @@ namespace LlamaShears.Core.Sessions;
 public sealed class SessionFactory : ISessionFactory, IAsyncDisposable
 {
     private readonly IServiceProvider _services;
-    private readonly ConcurrentDictionary<SessionId, ISessionQueue> _sessions = new();
+    private readonly ConcurrentDictionary<SessionId, ISessionQueue> _sessions =
+        new ConcurrentDictionary<SessionId, ISessionQueue>();
 
     public SessionFactory(IServiceProvider services)
     {

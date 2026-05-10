@@ -39,29 +39,13 @@ public sealed class ChatBubble
     {
     }
 
-    public static ChatBubble ToolInFlight(Guid correlationId, DateTimeOffset at)
-        => new(
-            ChatBubbleKind.ToolInFlight,
-            string.Empty,
-            at,
-            streamId: correlationId,
-            isStreaming: true,
-            inFlightTools: [],
-            completedCall: null,
-            isError: false,
-            attachments: []);
+    public static ChatBubble ToolInFlight(Guid correlationId, DateTimeOffset at) =>
+        new ChatBubble(ChatBubbleKind.ToolInFlight, string.Empty, at, streamId: correlationId, isStreaming: true,
+            inFlightTools: [], completedCall: null, isError: false, attachments: []);
 
-    public static ChatBubble ToolResult(ToolCallView call, string result, bool isError, DateTimeOffset at)
-        => new(
-            ChatBubbleKind.ToolResult,
-            result,
-            at,
-            streamId: null,
-            isStreaming: false,
-            inFlightTools: null,
-            completedCall: call,
-            isError: isError,
-            attachments: []);
+    public static ChatBubble ToolResult(ToolCallView call, string result, bool isError, DateTimeOffset at) =>
+        new ChatBubble(ChatBubbleKind.ToolResult, result, at, streamId: null, isStreaming: false, inFlightTools: null,
+            completedCall: call, isError: isError, attachments: []);
 
     public ChatBubbleKind Kind { get; }
 

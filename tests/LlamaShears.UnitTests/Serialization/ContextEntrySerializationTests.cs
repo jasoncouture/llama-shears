@@ -5,7 +5,7 @@ namespace LlamaShears.UnitTests.Serialization;
 
 public sealed class ContextEntrySerializationTests
 {
-    private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     [Test]
     public async Task ModelTurnRoundTripsViaIContextEntry()

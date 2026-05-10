@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class ExplicitDelegateInvocationAnalyzerTests
 {
     [Test]
-    public async Task DirectDelegateFieldCallReportsLS0014()
+    public async Task DirectDelegateFieldCallReportsLs0014()
     {
         const string source =
             """
@@ -30,7 +30,7 @@ public sealed class ExplicitDelegateInvocationAnalyzerTests
     }
 
     [Test]
-    public async Task DirectDelegateParameterCallReportsLS0014()
+    public async Task DirectDelegateParameterCallReportsLs0014()
     {
         const string source =
             """
@@ -51,7 +51,7 @@ public sealed class ExplicitDelegateInvocationAnalyzerTests
     }
 
     [Test]
-    public async Task DirectDelegatePropertyCallReportsLS0014()
+    public async Task DirectDelegatePropertyCallReportsLs0014()
     {
         const string source =
             """
@@ -73,7 +73,7 @@ public sealed class ExplicitDelegateInvocationAnalyzerTests
     }
 
     [Test]
-    public async Task DirectFuncCallReportsLS0014()
+    public async Task DirectFuncCallReportsLs0014()
     {
         const string source =
             """
@@ -175,7 +175,7 @@ public sealed class ExplicitDelegateInvocationAnalyzerTests
     }
 
     [Test]
-    public async Task QualifiedDirectDelegateCallReportsLS0014()
+    public async Task QualifiedDirectDelegateCallReportsLs0014()
     {
         const string source =
             """

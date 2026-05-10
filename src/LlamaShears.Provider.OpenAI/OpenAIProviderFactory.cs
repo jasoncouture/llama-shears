@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
@@ -7,17 +8,17 @@ using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Provider.OpenAI;
 
-public sealed partial class OpenAIProviderFactory : IProviderFactory
+public sealed partial class OpenAiProviderFactory : IProviderFactory
 {
     public const string ProviderName = "openai";
 
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IOptionsMonitor<OpenAIProviderOptions> _hostOptions;
+    private readonly IOptionsMonitor<OpenAiProviderOptions> _hostOptions;
     private readonly IServiceProvider _serviceProvider;
 
-    public OpenAIProviderFactory(
+    public OpenAiProviderFactory(
         IHttpClientFactory httpClientFactory,
-        IOptionsMonitor<OpenAIProviderOptions> hostOptions,
+        IOptionsMonitor<OpenAiProviderOptions> hostOptions,
         IServiceProvider serviceProvider)
     {
         _httpClientFactory = httpClientFactory;
@@ -37,7 +38,7 @@ public sealed partial class OpenAIProviderFactory : IProviderFactory
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         }
-        var httpClient = _httpClientFactory.CreateClient(nameof(OpenAILanguageModel));
+        var httpClient = _httpClientFactory.CreateClient(nameof(OpenAiLanguageModel));
         using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -70,6 +71,31 @@ public sealed partial class OpenAIProviderFactory : IProviderFactory
         }
     }
 
+    public async ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(configuration.ModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+
+        if (!string.Equals(configuration.ModelId.Provider, Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ValidationResult(
+                $"Provider '{configuration.ModelId.Provider}' does not match this factory ('{Name}').",
+                [nameof(ModelConfiguration.ModelId)]);
+        }
+
+        await foreach (var model in ListModelsAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if (string.Equals(model.ModelId, configuration.ModelId.Model, StringComparison.Ordinal))
+            {
+                return ValidationResult.Success;
+            }
+        }
+        return new ValidationResult(
+            $"OpenAI provider does not have a model named '{configuration.ModelId.Model}'.",
+            [nameof(ModelConfiguration.ModelId)]);
+    }
+
     public ILanguageModel CreateModel(ModelConfiguration configuration)
-        => ActivatorUtilities.CreateInstance<OpenAILanguageModel>(_serviceProvider, configuration);
+        => ActivatorUtilities.CreateInstance<OpenAiLanguageModel>(_serviceProvider, configuration);
 }

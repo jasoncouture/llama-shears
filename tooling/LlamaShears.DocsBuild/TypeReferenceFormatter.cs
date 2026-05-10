@@ -8,7 +8,7 @@ namespace LlamaShears.DocsBuild;
 
 internal sealed class TypeReferenceFormatter
 {
-    private static readonly Dictionary<string, string> Aliases = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, string> _aliases = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         { "System.Boolean", "bool" },
         { "System.Byte", "byte" },
@@ -126,7 +126,7 @@ internal sealed class TypeReferenceFormatter
     private void AppendTypeHead(StringBuilder output, TypeRef typeRef)
     {
         var fullName = typeRef.FullName;
-        if (Aliases.TryGetValue(fullName, out var alias))
+        if (_aliases.TryGetValue(fullName, out var alias))
         {
             output.Append(alias);
             return;

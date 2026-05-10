@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
 {
     [Test]
-    public async Task ClassWithPrimaryConstructorReportsLS0001AsError()
+    public async Task ClassWithPrimaryConstructorReportsLs0001AsError()
     {
         const string source = "public class Foo(int x) { public int X => x; }";
 
@@ -22,7 +22,7 @@ public sealed class PrimaryConstructorOnNonRecordAnalyzerTests
     }
 
     [Test]
-    public async Task StructWithPrimaryConstructorReportsLS0001()
+    public async Task StructWithPrimaryConstructorReportsLs0001()
     {
         const string source = "public struct Bar(int x) { public int X => x; }";
 

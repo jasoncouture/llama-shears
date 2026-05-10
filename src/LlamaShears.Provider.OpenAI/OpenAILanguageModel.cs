@@ -11,30 +11,30 @@ using ToolCall = LlamaShears.Core.Abstractions.Provider.ToolCall;
 
 namespace LlamaShears.Provider.OpenAI;
 
-public partial class OpenAILanguageModel : ILanguageModel
+public partial class OpenAiLanguageModel : ILanguageModel
 {
     internal const string ToolNameSeparator = "__";
 
     private const string ChatCompletionsPath = "v1/chat/completions";
 
-    private static readonly JsonSerializerOptions _jsonOptions = new()
+    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };
 
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly OpenAIProviderOptions _options;
+    private readonly OpenAiProviderOptions _options;
     private readonly ModelConfiguration _configuration;
     private readonly IModelTextFormatter _textFormatter;
-    private readonly ILogger<OpenAILanguageModel> _logger;
+    private readonly ILogger<OpenAiLanguageModel> _logger;
 
-    public OpenAILanguageModel(
+    public OpenAiLanguageModel(
         IHttpClientFactory httpClientFactory,
-        IOptionsMonitor<OpenAIProviderOptions> hostOptions,
+        IOptionsMonitor<OpenAiProviderOptions> hostOptions,
         ModelConfiguration configuration,
         IModelTextFormatter textFormatter,
-        ILogger<OpenAILanguageModel> logger)
+        ILogger<OpenAiLanguageModel> logger)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
@@ -62,7 +62,7 @@ public partial class OpenAILanguageModel : ILanguageModel
         }
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-        var httpClient = _httpClientFactory.CreateClient(nameof(OpenAILanguageModel));
+        var httpClient = _httpClientFactory.CreateClient(nameof(OpenAiLanguageModel));
         httpClient.Timeout = _options.RequestTimeout;
 
         using var response = await httpClient
@@ -71,7 +71,7 @@ public partial class OpenAILanguageModel : ILanguageModel
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            LogRequestFailed(_logger, _configuration.ModelId, (int)response.StatusCode, errorBody);
+            LogRequestFailed(_logger, _configuration.ModelId.Model, (int)response.StatusCode, errorBody);
             throw new HttpRequestException(
                 $"OpenAI-compatible chat request failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {errorBody}");
         }
@@ -107,7 +107,7 @@ public partial class OpenAILanguageModel : ILanguageModel
             }
             catch (JsonException ex)
             {
-                LogMalformedEvent(_logger, _configuration.ModelId, ex.Message);
+                LogMalformedEvent(_logger, _configuration.ModelId.Model, ex.Message);
                 continue;
             }
             if (eventNode is not JsonObject eventObject)
@@ -135,16 +135,16 @@ public partial class OpenAILanguageModel : ILanguageModel
 
         foreach (var pending in toolCallAccumulator.Values.OrderBy(static a => a.Index))
         {
-            if (pending.TryBuild(_configuration.ModelId, _logger, out var call))
+            if (pending.TryBuild(_configuration.ModelId.Model, _logger, out var call))
             {
-                yield return new OpenAIToolCallFragment(call);
+                yield return new OpenAiToolCallFragment(call);
             }
         }
         toolCallAccumulator.Clear();
 
         if (totalTokens is { } tokens)
         {
-            yield return new OpenAICompletionFragment(tokens);
+            yield return new OpenAiCompletionFragment(tokens);
         }
     }
 
@@ -165,16 +165,16 @@ public partial class OpenAILanguageModel : ILanguageModel
                 var content = delta["content"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(content))
                 {
-                    LogTokenReceived(_logger, _configuration.ModelId, content);
-                    emitted.Add(new OpenAIResponseFragment(content));
+                    LogTokenReceived(_logger, _configuration.ModelId.Model, content);
+                    emitted.Add(new OpenAiResponseFragment(content));
                 }
 
                 var reasoning = delta["reasoning_content"]?.GetValue<string?>()
                     ?? delta["reasoning"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(reasoning))
                 {
-                    LogThoughtReceived(_logger, _configuration.ModelId, reasoning);
-                    emitted.Add(new OpenAIThoughtFragment(reasoning));
+                    LogThoughtReceived(_logger, _configuration.ModelId.Model, reasoning);
+                    emitted.Add(new OpenAiThoughtFragment(reasoning));
                 }
 
                 if (delta["tool_calls"] is JsonArray toolDeltas)
@@ -194,9 +194,9 @@ public partial class OpenAILanguageModel : ILanguageModel
             {
                 foreach (var pending in toolCallAccumulator.Values.OrderBy(static a => a.Index))
                 {
-                    if (pending.TryBuild(_configuration.ModelId, _logger, out var call))
+                    if (pending.TryBuild(_configuration.ModelId.Model, _logger, out var call))
                     {
-                        emitted.Add(new OpenAIToolCallFragment(call));
+                        emitted.Add(new OpenAiToolCallFragment(call));
                     }
                 }
                 toolCallAccumulator.Clear();
@@ -248,7 +248,7 @@ public partial class OpenAILanguageModel : ILanguageModel
 
         var body = new JsonObject
         {
-            ["model"] = _configuration.ModelId,
+            ["model"] = _configuration.ModelId.Model,
             ["stream"] = true,
             ["messages"] = messages,
         };
@@ -375,13 +375,13 @@ public partial class OpenAILanguageModel : ILanguageModel
             }
             foreach (var descriptor in group.Tools)
             {
-                tools.Add(ToOpenAITool(group.Source, descriptor));
+                tools.Add(ToOpenAiTool(group.Source, descriptor));
             }
         }
         return tools.Count == 0 ? null : tools;
     }
 
-    private static JsonObject ToOpenAITool(string source, ToolDescriptor descriptor)
+    private static JsonObject ToOpenAiTool(string source, ToolDescriptor descriptor)
     {
         var properties = new JsonObject();
         var required = new JsonArray();
@@ -458,7 +458,7 @@ public partial class OpenAILanguageModel : ILanguageModel
         public int Index { get; }
         public string? Id { get; set; }
         public string? Name { get; set; }
-        public StringBuilder Arguments { get; } = new();
+        public StringBuilder Arguments { get; } = new StringBuilder();
 
         public bool TryBuild(string modelId, ILogger logger, out ToolCall call)
         {

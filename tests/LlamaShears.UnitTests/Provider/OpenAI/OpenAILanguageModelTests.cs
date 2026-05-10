@@ -7,9 +7,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.OpenAI;
 
-public sealed class OpenAILanguageModelTests
+public sealed class OpenAiLanguageModelTests
 {
     [Test]
     public async Task PromptAsyncBuildsChatCompletionsRequestWithStreamingAndModel()
@@ -29,7 +30,7 @@ public sealed class OpenAILanguageModelTests
     [Test]
     public async Task PromptAsyncMergesExtraRequestParamsIntoBody()
     {
-        var hostOptions = new OpenAIProviderOptions();
+        var hostOptions = new OpenAiProviderOptions();
         hostOptions.ExtraRequestParams["cache_prompt"] = true;
         hostOptions.ExtraRequestParams["slot_id"] = 3;
         hostOptions.ExtraRequestParams["samplers"] = new JsonArray("top_k", "top_p", "min_p", "temperature");
@@ -133,7 +134,7 @@ public sealed class OpenAILanguageModelTests
     private static async Task<CapturedRequest> CaptureRequestAsync(
         PromptOptions options,
         string sseBody,
-        OpenAIProviderOptions? hostOptions = null)
+        OpenAiProviderOptions? hostOptions = null)
     {
         CapturedRequest? captured = null;
         var handler = new StubHandler(async request =>
@@ -169,27 +170,28 @@ public sealed class OpenAILanguageModelTests
         return collected;
     }
 
-    private static OpenAILanguageModel BuildModel(StubHandler handler, OpenAIProviderOptions? hostOptions)
+    private static OpenAiLanguageModel BuildModel(StubHandler handler, OpenAiProviderOptions? hostOptions)
     {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8080/") };
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
         httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
-        var optionsMonitor = Substitute.For<IOptionsMonitor<OpenAIProviderOptions>>();
-        optionsMonitor.CurrentValue.Returns(hostOptions ?? new OpenAIProviderOptions
+        var optionsMonitor = Substitute.For<IOptionsMonitor<OpenAiProviderOptions>>();
+        optionsMonitor.CurrentValue.Returns(hostOptions ?? new OpenAiProviderOptions
         {
             BaseUri = new Uri("http://localhost:8080"),
         });
 
-        return new OpenAILanguageModel(
+        return new OpenAiLanguageModel(
             httpClientFactory,
             optionsMonitor,
-            new ModelConfiguration(ModelId: "test-model"),
+            new ModelConfiguration(ModelId: new CompositeIdentity("openai", "test-model")),
             new LlamaShears.Core.Provider.ModelTextFormatter(),
-            NullLogger<OpenAILanguageModel>.Instance);
+            NullLogger<OpenAiLanguageModel>.Instance);
     }
 
-    private static HttpResponseMessage BuildSseResponse(string body) => new(HttpStatusCode.OK)
+    private static HttpResponseMessage BuildSseResponse(string body) =>
+        new HttpResponseMessage(HttpStatusCode.OK)
     {
         Content = new StringContent(body, Encoding.UTF8, "text/event-stream"),
     };

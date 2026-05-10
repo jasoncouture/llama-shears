@@ -1,5 +1,4 @@
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Memory;
 
 internal sealed class MemoryTestHarness : IDisposable
@@ -49,10 +49,10 @@ internal sealed class MemoryTestHarness : IDisposable
         var configs = Substitute.For<IAgentConfigProvider>();
         configs.GetConfigAsync(agentId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<AgentConfig?>(new AgentConfig(
-                Model: new AgentModelConfig(new ModelIdentity("STUB", "stub-chat")),
+                Model: new AgentModelConfig(new CompositeIdentity("STUB", "stub-chat")),
                 Id: agentId,
                 WorkspacePath: root,
-                Embedding: new AgentEmbeddingConfig(new ModelIdentity("STUB", "stub-embed")))));
+                Embedding: new AgentEmbeddingConfig(new CompositeIdentity("STUB", "stub-embed")))));
 
         var time = new FakeTimeProvider(DateTimeOffset.UnixEpoch.AddSeconds(1_700_000_000));
         var options = Options.Create(new MemoryServiceOptions());

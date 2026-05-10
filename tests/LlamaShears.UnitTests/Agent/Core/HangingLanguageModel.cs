@@ -5,7 +5,8 @@ namespace LlamaShears.UnitTests.Agent.Core;
 
 internal sealed class HangingLanguageModel : ILanguageModel
 {
-    private readonly TaskCompletionSource _invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _invoked =
+        new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public Task WaitForInvocationAsync(TimeSpan timeout) =>
         _invoked.Task.WaitAsync(timeout);

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Provider;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>
@@ -16,7 +17,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="DocumentPrefix">Prefix prepended to texts being embedded as a document (asymmetric models only).</param>
 /// <param name="Options">Free-form provider/model JSON overrides merged on top of host defaults.</param>
 public sealed record AgentEmbeddingConfig(
-    [property: JsonRequired] ModelIdentity Id,
+    [property: JsonRequired] CompositeIdentity Id,
     TimeSpan? KeepAlive = null,
     string? QueryPrefix = null,
     string? DocumentPrefix = null,

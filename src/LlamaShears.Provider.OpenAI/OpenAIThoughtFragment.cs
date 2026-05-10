@@ -2,4 +2,4 @@ using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Provider.OpenAI;
 
-internal sealed record OpenAIThoughtFragment(string Content) : IModelThoughtResponse;
+internal sealed record OpenAiThoughtFragment(string Content) : IModelThoughtResponse;

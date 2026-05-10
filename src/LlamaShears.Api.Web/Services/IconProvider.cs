@@ -11,7 +11,8 @@ public sealed partial class IconProvider : IIconProvider
 
     private readonly IFileProvider _files;
     private readonly ILogger<IconProvider> _logger;
-    private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _cache =
+        new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
 
     public IconProvider(IWebHostEnvironment environment, ILogger<IconProvider> logger)
     {

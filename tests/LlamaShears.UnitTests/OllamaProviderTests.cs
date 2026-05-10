@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests;
 
 public class OllamaProviderTests
@@ -107,7 +108,7 @@ public class OllamaProviderTests
         using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IProviderFactory>();
 
-        var model = factory.CreateModel(new ModelConfiguration("llama3"));
+        var model = factory.CreateModel(new ModelConfiguration(new CompositeIdentity("ollama", "llama3")));
 
         await Assert.That(model).IsTypeOf<OllamaLanguageModel>();
     }
@@ -145,7 +146,7 @@ public class OllamaProviderTests
         using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IEmbeddingProviderFactory>();
 
-        var model = factory.CreateModel(new ModelConfiguration("embeddinggemma:latest"));
+        var model = factory.CreateModel(new ModelConfiguration(new CompositeIdentity("ollama", "embeddinggemma:latest")));
 
         await Assert.That(model).IsTypeOf<OllamaEmbeddingModel>();
     }

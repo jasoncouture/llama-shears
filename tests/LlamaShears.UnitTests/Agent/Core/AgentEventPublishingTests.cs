@@ -1,13 +1,10 @@
 using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
-using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
@@ -21,6 +18,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentEventPublishingTests
@@ -138,7 +136,7 @@ public sealed class AgentEventPublishingTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
-            modelConfiguration: new ModelConfiguration("test"),
+            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
             inferenceRunner: new InferenceRunner(
@@ -216,7 +214,7 @@ public sealed class AgentEventPublishingTests
     {
         private readonly IEventPublisher _inner;
         private readonly List<CapturedEvent> _captured = [];
-        private readonly Lock _gate = new();
+        private readonly Lock _gate = new Lock();
 
         public CapturingEventPublisher(IEventPublisher inner)
         {

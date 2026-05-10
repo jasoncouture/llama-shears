@@ -7,7 +7,7 @@ namespace LlamaShears.Core.Persistence;
 
 internal sealed class AgentContext : IAgentContext
 {
-    private readonly Lock _lock = new();
+    private readonly Lock _lock = new Lock();
     private readonly List<IContextEntry> _entries;
     private readonly string _currentPath;
     private readonly JsonSerializerOptions _jsonOptions;

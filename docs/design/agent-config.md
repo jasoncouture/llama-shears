@@ -43,12 +43,12 @@ The `Id` field on `AgentConfig` is `[JsonIgnore]` — never write it in the JSON
 
 ### Model identity
 
-`ModelIdentity` is `Provider/Model` — the slash is the separator. `OLLAMA/llama3.1:latest` resolves to:
+`CompositeIdentity` is `Provider/Model` — the slash is the separator. `OLLAMA/llama3.1:latest` resolves to:
 
 - Provider name: `OLLAMA` (matched case-sensitively against `IProviderFactory.Name`).
 - Model name: `llama3.1:latest` (passed verbatim to the provider).
 
-`ModelIdentityJsonConverter` deserializes the string form. The same shape applies to `embedding.id`.
+`CompositeIdentityJsonConverter` deserializes the string form. The same shape applies to `embedding.id`.
 
 ### Tool turn limit
 

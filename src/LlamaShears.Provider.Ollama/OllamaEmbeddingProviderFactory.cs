@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +42,33 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
                 SupportsReasoning: false,
                 MaxContextWindow: 0);
         }
+    }
+
+    public async ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(configuration.ModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+
+        if (!string.Equals(configuration.ModelId.Provider, Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ValidationResult(
+                $"Provider '{configuration.ModelId.Provider}' does not match this factory ('{Name}').",
+                [nameof(ModelConfiguration.ModelId)]);
+        }
+
+        var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
+        var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var model in models)
+        {
+            if (string.Equals(model.Name, configuration.ModelId.Model, StringComparison.Ordinal))
+            {
+                return ValidationResult.Success;
+            }
+        }
+        return new ValidationResult(
+            $"Ollama provider does not have a model named '{configuration.ModelId.Model}'.",
+            [nameof(ModelConfiguration.ModelId)]);
     }
 
     public IEmbeddingModel CreateModel(ModelConfiguration configuration)

@@ -295,7 +295,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             ?? throw new InvalidOperationException(
                 $"No embedding provider factory registered with name '{embeddingId.Provider}'.");
         var embedding = factory.CreateModel(new ModelConfiguration(
-            ModelId: embeddingId.Model,
+            ModelId: embeddingId,
             KeepAlive: keepAlive,
             AgentOptions: config.Embedding?.Options));
 

@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class ExtensionMethodOnThisAnalyzerTests
 {
     [Test]
-    public async Task ThisExtensionMethodCallReportsLS0006AsWarning()
+    public async Task ThisExtensionMethodCallReportsLs0006AsWarning()
     {
         const string source =
             """

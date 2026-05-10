@@ -9,9 +9,11 @@ namespace LlamaShears.DocsBuild;
 
 internal sealed class AccessibilityFilter
 {
-    private readonly HashSet<string> _exposedTypes = new(System.StringComparer.Ordinal);
-    private readonly Dictionary<string, HashSet<string>> _exposedMembers = new(System.StringComparer.Ordinal);
-    private readonly Dictionary<string, string[]> _parameterNames = new(System.StringComparer.Ordinal);
+    private readonly HashSet<string> _exposedTypes = new HashSet<string>(System.StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<string>> _exposedMembers =
+        new Dictionary<string, HashSet<string>>(System.StringComparer.Ordinal);
+    private readonly Dictionary<string, string[]> _parameterNames =
+        new Dictionary<string, string[]>(System.StringComparer.Ordinal);
 
     public static AccessibilityFilter Build(string assemblyPath)
     {

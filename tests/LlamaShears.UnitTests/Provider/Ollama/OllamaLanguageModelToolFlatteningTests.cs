@@ -8,6 +8,7 @@ using NSubstitute;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.Ollama;
 
 public sealed class OllamaLanguageModelToolFlatteningTests
@@ -95,7 +96,7 @@ public sealed class OllamaLanguageModelToolFlatteningTests
         var pool = poolProvider.Create<List<Message>>();
         var model = new OllamaLanguageModel(
             clientFactory,
-            new ModelConfiguration(ModelId: "test", Think: ThinkLevel.None),
+            new ModelConfiguration(ModelId: new CompositeIdentity("ollama", "test"), Think: ThinkLevel.None),
             hostOptions,
             pool,
             new LlamaShears.Core.Provider.ModelTextFormatter(),

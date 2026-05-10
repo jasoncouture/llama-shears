@@ -17,7 +17,7 @@ namespace LlamaShears.Analyzers.Tests;
 /// </summary>
 internal static class CodeFixHarness
 {
-    private static readonly MetadataReference[] DefaultReferences = BuildDefaultReferences();
+    private static readonly MetadataReference[] _defaultReferences = BuildDefaultReferences();
 
     public static async Task<string> ApplyFixAsync(
         DiagnosticAnalyzer analyzer,
@@ -33,7 +33,7 @@ internal static class CodeFixHarness
             .AddProject(projectId, "Test", "Test", LanguageNames.CSharp)
             .WithProjectCompilationOptions(projectId, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
             .WithProjectParseOptions(projectId, new CSharpParseOptions(LanguageVersion.Latest))
-            .AddMetadataReferences(projectId, DefaultReferences)
+            .AddMetadataReferences(projectId, _defaultReferences)
             .AddDocument(documentId, "Test.cs", source);
 
         var document = solution.GetDocument(documentId)!;
@@ -81,7 +81,7 @@ internal static class CodeFixHarness
             .AddProject(projectId, "Test", "Test", LanguageNames.CSharp)
             .WithProjectCompilationOptions(projectId, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
             .WithProjectParseOptions(projectId, new CSharpParseOptions(LanguageVersion.Latest))
-            .AddMetadataReferences(projectId, DefaultReferences)
+            .AddMetadataReferences(projectId, _defaultReferences)
             .AddDocument(documentId, "Test.cs", source);
 
         var document = solution.GetDocument(documentId)!;

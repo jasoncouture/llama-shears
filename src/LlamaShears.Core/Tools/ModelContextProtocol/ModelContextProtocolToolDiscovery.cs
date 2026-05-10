@@ -82,7 +82,7 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
     }
 
     private static ToolDescriptor MapTool(McpClientTool tool) =>
-        new(tool.Name, tool.Description ?? string.Empty, ParseSchema(tool.JsonSchema));
+        new ToolDescriptor(tool.Name, tool.Description ?? string.Empty, ParseSchema(tool.JsonSchema));
 
     private static ImmutableArray<ToolParameter> ParseSchema(JsonElement schema)
     {

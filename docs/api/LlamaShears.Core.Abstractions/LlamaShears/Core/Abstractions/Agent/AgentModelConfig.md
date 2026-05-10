@@ -41,7 +41,7 @@ Maximum tokens this agent is allowed to consume in a single response; `0` = unbo
 
 ## Methods
 
-### `AgentModelConfig`([ModelIdentity](../Provider/ModelIdentity.md) Id, [ThinkLevel](../Provider/ThinkLevel.md) Think, Nullable<int> ContextLength, Nullable<TimeSpan> KeepAlive, int TokenLimit, Nullable<JsonElement> Options)
+### `AgentModelConfig`([CompositeIdentity](../Common/CompositeIdentity.md) Id, [ThinkLevel](../Provider/ThinkLevel.md) Think, Nullable<int> ContextLength, Nullable<TimeSpan> KeepAlive, int TokenLimit, Nullable<JsonElement> Options)
 
 Per-agent language-model selection and per-call options.
 

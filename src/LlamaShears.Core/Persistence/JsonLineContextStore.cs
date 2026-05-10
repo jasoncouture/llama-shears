@@ -12,11 +12,12 @@ public sealed class JsonLineContextStore : IContextStore
 {
     private const string CurrentFileName = "current.json";
 
-    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     private readonly IShearsPaths _paths;
     private readonly TimeProvider _time;
-    private readonly ConcurrentDictionary<string, AgentContext> _contexts = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, AgentContext> _contexts =
+        new ConcurrentDictionary<string, AgentContext>(StringComparer.Ordinal);
 
     public JsonLineContextStore(IShearsPaths paths, TimeProvider time)
     {

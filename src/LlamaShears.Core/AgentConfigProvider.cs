@@ -8,7 +8,7 @@ namespace LlamaShears.Core;
 
 public sealed partial class AgentConfigProvider : IAgentConfigProvider
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     private readonly IShearsPaths _paths;
     private readonly IFileParserCache<AgentConfigProvider> _cache;

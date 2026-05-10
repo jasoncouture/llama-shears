@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Provider;
 
@@ -33,6 +34,12 @@ public sealed class StubProviderFactory : IProviderFactory
     {
         await Task.CompletedTask;
         yield break;
+    }
+
+    public ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        return ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
     }
 
     public ILanguageModel CreateModel(ModelConfiguration configuration)

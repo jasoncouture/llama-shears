@@ -49,8 +49,8 @@ public sealed class StubLanguageModel : ILanguageModel
         }
     }
 
-    public static StubLanguageModel WithText(params string[] fragments)
-        => new([.. fragments.Select(IModelResponseFragment (f) => new TextFragment(f))]);
+    public static StubLanguageModel WithText(params string[] fragments) =>
+        new StubLanguageModel([.. fragments.Select(IModelResponseFragment (f) => new TextFragment(f))]);
 
     private sealed record TextFragment(string Content) : IModelTextResponse;
 }

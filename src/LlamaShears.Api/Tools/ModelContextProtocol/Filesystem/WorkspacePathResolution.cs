@@ -8,7 +8,7 @@ public sealed record WorkspacePathResolution(string? FullPath, string? Error)
     [MemberNotNullWhen(false, nameof(Error))]
     public bool IsSuccess => Error is null;
 
-    public static WorkspacePathResolution Success(string fullPath) => new(fullPath, null);
+    public static WorkspacePathResolution Success(string fullPath) => new WorkspacePathResolution(fullPath, null);
 
-    public static WorkspacePathResolution Failure(string error) => new(null, error);
+    public static WorkspacePathResolution Failure(string error) => new WorkspacePathResolution(null, error);
 }

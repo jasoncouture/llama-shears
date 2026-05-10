@@ -7,13 +7,13 @@ namespace LlamaShears.UnitTests.Tools.ModelContextProtocol;
 
 public sealed class ModelContextProtocolServerRegistryTests
 {
-    private static readonly Uri _internalUri = new("http://localhost:5125/mcp");
+    private static readonly Uri _internalUri = new Uri("http://localhost:5125/mcp");
 
     [Test]
     public async Task ResolveWithNullWhitelistReturnsConfiguredAndInternal()
     {
         var registry = BuildRegistry(
-            configured: new() { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
             internalUri: _internalUri);
 
         var resolved = registry.Resolve(whitelist: null);
@@ -26,7 +26,7 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveWithNullWhitelistOmitsInternalWhenItsUriIsUnavailable()
     {
         var registry = BuildRegistry(
-            configured: new() { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: null);
@@ -38,7 +38,7 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveWithEmptyWhitelistReturnsEmptyMapEvenWhenInternalIsAvailable()
     {
         var registry = BuildRegistry(
-            configured: new() { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
             internalUri: _internalUri);
 
         var resolved = registry.Resolve(whitelist: []);
@@ -50,7 +50,7 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveExplicitWhitelistFiltersToTheNamedSubset()
     {
         var registry = BuildRegistry(
-            configured: new()
+            configured: new Dictionary<string, Uri>
             {
                 ["github"] = new Uri("https://gh/"),
                 ["linear"] = new Uri("https://lin/"),
@@ -80,7 +80,7 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveDropsUnknownNamesFromWhitelist()
     {
         var registry = BuildRegistry(
-            configured: new() { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: ["github", "nope"]);
@@ -92,7 +92,7 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveLooksUpWhitelistEntriesCaseInsensitively()
     {
         var registry = BuildRegistry(
-            configured: new() { ["GitHub"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, Uri> { ["GitHub"] = new Uri("https://gh/") },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: ["github"]);

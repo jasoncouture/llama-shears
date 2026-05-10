@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Provider;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>
@@ -14,7 +15,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="TokenLimit">Maximum tokens this agent is allowed to consume in a single response; <c>0</c> = unbounded.</param>
 /// <param name="Options">Free-form provider/model JSON overrides merged on top of host defaults.</param>
 public sealed record AgentModelConfig(
-    [property: JsonRequired] ModelIdentity Id,
+    [property: JsonRequired] CompositeIdentity Id,
     ThinkLevel Think = ThinkLevel.None,
     int? ContextLength = null,
     TimeSpan? KeepAlive = null,

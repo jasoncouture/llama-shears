@@ -8,7 +8,7 @@ internal sealed class MessageListPooledObjectPolicy : PooledObjectPolicy<List<Me
     private const int InitialCapacity = 16;
     private const int MaximumRetainedCapacity = 1024;
 
-    public override List<Message> Create() => new(InitialCapacity);
+    public override List<Message> Create() => new List<Message>(InitialCapacity);
 
     public override bool Return(List<Message> obj)
     {
