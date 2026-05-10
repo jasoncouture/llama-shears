@@ -19,10 +19,23 @@ public static class ModelConfigurationExtensions
     /// </summary>
     /// <param name="scope">Data-context scope to inspect.</param>
     /// <returns>The active model configuration, or <see langword="null"/> when the scope has none.</returns>
-    public static ModelConfiguration? GetModelConfiguration(this IDataContextScope scope)
+    public static ModelConfiguration? TryGetModelConfiguration(this IDataContextScope? scope)
     {
-        scope.TryGetValue<ModelConfiguration>(ModelConfiguration.DataKey, out var config);
-        return config;
+        if (scope is null) return null;
+        scope.TryGetValue<ModelConfiguration>(ModelConfiguration.DataKey, out var modelConfiguration);
+        return modelConfiguration;
+    }
+    
+    /// <summary>
+    /// Returns the <see cref="ModelConfiguration"/> attached to the given scope
+    /// under <see cref="ModelConfiguration.DataKey"/>. Throws when the scope is
+    /// <see langword="null"/> or has no model configuration stashed; intended
+    /// for sites that legitimately cannot proceed without one.
+    /// </summary>
+    public static ModelConfiguration GetModelConfiguration(this IDataContextScope? scope)
+    {
+        var modelConfiguration = scope.TryGetModelConfiguration() ?? throw new InvalidOperationException("Model configuration is not available in the current data context, or the data context is null");
+        return modelConfiguration;
     }
 
     /// <summary>

@@ -340,7 +340,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                     scope.ServiceProvider,
                     model,
                     agentContext,
-                    modelConfig,
                     scope,
                     tools);
                 agent.Start();

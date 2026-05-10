@@ -33,7 +33,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private CancellationTokenSource? _activeTurnCancellationTokenSource;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
-    private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly ICurrentAgentAccessor _currentAgent;
@@ -51,7 +50,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
         IContextCompactor compactor,
-        ModelConfiguration modelConfiguration,
         IAgentContextProvider agentContextProvider,
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
@@ -68,7 +66,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _systemPrompt = systemPromptProvider;
         _time = timeProvider;
         _compactor = compactor;
-        _modelConfiguration = modelConfiguration;
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
         _currentAgent = currentAgent;
@@ -140,7 +137,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                                .ConfigureAwait(false)
                            ?? throw new InvalidOperationException(
                                $"Agent context provider returned null for running agent '{Id}'.");
-            await _compactor.CompactAsync(snapshot, prompt, _model, _modelConfiguration, force: true, cancellationToken)
+            await _compactor.CompactAsync(snapshot, prompt, _model, _dataScope.GetModelConfiguration(), force: true, cancellationToken)
                 ;
         }
         finally
@@ -286,8 +283,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         var agentInfo = new AgentInfo(
             AgentId: Id,
-            ModelId: _modelConfiguration.Id,
-            ContextWindowSize: _modelConfiguration.ContextLength ?? 0);
+            ModelId: _dataScope.GetModelConfiguration().Id,
+            ContextWindowSize: _dataScope.GetModelConfiguration().ContextLength ?? 0);
         using var agentScope = _currentAgent.BeginScope(agentInfo);
 
         var turns = _agentContext.Turns;
@@ -296,7 +293,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
         prompt = await _compactor
-            .CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken)
+            .CompactAsync(agentContextSnapshot, prompt, _model, _dataScope.GetModelConfiguration(), force: false, cancellationToken)
             ;
 
         using var inferenceDataScope = _dataScope.BeginScope();

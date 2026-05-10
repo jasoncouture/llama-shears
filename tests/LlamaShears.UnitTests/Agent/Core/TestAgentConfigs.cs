@@ -39,6 +39,12 @@ internal static class TestAgentConfigs
                 call[1] = config;
                 return true;
             });
+        scope.TryGetValue(ModelConfiguration.DataKey, out Arg.Any<ModelConfiguration?>())
+            .Returns(call =>
+            {
+                call[1] = config.Model;
+                return true;
+            });
         var factory = Substitute.For<IDataContextFactory>();
         factory.Current.Returns(scope);
         factory.TryJoinContextScope(Arg.Any<string>(), out Arg.Any<IDataContextScope?>())
