@@ -331,9 +331,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             var scope = _scopeFactory.CreateAsyncScope();
             try
             {
-                var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
                 var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
                 dataContextFactory.CreateContext(config.Id);
+                var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
                 await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
                     cancellationToken);
                 var agent = ActivatorUtilities.CreateInstance<Agent>(

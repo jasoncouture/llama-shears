@@ -84,6 +84,12 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
         services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
         services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
+        services.TryAddScoped<IDataContextScope>(sp =>
+        {
+            var scope = sp.GetRequiredService<IDataContextFactory>().Current ??
+                        throw new InvalidOperationException("No ambient data scope is available");
+            return scope;
+        });
         services.TryAddScoped<ITodoStorage, TodoStorage>();
         services.AddScopedDataProvider<TodoListDataProvider>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();

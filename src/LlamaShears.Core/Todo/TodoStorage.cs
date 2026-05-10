@@ -18,16 +18,16 @@ internal sealed partial class TodoStorage : ITodoStorage
     [GeneratedRegex(@"^(?<index>\d+)\.\s+\[(?<state>[ x])\]\s+(?<text>.+)$")]
     private static partial Regex ItemPattern();
 
-    private readonly IDataContextFactory _dataContextFactory;
+    private readonly IDataContextScope _scope;
     private readonly IFileParserCache<TodoStorage> _cache;
     private readonly ILogger<TodoStorage> _logger;
 
     public TodoStorage(
-        IDataContextFactory dataContextFactory,
+        IDataContextScope scope,
         IFileParserCache<TodoStorage> cache,
         ILogger<TodoStorage> logger)
     {
-        _dataContextFactory = dataContextFactory;
+        _scope = scope;
         _cache = cache;
         _logger = logger;
     }
@@ -83,27 +83,25 @@ internal sealed partial class TodoStorage : ITodoStorage
         if (parsed.Corrupt)
         {
             var recovered = BuildBatch(items, done, startIndex: 1);
-            await File.WriteAllTextAsync(path, RenderItems(recovered), cancellationToken);
+            await RewriteAsync(path, recovered, cancellationToken);
             LogRecovered(_logger, path);
-            PushToScope(recovered);
             return new TodoCommandResult(recovered, TodoResultState.Corrupt);
         }
 
         var startIndex = parsed.Items.IsEmpty ? 1 : parsed.Items[^1].Index + 1;
         var newItems = BuildBatch(items, done, startIndex);
-        var rendered = RenderItems(newItems);
 
+        ImmutableArray<TodoItem> finalItems;
         if (parsed.Items.IsEmpty)
         {
-            await File.WriteAllTextAsync(path, rendered, cancellationToken);
+            finalItems = parsed.Items.AddRange(newItems);
+            await RewriteAsync(path, finalItems, cancellationToken);
         }
         else
         {
-            await File.AppendAllTextAsync(path, rendered, cancellationToken);
+            finalItems = await AppendAsync(path, newItems, cancellationToken);
         }
-        var combined = parsed.Items.AddRange(newItems);
-        PushToScope(combined);
-        return new TodoCommandResult(combined, TodoResultState.Success);
+        return new TodoCommandResult(finalItems, TodoResultState.Success);
     }
 
     public async ValueTask<TodoCommandResult> UpdateAsync(IReadOnlyList<TodoItemUpdate> updates, CancellationToken cancellationToken = default)
@@ -119,7 +117,6 @@ internal sealed partial class TodoStorage : ITodoStorage
         {
             await WriteEmptyAsync(path, cancellationToken);
             LogRecovered(_logger, path);
-            PushToScope([]);
             return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to update.");
         }
 
@@ -217,12 +214,12 @@ internal sealed partial class TodoStorage : ITodoStorage
 
     private void PushToScope(ImmutableArray<TodoItem> items)
     {
-        _dataContextFactory.Current?.SetItems([new KeyValuePair<string, object?>(TodoStorageConstants.DataKey, items)]);
+        _scope?.SetItems([new KeyValuePair<string, object?>(TodoStorageConstants.DataKey, items)]);
     }
 
     private ValueTask<string> GetPathAsync(CancellationToken cancellationToken)
     {
-        var config = _dataContextFactory.Current.GetAgentConfig();
+        var config = _scope.GetAgentConfig();
         var root = string.IsNullOrEmpty(config.WorkspacePath)
             ? Environment.CurrentDirectory
             : config.WorkspacePath;
@@ -365,11 +362,23 @@ internal sealed partial class TodoStorage : ITodoStorage
         return builder.ToImmutable();
     }
 
-    private static Task RewriteAsync(string path, ImmutableArray<TodoItem> items, CancellationToken cancellationToken)
-        => File.WriteAllTextAsync(path, RenderItems(items), cancellationToken);
+    private async Task RewriteAsync(string path, ImmutableArray<TodoItem> items, CancellationToken cancellationToken)
+    {
+        await File.WriteAllTextAsync(path, RenderItems(items), cancellationToken);
+        PushToScope(items);
+    }
 
-    private static Task WriteEmptyAsync(string path, CancellationToken cancellationToken)
-        => File.WriteAllTextAsync(path, string.Empty, cancellationToken);
+    private async Task<ImmutableArray<TodoItem>> AppendAsync(string path, ImmutableArray<TodoItem> newItems, CancellationToken cancellationToken)
+    {
+        await File.AppendAllTextAsync(path, RenderItems(newItems), cancellationToken);
+        var refreshed = await ParseAsync(path, cancellationToken);
+        var items = refreshed.Corrupt ? [] : refreshed.Items;
+        PushToScope(items);
+        return items;
+    }
+
+    private Task WriteEmptyAsync(string path, CancellationToken cancellationToken)
+        => RewriteAsync(path, [], cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "TODO list at '{Path}' was corrupt; reset to empty.")]
     private static partial void LogRecovered(ILogger logger, string path);
