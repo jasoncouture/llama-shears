@@ -16,10 +16,4 @@ public interface IEmbeddingModel
     /// the length of the returned memory.
     /// </summary>
     ValueTask<ReadOnlyMemory<float>> EmbedAsync(string text, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Batched form. The result has the same length and order as
-    /// <paramref name="texts"/>. An empty input yields an empty result.
-    /// </summary>
-    ValueTask<IReadOnlyList<ReadOnlyMemory<float>>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken);
 }
