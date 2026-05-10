@@ -18,18 +18,6 @@
   </Folder>
   <Folder Name="/src/public/">
     <Project Path="src/public/LlamaShears.Core.Abstractions/LlamaShears.Core.Abstractions.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Agent/LlamaShears.Core.Abstractions.Agent.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Caching/LlamaShears.Core.Abstractions.Caching.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Commands/LlamaShears.Core.Abstractions.Commands.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Common/LlamaShears.Core.Abstractions.Common.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Content/LlamaShears.Core.Abstractions.Content.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Context/LlamaShears.Core.Abstractions.Context.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Events/LlamaShears.Core.Abstractions.Events.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Memory/LlamaShears.Core.Abstractions.Memory.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Paths/LlamaShears.Core.Abstractions.Paths.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.PromptContext/LlamaShears.Core.Abstractions.PromptContext.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.Provider/LlamaShears.Core.Abstractions.Provider.csproj" />
-    <Project Path="src/public/LlamaShears.Core.Abstractions.SystemPrompt/LlamaShears.Core.Abstractions.SystemPrompt.csproj" />
     <Project Path="src/public/LlamaShears.Plugins/LlamaShears.Plugins.csproj" />
     <Project Path="src/public/LlamaShears.Plugins.Host/LlamaShears.Plugins.Host.csproj" />
     <Project Path="src/public/StrangeSoft.Plugins.Abstractions/StrangeSoft.Plugins.Abstractions.csproj" />

@@ -1,21 +1,23 @@
 # LlamaShears.Core.Abstractions
 
-Convenience metapackage that pulls in every `LlamaShears.Core.Abstractions.*` sub-package as a project / NuGet reference. Take this when you want the entire contract surface a plugin or third-party consumer might need; take the individual sub-packages directly when you want a narrower dependency footprint.
+The full contract surface that plugins and third-party consumers compile against. Take this when you want every public abstraction LlamaShears exposes — every interface, DTO, and shared type lives in this single package.
 
 ## What this contains
 
-This package ships no types of its own. It re-exports the following sub-packages via `<ProjectReference>` (or NuGet dependency, when consumed as a package):
+The package is organised into namespaces by concern; each namespace was previously its own `LlamaShears.Core.Abstractions.*` sub-package and has been collapsed into this assembly:
 
-- `LlamaShears.Core.Abstractions.Agent`
-- `LlamaShears.Core.Abstractions.Caching`
-- `LlamaShears.Core.Abstractions.Content`
-- `LlamaShears.Core.Abstractions.Context`
-- `LlamaShears.Core.Abstractions.Events`
-- `LlamaShears.Core.Abstractions.Memory`
-- `LlamaShears.Core.Abstractions.Paths`
-- `LlamaShears.Core.Abstractions.PromptContext`
-- `LlamaShears.Core.Abstractions.Provider`
-- `LlamaShears.Core.Abstractions.SystemPrompt`
+- `LlamaShears.Core.Abstractions.Agent` — agent identity, configuration, lifecycle, persistence, sessions, todos.
+- `LlamaShears.Core.Abstractions.Caching` — file-parser cache and shears cache contracts.
+- `LlamaShears.Core.Abstractions.Commands` — slash-command registry and contracts.
+- `LlamaShears.Core.Abstractions.Common` — data-context primitives shared across the surface.
+- `LlamaShears.Core.Abstractions.Content` — attachment + content kinds.
+- `LlamaShears.Core.Abstractions.Context` — agent / language-model / system / tool / plugin context plus compaction.
+- `LlamaShears.Core.Abstractions.Events` — event bus, envelopes, filters, delivery modes, agent + channel messages.
+- `LlamaShears.Core.Abstractions.Memory` — memory store/indexer/searcher contracts and reconciliation types.
+- `LlamaShears.Core.Abstractions.Paths` — `IShearsPaths`, file-protection policy, expansion contracts.
+- `LlamaShears.Core.Abstractions.PromptContext` — prompt context provider + memory.
+- `LlamaShears.Core.Abstractions.Provider` — language-model / embedding provider factories, prompts, turns, tool descriptors, model identity.
+- `LlamaShears.Core.Abstractions.SystemPrompt` — system-prompt provider, template renderer, template file locator, workspace files.
 
 ## See also
 
