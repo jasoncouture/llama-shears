@@ -90,14 +90,14 @@ public sealed partial class ShellTools
             var stdoutPump = PumpAsync(process.StandardOutput.BaseStream, sink, sync);
             var stderrPump = PumpAsync(process.StandardError.BaseStream, sink, sync);
 
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_timeout);
+            using var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCancellationTokenSource.CancelAfter(_timeout);
             var timedOut = false;
             try
             {
-                await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+                await process.WaitForExitAsync(timeoutCancellationTokenSource.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (timeoutCancellationTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 timedOut = true;
                 try { process.Kill(entireProcessTree: true); }

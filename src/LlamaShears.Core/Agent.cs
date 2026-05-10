@@ -30,7 +30,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private Task? _loop;
     private readonly SemaphoreSlim _processGate = new(1, 1);
     private readonly Lock _interruptLock = new();
-    private CancellationTokenSource? _activeTurnCts;
+    private CancellationTokenSource? _activeTurnCancellationTokenSource;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
@@ -118,7 +118,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         CancellationTokenSource? cancellationTokenSource;
         lock (_interruptLock)
         {
-            cancellationTokenSource = _activeTurnCts;
+            cancellationTokenSource = _activeTurnCancellationTokenSource;
         }
         cancellationTokenSource?.Cancel();
         return Task.CompletedTask;
@@ -214,16 +214,16 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                using var turnCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 lock (_interruptLock)
                 {
-                    _activeTurnCts = turnCts;
+                    _activeTurnCancellationTokenSource = turnCancellationTokenSource;
                 }
                 try
                 {
-                    await ProcessIterationAsync(batch, correlationId, cancellationToken, turnCts.Token).ConfigureAwait(false);
+                    await ProcessIterationAsync(batch, correlationId, cancellationToken, turnCancellationTokenSource.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (turnCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
                     LogTurnInterrupted(_logger, Id, correlationId);
                 }
@@ -231,7 +231,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 {
                     lock (_interruptLock)
                     {
-                        _activeTurnCts = null;
+                        _activeTurnCancellationTokenSource = null;
                     }
                     _processGate.Release();
                 }
