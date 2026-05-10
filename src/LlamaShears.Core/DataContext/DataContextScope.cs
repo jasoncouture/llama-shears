@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core.DataContext;
@@ -59,6 +60,8 @@ internal sealed class DataContextScope : IDataContextScope
         value = null;
         return false;
     }
+
+    public ImmutableDictionary<string, object?> Snapshot() => [.. _current];
 
     public IEnumerator<KeyValuePair<string, object?>> GetEnumerator() => _current.GetEnumerator();
 
