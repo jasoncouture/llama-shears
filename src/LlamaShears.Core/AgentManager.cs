@@ -301,34 +301,31 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             ?? throw new InvalidOperationException(
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
-        // Suppress flow on this call chain so the inner Task.Run starts with a clean
-        // ExecutionContext. Inside that task we set up the agent's data scope on its
-        // own EC; agent.Start()'s Task.Run then captures that EC, so the agent loop
-        // inherits the scope without pulling in any AsyncLocal state from this caller.
-        using var suppressedExecutionContext = ExecutionContext.SuppressFlow();
-        return await Task.Run(async () =>
+        var modelConfig = new ModelConfiguration(
+            ModelId: config.Model.Id.Model,
+            Think: config.Model.Think,
+            ContextLength: config.Model.ContextLength,
+            KeepAlive: config.Model.KeepAlive,
+            TokenLimit: config.Model.TokenLimit,
+            AgentOptions: config.Model.Options);
+        var model = providerFactory.CreateModel(modelConfig);
+
+        var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
+        var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
-            var modelConfig = new ModelConfiguration(
-                ModelId: config.Model.Id.Model,
-                Think: config.Model.Think,
-                ContextLength: config.Model.ContextLength,
-                KeepAlive: config.Model.KeepAlive,
-                TokenLimit: config.Model.TokenLimit,
-                AgentOptions: config.Model.Options);
-            var model = providerFactory.CreateModel(modelConfig);
+            { "agent_id", config.Id },
+            { "workspace_path", config.WorkspacePath },
+            { AgentConfig.DataKey, config },
+            { "model_configuration", modelConfig },
+            { "agent_context", agentContext },
+        };
 
-            var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
-            var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "agent_configuration", config },
-                { "model_configuration", modelConfig },
-                { "agent_context", agentContext },
-            };
-
-            var scope = _scopeFactory.CreateAsyncScope();
+        var scope = _scopeFactory.CreateAsyncScope();
+        try
+        {
+            await CreateAgentRootScopeAsync(config.Id, scope.ServiceProvider, agentGlobalDataContext, cancellationToken).ConfigureAwait(false);
             try
             {
-                await CreateAgentRootScopeAsync(config.Id, scope.ServiceProvider, agentGlobalDataContext, cancellationToken).ConfigureAwait(false);
                 var agent = ActivatorUtilities.CreateInstance<Agent>(
                     scope.ServiceProvider,
                     config,
@@ -338,14 +335,20 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                     scope,
                     tools);
                 agent.Start();
-                return (IAgent)agent;
+                return agent;
             }
-            catch
+            finally
             {
-                await scope.DisposeAsync().ConfigureAwait(false);
-                throw;
+                // Detach the scope from this call chain; the agent's loop
+                // rejoins it by key. Leaves the registry entry intact.
+                _dataContextFactory.ClearCurrent();
             }
-        }, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await scope.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     private static async Task<IDataContextScope> CreateAgentRootScopeAsync(

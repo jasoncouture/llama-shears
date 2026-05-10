@@ -95,7 +95,13 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         {
             throw new InvalidOperationException($"Agent '{Id}' has already been started.");
         }
-        _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
+        // Spawn the loop with flow suppressed so the caller's AsyncLocal state
+        // (including a partially-set data scope) does not leak in. The loop
+        // rejoins its own scope by key as its first action.
+        using (ExecutionContext.SuppressFlow())
+        {
+            _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
+        }
     }
 
     public string Id => _config.Id;
@@ -195,6 +201,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
+        if (!_dataContextFactory.TryJoinContextScope(Id, out _))
+        {
+            throw new InvalidOperationException($"Data context for agent '{Id}' is not registered; cannot start the loop.");
+        }
         using var loggingScope = _logger.BeginScope("{AgentId}", Id);
         await RunIterationsAsync(cancellationToken).ConfigureAwait(false);
     }
