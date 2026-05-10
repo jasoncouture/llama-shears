@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Todo;
 using LlamaShears.Core.Abstractions.Caching;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
@@ -17,18 +18,18 @@ internal sealed partial class TodoStorage : ITodoStorage
     [GeneratedRegex(@"^(?<index>\d+)\.\s+\[(?<state>[ x])\]\s+(?<text>.+)$")]
     private static partial Regex ItemPattern();
 
-    private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IDataContextFactory _dataContextFactory;
     private readonly IAgentConfigProvider _configs;
     private readonly IFileParserCache<TodoStorage> _cache;
     private readonly ILogger<TodoStorage> _logger;
 
     public TodoStorage(
-        ICurrentAgentAccessor currentAgent,
+        IDataContextFactory dataContextFactory,
         IAgentConfigProvider configs,
         IFileParserCache<TodoStorage> cache,
         ILogger<TodoStorage> logger)
     {
-        _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
         _configs = configs;
         _cache = cache;
         _logger = logger;
@@ -210,12 +211,13 @@ internal sealed partial class TodoStorage : ITodoStorage
 
     private async ValueTask<string> GetPathAsync(CancellationToken cancellationToken)
     {
-        var agentId = _currentAgent.Current?.AgentId
+        var config = _dataContextFactory.Current?.GetAgentConfig();
+        var agentId = config?.Id
             ?? throw new InvalidOperationException("TodoStorage requires an agent scope on the current call chain.");
-        var config = await _configs.GetConfigAsync(agentId, cancellationToken);
-        var root = config is null || string.IsNullOrEmpty(config.WorkspacePath)
+        var resolved = config ?? await _configs.GetConfigAsync(agentId, cancellationToken);
+        var root = resolved is null || string.IsNullOrEmpty(resolved.WorkspacePath)
             ? Environment.CurrentDirectory
-            : config.WorkspacePath;
+            : resolved.WorkspacePath;
         return Path.Combine(root, FileName);
     }
 
