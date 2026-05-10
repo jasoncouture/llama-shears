@@ -215,7 +215,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         var agentInfo = new AgentInfo(
             AgentId: config.Id,
-            ModelId: config.Model.Id.Model,
+            ModelId: config.Model.Id,
             ContextWindowSize: config.Model.ContextLength ?? 0);
 
         using var scope = _currentAgent.BeginScope(agentInfo);
@@ -303,7 +303,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
         var modelConfig = new ModelConfiguration(
-            ModelId: config.Model.Id.Model,
+            ModelId: config.Model.Id,
             Think: config.Model.Think,
             ContextLength: config.Model.ContextLength,
             KeepAlive: config.Model.KeepAlive,

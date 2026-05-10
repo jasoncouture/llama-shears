@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
@@ -68,6 +69,31 @@ public sealed partial class OpenAiProviderFactory : IProviderFactory
                 SupportsReasoning: false,
                 MaxContextWindow: 0);
         }
+    }
+
+    public async ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(configuration.ModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+
+        if (!string.Equals(configuration.ModelId.Provider, Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ValidationResult(
+                $"Provider '{configuration.ModelId.Provider}' does not match this factory ('{Name}').",
+                [nameof(ModelConfiguration.ModelId)]);
+        }
+
+        await foreach (var model in ListModelsAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if (string.Equals(model.ModelId, configuration.ModelId.Model, StringComparison.Ordinal))
+            {
+                return ValidationResult.Success;
+            }
+        }
+        return new ValidationResult(
+            $"OpenAI provider does not have a model named '{configuration.ModelId.Model}'.",
+            [nameof(ModelConfiguration.ModelId)]);
     }
 
     public ILanguageModel CreateModel(ModelConfiguration configuration)

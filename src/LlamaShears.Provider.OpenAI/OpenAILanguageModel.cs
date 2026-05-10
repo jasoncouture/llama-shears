@@ -71,7 +71,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            LogRequestFailed(_logger, _configuration.ModelId, (int)response.StatusCode, errorBody);
+            LogRequestFailed(_logger, _configuration.ModelId.Model, (int)response.StatusCode, errorBody);
             throw new HttpRequestException(
                 $"OpenAI-compatible chat request failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {errorBody}");
         }
@@ -107,7 +107,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
             }
             catch (JsonException ex)
             {
-                LogMalformedEvent(_logger, _configuration.ModelId, ex.Message);
+                LogMalformedEvent(_logger, _configuration.ModelId.Model, ex.Message);
                 continue;
             }
             if (eventNode is not JsonObject eventObject)
@@ -135,7 +135,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
 
         foreach (var pending in toolCallAccumulator.Values.OrderBy(static a => a.Index))
         {
-            if (pending.TryBuild(_configuration.ModelId, _logger, out var call))
+            if (pending.TryBuild(_configuration.ModelId.Model, _logger, out var call))
             {
                 yield return new OpenAiToolCallFragment(call);
             }
@@ -165,7 +165,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
                 var content = delta["content"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(content))
                 {
-                    LogTokenReceived(_logger, _configuration.ModelId, content);
+                    LogTokenReceived(_logger, _configuration.ModelId.Model, content);
                     emitted.Add(new OpenAiResponseFragment(content));
                 }
 
@@ -173,7 +173,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
                     ?? delta["reasoning"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(reasoning))
                 {
-                    LogThoughtReceived(_logger, _configuration.ModelId, reasoning);
+                    LogThoughtReceived(_logger, _configuration.ModelId.Model, reasoning);
                     emitted.Add(new OpenAiThoughtFragment(reasoning));
                 }
 
@@ -194,7 +194,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
             {
                 foreach (var pending in toolCallAccumulator.Values.OrderBy(static a => a.Index))
                 {
-                    if (pending.TryBuild(_configuration.ModelId, _logger, out var call))
+                    if (pending.TryBuild(_configuration.ModelId.Model, _logger, out var call))
                     {
                         emitted.Add(new OpenAiToolCallFragment(call));
                     }
@@ -248,7 +248,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
 
         var body = new JsonObject
         {
-            ["model"] = _configuration.ModelId,
+            ["model"] = _configuration.ModelId.Model,
             ["stream"] = true,
             ["messages"] = messages,
         };

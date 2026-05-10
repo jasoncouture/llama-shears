@@ -32,7 +32,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         if (embeddings is null || embeddings.Count == 0)
         {
             throw new InvalidOperationException(
-                $"Ollama returned no embeddings for model '{_configuration.ModelId}'.");
+                $"Ollama returned no embeddings for model '{_configuration.ModelId.Model}'.");
         }
         return embeddings[0];
     }
@@ -58,7 +58,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         if (embeddings is null || embeddings.Count != texts.Count)
         {
             throw new InvalidOperationException(
-                $"Ollama returned {embeddings?.Count ?? 0} embeddings for {texts.Count} inputs (model '{_configuration.ModelId}').");
+                $"Ollama returned {embeddings?.Count ?? 0} embeddings for {texts.Count} inputs (model '{_configuration.ModelId.Model}').");
         }
 
         var results = new ReadOnlyMemory<float>[embeddings.Count];
@@ -72,7 +72,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
     private EmbedRequest BuildRequest(List<string> inputs) =>
         new EmbedRequest
     {
-        Model = _configuration.ModelId,
+        Model = _configuration.ModelId.Model,
         Input = inputs,
         KeepAlive = OllamaKeepAlive.Map(_configuration.KeepAlive),
     };

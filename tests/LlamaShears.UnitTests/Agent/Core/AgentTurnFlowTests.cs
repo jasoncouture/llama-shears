@@ -224,7 +224,7 @@ public sealed class AgentTurnFlowTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
-            modelConfiguration: new ModelConfiguration("test"),
+            modelConfiguration: new ModelConfiguration(new ModelIdentity("test", "test")),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
             inferenceRunner: new InferenceRunner(

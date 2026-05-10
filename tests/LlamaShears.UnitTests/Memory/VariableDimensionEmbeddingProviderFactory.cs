@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Provider;
 
@@ -26,6 +27,9 @@ internal sealed class VariableDimensionEmbeddingProviderFactory : IEmbeddingProv
         await Task.CompletedTask.ConfigureAwait(false);
         yield break;
     }
+
+    public ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
+        => ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
 
     public IEmbeddingModel CreateModel(ModelConfiguration configuration) =>
         new VariableDimensionEmbeddingModel(() => _dimensions);

@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Api.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -101,5 +102,5 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
         return (ctx.Response.StatusCode, nextCalled);
     }
 
-    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, "ollama:llama3", 8192);
+    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, new ModelIdentity("ollama", "llama3"), 8192);
 }
