@@ -39,7 +39,7 @@ internal sealed class DataContextScope : IDataContextScope
     public async Task SetItemsAsync(IDataContextItemProvider provider, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        var items = await provider.GetItemsForCurrentContext(cancellationToken).ConfigureAwait(false);
+        var items = await provider.GetItemsForCurrentContext(cancellationToken);
         SetItems(items);
     }
 

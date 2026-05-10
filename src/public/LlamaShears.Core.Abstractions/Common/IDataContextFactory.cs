@@ -11,7 +11,7 @@ namespace LlamaShears.Core.Abstractions.Common;
 public interface IDataContextFactory
 {
     /// <summary>The scope active on the current call chain, or <see langword="null"/>.</summary>
-    IDataContextScope? Current { get; }
+    IDataContextScope? Current { get; set; }
 
     /// <summary>
     /// Joins an existing scope identified by <paramref name="key"/> as
@@ -23,8 +23,7 @@ public interface IDataContextFactory
 
     /// <summary>
     /// Creates a new scope keyed by <paramref name="key"/>, populates it
-    /// from <paramref name="providers"/>, and sets it as the active scope
-    /// on the current call chain. Throws when a live scope already
+    /// from <paramref name="providers"/>. Throws when a live scope already
     /// claims that key.
     /// </summary>
     Task<IDataContextScope> StartContextAsync(string key, IEnumerable<IDataContextItemProvider> providers, CancellationToken cancellationToken);

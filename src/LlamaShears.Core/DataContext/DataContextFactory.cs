@@ -7,20 +7,28 @@ namespace LlamaShears.Core.DataContext;
 
 internal sealed class DataContextFactory : IDataContextFactory
 {
-    public DataContextFactory([FromKeyedServices(DataContextConstants.SingletonKey)] IEnumerable<IDataContextItemProvider> providers)
+    public DataContextFactory(
+        [FromKeyedServices(DataContextConstants.SingletonKey)] IEnumerable<IDataContextItemProvider> providers)
     {
         _providers = [.. providers];
     }
+
     private readonly Dictionary<string, WeakReference<IDataContextScope>> _scopes =
         new Dictionary<string, WeakReference<IDataContextScope>>(StringComparer.OrdinalIgnoreCase);
+
     private readonly object _lock = new object();
 
     private readonly AsyncLocal<IDataContextScope?> _current = new AsyncLocal<IDataContextScope?>();
     private readonly ImmutableArray<IDataContextItemProvider> _providers;
 
-    public IDataContextScope? Current => _current.Value;
+    public IDataContextScope? Current
+    {
+        get => _current.Value;
+        set => _current.Value = value;
+    }
 
-    public async Task<IDataContextScope> StartContextAsync(string key, IEnumerable<IDataContextItemProvider> providers, CancellationToken cancellationToken)
+    public async Task<IDataContextScope> StartContextAsync(string key, IEnumerable<IDataContextItemProvider> providers,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(providers);
@@ -33,15 +41,15 @@ internal sealed class DataContextFactory : IDataContextFactory
             {
                 throw new InvalidOperationException($"A data context with key '{key}' is already active.");
             }
+
             _scopes[key] = new WeakReference<IDataContextScope>(scope);
-            _current.Value = scope;
         }
 
         try
         {
             foreach (var provider in _providers.Concat(providers))
             {
-                await scope.SetItemsAsync(provider, cancellationToken).ConfigureAwait(false);
+                await scope.SetItemsAsync(provider, cancellationToken);
             }
         }
         catch
@@ -54,8 +62,10 @@ internal sealed class DataContextFactory : IDataContextFactory
                     _current.Value = null;
                 }
             }
+
             throw;
         }
+
         return scope;
     }
 
@@ -73,16 +83,21 @@ internal sealed class DataContextFactory : IDataContextFactory
                     context = Current;
                     return true;
                 }
-                throw new InvalidOperationException("A scope is already present on this call chain; cannot join a different scope.");
+
+                throw new InvalidOperationException(
+                    "A scope is already present on this call chain; cannot join a different scope.");
             }
+
             if (!_scopes.TryGetValue(key, out var reference) || !reference.TryGetTarget(out var target))
             {
                 if (reference is not null)
                 {
                     _scopes.Remove(key);
                 }
+
                 return false;
             }
+
             _current.Value = target;
             context = target;
             return true;
@@ -98,6 +113,7 @@ internal sealed class DataContextFactory : IDataContextFactory
             {
                 _current.Value = null;
             }
+
             _scopes.Remove(key);
         }
     }
@@ -112,6 +128,7 @@ internal sealed class DataContextFactory : IDataContextFactory
             {
                 return;
             }
+
             _current.Value = null;
             if (owner)
             {
@@ -132,6 +149,7 @@ internal sealed class DataContextFactory : IDataContextFactory
                     dead.Add(pair.Key);
                 }
             }
+
             foreach (var key in dead)
             {
                 _scopes.Remove(key);

@@ -88,7 +88,6 @@ public sealed class AgentInterruptTests
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agent = new LlamaShears.Core.Agent(
-            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,

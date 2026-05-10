@@ -28,8 +28,7 @@ Forcibly removes the scope keyed by `key`.
 ### `StartContextAsync`(string key, IEnumerable<[IDataContextItemProvider](IDataContextItemProvider.md)> providers, CancellationToken cancellationToken)
 
 Creates a new scope keyed by `key`, populates it
-from `providers`, and sets it as the active scope
-on the current call chain. Throws when a live scope already
+from `providers`. Throws when a live scope already
 claims that key.
 
 ### `TryJoinContextScope`(string key, [IDataContextScope](IDataContextScope.md)& context)

@@ -128,7 +128,6 @@ public sealed class AgentEventPublishingTests
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         using var agent = new LlamaShears.Core.Agent(
-            config: resolvedConfig,
             model: model,
             agentContext: ctx,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
@@ -239,7 +238,7 @@ public sealed class AgentEventPublishingTests
             {
                 _captured.Add(new CapturedEvent(eventType, data, correlationId));
             }
-            await _inner.PublishAsync(eventType, data, correlationId, cancellationToken).ConfigureAwait(false);
+            await _inner.PublishAsync(eventType, data, correlationId, cancellationToken);
         }
     }
 
