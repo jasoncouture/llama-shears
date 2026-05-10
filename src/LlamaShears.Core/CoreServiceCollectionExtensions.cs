@@ -1,6 +1,7 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Agent.Todo;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Memory;
@@ -20,6 +21,7 @@ using LlamaShears.Core.Seeding;
 using LlamaShears.Core.Sessions;
 using LlamaShears.Core.SystemPrompt;
 using LlamaShears.Core.Templating;
+using LlamaShears.Core.Todo;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,6 +81,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
         services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
+        services.TryAddScoped<ITodoStorage, TodoStorage>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();

@@ -1,4 +1,4 @@
-namespace LlamaShears.Api.Tools.ModelContextProtocol.Todo;
+namespace LlamaShears.Core.Abstractions.Agent.Todo;
 
 public enum TodoResultState
 {

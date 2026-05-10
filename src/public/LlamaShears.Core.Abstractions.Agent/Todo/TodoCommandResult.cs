@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 
-namespace LlamaShears.Api.Tools.ModelContextProtocol.Todo;
+namespace LlamaShears.Core.Abstractions.Agent.Todo;
 
 public sealed record TodoCommandResult(ImmutableArray<TodoItem> Items, TodoResultState State, string? Message = null)
 {

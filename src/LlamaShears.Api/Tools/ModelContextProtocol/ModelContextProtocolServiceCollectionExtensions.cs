@@ -20,7 +20,6 @@ public static class ModelContextProtocolServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.TryAddSingleton<IInternalModelContextProtocolServer, InternalModelContextProtocolServer>();
         services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
-        services.TryAddScoped<ITodoStorage, TodoStorage>();
 
         services
             .AddPathExpander()
