@@ -232,15 +232,18 @@ public sealed class InferenceRunner : IInferenceRunner
         var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
 
         var now = _time.GetLocalNow();
-        var snapshot = _dataContextFactory.Current.Snapshot();
-        var data = snapshot.ToBuilder();
-        data["now"] = now;
-        data["timezone"] = TimeZoneInfo.Local.Id;
-        data["day_of_week"] = now.DayOfWeek.ToString();
-        data["channel_id"] = ChannelId.Value;
-        data["important_message"] = null;
-        data["memories"] = memories;
-        var body = await _promptContext.GetAsync(config.PromptContext, data.ToImmutable(), cancellationToken);
+        var scope = _dataContextFactory.Current!;
+        using var turnFrame = scope.BeginScope();
+        scope.SetItems(
+        [
+            new KeyValuePair<string, object?>("now", now),
+            new KeyValuePair<string, object?>("timezone", TimeZoneInfo.Local.Id),
+            new KeyValuePair<string, object?>("day_of_week", now.DayOfWeek.ToString()),
+            new KeyValuePair<string, object?>("channel_id", ChannelId.Value),
+            new KeyValuePair<string, object?>("important_message", null),
+            new KeyValuePair<string, object?>("memories", memories),
+        ]);
+        var body = await _promptContext.GetAsync(config.PromptContext, scope.Snapshot(), cancellationToken);
         if (string.IsNullOrWhiteSpace(body))
         {
             return prompt;
