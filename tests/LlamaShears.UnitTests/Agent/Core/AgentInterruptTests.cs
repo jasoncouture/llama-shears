@@ -106,7 +106,7 @@ public sealed class AgentInterruptTests
                 TestAgentConfigs.EmptyMemorySearcher(),
                 dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: dataContextFactory,
+            dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
         agent.Start();

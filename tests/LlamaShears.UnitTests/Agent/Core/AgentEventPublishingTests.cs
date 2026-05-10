@@ -146,7 +146,7 @@ public sealed class AgentEventPublishingTests
                 TestAgentConfigs.EmptyMemorySearcher(),
                 dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: dataContextFactory,
+            dataScope: dataContextFactory.Current!,
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
         agent.Start();

@@ -37,7 +37,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly ICurrentAgentAccessor _currentAgent;
-    private readonly IDataContextFactory _dataContextFactory;
+    private readonly IDataContextScope _dataScope;
     private readonly ImmutableArray<ToolGroup> _tools;
     private readonly IServiceProvider _scopedServices;
     private IAsyncDisposable? _scope;
@@ -56,7 +56,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
         ICurrentAgentAccessor currentAgent,
-        IDataContextFactory dataContextFactory,
+        IDataContextScope dataScope,
         ISessionFactory sessionFactory,
         AsyncServiceScope scope,
         ImmutableArray<ToolGroup> tools = default)
@@ -72,12 +72,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
         _currentAgent = currentAgent;
-        _dataContextFactory = dataContextFactory;
+        _dataScope = dataScope;
         _tools = tools.IsDefault ? [] : tools;
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
         var currentExecutionContext = ExecutionContext.Capture();
-        _id = _dataContextFactory.Current.GetAgentConfig().Id;
+        _id = _dataScope.GetAgentConfig().Id;
         GC.KeepAlive(currentExecutionContext);
         _sessionQueue = sessionFactory.Get(new SessionId(_id, DefaultChannel));
         _shutdown = new CancellationTokenSource();
@@ -130,8 +130,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         try
         {
             var turns = _agentContext.Turns;
-            var systemPromptFile = _dataContextFactory.Current.GetAgentConfig().SystemPrompt;
-            var data = _dataContextFactory.Current.Snapshot();
+            var systemPromptFile = _dataScope.GetAgentConfig().SystemPrompt;
+            var data = _dataScope.Snapshot();
             var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken)
                 ;
             var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
@@ -279,8 +279,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 outerCancellationToken);
         }
 
-        var systemPromptFile = _dataContextFactory.Current.GetAgentConfig().SystemPrompt;
-        var data = _dataContextFactory.Current.Snapshot();
+        var systemPromptFile = _dataScope.GetAgentConfig().SystemPrompt;
+        var data = _dataScope.Snapshot();
         var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
@@ -299,7 +299,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             .CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken)
             ;
 
-        using var inferenceDataScope = _dataContextFactory.Current?.BeginScope();
+        using var inferenceDataScope = _dataScope.BeginScope();
         var outcome = await _inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,
