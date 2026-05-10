@@ -85,6 +85,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
         services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
         services.TryAddScoped<ITodoStorage, TodoStorage>();
+        services.AddScopedDataProvider<TodoListDataProvider>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();
