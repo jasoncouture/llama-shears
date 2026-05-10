@@ -21,4 +21,7 @@ public record ModelConfiguration(
     IReadOnlyDictionary<string, object>? Parameters = null,
     int TokenLimit = 0,
     JsonElement? AgentOptions = null
-);
+)
+{
+    public const string DataKey = "model_configuration";
+}

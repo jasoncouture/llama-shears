@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LlamaShears.Core.Abstractions.Common\LlamaShears.Core.Abstractions.Common.csproj" />
     <ProjectReference Include="..\LlamaShears.Core.Abstractions.Content\LlamaShears.Core.Abstractions.Content.csproj" />
     <ProjectReference Include="..\LlamaShears.Core.Abstractions.Events\LlamaShears.Core.Abstractions.Events.csproj" />
   </ItemGroup>
