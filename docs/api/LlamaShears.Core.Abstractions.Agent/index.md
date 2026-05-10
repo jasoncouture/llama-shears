@@ -56,3 +56,7 @@ Agent-identity, configuration, and persistence contracts for [LlamaShears](https
 - [ISessionQueue](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionQueue.md)
 - [SessionId](LlamaShears/Core/Abstractions/Agent/Sessions/SessionId.md)
 
+## LlamaShears.Core.Abstractions.Agent.Todo
+
+- [ITodoStorage](LlamaShears/Core/Abstractions/Agent/Todo/ITodoStorage.md)
+
