@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
@@ -45,16 +46,13 @@ public sealed class InferenceRunnerToolDispatchTests
                 return new ValueTask<ToolCallResult>(new ToolCallResult($"result-{c.CallId}", IsError: false));
             });
 
-        var currentAgent = new CurrentAgentAccessor();
         var runner = new InferenceRunner(
             publisher,
             dispatcher,
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            Substitute.For<IAgentConfigProvider>(),
-            currentAgent);
-        using var scope = currentAgent.BeginScope(new AgentInfo("test", "test", 0));
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")));
         var outcome = await runner.RunAsync(
             eventId: "alpha",
             model: model,
@@ -87,16 +85,13 @@ public sealed class InferenceRunnerToolDispatchTests
         var model = ScriptedLanguageModel.WithFragments(
             ScriptedLanguageModel.ToolCallFragment("llamashears", "file_read", "{}", "1"));
 
-        var currentAgent = new CurrentAgentAccessor();
         var runner = new InferenceRunner(
             publisher,
             dispatcher,
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            Substitute.For<IAgentConfigProvider>(),
-            currentAgent);
-        using var scope = currentAgent.BeginScope(new AgentInfo("test", "test", 0));
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")));
         var outcome = await runner.RunAsync(
             eventId: "alpha",
             model: model,

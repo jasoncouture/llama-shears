@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -36,6 +37,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly ITemplateFileLocator _locator;
     private readonly ITemplateRenderer _templateRenderer;
+    private readonly IDataContextFactory _dataContextFactory;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
@@ -49,6 +51,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         ICurrentAgentAccessor currentAgent,
         ITemplateFileLocator locator,
         ITemplateRenderer templateRenderer,
+        IDataContextFactory dataContextFactory,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
@@ -61,6 +64,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         _currentAgent = currentAgent;
         _locator = locator;
         _templateRenderer = templateRenderer;
+        _dataContextFactory = dataContextFactory;
         _logger = logger;
     }
 
@@ -186,17 +190,21 @@ public sealed partial class ContextCompactor : IContextCompactor
         return [];
     }
 
-    private async ValueTask<string> LoadKickerAsync(string agentId, CancellationToken cancellationToken)
+    private async ValueTask<string> LoadKickerAsync(CancellationToken cancellationToken)
     {
         var resolved = _locator.Locate(KickerSubFolder, KickerFileName, KickerFileName)
             ?? throw new FileNotFoundException(
                 $"Compaction kicker template '{KickerFileName}' not found in workspace, templates, or bundled '{KickerSubFolder}/' folder.");
-        var input = new SystemPromptTemplateParameters(AgentId: agentId);
-        var rendered = await _templateRenderer.RenderAsync(resolved, input, cancellationToken).ConfigureAwait(false)
+        var data = SnapshotScope();
+        var rendered = await _templateRenderer.RenderAsync(resolved, data, cancellationToken).ConfigureAwait(false)
             ?? throw new FileNotFoundException(
                 $"Compaction kicker template '{resolved}' could not be rendered.");
         return rendered;
     }
+
+    private IReadOnlyDictionary<string, object?> SnapshotScope()
+        => _dataContextFactory.Current?.Snapshot()
+            ?? ImmutableDictionary.Create<string, object?>(StringComparer.OrdinalIgnoreCase);
 
     private async ValueTask<string> SummarizeAsync(
         string agentId,
@@ -212,7 +220,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             : prompt.Turns.Count;
         var systemBody = await _systemPrompt.GetAsync(
             CompactionTemplateFileName,
-            new SystemPromptTemplateParameters(AgentId: agentId),
+            SnapshotScope(),
             cancellationToken).ConfigureAwait(false);
         var historyTurns = new List<ModelTurn>(historyCount + 2);
         var compactionInserted = false;
@@ -232,7 +240,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         }
         if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
         {
-            var kicker = await LoadKickerAsync(agentId, cancellationToken).ConfigureAwait(false);
+            var kicker = await LoadKickerAsync(cancellationToken).ConfigureAwait(false);
             historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
         }
 

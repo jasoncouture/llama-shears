@@ -87,11 +87,13 @@ public sealed class AgentInterruptTests
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
         var currentAgent = new CurrentAgentAccessor();
+        var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agent = new global::LlamaShears.Core.Agent(
-            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
+            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
-            loggerFactory: NullLoggerFactory.Instance,
+            logger: NullLogger<global::LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
@@ -105,10 +107,9 @@ public sealed class AgentInterruptTests
                 TimeProvider.System,
                 Substitute.For<IPromptContextProvider>(),
                 TestAgentConfigs.EmptyMemorySearcher(),
-                Substitute.For<IAgentConfigProvider>(),
-                currentAgent),
+                dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: Substitute.For<IDataContextFactory>(),
+            dataContextFactory: dataContextFactory,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
             agent.Start();
@@ -118,7 +119,7 @@ public sealed class AgentInterruptTests
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
     {
         var stub = Substitute.For<ISystemPromptProvider>();
-        stub.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+        stub.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("system"));
         return stub;
     }

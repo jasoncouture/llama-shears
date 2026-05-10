@@ -31,10 +31,10 @@ public sealed class FilesystemPromptContextProvider : IPromptContextProvider
 
     public async ValueTask<string?> GetAsync(
         string? templateName,
-        PromptContextParameters parameters,
+        IReadOnlyDictionary<string, object?> data,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(data);
 
         var name = string.IsNullOrWhiteSpace(templateName) ? DefaultName : templateName;
         if (name.AsSpan().IndexOfAny('/', '\\') >= 0)
@@ -58,7 +58,7 @@ public sealed class FilesystemPromptContextProvider : IPromptContextProvider
 
         foreach (var path in candidates)
         {
-            var rendered = await _renderer.RenderAsync(path, parameters, cancellationToken).ConfigureAwait(false);
+            var rendered = await _renderer.RenderAsync(path, data, cancellationToken).ConfigureAwait(false);
             if (rendered is not null)
             {
                 return rendered;

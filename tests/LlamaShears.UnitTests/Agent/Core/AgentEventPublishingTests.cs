@@ -127,11 +127,13 @@ public sealed class AgentEventPublishingTests
         using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
 
         var currentAgent = new CurrentAgentAccessor();
+        var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         using var agent = new global::LlamaShears.Core.Agent(
-            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId),
+            config: resolvedConfig,
             model: model,
             agentContext: ctx,
-            loggerFactory: NullLoggerFactory.Instance,
+            logger: NullLogger<global::LlamaShears.Core.Agent>.Instance,
             bus: bus,
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
@@ -145,10 +147,9 @@ public sealed class AgentEventPublishingTests
                 TimeProvider.System,
                 Substitute.For<IPromptContextProvider>(),
                 TestAgentConfigs.EmptyMemorySearcher(),
-                Substitute.For<IAgentConfigProvider>(),
-                currentAgent),
+                dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: Substitute.For<IDataContextFactory>(),
+            dataContextFactory: dataContextFactory,
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
         agent.Start();
@@ -200,7 +201,7 @@ public sealed class AgentEventPublishingTests
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
     {
         var stub = Substitute.For<ISystemPromptProvider>();
-        stub.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+        stub.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("system"));
         return stub;
     }

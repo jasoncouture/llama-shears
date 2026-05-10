@@ -6,6 +6,8 @@ namespace LlamaShears.Core.SystemPrompt;
 public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
 {
     private const string DefaultFileName = "DEFAULT.md";
+    private const string WorkspacePathKey = "workspace_path";
+    private const string FilesKey = "files";
 
     private static readonly ImmutableArray<string> _workspaceFileNames =
     [
@@ -29,10 +31,10 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
 
     public async ValueTask<string> GetAsync(
         string? templateFileName,
-        SystemPromptTemplateParameters parameters,
+        IReadOnlyDictionary<string, object?> data,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(data);
 
         var fileName = string.IsNullOrWhiteSpace(templateFileName) ? DefaultFileName : templateFileName;
         if (fileName.AsSpan().IndexOfAny('/', '\\') >= 0)
@@ -42,10 +44,10 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
                 nameof(templateFileName));
         }
 
-        var enriched = parameters with
+        var workspacePath = data.TryGetValue(WorkspacePathKey, out var raw) ? raw as string : null;
+        var enriched = new Dictionary<string, object?>(data, StringComparer.OrdinalIgnoreCase)
         {
-            Files = await ReadWorkspaceFilesAsync(parameters.WorkspacePath, cancellationToken)
-                .ConfigureAwait(false),
+            [FilesKey] = await ReadWorkspaceFilesAsync(workspacePath, cancellationToken).ConfigureAwait(false),
         };
 
         var resolved = _locator.Locate(subFolder: null, fileName, DefaultFileName)

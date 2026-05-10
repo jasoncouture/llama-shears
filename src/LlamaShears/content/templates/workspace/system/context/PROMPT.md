@@ -13,15 +13,10 @@
 
 ## Memory search matches
 
-The following memories were retrieved by similarity to your current turn ({{ memories.size }} hit{{ if memories.size != 1 }}s{{ end }}, ordered by score). Each row is `path — first-line summary (score)`; read the full body on demand with file_read. Use what's useful, ignore what isn't.
+The following memories were retrieved by similarity to your current turn ({{ memories.size }} hit{{ if memories.size != 1 }}s{{ end }}, ordered by score). Each row is `path — first-line summary (score)`; Full text available via file_read if strictly necessary.
 
 {{- for memory in memories }}
 - `{{ memory.relative_path }}` — {{ memory.summary }} _(score: {{ memory.score | math.round 2 }})_
 {{- end }}
 {{- end }}
-
-## Instruction
-This is a silent background update. Do not respond to this block. 
-Use this information to inform your next thought or tool call, 
-then continue your current task.
 </runtime_metadata>

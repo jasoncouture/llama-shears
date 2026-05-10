@@ -47,7 +47,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         AgentConfig config,
         ILanguageModel model,
         IAgentContext agentContext,
-        ILoggerFactory loggerFactory,
+        ILogger<Agent> logger,
         IEventBus bus,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
@@ -67,7 +67,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         _config = config;
         _model = model;
-        _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{config.Id}");
+        _logger = logger;
         _eventPublisher = eventPublisher;
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
@@ -130,7 +130,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         try
         {
             var turns = _agentContext.Turns;
-            var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
+            var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, SnapshotDataScope(), cancellationToken).ConfigureAwait(false);
             var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
             var prompt = new ModelPrompt([systemTurn, .. turns]);
             var snapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
@@ -265,7 +265,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 outerCancellationToken).ConfigureAwait(false);
         }
 
-        var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
+        var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, SnapshotDataScope(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
         var agentInfo = new AgentInfo(
@@ -329,10 +329,9 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
-    private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
-        new(
-            AgentId: _config.Id,
-            WorkspacePath: _config.WorkspacePath);
+    private IReadOnlyDictionary<string, object?> SnapshotDataScope()
+        => _dataContextFactory.Current?.Snapshot()
+            ?? ImmutableDictionary.Create<string, object?>(StringComparer.OrdinalIgnoreCase);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);

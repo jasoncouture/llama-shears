@@ -23,9 +23,6 @@ System-prompt and template-rendering contracts for [LlamaShears](https://github.
 
 ## LlamaShears.Core.Abstractions.SystemPrompt
 
-- [ISystemPromptProvider](LlamaShears/Core/Abstractions/SystemPrompt/ISystemPromptProvider.md)
 - [ITemplateFileLocator](LlamaShears/Core/Abstractions/SystemPrompt/ITemplateFileLocator.md)
 - [ITemplateRenderer](LlamaShears/Core/Abstractions/SystemPrompt/ITemplateRenderer.md)
-- [SystemPromptTemplateParameters](LlamaShears/Core/Abstractions/SystemPrompt/SystemPromptTemplateParameters.md)
-- [WorkspaceFile](LlamaShears/Core/Abstractions/SystemPrompt/WorkspaceFile.md)
 
