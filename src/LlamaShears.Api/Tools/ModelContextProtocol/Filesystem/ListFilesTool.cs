@@ -35,7 +35,7 @@ public sealed partial class ListFilesTool
         CancellationToken cancellationToken = default)
     {
         var cap = Math.Clamp(maxEntries, 1, HardMaxEntries);
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
 
         string resolved;
         string displayPath;

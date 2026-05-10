@@ -40,7 +40,7 @@ public class SystemTickService : BackgroundService
                 await _publisher.PublishAsync(
                     Event.WellKnown.Host.Tick,
                     new SystemTick(DateTimeOffset.UtcNow),
-                    stoppingToken).ConfigureAwait(false);
+                    stoppingToken);
             }
             catch (Exception ex)
             {

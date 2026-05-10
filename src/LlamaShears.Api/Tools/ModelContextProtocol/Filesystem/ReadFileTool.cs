@@ -52,7 +52,7 @@ public sealed partial class ReadFileTool
         }
         var cap = Math.Clamp(byteCap, 1, MaxByteCap);
 
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         var resolved = Path.GetFullPath(Path.IsPathRooted(path)
             ? path
             : Path.Combine(workspace.Root, path));
@@ -75,7 +75,7 @@ public sealed partial class ReadFileTool
 
         try
         {
-            var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, cap, cancellationToken).ConfigureAwait(false);
+            var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, cap, cancellationToken);
             LogRead(_logger, workspace.AgentId, resolved, content.Length, truncated);
             if (truncated)
             {

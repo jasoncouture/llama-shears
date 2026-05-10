@@ -28,7 +28,7 @@ public sealed partial class ScheduleCronTool
         [Description("Prompt text that will be delivered as the agent's input when the job fires.")] string prompt,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: cron_schedule requires an authenticated agent on the request.";
@@ -38,7 +38,7 @@ public sealed partial class ScheduleCronTool
         {
             var job = await _scheduler
                 .ScheduleAsync(workspace.AgentId, name, cronExpression, prompt, cancellationToken)
-                .ConfigureAwait(false);
+                ;
             return $"Scheduled '{job.Name}' as id {job.Id:D}; next fire {Format(job.NextFireAt)}.";
         }
         catch (ArgumentException ex)

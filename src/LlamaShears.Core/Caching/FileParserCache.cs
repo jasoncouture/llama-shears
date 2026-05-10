@@ -41,11 +41,11 @@ public sealed class FileParserCache<T> : IFileParserCache<T>, IDisposable where 
         if (info.Exists)
         {
             await using var stream = info.OpenRead();
-            result = await parser.Invoke(stream, state, cancellationToken).ConfigureAwait(false);
+            result = await parser.Invoke(stream, state, cancellationToken);
         }
         else
         {
-            result = await parser.Invoke(null, state, cancellationToken).ConfigureAwait(false);
+            result = await parser.Invoke(null, state, cancellationToken);
         }
 
         _cache.Set(key, result, TimeToLive);

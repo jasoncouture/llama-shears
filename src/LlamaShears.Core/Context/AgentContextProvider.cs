@@ -30,13 +30,13 @@ public sealed class AgentContextProvider : IAgentContextProvider
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var config = await _configProvider.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var config = await _configProvider.GetConfigAsync(agentId, cancellationToken);
         if (config is null)
         {
             return null;
         }
 
-        var persisted = await _contextStore.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var persisted = await _contextStore.OpenAsync(agentId, cancellationToken);
 
         return new AgentContext(
             AgentId: agentId,

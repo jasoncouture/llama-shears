@@ -22,13 +22,13 @@ public sealed class ListCronTool
     [Description("Returns the calling agent's cron jobs — id, name, expression, enabled flag, last/next fire timestamps, and prompt prefix. Other agents' jobs are not visible.")]
     public async Task<string> ListCron(CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: cron_list requires an authenticated agent on the request.";
         }
 
-        var jobs = await _scheduler.ListByAgentAsync(workspace.AgentId, cancellationToken).ConfigureAwait(false);
+        var jobs = await _scheduler.ListByAgentAsync(workspace.AgentId, cancellationToken);
         if (jobs.Count == 0)
         {
             return "No scheduled cron jobs.";

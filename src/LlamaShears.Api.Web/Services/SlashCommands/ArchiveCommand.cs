@@ -20,7 +20,7 @@ public sealed class ArchiveCommand : ISlashCommand
 
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
-        await _directory.ClearAsync(context.AgentId, archive: true, cancellationToken).ConfigureAwait(false);
+        await _directory.ClearAsync(context.AgentId, archive: true, cancellationToken);
         return SlashCommandResult.ContextWasChanged;
     }
 }

@@ -31,7 +31,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
 
         var response = await _client
             .EmbedAsync(BuildRequest([text]), cancellationToken)
-            .ConfigureAwait(false);
+            ;
         var embeddings = response?.Embeddings;
         if (embeddings is null || embeddings.Count == 0)
         {
@@ -57,7 +57,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
             inputs.Add(texts[i]);
         }
 
-        var response = await _client.EmbedAsync(BuildRequest(inputs), cancellationToken).ConfigureAwait(false);
+        var response = await _client.EmbedAsync(BuildRequest(inputs), cancellationToken);
         var embeddings = response?.Embeddings;
         if (embeddings is null || embeddings.Count != texts.Count)
         {

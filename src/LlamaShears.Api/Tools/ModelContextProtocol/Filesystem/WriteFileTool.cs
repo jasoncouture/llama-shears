@@ -36,7 +36,7 @@ public sealed partial class WriteFileTool
         [Description("If true, replace an existing file. Defaults to false (error if the file exists).")] bool overwrite = false,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {
@@ -74,7 +74,7 @@ public sealed partial class WriteFileTool
             {
                 Directory.CreateDirectory(parent);
             }
-            await File.WriteAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken);
             LogWrite(_logger, workspace.AgentId, resolution.FullPath, byteCount, overwrite);
             return $"Wrote {byteCount} bytes to '{path}'.";
         }

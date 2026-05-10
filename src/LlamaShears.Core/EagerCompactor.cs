@@ -52,7 +52,7 @@ public sealed partial class EagerCompactor : BackgroundService,
     {
         Interlocked.Exchange(ref _messageSubscription, null)?.Dispose();
         Interlocked.Exchange(ref _thoughtSubscription, null)?.Dispose();
-        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        await base.StopAsync(cancellationToken);
     }
 
     public ValueTask HandleAsync(IEventEnvelope<AgentMessageFragment> envelope, CancellationToken cancellationToken)
@@ -84,10 +84,10 @@ public sealed partial class EagerCompactor : BackgroundService,
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await ScanAsync(stoppingToken).ConfigureAwait(false);
+            await ScanAsync(stoppingToken);
             try
             {
-                await Task.Delay(_scanInterval, _time, stoppingToken).ConfigureAwait(false);
+                await Task.Delay(_scanInterval, _time, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -114,7 +114,7 @@ public sealed partial class EagerCompactor : BackgroundService,
             _lastSeen.TryRemove(agentId, out _);
             try
             {
-                await agent.RequestCompactionAsync(cancellationToken).ConfigureAwait(false);
+                await agent.RequestCompactionAsync(cancellationToken);
                 LogCompactionTriggered(_logger, agentId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

@@ -27,7 +27,7 @@ public sealed partial class IndexMemoryTool
         [Description("If true, re-embed every file even when its content hash already matches the indexed hash. Defaults to false.")] bool force = false,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: memory_index requires an authenticated agent on the request.";
@@ -36,7 +36,7 @@ public sealed partial class IndexMemoryTool
         try
         {
             var startedAt = Stopwatch.GetTimestamp();
-            var summary = await _indexer.ReconcileAsync(workspace.AgentId, force, cancellationToken).ConfigureAwait(false);
+            var summary = await _indexer.ReconcileAsync(workspace.AgentId, force, cancellationToken);
             var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
             LogReconciled(_logger, workspace.AgentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
             return $"Reconciled memory index: {summary.Added} added, {summary.Updated} updated, {summary.Removed} removed, {summary.Total} total.";

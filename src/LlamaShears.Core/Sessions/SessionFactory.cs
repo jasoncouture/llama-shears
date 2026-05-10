@@ -38,7 +38,7 @@ public sealed class SessionFactory : ISessionFactory, IAsyncDisposable
         {
             return;
         }
-        await DisposeSessionAsync(session).ConfigureAwait(false);
+        await DisposeSessionAsync(session);
     }
 
     public async ValueTask DisposeAsync()
@@ -47,7 +47,7 @@ public sealed class SessionFactory : ISessionFactory, IAsyncDisposable
         {
             if (_sessions.TryRemove(pair))
             {
-                await DisposeSessionAsync(pair.Value).ConfigureAwait(false);
+                await DisposeSessionAsync(pair.Value);
             }
         }
     }
@@ -57,7 +57,7 @@ public sealed class SessionFactory : ISessionFactory, IAsyncDisposable
         switch (session)
         {
             case IAsyncDisposable asyncDisposable:
-                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                await asyncDisposable.DisposeAsync();
                 break;
             case IDisposable disposable:
                 disposable.Dispose();

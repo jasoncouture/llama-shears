@@ -102,7 +102,7 @@ public class PluginContext<T> : IPluginContext<T> where T : class
 
         while (tasks.Count > 0)
         {
-            var completed = await Task.WhenAny(tasks).ConfigureAwait(false);
+            var completed = await Task.WhenAny(tasks);
             tasks.Remove(completed);
             if (completed.IsCanceled) continue;
             if (completed.IsFaulted) continue;

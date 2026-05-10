@@ -30,7 +30,7 @@ public sealed partial class CronExecutor : IEventHandler<SystemTick>, IDisposabl
     {
         try
         {
-            await _scheduler.FireDueAsync(_time.GetUtcNow(), cancellationToken).ConfigureAwait(false);
+            await _scheduler.FireDueAsync(_time.GetUtcNow(), cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

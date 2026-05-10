@@ -28,7 +28,7 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
-        var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
+        var models = await client.ListLocalModelsAsync(cancellationToken);
 
         foreach (var model in models)
         {
@@ -58,7 +58,7 @@ public sealed class OllamaEmbeddingProviderFactory : IEmbeddingProviderFactory
         }
 
         var client = _clientFactory.CreateClient(_hostOptions.CurrentValue);
-        var models = await client.ListLocalModelsAsync(cancellationToken).ConfigureAwait(false);
+        var models = await client.ListLocalModelsAsync(cancellationToken);
         foreach (var model in models)
         {
             if (string.Equals(model.Name, configuration.Id.Model, StringComparison.Ordinal))

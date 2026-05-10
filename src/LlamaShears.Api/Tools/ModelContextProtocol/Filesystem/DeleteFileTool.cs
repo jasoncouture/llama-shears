@@ -32,7 +32,7 @@ public sealed partial class DeleteFileTool
         [Description("If true, allow deleting a non-empty directory recursively. Defaults to false.")] bool recursive = false,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {

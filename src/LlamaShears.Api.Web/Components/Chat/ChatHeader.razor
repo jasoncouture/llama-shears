@@ -69,9 +69,9 @@
             return;
         }
         _loadedPrefsAgentId = current;
-        var thoughts = await ReadBoolAsync(ThoughtsKey(current)).ConfigureAwait(false);
-        var streaming = await ReadBoolAsync(StreamingKey(current)).ConfigureAwait(false);
-        var tools = await ReadBoolAsync(ToolsKey(current)).ConfigureAwait(false);
+        var thoughts = await ReadBoolAsync(ThoughtsKey(current));
+        var streaming = await ReadBoolAsync(StreamingKey(current));
+        var tools = await ReadBoolAsync(ToolsKey(current));
         if (thoughts is bool t)
         {
             Session.ShowThoughts = t;
@@ -98,7 +98,7 @@
         Session.ShowThoughts = !Session.ShowThoughts;
         if (Session.SelectedAgentId is { } id)
         {
-            await WriteBoolAsync(ThoughtsKey(id), Session.ShowThoughts).ConfigureAwait(false);
+            await WriteBoolAsync(ThoughtsKey(id), Session.ShowThoughts);
         }
     }
 
@@ -107,7 +107,7 @@
         Session.ShowStreaming = !Session.ShowStreaming;
         if (Session.SelectedAgentId is { } id)
         {
-            await WriteBoolAsync(StreamingKey(id), Session.ShowStreaming).ConfigureAwait(false);
+            await WriteBoolAsync(StreamingKey(id), Session.ShowStreaming);
         }
     }
 
@@ -116,7 +116,7 @@
         Session.ShowTools = !Session.ShowTools;
         if (Session.SelectedAgentId is { } id)
         {
-            await WriteBoolAsync(ToolsKey(id), Session.ShowTools).ConfigureAwait(false);
+            await WriteBoolAsync(ToolsKey(id), Session.ShowTools);
         }
     }
 
@@ -130,7 +130,7 @@
 
     private async ValueTask<bool?> ReadBoolAsync(string key)
     {
-        var raw = await Js.InvokeAsync<string?>("localStorage.getItem", key).ConfigureAwait(false);
+        var raw = await Js.InvokeAsync<string?>("localStorage.getItem", key);
         return bool.TryParse(raw, out var v) ? v : null;
     }
 

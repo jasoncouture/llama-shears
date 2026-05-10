@@ -65,7 +65,7 @@ public sealed class InferenceRunner : IInferenceRunner
 
         if (options is { InjectEphemeralContext: true })
         {
-            prompt = await InjectEphemeralAsync(prompt, cancellationToken).ConfigureAwait(false);
+            prompt = await InjectEphemeralAsync(prompt, cancellationToken);
         }
 
 
@@ -231,7 +231,7 @@ public sealed class InferenceRunner : IInferenceRunner
             return prompt;
         }
 
-        var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken).ConfigureAwait(false);
+        var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
 
         var now = _time.GetLocalNow();
         var snapshot = _dataContextFactory.Current?.Snapshot() ?? [];
@@ -242,7 +242,7 @@ public sealed class InferenceRunner : IInferenceRunner
         data["channel_id"] = ChannelId.Value;
         data["important_message"] = null;
         data["memories"] = memories;
-        var body = await _promptContext.GetAsync(config.PromptContext, data.ToImmutable(), cancellationToken).ConfigureAwait(false);
+        var body = await _promptContext.GetAsync(config.PromptContext, data.ToImmutable(), cancellationToken);
         if (string.IsNullOrWhiteSpace(body))
         {
             return prompt;

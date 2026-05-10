@@ -77,7 +77,7 @@ public sealed class FilesystemSystemPromptProvider : ISystemPromptProvider
             {
                 continue;
             }
-            var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+            var content = await File.ReadAllTextAsync(path, cancellationToken);
             files.Add(new WorkspaceFile(name, content));
         }
         return files.ToImmutable();

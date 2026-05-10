@@ -28,7 +28,7 @@ public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
     {
         ArgumentNullException.ThrowIfNull(text);
         cancellationToken.ThrowIfCancellationRequested();
-        return await ValueTask.FromResult(EmbedCore(text)).ConfigureAwait(false);
+        return await ValueTask.FromResult(EmbedCore(text));
     }
 
     public async ValueTask<IReadOnlyList<ReadOnlyMemory<float>>> EmbedAsync(
@@ -46,7 +46,7 @@ public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             results[i] = EmbedCore(texts[i]);
         }
-        return await ValueTask.FromResult<IReadOnlyList<ReadOnlyMemory<float>>>(results).ConfigureAwait(false);
+        return await ValueTask.FromResult<IReadOnlyList<ReadOnlyMemory<float>>>(results);
     }
 
     public void Dispose() => _session.Dispose();

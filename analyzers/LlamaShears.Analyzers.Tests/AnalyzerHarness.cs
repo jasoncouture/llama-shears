@@ -40,7 +40,7 @@ internal static class AnalyzerHarness
         var compilation = CreateCompilation(source, documentationMode);
         var withAnalyzers = compilation.WithAnalyzers([analyzer]);
         var diagnostics = await withAnalyzers.GetAnalyzerDiagnosticsAsync(cancellationToken)
-            .ConfigureAwait(false);
+            ;
         return [.. diagnostics.OrderBy(d => d.Location.SourceSpan.Start)];
     }
 
@@ -58,7 +58,7 @@ internal static class AnalyzerHarness
     {
         var compilation = CreateCompilation(source, DocumentationMode.Diagnose);
         var withAnalyzers = compilation.WithAnalyzers([suppressor]);
-        return await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+        return await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken);
     }
 
     private static CSharpCompilation CreateCompilation(string source, DocumentationMode documentationMode)

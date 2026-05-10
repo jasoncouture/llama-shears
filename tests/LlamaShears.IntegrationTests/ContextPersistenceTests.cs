@@ -152,7 +152,7 @@ public sealed class ContextPersistenceTests
     {
         var publisher = factory.Services.GetRequiredService<IEventPublisher>();
         var contextStore = factory.Services.GetRequiredService<IContextStore>();
-        var context = await contextStore.OpenAsync(AgentId, CancellationToken.None).ConfigureAwait(false);
+        var context = await contextStore.OpenAsync(AgentId, CancellationToken.None);
 
         var done = new TaskCompletionSource<ModelTurn>(TaskCreationOptions.RunContinuationsAsynchronously);
         EventHandler<IContextEntry> handler = (_, entry) =>
@@ -173,7 +173,7 @@ public sealed class ContextPersistenceTests
             using var cts = new CancellationTokenSource(_responseTimeout);
             try
             {
-                await done.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+                await done.Task.WaitAsync(cts.Token);
             }
             catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
             {

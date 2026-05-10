@@ -35,7 +35,7 @@ internal sealed class SessionQueue : ISessionQueue, IAsyncDisposable
             return users.Length == 0 ? tools : [.. tools, .. users];
         }
 
-        return await WaitForUserBatchAsync(cancellationToken).ConfigureAwait(false);
+        return await WaitForUserBatchAsync(cancellationToken);
     }
 
     public ValueTask DisposeAsync()

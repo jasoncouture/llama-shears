@@ -23,7 +23,7 @@ public sealed class TriggerCronTool
         [Description("Cron job id (GUID, format-D).")] string id,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: cron_trigger requires an authenticated agent on the request.";
@@ -33,7 +33,7 @@ public sealed class TriggerCronTool
             return $"Refused: '{id}' is not a valid GUID.";
         }
 
-        var fired = await _scheduler.TriggerAsync(workspace.AgentId, jobId, cancellationToken).ConfigureAwait(false);
+        var fired = await _scheduler.TriggerAsync(workspace.AgentId, jobId, cancellationToken);
         return fired
             ? $"Fired cron job {jobId:D} (stub: logged only)."
             : $"No cron job {jobId:D} owned by this agent.";

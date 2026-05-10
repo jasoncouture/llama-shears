@@ -21,7 +21,7 @@ public sealed class TodoTools
         [Description("Set to true to record every new item as already completed. Defaults to false.")] bool done = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.AddAsync(items, done, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.AddAsync(items, done, cancellationToken);
         return result.ToString();
     }
 
@@ -31,7 +31,7 @@ public sealed class TodoTools
         [Description("Updates to apply. Each entry has a 1-based 'index' and a target 'isCompleted' state.")] TodoItemUpdate[] updates,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.UpdateAsync(updates, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.UpdateAsync(updates, cancellationToken);
         return result.ToString();
     }
 
@@ -41,7 +41,7 @@ public sealed class TodoTools
         [Description("1-based indices of items to delete.")] int[] indices,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.DeleteAsync(indices, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.DeleteAsync(indices, cancellationToken);
         return result.ToString();
     }
 
@@ -51,7 +51,7 @@ public sealed class TodoTools
         [Description("False (default) clears completed items only; true also clears incomplete items.")] bool includeIncomplete = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.ClearAsync(includeIncomplete, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.ClearAsync(includeIncomplete, cancellationToken);
         return result.ToString();
     }
 
@@ -62,7 +62,7 @@ public sealed class TodoTools
         [Description("Maximum number of items to return. Null or negative returns all remaining items.")] int? limit = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await _storage.ListAsync(offset, limit, cancellationToken).ConfigureAwait(false);
+        var result = await _storage.ListAsync(offset, limit, cancellationToken);
         var rendered = result.ToString();
         return string.IsNullOrEmpty(rendered) ? "No todo items found." : rendered;
     }

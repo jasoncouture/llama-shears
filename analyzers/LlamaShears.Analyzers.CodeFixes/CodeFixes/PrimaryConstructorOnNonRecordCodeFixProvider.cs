@@ -27,7 +27,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProvider : CodeFixProvid
 
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
         if (root is null)
         {
             return;
@@ -57,7 +57,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProvider : CodeFixProvid
         CancellationToken cancellationToken)
     {
         var paramList = typeDecl.ParameterList!;
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
         if (semanticModel is null)
         {
             return document;
@@ -122,7 +122,7 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProvider : CodeFixProvid
             .WithMembers(newMembers)
             .WithAdditionalAnnotations(Formatter.Annotation);
 
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var root = await document.GetSyntaxRootAsync(cancellationToken);
         var newRoot = root!.ReplaceNode(typeDecl, newTypeDecl);
         return document.WithSyntaxRoot(newRoot);
     }

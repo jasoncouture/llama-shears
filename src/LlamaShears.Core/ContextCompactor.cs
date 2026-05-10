@@ -110,7 +110,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.CompactingStarted with { Id = agentContext.AgentId },
             new AgentCompactionMarker(),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
         try
         {
             var agentInfo = new AgentInfo(
@@ -118,7 +118,7 @@ public sealed partial class ContextCompactor : IContextCompactor
                 ModelId: configuration.Id,
                 ContextWindowSize: configuration.ContextLength ?? 0);
             using var scope = _currentAgent.BeginScope(agentInfo);
-            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken).ConfigureAwait(false);
+            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
@@ -126,7 +126,7 @@ public sealed partial class ContextCompactor : IContextCompactor
                 window,
                 preserveTrailingUser,
                 memoryTools,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
 
             var rebuilt = new List<ModelTurn>(3);
             if (prompt.Turns[0].Role == ModelRole.System)
@@ -141,15 +141,15 @@ public sealed partial class ContextCompactor : IContextCompactor
             var rebuiltPrompt = new ModelPrompt(rebuilt);
 
             LogContextCompacted(_logger, agentContext.AgentId);
-            await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken).ConfigureAwait(false);
-            var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken).ConfigureAwait(false);
+            await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken);
+            var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken);
             foreach (var turn in rebuiltPrompt.Turns)
             {
                 if (turn.Role == ModelRole.System)
                 {
                     continue;
                 }
-                await live.AppendAsync(turn, cancellationToken).ConfigureAwait(false);
+                await live.AppendAsync(turn, cancellationToken);
             }
             return rebuiltPrompt;
         }
@@ -158,7 +158,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.CompactingFinished with { Id = agentContext.AgentId },
                 new AgentCompactionMarker(),
-                CancellationToken.None).ConfigureAwait(false);
+                CancellationToken.None);
         }
     }
 
@@ -172,7 +172,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             return [];
         }
-        var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken).ConfigureAwait(false);
+        var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken);
         foreach (var group in groups)
         {
             if (!string.Equals(group.Source, MemoryToolSource, StringComparison.Ordinal))
@@ -221,7 +221,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         var systemBody = await _systemPrompt.GetAsync(
             CompactionTemplateFileName,
             SnapshotScope(),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
         var historyTurns = new List<ModelTurn>(historyCount + 2);
         var compactionInserted = false;
         for (var i = 0; i < historyCount; i++)
@@ -240,7 +240,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         }
         if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
         {
-            var kicker = await LoadKickerAsync(cancellationToken).ConfigureAwait(false);
+            var kicker = await LoadKickerAsync(cancellationToken);
             historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
         }
 
@@ -258,7 +258,7 @@ public sealed partial class ContextCompactor : IContextCompactor
                 options: options,
                 emitTurns: false,
                 correlationId: correlationId,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)
             {

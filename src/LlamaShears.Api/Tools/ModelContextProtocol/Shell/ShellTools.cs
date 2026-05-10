@@ -51,7 +51,7 @@ public sealed partial class ShellTools
             return "Refused: command is required.";
         }
 
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         var resolvedCwd = string.IsNullOrWhiteSpace(workingDirectory)
             ? workspace.Root
             : Path.IsPathRooted(workingDirectory)
@@ -95,21 +95,21 @@ public sealed partial class ShellTools
             var timedOut = false;
             try
             {
-                await process.WaitForExitAsync(timeoutCancellationTokenSource.Token).ConfigureAwait(false);
+                await process.WaitForExitAsync(timeoutCancellationTokenSource.Token);
             }
             catch (OperationCanceledException) when (timeoutCancellationTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 timedOut = true;
                 try { process.Kill(entireProcessTree: true); }
                 catch (InvalidOperationException) { }
-                try { await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false); }
+                try { await process.WaitForExitAsync(CancellationToken.None); }
                 catch (InvalidOperationException) { }
             }
 
-            await Task.WhenAll(stdoutPump, stderrPump).ConfigureAwait(false);
-            await sink.FlushAsync(CancellationToken.None).ConfigureAwait(false);
+            await Task.WhenAll(stdoutPump, stderrPump);
+            await sink.FlushAsync(CancellationToken.None);
             var fileLength = sink.Length;
-            await sink.DisposeAsync().ConfigureAwait(false);
+            await sink.DisposeAsync();
 
             var elapsed = Stopwatch.GetElapsedTime(startedAt);
             var exitCode = process.HasExited ? process.ExitCode : -1;
@@ -118,11 +118,11 @@ public sealed partial class ShellTools
             string body;
             if (truncated)
             {
-                body = await ReadHeadAndTailAsync(tempPath, fileLength).ConfigureAwait(false);
+                body = await ReadHeadAndTailAsync(tempPath, fileLength);
             }
             else
             {
-                body = await File.ReadAllTextAsync(tempPath, Encoding.UTF8, CancellationToken.None).ConfigureAwait(false);
+                body = await File.ReadAllTextAsync(tempPath, Encoding.UTF8, CancellationToken.None);
                 try { File.Delete(tempPath); }
                 catch (IOException) { }
             }
@@ -133,7 +133,7 @@ public sealed partial class ShellTools
         }
         catch
         {
-            await sink.DisposeAsync().ConfigureAwait(false);
+            await sink.DisposeAsync();
             try { File.Delete(tempPath); }
             catch (IOException) { }
             throw;
@@ -180,14 +180,14 @@ public sealed partial class ShellTools
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
 
         var headBuffer = new byte[HeadCap];
-        var headRead = await stream.ReadAtLeastAsync(headBuffer, HeadCap, throwOnEndOfStream: false).ConfigureAwait(false);
+        var headRead = await stream.ReadAtLeastAsync(headBuffer, HeadCap, throwOnEndOfStream: false);
         var headEnd = SnapToLastNewline(headBuffer.AsSpan(0, headRead));
         var head = Encoding.UTF8.GetString(headBuffer, 0, headEnd);
 
         var tailStart = totalLength - TailCap;
         stream.Position = tailStart;
         var tailBuffer = new byte[TailCap];
-        var tailRead = await stream.ReadAtLeastAsync(tailBuffer, TailCap, throwOnEndOfStream: false).ConfigureAwait(false);
+        var tailRead = await stream.ReadAtLeastAsync(tailBuffer, TailCap, throwOnEndOfStream: false);
         var tailOffset = SnapToFirstNewline(tailBuffer.AsSpan(0, tailRead));
         var tail = Encoding.UTF8.GetString(tailBuffer, tailOffset, tailRead - tailOffset);
 
@@ -227,7 +227,7 @@ public sealed partial class ShellTools
             int read;
             try
             {
-                read = await source.ReadAsync(buffer).ConfigureAwait(false);
+                read = await source.ReadAsync(buffer);
             }
             catch (IOException)
             {

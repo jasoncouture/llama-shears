@@ -60,8 +60,8 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
         ArgumentNullException.ThrowIfNull(call);
         ArgumentException.ThrowIfNullOrEmpty(eventId);
 
-        var result = await ExecuteAsync(call, tools, cancellationToken).ConfigureAwait(false);
-        await PublishResultAsync(eventId, call, result, correlationId, cancellationToken).ConfigureAwait(false);
+        var result = await ExecuteAsync(call, tools, cancellationToken);
+        await PublishResultAsync(eventId, call, result, correlationId, cancellationToken);
         return result;
     }
 
@@ -99,11 +99,11 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
 
         try
         {
-            var client = await _connections.GetOrCreateAsync((call.Source, serverUri), cancellationToken).ConfigureAwait(false);
+            var client = await _connections.GetOrCreateAsync((call.Source, serverUri), cancellationToken);
             var result = await client.CallToolAsync(
                 call.Name,
                 arguments,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken);
 
             return new ToolCallResult(
                 FlattenContent(result.Content),
@@ -144,7 +144,7 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
                 result.IsError,
                 call.CallId),
             correlationId,
-            publishToken).ConfigureAwait(false);
+            publishToken);
     }
 
     private static bool IsAdvertised(ImmutableArray<ToolGroup> tools, string source, string name)

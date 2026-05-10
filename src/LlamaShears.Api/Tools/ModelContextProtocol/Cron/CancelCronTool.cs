@@ -23,7 +23,7 @@ public sealed class CancelCronTool
         [Description("Cron job id (GUID, format-D).")] string id,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: cron_cancel requires an authenticated agent on the request.";
@@ -33,7 +33,7 @@ public sealed class CancelCronTool
             return $"Refused: '{id}' is not a valid GUID.";
         }
 
-        var removed = await _scheduler.CancelAsync(workspace.AgentId, jobId, cancellationToken).ConfigureAwait(false);
+        var removed = await _scheduler.CancelAsync(workspace.AgentId, jobId, cancellationToken);
         return removed
             ? $"Cancelled cron job {jobId:D}."
             : $"No cron job {jobId:D} owned by this agent.";

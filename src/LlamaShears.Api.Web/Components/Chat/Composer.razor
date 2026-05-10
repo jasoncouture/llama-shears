@@ -71,7 +71,7 @@
     {
         if (!_registered && _selfRef is not null)
         {
-            await Js.InvokeVoidAsync("composerPaste.register", _pasteId, _selfRef).ConfigureAwait(false);
+            await Js.InvokeVoidAsync("composerPaste.register", _pasteId, _selfRef);
             _registered = true;
         }
     }

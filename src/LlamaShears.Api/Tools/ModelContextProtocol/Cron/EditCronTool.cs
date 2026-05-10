@@ -30,7 +30,7 @@ public sealed partial class EditCronTool
         [Description("New enabled flag. Leave null to keep current.")] bool? enabled = null,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: cron_edit requires an authenticated agent on the request.";
@@ -43,7 +43,7 @@ public sealed partial class EditCronTool
         var edit = new CronJobEdit(name, cronExpression, prompt, enabled);
         try
         {
-            var updated = await _scheduler.EditAsync(workspace.AgentId, jobId, edit, cancellationToken).ConfigureAwait(false);
+            var updated = await _scheduler.EditAsync(workspace.AgentId, jobId, edit, cancellationToken);
             return updated is null
                 ? $"No cron job {jobId:D} owned by this agent."
                 : $"Edited cron job {updated.Id:D}; enabled={updated.Enabled}; expr='{updated.CronExpression}'; next {Format(updated.NextFireAt)}.";
