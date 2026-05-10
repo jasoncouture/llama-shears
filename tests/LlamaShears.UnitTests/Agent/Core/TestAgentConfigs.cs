@@ -39,7 +39,6 @@ internal static class TestAgentConfigs
                 call[1] = config;
                 return true;
             });
-        scope.Snapshot().Returns([]);
         var factory = Substitute.For<IDataContextFactory>();
         factory.Current.Returns(scope);
         factory.TryJoinContextScope(Arg.Any<string>(), out Arg.Any<IDataContextScope?>())

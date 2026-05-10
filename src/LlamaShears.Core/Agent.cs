@@ -131,7 +131,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         {
             var turns = _agentContext.Turns;
             var systemPromptFile = _dataContextFactory.Current.GetAgentConfig().SystemPrompt;
-            var data = _dataContextFactory.Current?.Snapshot() ?? [];
+            var data = _dataContextFactory.Current.Snapshot();
             var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken)
                 ;
             var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
@@ -280,7 +280,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
 
         var systemPromptFile = _dataContextFactory.Current.GetAgentConfig().SystemPrompt;
-        var data = _dataContextFactory.Current?.Snapshot() ?? [];
+        var data = _dataContextFactory.Current.Snapshot();
         var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 

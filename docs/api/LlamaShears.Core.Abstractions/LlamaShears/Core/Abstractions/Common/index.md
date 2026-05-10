@@ -6,6 +6,7 @@
 - [CompositeIdentityJsonConverter](CompositeIdentityJsonConverter.md) — JSON converter for [CompositeIdentity](CompositeIdentity.md): serializes as the compact string `"provider/model"` rather than as an object.
 - [CompositeIdentityTypeConverter](CompositeIdentityTypeConverter.md) — TypeConverter for [CompositeIdentity](CompositeIdentity.md) so it flows through configuration binding and similar string-pivoted machinery as `"provider/model"`.
 - [DataContextConstants](DataContextConstants.md) — Constants used by the data-context infrastructure.
+- [DataContextScopeExtensions](DataContextScopeExtensions.md) — Convenience accessors over [IDataContextScope](IDataContextScope.md).
 - [DataContextServiceCollectionExtensions](DataContextServiceCollectionExtensions.md) — DI registration helpers for [IDataContextItemProvider](IDataContextItemProvider.md).
 - [IDataContextFactory](IDataContextFactory.md) — Manages keyed [IDataContextScope](IDataContextScope.md) instances flowing on the current call chain via AsyncLocal. Other call chains looking up the same key can rejoin via [IDataContextFactory](IDataContextFactory.md).`TryJoinContextScope`.
 - [IDataContextItemProvider](IDataContextItemProvider.md) — Contributes key/value pairs into the current data-context scope. Implementations should not throw; on failure, return an empty enumerable. The factory aggregates items from every registered provider when a context starts.

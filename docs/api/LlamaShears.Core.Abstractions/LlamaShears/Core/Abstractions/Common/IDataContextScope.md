@@ -42,8 +42,3 @@ dictionary. Existing keys are overwritten.
 Materializes `provider`'s items into the current
 dictionary. Existing keys are overwritten.
 
-### `Snapshot`
-
-Returns an immutable snapshot of the current dictionary; subsequent
-mutations to the scope do not affect the returned value.
-

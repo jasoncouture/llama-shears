@@ -232,7 +232,7 @@ public sealed class InferenceRunner : IInferenceRunner
         var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
 
         var now = _time.GetLocalNow();
-        var snapshot = _dataContextFactory.Current?.Snapshot() ?? [];
+        var snapshot = _dataContextFactory.Current.Snapshot();
         var data = snapshot.ToBuilder();
         data["now"] = now;
         data["timezone"] = TimeZoneInfo.Local.Id;

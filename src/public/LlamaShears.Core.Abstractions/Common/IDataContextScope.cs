@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace LlamaShears.Core.Abstractions.Common;
 
 /// <summary>
@@ -49,10 +47,4 @@ public interface IDataContextScope : IEnumerable<KeyValuePair<string, object?>>
     /// key.
     /// </summary>
     bool Remove(string key);
-
-    /// <summary>
-    /// Returns an immutable snapshot of the current dictionary; subsequent
-    /// mutations to the scope do not affect the returned value.
-    /// </summary>
-    ImmutableDictionary<string, object?> Snapshot();
 }

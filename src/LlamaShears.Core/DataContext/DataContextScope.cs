@@ -63,8 +63,6 @@ internal sealed class DataContextScope : IDataContextScope
         return false;
     }
 
-    public ImmutableDictionary<string, object?> Snapshot() => [.. _current];
-
     public IEnumerator<KeyValuePair<string, object?>> GetEnumerator() => _current.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

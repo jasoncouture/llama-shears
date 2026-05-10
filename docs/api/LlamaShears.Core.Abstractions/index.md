@@ -84,6 +84,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [CompositeIdentityJsonConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityJsonConverter.md)
 - [CompositeIdentityTypeConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityTypeConverter.md)
 - [DataContextConstants](LlamaShears/Core/Abstractions/Common/DataContextConstants.md)
+- [DataContextScopeExtensions](LlamaShears/Core/Abstractions/Common/DataContextScopeExtensions.md)
 - [DataContextServiceCollectionExtensions](LlamaShears/Core/Abstractions/Common/DataContextServiceCollectionExtensions.md)
 - [IDataContextFactory](LlamaShears/Core/Abstractions/Common/IDataContextFactory.md)
 - [IDataContextItemProvider](LlamaShears/Core/Abstractions/Common/IDataContextItemProvider.md)
