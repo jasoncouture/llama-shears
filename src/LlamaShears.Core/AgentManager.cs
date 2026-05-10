@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Paths;
@@ -37,6 +38,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private IDisposable? _subscription;
     private CancellationTokenRegistration _appStartedRegistration;
     private int _reconciling;
+    private readonly IDataContextFactory _dataContextFactory;
 
     public AgentManager(
         IEventBus bus,
@@ -52,6 +54,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IModelContextProtocolToolDiscovery toolDiscovery,
         IModelContextProtocolServerRegistry serverRegistry,
         ICurrentAgentAccessor currentAgent,
+        IDataContextFactory dataContextFactory,
         IHostApplicationLifetime appLifetime)
     {
         _bus = bus;
@@ -68,6 +71,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _toolDiscovery = toolDiscovery;
         _serverRegistry = serverRegistry;
         _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
         _appLifetime = appLifetime;
     }
 
@@ -240,15 +244,16 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private async Task ReloadAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
+        if (_loaded.Remove(name, out var oldSlot))
+        {
+            oldSlot.Agent.Dispose();
+            _dataContextFactory.DeleteContext(name);
+        }
+
         var newSlot = await ReloadBuildAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (newSlot is null)
         {
             return;
-        }
-
-        if (_loaded.Remove(name, out var oldSlot))
-        {
-            oldSlot.Agent.Dispose();
         }
 
         _loaded[name] = newSlot;
@@ -260,6 +265,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         if (_loaded.Remove(name, out var slot))
         {
             slot.Agent.Dispose();
+            _dataContextFactory.DeleteContext(name);
             LogAgentStopped(_logger, slot.Name);
         }
     }
@@ -295,34 +301,64 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             ?? throw new InvalidOperationException(
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
-        var modelConfig = new ModelConfiguration(
-            ModelId: config.Model.Id.Model,
-            Think: config.Model.Think,
-            ContextLength: config.Model.ContextLength,
-            KeepAlive: config.Model.KeepAlive,
-            TokenLimit: config.Model.TokenLimit,
-            AgentOptions: config.Model.Options);
-        var model = providerFactory.CreateModel(modelConfig);
-
-        var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
-
-        var scope = _scopeFactory.CreateAsyncScope();
-        try
+        // Suppress flow on this call chain so the inner Task.Run starts with a clean
+        // ExecutionContext. Inside that task we set up the agent's data scope on its
+        // own EC; agent.Start()'s Task.Run then captures that EC, so the agent loop
+        // inherits the scope without pulling in any AsyncLocal state from this caller.
+        using var suppressedExecutionContext = ExecutionContext.SuppressFlow();
+        return await Task.Run(async () =>
         {
-            return ActivatorUtilities.CreateInstance<Agent>(
-                scope.ServiceProvider,
-                config,
-                model,
-                agentContext,
-                modelConfig,
-                scope,
-                tools);
-        }
-        catch
-        {
-            await scope.DisposeAsync().ConfigureAwait(false);
-            throw;
-        }
+            var modelConfig = new ModelConfiguration(
+                ModelId: config.Model.Id.Model,
+                Think: config.Model.Think,
+                ContextLength: config.Model.ContextLength,
+                KeepAlive: config.Model.KeepAlive,
+                TokenLimit: config.Model.TokenLimit,
+                AgentOptions: config.Model.Options);
+            var model = providerFactory.CreateModel(modelConfig);
+
+            var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
+            var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "agent_configuration", config },
+                { "model_configuration", modelConfig },
+                { "agent_context", agentContext },
+            };
+
+            var scope = _scopeFactory.CreateAsyncScope();
+            try
+            {
+                await CreateAgentRootScopeAsync(config.Id, scope.ServiceProvider, agentGlobalDataContext, cancellationToken).ConfigureAwait(false);
+                var agent = ActivatorUtilities.CreateInstance<Agent>(
+                    scope.ServiceProvider,
+                    config,
+                    model,
+                    agentContext,
+                    modelConfig,
+                    scope,
+                    tools);
+                agent.Start();
+                return (IAgent)agent;
+            }
+            catch
+            {
+                await scope.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IDataContextScope> CreateAgentRootScopeAsync(
+        string agentId,
+        IServiceProvider agentScopeServiceProvider,
+        IEnumerable<KeyValuePair<string, object?>> seedData,
+        CancellationToken cancellationToken)
+    {
+        var dataProviders = agentScopeServiceProvider.GetScopedDataProviders();
+        var dataContextFactory = agentScopeServiceProvider.GetRequiredService<IDataContextFactory>();
+        var scope = await dataContextFactory.StartContextAsync(agentId, dataProviders, cancellationToken).ConfigureAwait(false);
+        scope.SetItems(seedData);
+        return scope;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]

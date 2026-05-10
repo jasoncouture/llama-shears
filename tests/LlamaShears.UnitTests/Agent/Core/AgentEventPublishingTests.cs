@@ -151,6 +151,7 @@ public sealed class AgentEventPublishingTests
             dataContextFactory: Substitute.For<IDataContextFactory>(),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
+        agent.Start();
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

@@ -87,7 +87,7 @@ public sealed class AgentInterruptTests
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
         var currentAgent = new CurrentAgentAccessor();
-        return new global::LlamaShears.Core.Agent(
+        var agent = new global::LlamaShears.Core.Agent(
             config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
             model: model,
             agentContext: agentContext,
@@ -111,6 +111,8 @@ public sealed class AgentInterruptTests
             dataContextFactory: Substitute.For<IDataContextFactory>(),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
+            agent.Start();
+            return agent;
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()

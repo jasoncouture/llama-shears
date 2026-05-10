@@ -27,7 +27,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IDisposable _subscription;
     private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
-    private readonly Task _loop;
+    private Task? _loop;
     private readonly SemaphoreSlim _processGate = new(1, 1);
     private readonly Lock _interruptLock = new();
     private CancellationTokenSource? _activeTurnCts;
@@ -87,6 +87,14 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             $"{Event.WellKnown.Channel.Message}:+",
             EventDeliveryMode.Awaited,
             this);
+    }
+
+    public void Start()
+    {
+        if (_loop is not null)
+        {
+            throw new InvalidOperationException($"Agent '{Id}' has already been started.");
+        }
         _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
     }
 
@@ -145,12 +153,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         _subscription.Dispose();
         _shutdown.Cancel();
-        try
+        if (_loop is not null)
         {
-            await _loop.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
+            try
+            {
+                await _loop.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
         _shutdown.Dispose();
         _processGate.Dispose();
@@ -185,16 +196,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
         using var loggingScope = _logger.BeginScope("{AgentId}", Id);
-        var providers = _scopedServices.GetServices<IDataContextItemProvider>();
-        await _dataContextFactory.StartContextAsync(Id, providers, cancellationToken).ConfigureAwait(false);
-        try
-        {
-            await RunIterationsAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _dataContextFactory.ClearCurrent(owner: true);
-        }
+        await RunIterationsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RunIterationsAsync(CancellationToken cancellationToken)

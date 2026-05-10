@@ -165,7 +165,7 @@ public sealed class AgentLoopTests
         var agentConfigProvider = Substitute.For<IAgentConfigProvider>();
         agentConfigProvider.GetConfigAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentConfig?>(resolvedConfig));
-        return new global::LlamaShears.Core.Agent(
+        var agent = new global::LlamaShears.Core.Agent(
             config: resolvedConfig,
             model: model,
             agentContext: agentContext,
@@ -189,6 +189,8 @@ public sealed class AgentLoopTests
             dataContextFactory: Substitute.For<IDataContextFactory>(),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
+        agent.Start();
+        return agent;
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
