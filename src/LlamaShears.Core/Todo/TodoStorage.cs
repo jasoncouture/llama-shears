@@ -85,6 +85,7 @@ internal sealed partial class TodoStorage : ITodoStorage
             var recovered = BuildBatch(items, done, startIndex: 1);
             await File.WriteAllTextAsync(path, RenderItems(recovered), cancellationToken);
             LogRecovered(_logger, path);
+            PushToScope(recovered);
             return new TodoCommandResult(recovered, TodoResultState.Corrupt);
         }
 
@@ -100,7 +101,9 @@ internal sealed partial class TodoStorage : ITodoStorage
         {
             await File.AppendAllTextAsync(path, rendered, cancellationToken);
         }
-        return new TodoCommandResult(parsed.Items.AddRange(newItems), TodoResultState.Success);
+        var combined = parsed.Items.AddRange(newItems);
+        PushToScope(combined);
+        return new TodoCommandResult(combined, TodoResultState.Success);
     }
 
     public async ValueTask<TodoCommandResult> UpdateAsync(IReadOnlyList<TodoItemUpdate> updates, CancellationToken cancellationToken = default)
@@ -116,6 +119,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         {
             await WriteEmptyAsync(path, cancellationToken);
             LogRecovered(_logger, path);
+            PushToScope([]);
             return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to update.");
         }
 
@@ -143,6 +147,7 @@ internal sealed partial class TodoStorage : ITodoStorage
 
         var updated = working.ToImmutable();
         await RewriteAsync(path, updated, cancellationToken);
+        PushToScope(updated);
         return new TodoCommandResult(updated, TodoResultState.Success);
     }
 
@@ -159,6 +164,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         {
             await WriteEmptyAsync(path, cancellationToken);
             LogRecovered(_logger, path);
+            PushToScope([]);
             return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to delete.");
         }
 
@@ -175,6 +181,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         var remaining = parsed.Items.Where(item => !targets.Contains(item.Index)).ToImmutableArray();
         var renumbered = Renumber(remaining);
         await RewriteAsync(path, renumbered, cancellationToken);
+        PushToScope(renumbered);
         return new TodoCommandResult(renumbered, TodoResultState.Success);
     }
 
@@ -186,6 +193,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         {
             await WriteEmptyAsync(path, cancellationToken);
             LogRecovered(_logger, path);
+            PushToScope([]);
             return new TodoCommandResult([], TodoResultState.Corrupt);
         }
         if (parsed.Items.IsEmpty)
@@ -203,7 +211,13 @@ internal sealed partial class TodoStorage : ITodoStorage
 
         var renumbered = Renumber(kept);
         await RewriteAsync(path, renumbered, cancellationToken);
+        PushToScope(renumbered);
         return new TodoCommandResult(renumbered, TodoResultState.Success);
+    }
+
+    private void PushToScope(ImmutableArray<TodoItem> items)
+    {
+        _dataContextFactory.Current?.SetItems([new KeyValuePair<string, object?>(TodoStorageConstants.DataKey, items)]);
     }
 
     private ValueTask<string> GetPathAsync(CancellationToken cancellationToken)
