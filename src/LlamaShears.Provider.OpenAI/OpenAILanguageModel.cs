@@ -241,10 +241,30 @@ public partial class OpenAiLanguageModel : ILanguageModel
     private JsonObject BuildRequestBody(ModelPrompt prompt, PromptOptions? options)
     {
         var messages = new JsonArray();
+        StringBuilder? pendingThought = null;
         foreach (var turn in prompt.Turns)
         {
-            messages.Add(ToMessage(turn, _textFormatter));
+            if (turn.Role == ModelRole.Thought)
+            {
+                pendingThought ??= new StringBuilder();
+                if (pendingThought.Length > 0)
+                {
+                    pendingThought.Append('\n');
+                }
+                pendingThought.Append(turn.Content);
+                continue;
+            }
+            var message = ToMessage(turn, _textFormatter);
+            if (pendingThought is not null
+                && (turn.Role == ModelRole.Assistant || turn.Role == ModelRole.FrameworkAssistant))
+            {
+                message["reasoning_content"] = pendingThought.ToString();
+            }
+            pendingThought = null;
+            messages.Add(message);
         }
+        // Tail Thought (prompt ends with a Thought turn) is intentionally dropped:
+        // no following assistant turn exists to attach the reasoning to.
 
         var body = new JsonObject
         {
@@ -355,7 +375,8 @@ public partial class OpenAiLanguageModel : ILanguageModel
         ModelRole.User or ModelRole.FrameworkUser or ModelRole.SystemEphemeral => "user",
         ModelRole.Assistant or ModelRole.FrameworkAssistant => "assistant",
         ModelRole.Tool => "tool",
-        ModelRole.Thought => "assistant",
+        ModelRole.Thought => throw new InvalidOperationException(
+            "ModelRole.Thought must be folded into the following assistant turn before MapRole; never produces its own wire message."),
         _ => "user",
     };
 
