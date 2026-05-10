@@ -129,9 +129,154 @@ public sealed class OpenAiLanguageModelTests
         await Assert.That(completion.TokenCount).IsEqualTo(15);
     }
 
+    [Test]
+    public async Task PromptAsyncFoldsThoughtIntoFollowingAssistantReasoningContent()
+    {
+        var prompt = new ModelPrompt(
+        [
+            new ModelTurn(ModelRole.User, "ask", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "thinking out loud", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Assistant, "answer", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.User, "follow-up", DateTimeOffset.UnixEpoch),
+        ]);
+
+        var captured = await CaptureRequestWithPromptAsync(prompt, new PromptOptions(), "data: [DONE]\n\n");
+
+        var messages = JsonNode.Parse(captured.Body)!["messages"]!.AsArray();
+        await Assert.That(messages.Count).IsEqualTo(3);
+        await Assert.That(messages[0]!["role"]!.GetValue<string>()).IsEqualTo("user");
+        await Assert.That(messages[0]!["content"]!.GetValue<string>()).Contains("ask");
+        await Assert.That(messages[1]!["role"]!.GetValue<string>()).IsEqualTo("assistant");
+        await Assert.That(messages[1]!["content"]!.GetValue<string>()).IsEqualTo("answer");
+        await Assert.That(messages[1]!["reasoning_content"]!.GetValue<string>()).IsEqualTo("thinking out loud");
+        await Assert.That(messages[2]!["role"]!.GetValue<string>()).IsEqualTo("user");
+        await Assert.That(messages[2]!["content"]!.GetValue<string>()).Contains("follow-up");
+    }
+
+    [Test]
+    public async Task PromptAsyncDropsOrphanThoughtNotFollowedByAssistant()
+    {
+        var prompt = new ModelPrompt(
+        [
+            new ModelTurn(ModelRole.User, "ask", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "abandoned reasoning", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.User, "abandon", DateTimeOffset.UnixEpoch),
+        ]);
+
+        var captured = await CaptureRequestWithPromptAsync(prompt, new PromptOptions(), "data: [DONE]\n\n");
+
+        var messages = JsonNode.Parse(captured.Body)!["messages"]!.AsArray();
+        await Assert.That(messages.Count).IsEqualTo(2);
+        foreach (var message in messages)
+        {
+            await Assert.That(message!["role"]!.GetValue<string>()).IsNotEqualTo("assistant");
+            await Assert.That(message!.AsObject().ContainsKey("reasoning_content")).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task PromptAsyncConcatenatesConsecutiveThoughtsBeforeAssistant()
+    {
+        var prompt = new ModelPrompt(
+        [
+            new ModelTurn(ModelRole.User, "q", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "first", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "second", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Assistant, "ans", DateTimeOffset.UnixEpoch),
+        ]);
+
+        var captured = await CaptureRequestWithPromptAsync(prompt, new PromptOptions(), "data: [DONE]\n\n");
+
+        var messages = JsonNode.Parse(captured.Body)!["messages"]!.AsArray();
+        await Assert.That(messages.Count).IsEqualTo(2);
+        await Assert.That(messages[1]!["role"]!.GetValue<string>()).IsEqualTo("assistant");
+        await Assert.That(messages[1]!["reasoning_content"]!.GetValue<string>()).IsEqualTo("first\nsecond");
+    }
+
+    [Test]
+    public async Task PromptAsyncDropsThoughtImmediatelyBeforeToolTurn()
+    {
+        var prompt = new ModelPrompt(
+        [
+            new ModelTurn(ModelRole.User, "q", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "should not survive", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Tool, "tool result", DateTimeOffset.UnixEpoch)
+            {
+                ToolCall = new ToolCall("svc", "do", "{}", "call_1"),
+            },
+        ]);
+
+        var captured = await CaptureRequestWithPromptAsync(prompt, new PromptOptions(), "data: [DONE]\n\n");
+
+        var messages = JsonNode.Parse(captured.Body)!["messages"]!.AsArray();
+        await Assert.That(messages.Count).IsEqualTo(2);
+        await Assert.That(messages[1]!["role"]!.GetValue<string>()).IsEqualTo("tool");
+        foreach (var message in messages)
+        {
+            await Assert.That(message!.AsObject().ContainsKey("reasoning_content")).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task PromptAsyncDropsTrailingThoughtWithNoFollowingAssistant()
+    {
+        var prompt = new ModelPrompt(
+        [
+            new ModelTurn(ModelRole.User, "q", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Assistant, "ans", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "tail reasoning", DateTimeOffset.UnixEpoch),
+        ]);
+
+        var captured = await CaptureRequestWithPromptAsync(prompt, new PromptOptions(), "data: [DONE]\n\n");
+
+        var messages = JsonNode.Parse(captured.Body)!["messages"]!.AsArray();
+        await Assert.That(messages.Count).IsEqualTo(2);
+        await Assert.That(messages[1]!["role"]!.GetValue<string>()).IsEqualTo("assistant");
+        foreach (var message in messages)
+        {
+            await Assert.That(message!.AsObject().ContainsKey("reasoning_content")).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task PromptAsyncAttachesReasoningAlongsideToolCallsOnAssistantTurn()
+    {
+        var prompt = new ModelPrompt(
+        [
+            new ModelTurn(ModelRole.User, "q", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Thought, "decide which tool", DateTimeOffset.UnixEpoch),
+            new ModelTurn(ModelRole.Assistant, string.Empty, DateTimeOffset.UnixEpoch)
+            {
+                ToolCalls = [new ToolCall("svc", "do", "{}", "call_1")],
+            },
+        ]);
+
+        var captured = await CaptureRequestWithPromptAsync(prompt, new PromptOptions(), "data: [DONE]\n\n");
+
+        var messages = JsonNode.Parse(captured.Body)!["messages"]!.AsArray();
+        await Assert.That(messages.Count).IsEqualTo(2);
+        var assistant = messages[1]!.AsObject();
+        await Assert.That(assistant["role"]!.GetValue<string>()).IsEqualTo("assistant");
+        await Assert.That(assistant["reasoning_content"]!.GetValue<string>()).IsEqualTo("decide which tool");
+        var toolCalls = assistant["tool_calls"]!.AsArray();
+        await Assert.That(toolCalls.Count).IsEqualTo(1);
+        await Assert.That(toolCalls[0]!["function"]!["name"]!.GetValue<string>()).IsEqualTo("svc__do");
+    }
+
     private sealed record CapturedRequest(HttpMethod Method, string Path, string Body);
 
-    private static async Task<CapturedRequest> CaptureRequestAsync(
+    private static Task<CapturedRequest> CaptureRequestAsync(
+        PromptOptions options,
+        string sseBody,
+        OpenAiProviderOptions? hostOptions = null)
+        => CaptureRequestWithPromptAsync(
+            new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
+            options,
+            sseBody,
+            hostOptions);
+
+    private static async Task<CapturedRequest> CaptureRequestWithPromptAsync(
+        ModelPrompt prompt,
         PromptOptions options,
         string sseBody,
         OpenAiProviderOptions? hostOptions = null)
@@ -147,7 +292,6 @@ public sealed class OpenAiLanguageModelTests
         });
 
         var model = BuildModel(handler, hostOptions);
-        var prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]);
         await foreach (var _ in model.PromptAsync(prompt, options, CancellationToken.None))
         {
         }
