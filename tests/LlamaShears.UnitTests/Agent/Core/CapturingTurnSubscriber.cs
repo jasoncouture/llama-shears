@@ -12,8 +12,9 @@ namespace LlamaShears.UnitTests.Agent.Core;
 internal sealed class CapturingTurnSubscriber : IEventHandler<ModelTurn>, IDisposable
 {
     private readonly List<ModelTurn> _turns = [];
-    private readonly Lock _gate = new();
-    private readonly TaskCompletionSource _firstTurn = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Lock _gate = new Lock();
+    private readonly TaskCompletionSource _firstTurn =
+        new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly IDisposable _subscription;
 
     public CapturingTurnSubscriber(IEventBus bus, string agentId)

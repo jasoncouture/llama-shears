@@ -9,7 +9,7 @@ public sealed class AgentProviderOptionsTests
     {
         public string Name { get; set; } = "host";
         public int Port { get; set; } = 80;
-        public Nested Inner { get; set; } = new();
+        public Nested Inner { get; set; } = new Nested();
         public string[] Tags { get; set; } = ["a", "b"];
     }
 

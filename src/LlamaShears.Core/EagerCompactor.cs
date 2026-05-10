@@ -19,7 +19,7 @@ public sealed partial class EagerCompactor : BackgroundService,
     private readonly TimeProvider _time;
     private readonly ILogger<EagerCompactor> _logger;
     private readonly ConcurrentDictionary<string, DateTimeOffset> _lastSeen =
-        new(StringComparer.Ordinal);
+        new ConcurrentDictionary<string, DateTimeOffset>(StringComparer.Ordinal);
     private IDisposable? _messageSubscription;
     private IDisposable? _thoughtSubscription;
 

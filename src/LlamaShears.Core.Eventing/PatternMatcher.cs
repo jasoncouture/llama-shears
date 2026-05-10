@@ -7,7 +7,8 @@ namespace LlamaShears.Core.Eventing;
 
 public sealed class PatternMatcher : IPatternMatcher
 {
-    private readonly ConcurrentDictionary<string, CompiledPattern> _cache = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, CompiledPattern> _cache =
+        new ConcurrentDictionary<string, CompiledPattern>(StringComparer.Ordinal);
 
     public bool IsMatch(string pattern, EventType type)
         => _cache.GetOrAdd(pattern, static raw => Compile(raw)).IsMatch(type.ToString());

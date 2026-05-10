@@ -95,6 +95,5 @@ public sealed class AgentTokenStoreTests
         return services.BuildServiceProvider().GetRequiredService<IAgentTokenStore>();
     }
 
-    private static AgentInfo SampleAgent(string id = "alice")
-        => new(id, "ollama:llama3", 8192);
+    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, "ollama:llama3", 8192);
 }

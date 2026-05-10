@@ -8,5 +8,5 @@ public sealed class MemoryServiceOptions
     public TimeSpan? DefaultEmbeddingKeepAlive { get; set; }
     public string? DefaultEmbeddingQueryPrefix { get; set; }
     public string? DefaultEmbeddingDocumentPrefix { get; set; }
-    public MemoryIndexerOptions Indexer { get; set; } = new();
+    public MemoryIndexerOptions Indexer { get; set; } = new MemoryIndexerOptions();
 }

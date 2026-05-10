@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class FieldMustStartWithUnderscoreAnalyzerTests
 {
     [Test]
-    public async Task FieldWithoutUnderscoreReportsLS0003()
+    public async Task FieldWithoutUnderscoreReportsLs0003()
     {
         const string source = "public class Foo { private int x; }";
 

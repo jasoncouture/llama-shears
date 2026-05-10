@@ -13,7 +13,7 @@ namespace LlamaShears.IntegrationTests;
 public sealed class ContextPersistenceTests
 {
     private const string AgentId = "alpha";
-    private static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _responseTimeout = TimeSpan.FromSeconds(5);
 
     [Test]
     public async Task UserMessageIsPersistedToCurrentJsonAfterTheAgentResponds()
@@ -170,14 +170,14 @@ public sealed class ContextPersistenceTests
                 new ChannelMessage(content, AgentId, DateTimeOffset.UtcNow),
                 CancellationToken.None);
 
-            using var cts = new CancellationTokenSource(ResponseTimeout);
+            using var cts = new CancellationTokenSource(_responseTimeout);
             try
             {
                 await done.Task.WaitAsync(cts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
             {
-                throw new TimeoutException($"Agent '{AgentId}' did not reply within {ResponseTimeout}.", ex);
+                throw new TimeoutException($"Agent '{AgentId}' did not reply within {_responseTimeout}.", ex);
             }
         }
         finally

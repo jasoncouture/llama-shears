@@ -6,7 +6,8 @@ using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.Core.DataContext;
 internal sealed class DataContextScope : IDataContextScope
 {
-    private readonly Stack<ConcurrentDictionary<string, object?>> _stack = new();
+    private readonly Stack<ConcurrentDictionary<string, object?>> _stack =
+        new Stack<ConcurrentDictionary<string, object?>>();
     private ConcurrentDictionary<string, object?> _current;
 
     public DataContextScope(string key)

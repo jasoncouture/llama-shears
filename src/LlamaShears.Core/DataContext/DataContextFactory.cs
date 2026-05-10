@@ -11,10 +11,11 @@ internal sealed class DataContextFactory : IDataContextFactory
     {
         _providers = [..providers];
     }
-    private readonly Dictionary<string, WeakReference<IDataContextScope>> _scopes = new(StringComparer.OrdinalIgnoreCase);
-    private readonly object _lock = new();
+    private readonly Dictionary<string, WeakReference<IDataContextScope>> _scopes =
+        new Dictionary<string, WeakReference<IDataContextScope>>(StringComparer.OrdinalIgnoreCase);
+    private readonly object _lock = new object();
 
-    private readonly AsyncLocal<IDataContextScope?> _current = new();
+    private readonly AsyncLocal<IDataContextScope?> _current = new AsyncLocal<IDataContextScope?>();
     private readonly ImmutableArray<IDataContextItemProvider> _providers;
 
     public IDataContextScope? Current => _current.Value;

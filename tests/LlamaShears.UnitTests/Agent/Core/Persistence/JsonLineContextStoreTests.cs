@@ -12,8 +12,7 @@ public sealed class JsonLineContextStoreTests
 {
     private const string AgentId = "alice";
 
-    private static ModelTurn Turn(ModelRole role, string content, DateTimeOffset at) =>
-        new(role, content, at);
+    private static ModelTurn Turn(ModelRole role, string content, DateTimeOffset at) => new ModelTurn(role, content, at);
 
     [Test]
     public async Task AppendThenReadCurrentRoundTripsModelTurnViaPolymorphicJson()
@@ -259,7 +258,7 @@ public sealed class JsonLineContextStoreTests
 
         public JsonLineContextStore Store { get; }
 
-        public JsonLineContextStore NewStore() => new(Paths, TimeProvider);
+        public JsonLineContextStore NewStore() => new JsonLineContextStore(Paths, TimeProvider);
 
         public string AgentFolder(string agentId) =>
             Paths.GetPath(PathKind.Context, agentId, ensureExists: true);

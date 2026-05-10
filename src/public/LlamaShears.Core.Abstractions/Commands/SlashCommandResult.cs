@@ -24,11 +24,12 @@ public sealed record SlashCommandResult(
     bool StreamingInterrupted = false)
 {
     /// <summary>Result with no post-execution side-effects.</summary>
-    public static SlashCommandResult Default { get; } = new();
+    public static SlashCommandResult Default { get; } = new SlashCommandResult();
 
     /// <summary>Result signalling that the agent's context was modified.</summary>
-    public static SlashCommandResult ContextWasChanged { get; } = new(ContextChanged: true);
+    public static SlashCommandResult ContextWasChanged { get; } = new SlashCommandResult(ContextChanged: true);
 
     /// <summary>Result signalling that an in-flight turn was interrupted.</summary>
-    public static SlashCommandResult StreamingWasInterrupted { get; } = new(StreamingInterrupted: true);
+    public static SlashCommandResult StreamingWasInterrupted { get; } =
+        new SlashCommandResult(StreamingInterrupted: true);
 }

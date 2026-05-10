@@ -23,7 +23,7 @@ public sealed class ChatSession :
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
-    private readonly Lock _gate = new();
+    private readonly Lock _gate = new Lock();
     private IDisposable? _messageSubscription;
     private IDisposable? _thoughtSubscription;
     private IDisposable? _toolCallSubscription;

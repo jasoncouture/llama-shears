@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
-using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Memory;
@@ -12,13 +11,12 @@ using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using NSubstitute.ReturnsExtensions;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class ContextCompactorTests
 {
-    private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;
+    private static readonly DateTimeOffset _now = DateTimeOffset.UnixEpoch;
 
     [Test]
     public async Task BelowMinTurnsReturnsPromptUnchanged()
@@ -26,10 +24,10 @@ public sealed class ContextCompactorTests
         var model = BuildModel();
         var compactor = BuildCompactor();
         var prompt = new ModelPrompt([
-            new ModelTurn(ModelRole.System, "you are a helpful agent", Now),
-            new ModelTurn(ModelRole.User, "hi", Now),
-            new ModelTurn(ModelRole.Assistant, "hi back", Now),
-            new ModelTurn(ModelRole.User, "what's up", Now),
+            new ModelTurn(ModelRole.System, "you are a helpful agent", _now),
+            new ModelTurn(ModelRole.User, "hi", _now),
+            new ModelTurn(ModelRole.Assistant, "hi back", _now),
+            new ModelTurn(ModelRole.User, "what's up", _now),
         ]);
         var config = new ModelConfiguration("test", ContextLength: 50);
 
@@ -212,7 +210,7 @@ public sealed class ContextCompactorTests
             ModelContextProtocolServers: []);
         return new AgentContext(
             AgentId: "test",
-            Now: Now,
+            Now: _now,
             Config: agentConfig,
             LanguageModel: new LanguageModelContext(
                 Turns: [.. prompt.Turns],
@@ -251,25 +249,23 @@ public sealed class ContextCompactorTests
         }
     }
 
-    private static ModelPrompt ShortPromptWithFiveTurns() => new([
-        new ModelTurn(ModelRole.System, "you are a helpful agent", Now),
-        new ModelTurn(ModelRole.User, "hi", Now),
-        new ModelTurn(ModelRole.Assistant, "hi back", Now),
-        new ModelTurn(ModelRole.User, "ping", Now),
-        new ModelTurn(ModelRole.Assistant, "pong", Now),
-        new ModelTurn(ModelRole.User, "what's up", Now),
-    ]);
+    private static ModelPrompt ShortPromptWithFiveTurns() =>
+        new ModelPrompt([
+            new ModelTurn(ModelRole.System, "you are a helpful agent", _now), new ModelTurn(ModelRole.User, "hi", _now),
+            new ModelTurn(ModelRole.Assistant, "hi back", _now), new ModelTurn(ModelRole.User, "ping", _now),
+            new ModelTurn(ModelRole.Assistant, "pong", _now), new ModelTurn(ModelRole.User, "what's up", _now),
+        ]);
 
     private static ModelPrompt LongPromptOver(int charsPerTurn)
     {
         var filler = new string('x', charsPerTurn);
         return new ModelPrompt([
-            new ModelTurn(ModelRole.System, "you are a helpful agent", Now),
-            new ModelTurn(ModelRole.User, filler, Now),
-            new ModelTurn(ModelRole.Assistant, filler, Now),
-            new ModelTurn(ModelRole.User, filler, Now),
-            new ModelTurn(ModelRole.Assistant, filler, Now),
-            new ModelTurn(ModelRole.User, "the latest user message", Now),
+            new ModelTurn(ModelRole.System, "you are a helpful agent", _now),
+            new ModelTurn(ModelRole.User, filler, _now),
+            new ModelTurn(ModelRole.Assistant, filler, _now),
+            new ModelTurn(ModelRole.User, filler, _now),
+            new ModelTurn(ModelRole.Assistant, filler, _now),
+            new ModelTurn(ModelRole.User, "the latest user message", _now),
         ]);
     }
 

@@ -15,16 +15,16 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new PrimaryConstructorOnNonRecordAnalyzer(),
             new PrimaryConstructorOnNonRecordCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("private readonly int _x;");
-        await Assert.That(fixed_).Contains("public Foo(int x)");
-        await Assert.That(fixed_).Contains("_x = x;");
-        await Assert.That(fixed_).Contains("public int X => _x;");
-        await Assert.That(fixed_).DoesNotContain("class Foo(int x)");
+        await Assert.That(@fixed).Contains("private readonly int _x;");
+        await Assert.That(@fixed).Contains("public Foo(int x)");
+        await Assert.That(@fixed).Contains("_x = x;");
+        await Assert.That(@fixed).Contains("public int X => _x;");
+        await Assert.That(@fixed).DoesNotContain("class Foo(int x)");
     }
 
     [Test]
@@ -39,17 +39,17 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new PrimaryConstructorOnNonRecordAnalyzer(),
             new PrimaryConstructorOnNonRecordCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("private readonly int _x;");
-        await Assert.That(fixed_).Contains("private readonly string _y;");
-        await Assert.That(fixed_).Contains("_x = x;");
-        await Assert.That(fixed_).Contains("_y = y;");
-        await Assert.That(fixed_).Contains("public int X => _x;");
-        await Assert.That(fixed_).Contains("public string Y => _y;");
+        await Assert.That(@fixed).Contains("private readonly int _x;");
+        await Assert.That(@fixed).Contains("private readonly string _y;");
+        await Assert.That(@fixed).Contains("_x = x;");
+        await Assert.That(@fixed).Contains("_y = y;");
+        await Assert.That(@fixed).Contains("public int X => _x;");
+        await Assert.That(@fixed).Contains("public string Y => _y;");
     }
 
     [Test]
@@ -67,13 +67,13 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new PrimaryConstructorOnNonRecordAnalyzer(),
             new PrimaryConstructorOnNonRecordCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("public Derived(int x) : base(x)");
-        await Assert.That(fixed_).DoesNotContain("Base(x)\n{");
+        await Assert.That(@fixed).Contains("public Derived(int x) : base(x)");
+        await Assert.That(@fixed).DoesNotContain("Base(x)\n{");
     }
 
     [Test]
@@ -87,13 +87,13 @@ public sealed class PrimaryConstructorOnNonRecordCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new PrimaryConstructorOnNonRecordAnalyzer(),
             new PrimaryConstructorOnNonRecordCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("private readonly int _x;");
-        await Assert.That(fixed_).Contains("public Bar(int x)");
-        await Assert.That(fixed_).Contains("public int X => _x;");
+        await Assert.That(@fixed).Contains("private readonly int _x;");
+        await Assert.That(@fixed).Contains("public Bar(int x)");
+        await Assert.That(@fixed).Contains("public int X => _x;");
     }
 }

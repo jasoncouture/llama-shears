@@ -5,7 +5,7 @@ namespace LlamaShears.UnitTests.Agent.Core;
 
 internal sealed class FakeAgentContext : IAgentContext
 {
-    private readonly Lock _lock = new();
+    private readonly Lock _lock = new Lock();
     private readonly List<IContextEntry> _entries = [];
 
     public FakeAgentContext(string agentId, IEnumerable<IContextEntry>? seed = null)

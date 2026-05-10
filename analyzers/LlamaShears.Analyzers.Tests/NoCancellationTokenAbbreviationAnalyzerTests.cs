@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class NoCancellationTokenAbbreviationAnalyzerTests
 {
     [Test]
-    public async Task ParameterNamedCtReportsLS0007()
+    public async Task ParameterNamedCtReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -27,7 +27,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task ParameterNamedCtsReportsLS0007()
+    public async Task ParameterNamedCtsReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -47,7 +47,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task PropertyNamedCtsReportsLS0007()
+    public async Task PropertyNamedCtsReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -66,7 +66,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task PropertyNamedCtReportsLS0007()
+    public async Task PropertyNamedCtReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -84,7 +84,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task FieldNamedUnderscoreCtsReportsLS0007()
+    public async Task FieldNamedUnderscoreCtsReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -122,7 +122,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task FieldNamedUnderscoreCtReportsLS0007()
+    public async Task FieldNamedUnderscoreCtReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -141,7 +141,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task LocalVariableNamedCtReportsLS0007()
+    public async Task LocalVariableNamedCtReportsLs0007()
     {
         const string source = """
             using System.Threading;
@@ -162,7 +162,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task LambdaParameterNamedCtReportsLS0007()
+    public async Task LambdaParameterNamedCtReportsLs0007()
     {
         const string source = """
             using System;
@@ -252,7 +252,7 @@ public sealed class NoCancellationTokenAbbreviationAnalyzerTests
     }
 
     [Test]
-    public async Task ForeachVariableNamedCtReportsLS0007()
+    public async Task ForeachVariableNamedCtReportsLs0007()
     {
         const string source = """
             using System.Collections.Generic;

@@ -170,7 +170,7 @@ public sealed class CronSchedulerTests
         await Assert.That(listed[disabled.Id].LastFiredAt).IsNull();
     }
 
-    private static FakeTimeProvider NewTime(DateTimeOffset start) => new(start);
+    private static FakeTimeProvider NewTime(DateTimeOffset start) => new FakeTimeProvider(start);
 
     private static ICronScheduler NewScheduler(TempRoot fixture, FakeTimeProvider? time = null, IAgentManager? agents = null)
     {

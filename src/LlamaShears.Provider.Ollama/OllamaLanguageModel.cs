@@ -161,7 +161,8 @@ public partial class OllamaLanguageModel : ILanguageModel
         return tools.Count == 0 ? null : tools;
     }
 
-    private static Tool ToOllamaTool(string source, ToolDescriptor descriptor) => new()
+    private static Tool ToOllamaTool(string source, ToolDescriptor descriptor) =>
+        new Tool
     {
         Type = "function",
         Function = new Function

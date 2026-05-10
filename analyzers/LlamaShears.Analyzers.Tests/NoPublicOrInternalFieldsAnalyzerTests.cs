@@ -6,7 +6,7 @@ namespace LlamaShears.Analyzers.Tests;
 public sealed class NoPublicOrInternalFieldsAnalyzerTests
 {
     [Test]
-    public async Task PublicFieldReportsLS0002()
+    public async Task PublicFieldReportsLs0002()
     {
         const string source = "public class Foo { public int x; }";
 
@@ -21,7 +21,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task InternalFieldReportsLS0002()
+    public async Task InternalFieldReportsLs0002()
     {
         const string source = "public class Foo { internal int x; }";
 
@@ -34,7 +34,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task ProtectedFieldReportsLS0002()
+    public async Task ProtectedFieldReportsLs0002()
     {
         const string source = "public class Foo { protected int x; }";
 
@@ -47,7 +47,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task ProtectedInternalFieldReportsLS0002()
+    public async Task ProtectedInternalFieldReportsLs0002()
     {
         const string source = "public class Foo { protected internal int x; }";
 
@@ -59,7 +59,7 @@ public sealed class NoPublicOrInternalFieldsAnalyzerTests
     }
 
     [Test]
-    public async Task PrivateProtectedFieldReportsLS0002()
+    public async Task PrivateProtectedFieldReportsLs0002()
     {
         const string source = "public class Foo { private protected int x; }";
 

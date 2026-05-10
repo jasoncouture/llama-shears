@@ -12,7 +12,7 @@ internal sealed class MemberDoc
 
     public string? ParameterSignature { get; private set; }
 
-    public XElement Element { get; private set; } = new("member");
+    public XElement Element { get; private set; } = new XElement("member");
 
     public static MemberDoc? Parse(XElement element)
     {

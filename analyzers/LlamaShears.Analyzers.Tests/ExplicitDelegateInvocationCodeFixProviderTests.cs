@@ -19,13 +19,13 @@ public sealed class ExplicitDelegateInvocationCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new ExplicitDelegateInvocationAnalyzer(),
             new ExplicitDelegateInvocationCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("_handler.Invoke()");
-        await Assert.That(fixed_).DoesNotContain("_handler?.Invoke");
+        await Assert.That(@fixed).Contains("_handler.Invoke()");
+        await Assert.That(@fixed).DoesNotContain("_handler?.Invoke");
     }
 
     [Test]
@@ -42,12 +42,12 @@ public sealed class ExplicitDelegateInvocationCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new ExplicitDelegateInvocationAnalyzer(),
             new ExplicitDelegateInvocationCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("handler?.Invoke()");
+        await Assert.That(@fixed).Contains("handler?.Invoke()");
     }
 
     [Test]
@@ -63,12 +63,12 @@ public sealed class ExplicitDelegateInvocationCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new ExplicitDelegateInvocationAnalyzer(),
             new ExplicitDelegateInvocationCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("handler.Invoke(2, 3)");
+        await Assert.That(@fixed).Contains("handler.Invoke(2, 3)");
     }
 
     [Test]
@@ -89,11 +89,11 @@ public sealed class ExplicitDelegateInvocationCodeFixProviderTests
             }
             """;
 
-        var fixed_ = await CodeFixHarness.ApplyFixAsync(
+        var @fixed = await CodeFixHarness.ApplyFixAsync(
             new ExplicitDelegateInvocationAnalyzer(),
             new ExplicitDelegateInvocationCodeFixProvider(),
             source);
 
-        await Assert.That(fixed_).Contains("bag.Handler.Invoke()");
+        await Assert.That(@fixed).Contains("bag.Handler.Invoke()");
     }
 }

@@ -4,7 +4,7 @@ namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
 public sealed class CurrentAgentAccessor : ICurrentAgentAccessor
 {
-    private static readonly AsyncLocal<AgentInfo?> _current = new();
+    private static readonly AsyncLocal<AgentInfo?> _current = new AsyncLocal<AgentInfo?>();
 
     public AgentInfo? Current => _current.Value;
 

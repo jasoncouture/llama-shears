@@ -50,6 +50,5 @@ public sealed class DefaultAgentClaimsProjectorTests
         return services.BuildServiceProvider().GetRequiredService<IAgentClaimsProjector>();
     }
 
-    private static AgentInfo SampleAgent(string id = "alice")
-        => new(id, "ollama:llama3", 8192);
+    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, "ollama:llama3", 8192);
 }

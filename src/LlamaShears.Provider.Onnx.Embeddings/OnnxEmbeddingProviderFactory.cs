@@ -12,7 +12,8 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
 
     private readonly IOptionsMonitor<OnnxEmbeddingsProviderOptions> _options;
     private readonly IShearsPaths _paths;
-    private readonly ConcurrentDictionary<string, OnnxEmbeddingModel> _models = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, OnnxEmbeddingModel> _models =
+        new ConcurrentDictionary<string, OnnxEmbeddingModel>(StringComparer.Ordinal);
 
     public OnnxEmbeddingProviderFactory(
         IOptionsMonitor<OnnxEmbeddingsProviderOptions> options,

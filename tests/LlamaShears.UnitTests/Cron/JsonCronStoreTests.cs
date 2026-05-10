@@ -111,12 +111,7 @@ public sealed class JsonCronStoreTests
     }
 
     private static CronJob NewJob(string agentId, string name, string expression, string prompt) =>
-        new(
-            Id: Guid.NewGuid(),
-            AgentId: agentId,
-            Name: name,
-            CronExpression: expression,
-            Prompt: prompt,
+        new CronJob(Id: Guid.NewGuid(), AgentId: agentId, Name: name, CronExpression: expression, Prompt: prompt,
             CreatedAt: DateTimeOffset.UnixEpoch);
 
     private sealed class TempRoot : IDisposable

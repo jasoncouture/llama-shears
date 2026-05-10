@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
@@ -20,7 +22,7 @@ public interface IEmbeddingProviderFactory
     /// metadata.
     /// </summary>
     IAsyncEnumerable<ModelInfo> ListModelsAsync(CancellationToken cancellationToken);
-
+  
     /// <summary>
     /// Creates an embedding model from <paramref name="configuration"/>.
     /// </summary>

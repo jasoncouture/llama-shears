@@ -18,17 +18,17 @@ internal sealed class ScriptedLanguageModel : ILanguageModel
         _fragments = fragments;
     }
 
-    public static ScriptedLanguageModel WithText(params string[] fragments)
-        => new([.. fragments.Select(IModelResponseFragment (f) => new TextFragment(f))]);
+    public static ScriptedLanguageModel WithText(params string[] fragments) =>
+        new ScriptedLanguageModel([.. fragments.Select(IModelResponseFragment (f) => new TextFragment(f))]);
 
-    public static ScriptedLanguageModel WithThoughtThenText(string[] thoughts, string[] text)
-        => new([
+    public static ScriptedLanguageModel WithThoughtThenText(string[] thoughts, string[] text) =>
+        new ScriptedLanguageModel([
             .. thoughts.Select(IModelResponseFragment (t) => new ThoughtFragment(t)),
             .. text.Select(IModelResponseFragment (t) => new TextFragment(t)),
         ]);
 
-    public static ScriptedLanguageModel WithFragments(params IModelResponseFragment[] fragments)
-        => new(fragments);
+    public static ScriptedLanguageModel WithFragments(params IModelResponseFragment[] fragments) =>
+        new ScriptedLanguageModel(fragments);
 
     public static IModelResponseFragment ToolCallFragment(string source, string name, string argumentsJson, string? callId = null)
         => new ScriptedToolCallFragment(new ToolCall(source, name, argumentsJson, callId));

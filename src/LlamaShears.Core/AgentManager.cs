@@ -34,7 +34,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IHostApplicationLifetime _appLifetime;
-    private readonly Dictionary<string, AgentSlot> _loaded = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AgentSlot> _loaded =
+        new Dictionary<string, AgentSlot>(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _subscription;
     private CancellationTokenRegistration _appStartedRegistration;
     private int _reconciling;

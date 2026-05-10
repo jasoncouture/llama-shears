@@ -101,6 +101,5 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
         return (ctx.Response.StatusCode, nextCalled);
     }
 
-    private static AgentInfo SampleAgent(string id = "alice")
-        => new(id, "ollama:llama3", 8192);
+    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, "ollama:llama3", 8192);
 }

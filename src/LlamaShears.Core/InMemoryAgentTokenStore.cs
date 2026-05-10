@@ -10,7 +10,8 @@ public sealed class InMemoryAgentTokenStore : IAgentTokenStore
 {
     private const int TokenByteLength = 32;
 
-    private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Entry> _entries =
+        new ConcurrentDictionary<string, Entry>(StringComparer.Ordinal);
     private readonly TimeProvider _timeProvider;
     private readonly IOptions<AgentTokenStoreOptions> _options;
 

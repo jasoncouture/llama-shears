@@ -6,7 +6,8 @@ namespace LlamaShears.UnitTests.Agent.Core;
 
 internal sealed class FakeContextStore : IContextStore
 {
-    private readonly ConcurrentDictionary<string, IAgentContext> _contexts = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IAgentContext> _contexts =
+        new ConcurrentDictionary<string, IAgentContext>(StringComparer.Ordinal);
 
     public FakeContextStore With(string agentId, IAgentContext context)
     {

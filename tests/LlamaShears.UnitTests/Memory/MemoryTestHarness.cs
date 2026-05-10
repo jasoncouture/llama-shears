@@ -1,5 +1,4 @@
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

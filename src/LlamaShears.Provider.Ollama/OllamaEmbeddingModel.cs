@@ -69,7 +69,8 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         return results;
     }
 
-    private EmbedRequest BuildRequest(List<string> inputs) => new()
+    private EmbedRequest BuildRequest(List<string> inputs) =>
+        new EmbedRequest
     {
         Model = _configuration.ModelId,
         Input = inputs,

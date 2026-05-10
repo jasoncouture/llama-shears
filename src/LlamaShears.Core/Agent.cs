@@ -28,8 +28,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
     private Task? _loop;
-    private readonly SemaphoreSlim _processGate = new(1, 1);
-    private readonly Lock _interruptLock = new();
+    private readonly SemaphoreSlim _processGate = new SemaphoreSlim(1, 1);
+    private readonly Lock _interruptLock = new Lock();
     private CancellationTokenSource? _activeTurnCancellationTokenSource;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;

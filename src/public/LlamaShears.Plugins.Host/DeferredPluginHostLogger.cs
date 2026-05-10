@@ -12,7 +12,7 @@ namespace LlamaShears.Plugins.Host;
 /// </summary>
 public sealed class DeferredPluginHostLogger : IPluginContextLogger
 {
-    private readonly object _gate = new();
+    private readonly object _gate = new object();
     private readonly List<DeferredLogEntry> _entries = [];
 
     public void Debug(string format, params IEnumerable<object?> data)

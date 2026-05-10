@@ -73,7 +73,8 @@ public sealed class AgentContextProviderTests
 
     private sealed class StubAgentConfigProvider : IAgentConfigProvider
     {
-        public Dictionary<string, AgentConfig> Configs { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, AgentConfig> Configs { get; } =
+            new Dictionary<string, AgentConfig>(StringComparer.OrdinalIgnoreCase);
 
         public IReadOnlyList<string> ListAgentIds() => [.. Configs.Keys];
 
@@ -83,7 +84,8 @@ public sealed class AgentContextProviderTests
 
     private sealed class StubContextStore : IContextStore
     {
-        public Dictionary<string, IAgentContext> Contexts { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, IAgentContext> Contexts { get; } =
+            new Dictionary<string, IAgentContext>(StringComparer.Ordinal);
 
         public Task<IAgentContext> OpenAsync(string agentId, CancellationToken cancellationToken)
         {

@@ -1,15 +1,12 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
-using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
@@ -89,7 +86,8 @@ public sealed class AgentInterruptGracefulTests
     private sealed class GatedTextStreamModel : ILanguageModel
     {
         private readonly string _text;
-        private readonly TaskCompletionSource _emitted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _emitted =
+            new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public GatedTextStreamModel(string text)
         {
@@ -132,7 +130,8 @@ public sealed class AgentInterruptGracefulTests
 
     private sealed class HangingDispatcher : IToolCallDispatcher
     {
-        private readonly TaskCompletionSource _dispatched = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _dispatched =
+            new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly IEventPublisher _publisher;
 
         public HangingDispatcher(IEventPublisher publisher)

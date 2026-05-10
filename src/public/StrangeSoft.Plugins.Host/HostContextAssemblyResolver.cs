@@ -25,7 +25,7 @@ public sealed class HostContextAssemblyResolver : IAssemblyResolver
     /// chain (or rely on the built-in fallback that already does so)
     /// when host-shared types must come from Default.
     /// </summary>
-    public static HostContextAssemblyResolver Instance { get; } = new();
+    public static HostContextAssemblyResolver Instance { get; } = new HostContextAssemblyResolver();
 
     private HostContextAssemblyResolver() { }
 

@@ -108,6 +108,5 @@ public sealed class AgentBearerAuthenticationTests
         return await auth.AuthenticateAsync(ctx, AgentBearerDefaults.AuthenticationScheme);
     }
 
-    private static AgentInfo SampleAgent(string id = "alice")
-        => new(id, "ollama:llama3", 8192);
+    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, "ollama:llama3", 8192);
 }
