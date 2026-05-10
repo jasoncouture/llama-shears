@@ -15,7 +15,10 @@ namespace LlamaShears.Provider.Ollama;
 
 public partial class OllamaLanguageModel : ILanguageModel
 {
+    private static readonly JsonSerializerOptions _agentOptionsJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
     private readonly IOllamaApiClient _client;
+    private readonly OllamaProviderOptions _options;
     private readonly ModelConfiguration _configuration;
     private readonly ObjectPool<List<Message>> _messageListPool;
     private readonly IModelTextFormatter _textFormatter;
@@ -34,8 +37,8 @@ public partial class OllamaLanguageModel : ILanguageModel
         _textFormatter = textFormatter;
         _logger = logger;
 
-        var merged = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.AgentOptions);
-        _client = clientFactory.CreateClient(merged);
+        _options = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.Parameters, _agentOptionsJson);
+        _client = clientFactory.CreateClient(_options);
     }
 
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
@@ -53,11 +56,11 @@ public partial class OllamaLanguageModel : ILanguageModel
 
             var request = new ChatRequest
             {
-                Model = _configuration.ModelId.Model,
+                Model = _configuration.Id.Model,
                 Stream = true,
                 Messages = messages,
                 Think = MapThinkLevel(_configuration.Think),
-                KeepAlive = OllamaKeepAlive.Map(_configuration.KeepAlive),
+                KeepAlive = OllamaKeepAlive.Map(_options.KeepAlive),
                 Tools = BuildTools(options),
                 Options = new RequestOptions
                 {
@@ -72,14 +75,14 @@ public partial class OllamaLanguageModel : ILanguageModel
                 var thinking = chunk?.Message?.Thinking;
                 if (!string.IsNullOrEmpty(thinking))
                 {
-                    LogThoughtReceived(_logger, _configuration.ModelId.Model, thinking);
+                    LogThoughtReceived(_logger, _configuration.Id.Model, thinking);
                     yield return new OllamaThoughtFragment(thinking);
                 }
 
                 var content = chunk?.Message?.Content;
                 if (!string.IsNullOrEmpty(content))
                 {
-                    LogTokenReceived(_logger, _configuration.ModelId.Model, content);
+                    LogTokenReceived(_logger, _configuration.Id.Model, content);
                     yield return new OllamaResponseFragment(content);
                 }
 
@@ -98,7 +101,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                         var callId = string.IsNullOrEmpty(ollamaCall.Id)
                             ? Guid.CreateVersion7().ToString()
                             : ollamaCall.Id;
-                        LogToolCallReceived(_logger, _configuration.ModelId.Model, source, name);
+                        LogToolCallReceived(_logger, _configuration.Id.Model, source, name);
                         yield return new OllamaToolCallFragment(
                             new ToolCall(source, name, argumentsJson, callId));
                     }

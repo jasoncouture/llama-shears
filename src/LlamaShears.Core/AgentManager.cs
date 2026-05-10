@@ -302,13 +302,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             ?? throw new InvalidOperationException(
                 $"No provider factory registered with name '{config.Model.Id.Provider}'.");
 
-        var modelConfig = new ModelConfiguration(
-            ModelId: config.Model.Id,
-            Think: config.Model.Think,
-            ContextLength: config.Model.ContextLength,
-            KeepAlive: config.Model.KeepAlive,
-            TokenLimit: config.Model.TokenLimit,
-            AgentOptions: config.Model.Options);
+        var modelConfig = config.Model;
         var model = providerFactory.CreateModel(modelConfig);
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);

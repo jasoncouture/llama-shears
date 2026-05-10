@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LlamaShears.Provider.Ollama;
 
 internal static class OllamaKeepAlive
@@ -19,6 +21,6 @@ internal static class OllamaKeepAlive
             return "-1";
         }
 
-        return $"{(long)Math.Round(span.TotalMinutes)}m";
+        return string.Concat(((long)Math.Round(span.TotalMinutes)).ToString(CultureInfo.InvariantCulture), "m");
     }
 }

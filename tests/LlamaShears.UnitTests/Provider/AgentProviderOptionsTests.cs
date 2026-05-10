@@ -24,7 +24,7 @@ public sealed class AgentProviderOptionsTests
     {
         var host = new Sample { Name = "fixed", Port = 1234 };
 
-        var merged = AgentProviderOptions.Resolve<Sample>(host, agentOverride: null);
+        var merged = AgentProviderOptions.Resolve<Sample>(host, agentOverride: (JsonElement?)null);
 
         await Assert.That(merged).IsSameReferenceAs(host);
     }

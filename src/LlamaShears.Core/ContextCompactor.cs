@@ -115,7 +115,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             var agentInfo = new AgentInfo(
                 AgentId: agentContext.AgentId,
-                ModelId: configuration.ModelId,
+                ModelId: configuration.Id,
                 ContextWindowSize: configuration.ContextLength ?? 0);
             using var scope = _currentAgent.BeginScope(agentInfo);
             var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken).ConfigureAwait(false);

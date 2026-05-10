@@ -40,6 +40,34 @@ public static class AgentProviderOptions
         return merged.Deserialize<TOptions>(jsonOptions) ?? hostDefaults;
     }
 
+    /// <summary>
+    /// Layers a free-form parameter dictionary on top of
+    /// <paramref name="hostDefaults"/>. Each entry is treated as a JSON
+    /// property with the key as the property name; merge semantics match
+    /// the <see cref="JsonElement"/> overload. Returns
+    /// <paramref name="hostDefaults"/> verbatim when there is no override.
+    /// </summary>
+    public static TOptions Resolve<TOptions>(
+        TOptions hostDefaults,
+        IReadOnlyDictionary<string, JsonElement>? agentOverride,
+        JsonSerializerOptions? jsonOptions = null)
+        where TOptions : class, new()
+    {
+        ArgumentNullException.ThrowIfNull(hostDefaults);
+        if (agentOverride is null || agentOverride.Count == 0)
+        {
+            return hostDefaults;
+        }
+        var hostNode = JsonSerializer.SerializeToNode(hostDefaults, jsonOptions) ?? new JsonObject();
+        var overlayNode = new JsonObject();
+        foreach (var (key, element) in agentOverride)
+        {
+            overlayNode[key] = JsonNode.Parse(element.GetRawText());
+        }
+        var merged = Merge(hostNode, overlayNode);
+        return merged.Deserialize<TOptions>(jsonOptions) ?? hostDefaults;
+    }
+
     private static JsonNode Merge(JsonNode? @base, JsonNode overlay)
     {
         if (@base is JsonObject baseObj && overlay is JsonObject overlayObj)

@@ -46,31 +46,31 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
     public ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(configuration.ModelId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
+        ArgumentNullException.ThrowIfNull(configuration.Id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.Id.Model);
 
         cancellationToken.ThrowIfCancellationRequested();
-        if (!string.Equals(configuration.ModelId.Provider, Name, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(configuration.Id.Provider, Name, StringComparison.OrdinalIgnoreCase))
         {
             return ValueTask.FromResult<ValidationResult?>(new ValidationResult(
-                $"Provider '{configuration.ModelId.Provider}' does not match this factory ('{Name}').",
-                [nameof(ModelConfiguration.ModelId)]));
+                $"Provider '{configuration.Id.Provider}' does not match this factory ('{Name}').",
+                [nameof(ModelConfiguration.Id)]));
         }
-        if (_options.CurrentValue.Models.ContainsKey(configuration.ModelId.Model))
+        if (_options.CurrentValue.Models.ContainsKey(configuration.Id.Model))
         {
             return ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
         }
         return ValueTask.FromResult<ValidationResult?>(new ValidationResult(
-            $"ONNX embeddings provider does not have a model named '{configuration.ModelId.Model}'.",
-            [nameof(ModelConfiguration.ModelId)]));
+            $"ONNX embeddings provider does not have a model named '{configuration.Id.Model}'.",
+            [nameof(ModelConfiguration.Id)]));
     }
 
     public IEmbeddingModel CreateModel(ModelConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(configuration.ModelId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ModelId.Model);
-        return _models.GetOrAdd(configuration.ModelId.Model, BuildModel);
+        ArgumentNullException.ThrowIfNull(configuration.Id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuration.Id.Model);
+        return _models.GetOrAdd(configuration.Id.Model, BuildModel);
     }
 
     private OnnxEmbeddingModel BuildModel(string modelId)

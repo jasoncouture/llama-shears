@@ -96,7 +96,7 @@ public sealed class OllamaLanguageModelToolFlatteningTests
         var pool = poolProvider.Create<List<Message>>();
         var model = new OllamaLanguageModel(
             clientFactory,
-            new ModelConfiguration(ModelId: new CompositeIdentity("ollama", "test"), Think: ThinkLevel.None),
+            new ModelConfiguration(Id: new CompositeIdentity("ollama", "test"), Think: ThinkLevel.None),
             hostOptions,
             pool,
             new LlamaShears.Core.Provider.ModelTextFormatter(),

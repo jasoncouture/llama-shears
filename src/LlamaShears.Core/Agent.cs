@@ -280,7 +280,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         var agentInfo = new AgentInfo(
             AgentId: Id,
-            ModelId: _modelConfiguration.ModelId,
+            ModelId: _modelConfiguration.Id,
             ContextWindowSize: _modelConfiguration.ContextLength ?? 0);
         using var agentScope = _currentAgent.BeginScope(agentInfo);
 

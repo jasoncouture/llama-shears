@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 
+using LlamaShears.Core.Abstractions.Provider;
+
 namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>
@@ -17,12 +19,12 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="Embedding">Embedding model selection used for memory search; <see langword="null"/> disables memory features.</param>
 /// <param name="ModelContextProtocolServers">Set of MCP server names this agent is allowed to call; <see langword="null"/> grants no MCP access.</param>
 public sealed record AgentConfig(
-    [property: JsonRequired] AgentModelConfig Model,
+    [property: JsonRequired] ModelConfiguration Model,
     [property: JsonIgnore] string Id = "",
     string? WorkspacePath = null,
     string? SystemPrompt = null,
     string? PromptContext = null,
-    AgentEmbeddingConfig? Embedding = null,
+    ModelConfiguration? Embedding = null,
     [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null)
 {
     /// <summary>How often the host injects a heartbeat turn into an idle agent. Defaults to 30 minutes.</summary>

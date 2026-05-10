@@ -1,3 +1,4 @@
+using System.Text.Json;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
@@ -7,7 +8,10 @@ namespace LlamaShears.Provider.Ollama;
 
 public sealed class OllamaEmbeddingModel : IEmbeddingModel
 {
+    private static readonly JsonSerializerOptions _agentOptionsJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
     private readonly IOllamaApiClient _client;
+    private readonly OllamaProviderOptions _options;
     private readonly ModelConfiguration _configuration;
 
     public OllamaEmbeddingModel(
@@ -17,8 +21,8 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
     {
         _configuration = configuration;
 
-        var merged = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.AgentOptions);
-        _client = clientFactory.CreateClient(merged);
+        _options = AgentProviderOptions.Resolve(hostOptions.CurrentValue, configuration.Parameters, _agentOptionsJson);
+        _client = clientFactory.CreateClient(_options);
     }
 
     public async ValueTask<ReadOnlyMemory<float>> EmbedAsync(string text, CancellationToken cancellationToken)
@@ -32,7 +36,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         if (embeddings is null || embeddings.Count == 0)
         {
             throw new InvalidOperationException(
-                $"Ollama returned no embeddings for model '{_configuration.ModelId.Model}'.");
+                $"Ollama returned no embeddings for model '{_configuration.Id.Model}'.");
         }
         return embeddings[0];
     }
@@ -58,7 +62,7 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
         if (embeddings is null || embeddings.Count != texts.Count)
         {
             throw new InvalidOperationException(
-                $"Ollama returned {embeddings?.Count ?? 0} embeddings for {texts.Count} inputs (model '{_configuration.ModelId.Model}').");
+                $"Ollama returned {embeddings?.Count ?? 0} embeddings for {texts.Count} inputs (model '{_configuration.Id.Model}').");
         }
 
         var results = new ReadOnlyMemory<float>[embeddings.Count];
@@ -72,8 +76,8 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
     private EmbedRequest BuildRequest(List<string> inputs) =>
         new EmbedRequest
     {
-        Model = _configuration.ModelId.Model,
+        Model = _configuration.Id.Model,
         Input = inputs,
-        KeepAlive = OllamaKeepAlive.Map(_configuration.KeepAlive),
+        KeepAlive = OllamaKeepAlive.Map(_options.KeepAlive),
     };
 }
