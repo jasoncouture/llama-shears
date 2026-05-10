@@ -289,7 +289,7 @@ public sealed class InferenceRunner : IInferenceRunner
     {
         var insertAt = GetLastUserMessageIndex(turns);
 
-        if(insertAt == 0) insertAt = turns.Count;
+        if (insertAt == 0) insertAt = turns.Count;
 
 
         var preUserTurns = turns.Take(insertAt);

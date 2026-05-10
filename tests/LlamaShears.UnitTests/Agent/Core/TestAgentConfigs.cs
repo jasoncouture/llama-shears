@@ -33,7 +33,7 @@ internal static class TestAgentConfigs
     public static IDataContextFactory DataContextFactoryWith(AgentConfig config)
     {
         var scope = Substitute.For<IDataContextScope>();
-        scope.TryGetValue<AgentConfig>(AgentConfig.DataKey, out Arg.Any<AgentConfig?>())
+        scope.TryGetValue(AgentConfig.DataKey, out Arg.Any<AgentConfig?>())
             .Returns(call =>
             {
                 call[1] = config;

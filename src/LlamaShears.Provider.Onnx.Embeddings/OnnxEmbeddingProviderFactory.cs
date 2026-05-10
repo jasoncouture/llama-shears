@@ -58,7 +58,7 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
         }
         if (_options.CurrentValue.Models.ContainsKey(configuration.Id.Model))
         {
-            return ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
+            return ValueTask.FromResult(ValidationResult.Success);
         }
         return ValueTask.FromResult<ValidationResult?>(new ValidationResult(
             $"ONNX embeddings provider does not have a model named '{configuration.Id.Model}'.",

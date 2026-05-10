@@ -99,7 +99,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private void OnApplicationStarted()
     {
-        _subscription = _bus.Subscribe<SystemTick>(
+        _subscription = _bus.Subscribe(
             Event.WellKnown.Host.Tick,
             EventDeliveryMode.FireAndForget,
             this);

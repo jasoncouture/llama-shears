@@ -14,8 +14,8 @@ internal sealed class PrimaryConstructorParameterRewriter : CSharpSyntaxRewriter
         SemanticModel semanticModel,
         ImmutableArray<IParameterSymbol> targets)
     {
-        this._semanticModel = semanticModel;
-        this._targets = targets.ToImmutableHashSet<IParameterSymbol>(SymbolEqualityComparer.Default);
+        _semanticModel = semanticModel;
+        _targets = targets.ToImmutableHashSet<IParameterSymbol>(SymbolEqualityComparer.Default);
     }
 
     public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)

@@ -186,15 +186,15 @@ public sealed class OpenAiLanguageModelTests
             httpClientFactory,
             optionsMonitor,
             new ModelConfiguration(Id: new CompositeIdentity("openai", "test-model")),
-            new LlamaShears.Core.Provider.ModelTextFormatter(),
+            new Core.Provider.ModelTextFormatter(),
             NullLogger<OpenAiLanguageModel>.Instance);
     }
 
     private static HttpResponseMessage BuildSseResponse(string body) =>
         new HttpResponseMessage(HttpStatusCode.OK)
-    {
-        Content = new StringContent(body, Encoding.UTF8, "text/event-stream"),
-    };
+        {
+            Content = new StringContent(body, Encoding.UTF8, "text/event-stream"),
+        };
 
     private sealed class StubHandler : HttpMessageHandler
     {

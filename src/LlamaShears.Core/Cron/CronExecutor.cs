@@ -20,7 +20,7 @@ public sealed partial class CronExecutor : IEventHandler<SystemTick>, IDisposabl
         _scheduler = scheduler;
         _time = time;
         _logger = logger;
-        _subscription = bus.Subscribe<SystemTick>(
+        _subscription = bus.Subscribe(
             Event.WellKnown.Host.Tick,
             EventDeliveryMode.FireAndForget,
             this);

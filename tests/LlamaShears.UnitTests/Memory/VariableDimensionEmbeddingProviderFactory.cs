@@ -29,7 +29,7 @@ internal sealed class VariableDimensionEmbeddingProviderFactory : IEmbeddingProv
     }
 
     public ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
-        => ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
+        => ValueTask.FromResult(ValidationResult.Success);
 
     public IEmbeddingModel CreateModel(ModelConfiguration configuration) =>
         new VariableDimensionEmbeddingModel(() => _dimensions);

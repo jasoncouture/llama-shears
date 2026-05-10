@@ -75,9 +75,9 @@ public sealed class OllamaEmbeddingModel : IEmbeddingModel
 
     private EmbedRequest BuildRequest(List<string> inputs) =>
         new EmbedRequest
-    {
-        Model = _configuration.Id.Model,
-        Input = inputs,
-        KeepAlive = OllamaKeepAlive.Map(_options.KeepAlive),
-    };
+        {
+            Model = _configuration.Id.Model,
+            Input = inputs,
+            KeepAlive = OllamaKeepAlive.Map(_options.KeepAlive),
+        };
 }

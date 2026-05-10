@@ -12,7 +12,7 @@ public sealed partial class AgentTurnLogger : IEventHandler<ModelTurn>, IDisposa
     public AgentTurnLogger(IEventBus bus, ILogger<AgentTurnLogger> logger)
     {
         _logger = logger;
-        _subscription = bus.Subscribe<ModelTurn>(
+        _subscription = bus.Subscribe(
             $"{Event.WellKnown.Agent.Turn}:+",
             EventDeliveryMode.Awaited,
             this);

@@ -133,7 +133,7 @@ public sealed class EventFilterTests
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
         var bus = provider.GetRequiredService<IEventBus>();
-        bus.Subscribe<Payload>(
+        bus.Subscribe(
             pattern: null,
             EventDeliveryMode.FireAndForget,
             new ThrowOnCancellationHandler());
@@ -157,7 +157,7 @@ public sealed class EventFilterTests
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
         var bus = provider.GetRequiredService<IEventBus>();
-        bus.Subscribe<Payload>(
+        bus.Subscribe(
             pattern: null,
             EventDeliveryMode.Awaited,
             new ThrowOnCancellationHandler());
@@ -205,8 +205,8 @@ public sealed class EventFilterTests
         var publisher = provider.GetRequiredService<IEventPublisher>();
         var bus = provider.GetRequiredService<IEventBus>();
         var recorder = new RecordingHandler();
-        bus.Subscribe<Payload>(pattern: null, EventDeliveryMode.FireAndForget, recorder.AsFireAndForget());
-        bus.Subscribe<Payload>(pattern: null, EventDeliveryMode.Awaited, recorder.AsAwaited());
+        bus.Subscribe(pattern: null, EventDeliveryMode.FireAndForget, recorder.AsFireAndForget());
+        bus.Subscribe(pattern: null, EventDeliveryMode.Awaited, recorder.AsAwaited());
         return (publisher, bus, recorder);
     }
 

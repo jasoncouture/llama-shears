@@ -322,7 +322,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             }
             return;
         }
-        
+
         for (var i = 0; i < outcome.ToolCalls.Length; i++)
         {
             var toolTurn = new ModelTurn(

@@ -166,15 +166,15 @@ public partial class OllamaLanguageModel : ILanguageModel
 
     private static Tool ToOllamaTool(string source, ToolDescriptor descriptor) =>
         new Tool
-    {
-        Type = "function",
-        Function = new Function
         {
-            Name = $"{source}{ToolNameSeparator}{descriptor.Name}",
-            Description = descriptor.Description,
-            Parameters = ToOllamaParameters(descriptor.Parameters),
-        },
-    };
+            Type = "function",
+            Function = new Function
+            {
+                Name = $"{source}{ToolNameSeparator}{descriptor.Name}",
+                Description = descriptor.Description,
+                Parameters = ToOllamaParameters(descriptor.Parameters),
+            },
+        };
 
     private static Parameters? ToOllamaParameters(ImmutableArray<ToolParameter> parameters)
     {

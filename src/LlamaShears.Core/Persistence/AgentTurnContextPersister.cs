@@ -12,7 +12,7 @@ public sealed class AgentTurnContextPersister : IEventHandler<ModelTurn>, IDispo
     public AgentTurnContextPersister(IEventBus bus, IContextStore store)
     {
         _store = store;
-        _subscription = bus.Subscribe<ModelTurn>(
+        _subscription = bus.Subscribe(
             $"{Event.WellKnown.Agent.Turn}:+",
             EventDeliveryMode.Awaited,
             this);

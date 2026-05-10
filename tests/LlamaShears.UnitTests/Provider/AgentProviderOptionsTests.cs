@@ -24,7 +24,7 @@ public sealed class AgentProviderOptionsTests
     {
         var host = new Sample { Name = "fixed", Port = 1234 };
 
-        var merged = AgentProviderOptions.Resolve<Sample>(host, agentOverride: (JsonElement?)null);
+        var merged = AgentProviderOptions.Resolve(host, agentOverride: (JsonElement?)null);
 
         await Assert.That(merged).IsSameReferenceAs(host);
     }
@@ -35,7 +35,7 @@ public sealed class AgentProviderOptionsTests
         var host = new Sample { Name = "host", Port = 80 };
         var overlay = JsonDocument.Parse("""{"Name":"agent"}""").RootElement;
 
-        var merged = AgentProviderOptions.Resolve<Sample>(host, overlay);
+        var merged = AgentProviderOptions.Resolve(host, overlay);
 
         await Assert.That(merged.Name).IsEqualTo("agent");
         await Assert.That(merged.Port).IsEqualTo(80);
@@ -47,7 +47,7 @@ public sealed class AgentProviderOptionsTests
         var host = new Sample();
         var overlay = JsonDocument.Parse("""{"Inner":{"A":"agent-a"}}""").RootElement;
 
-        var merged = AgentProviderOptions.Resolve<Sample>(host, overlay);
+        var merged = AgentProviderOptions.Resolve(host, overlay);
 
         await Assert.That(merged.Inner.A).IsEqualTo("agent-a");
         await Assert.That(merged.Inner.B).IsEqualTo("host-b");
@@ -59,7 +59,7 @@ public sealed class AgentProviderOptionsTests
         var host = new Sample();
         var overlay = JsonDocument.Parse("""{"Tags":["x"]}""").RootElement;
 
-        var merged = AgentProviderOptions.Resolve<Sample>(host, overlay);
+        var merged = AgentProviderOptions.Resolve(host, overlay);
 
         await Assert.That(merged.Tags.Length).IsEqualTo(1);
         await Assert.That(merged.Tags[0]).IsEqualTo("x");
@@ -71,7 +71,7 @@ public sealed class AgentProviderOptionsTests
         var host = new Sample { Name = "host", Port = 99 };
         var overlay = JsonDocument.Parse("{}").RootElement;
 
-        var merged = AgentProviderOptions.Resolve<Sample>(host, overlay);
+        var merged = AgentProviderOptions.Resolve(host, overlay);
 
         await Assert.That(merged.Name).IsEqualTo("host");
         await Assert.That(merged.Port).IsEqualTo(99);
@@ -83,7 +83,7 @@ public sealed class AgentProviderOptionsTests
         var host = new Sample { Name = "host" };
         var overlay = JsonDocument.Parse("""{"Name":"agent"}""").RootElement;
 
-        _ = AgentProviderOptions.Resolve<Sample>(host, overlay);
+        _ = AgentProviderOptions.Resolve(host, overlay);
 
         await Assert.That(host.Name).IsEqualTo("host");
     }

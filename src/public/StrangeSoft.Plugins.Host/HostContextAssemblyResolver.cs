@@ -40,7 +40,7 @@ public sealed class HostContextAssemblyResolver : IAssemblyResolver
 
     public static bool TryInitialize(Assembly? hostAssembly, IPluginContextLogger? logger = null)
     {
-        if(_hostAssemblyNames is not null)
+        if (_hostAssemblyNames is not null)
         {
             return false;
         }

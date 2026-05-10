@@ -20,7 +20,7 @@ public interface IEventBus
     /// <para>
     /// <b>Cancellation:</b> the bus catches
     /// <see cref="OperationCanceledException"/> raised by handlers when the
-    /// dispatch <see cref="System.Threading.CancellationToken"/> has been
+    /// dispatch <see cref="CancellationToken"/> has been
     /// signalled and stops that handler quietly. Awaited callers still see
     /// cancellation: <c>PublishAsync</c> reasserts the token at the tail of
     /// dispatch so <c>await PublishAsync</c> throws normally when the

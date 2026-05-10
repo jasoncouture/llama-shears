@@ -39,7 +39,7 @@ public sealed class StubProviderFactory : IProviderFactory
     public ValueTask<ValidationResult?> ValidateAsync(ModelConfiguration configuration, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        return ValueTask.FromResult<ValidationResult?>(ValidationResult.Success);
+        return ValueTask.FromResult(ValidationResult.Success);
     }
 
     public ILanguageModel CreateModel(ModelConfiguration configuration)
