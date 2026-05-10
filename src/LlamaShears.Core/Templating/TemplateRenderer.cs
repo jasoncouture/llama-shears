@@ -15,10 +15,13 @@ public sealed class TemplateRenderer : ITemplateRenderer
         _cache = cache;
     }
 
-    public async ValueTask<string?> RenderAsync(string templatePath, object input, CancellationToken cancellationToken)
+    public async ValueTask<string?> RenderAsync(
+        string templatePath,
+        IReadOnlyDictionary<string, object?> data,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(templatePath);
-        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(data);
 
         var template = await _cache.GetOrParseAsync<Template, string>(
             templatePath,
@@ -31,7 +34,10 @@ public sealed class TemplateRenderer : ITemplateRenderer
         }
 
         var globals = new ScriptObject();
-        globals.Import(input);
+        foreach (var (key, value) in data)
+        {
+            globals.SetValue(key, value, readOnly: false);
+        }
         TemplateFilters.Register(globals);
         return template.Render(globals);
     }

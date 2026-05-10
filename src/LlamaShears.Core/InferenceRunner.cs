@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Memory;
@@ -19,8 +20,7 @@ public sealed class InferenceRunner : IInferenceRunner
     private readonly TimeProvider _time;
     private readonly IPromptContextProvider _promptContext;
     private readonly IMemorySearcher _memorySearcher;
-    private readonly IAgentConfigProvider _agentConfigProvider;
-    private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IDataContextFactory _dataContextFactory;
 
     public InferenceRunner(
         IEventPublisher eventPublisher,
@@ -28,16 +28,14 @@ public sealed class InferenceRunner : IInferenceRunner
         TimeProvider time,
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
-        IAgentConfigProvider agentConfigProvider,
-        ICurrentAgentAccessor currentAgent)
+        IDataContextFactory dataContextFactory)
     {
         _eventPublisher = eventPublisher;
         _toolDispatcher = toolDispatcher;
         _time = time;
         _promptContext = promptContext;
         _memorySearcher = memorySearcher;
-        _agentConfigProvider = agentConfigProvider;
-        _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
     }
 
     public async Task<InferenceOutcome> RunAsync(
@@ -52,7 +50,8 @@ public sealed class InferenceRunner : IInferenceRunner
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(prompt);
-        if (string.IsNullOrWhiteSpace(_currentAgent.Current?.AgentId))
+        var config = _dataContextFactory.Current?.GetAgentConfig();
+        if (string.IsNullOrWhiteSpace(config?.Id))
             throw new InvalidOperationException("Agent ID context is required, but is not present");
 
         if (prompt.Turns.Count == 0)
@@ -226,27 +225,24 @@ public sealed class InferenceRunner : IInferenceRunner
             return prompt;
         }
 
-        var agentId = _currentAgent.Current?.AgentId!;
-        var config = await _agentConfigProvider.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var config = _dataContextFactory.Current?.GetAgentConfig();
         if (config is null)
         {
             return prompt;
         }
 
-        var memories = await SearchMemoriesAsync(agentId, GetMemorySearchQueries(prompt.Turns), cancellationToken).ConfigureAwait(false);
+        var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken).ConfigureAwait(false);
 
         var now = _time.GetLocalNow();
-        var parameters = new PromptContextParameters(
-            Now: now,
-            Timezone: TimeZoneInfo.Local.Id,
-            DayOfWeek: now.DayOfWeek.ToString(),
-            ChannelId: ChannelId.Value,
-            ImportantMessage: null,
-            WorkspacePath: config.WorkspacePath)
-        {
-            Memories = memories,
-        };
-        var body = await _promptContext.GetAsync(config.PromptContext, parameters, cancellationToken).ConfigureAwait(false);
+        var snapshot = _dataContextFactory.Current?.Snapshot() ?? [];
+        var data = snapshot.ToBuilder();
+        data["now"] = now;
+        data["timezone"] = TimeZoneInfo.Local.Id;
+        data["day_of_week"] = now.DayOfWeek.ToString();
+        data["channel_id"] = ChannelId.Value;
+        data["important_message"] = null;
+        data["memories"] = memories;
+        var body = await _promptContext.GetAsync(config.PromptContext, data.ToImmutable(), cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(body))
         {
             return prompt;

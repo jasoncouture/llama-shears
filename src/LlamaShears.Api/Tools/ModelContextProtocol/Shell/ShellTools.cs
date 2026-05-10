@@ -29,20 +29,22 @@ public sealed partial class ShellTools
     }
 
     [McpServerTool(Name = "shell_sh")]
-    [Description("Runs a shell command in the agent's workspace via /bin/sh -c. Combined stdout+stderr is captured at the byte level under a lock and streamed to a temp file, preserving shell-like arrival order. Output exceeding 64 KiB is truncated to a head+tail snippet at line boundaries with a '[Truncated]' marker, and the full log is preserved at the path reported in 'fullOutput'. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
+    [Description("Runs a shell command via /bin/sh -c. Defaults to the agent's workspace as the working directory; pass workingDirectory to override (relative paths resolve against the workspace, absolute paths are honored as-is). Combined stdout+stderr is captured at the byte level under a lock and streamed to a temp file, preserving shell-like arrival order. Output exceeding 64 KiB is truncated to a head+tail snippet at line boundaries with a '[Truncated]' marker, and the full log is preserved at the path reported in 'fullOutput'. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
     public Task<string> RunShellAsync(
         [Description("Shell command to execute. Passed verbatim to /bin/sh -c.")] string command,
+        [Description("Working directory for the command. Null or empty defaults to the agent's workspace. Relative paths resolve against the workspace; absolute paths are used as-is.")] string? workingDirectory = null,
         CancellationToken cancellationToken = default)
-        => RunAsync("/bin/sh", command, cancellationToken);
+        => RunAsync("/bin/sh", command, workingDirectory, cancellationToken);
 
     [McpServerTool(Name = "shell_bash")]
-    [Description("Runs a bash command in the agent's workspace via /bin/bash -c. Combined stdout+stderr is captured at the byte level under a lock and streamed to a temp file, preserving shell-like arrival order. Output exceeding 64 KiB is truncated to a head+tail snippet at line boundaries with a '[Truncated]' marker, and the full log is preserved at the path reported in 'fullOutput'. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
+    [Description("Runs a bash command via /bin/bash -c. Defaults to the agent's workspace as the working directory; pass workingDirectory to override (relative paths resolve against the workspace, absolute paths are honored as-is). Combined stdout+stderr is captured at the byte level under a lock and streamed to a temp file, preserving shell-like arrival order. Output exceeding 64 KiB is truncated to a head+tail snippet at line boundaries with a '[Truncated]' marker, and the full log is preserved at the path reported in 'fullOutput'. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
     public Task<string> RunBashAsync(
         [Description("Bash command to execute. Passed verbatim to /bin/bash -c.")] string command,
+        [Description("Working directory for the command. Null or empty defaults to the agent's workspace. Relative paths resolve against the workspace; absolute paths are used as-is.")] string? workingDirectory = null,
         CancellationToken cancellationToken = default)
-        => RunAsync("/bin/bash", command, cancellationToken);
+        => RunAsync("/bin/bash", command, workingDirectory, cancellationToken);
 
-    private async Task<string> RunAsync(string shellPath, string command, CancellationToken cancellationToken)
+    private async Task<string> RunAsync(string shellPath, string command, string? workingDirectory, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(command))
         {
@@ -50,12 +52,17 @@ public sealed partial class ShellTools
         }
 
         var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var resolvedCwd = string.IsNullOrWhiteSpace(workingDirectory)
+            ? workspace.Root
+            : Path.IsPathRooted(workingDirectory)
+                ? workingDirectory
+                : Path.GetFullPath(Path.Combine(workspace.Root, workingDirectory));
         LogStarting(_logger, workspace.AgentId, shellPath, command);
 
         var startInfo = new ProcessStartInfo
         {
             FileName = shellPath,
-            WorkingDirectory = workspace.Root,
+            WorkingDirectory = resolvedCwd,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -83,14 +90,14 @@ public sealed partial class ShellTools
             var stdoutPump = PumpAsync(process.StandardOutput.BaseStream, sink, sync);
             var stderrPump = PumpAsync(process.StandardError.BaseStream, sink, sync);
 
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_timeout);
+            using var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCancellationTokenSource.CancelAfter(_timeout);
             var timedOut = false;
             try
             {
-                await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+                await process.WaitForExitAsync(timeoutCancellationTokenSource.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (timeoutCancellationTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 timedOut = true;
                 try { process.Kill(entireProcessTree: true); }

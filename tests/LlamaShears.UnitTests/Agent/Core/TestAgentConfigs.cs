@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
@@ -34,5 +35,25 @@ internal static class TestAgentConfigs
             .SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<double?>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyList<MemorySearchResult>>([]));
         return searcher;
+    }
+
+    public static IDataContextFactory DataContextFactoryWith(AgentConfig config)
+    {
+        var scope = Substitute.For<IDataContextScope>();
+        scope.TryGetValue<AgentConfig>(AgentConfig.DataKey, out Arg.Any<AgentConfig?>())
+            .Returns(call =>
+            {
+                call[1] = config;
+                return true;
+            });
+        var factory = Substitute.For<IDataContextFactory>();
+        factory.Current.Returns(scope);
+        factory.TryJoinContextScope(Arg.Any<string>(), out Arg.Any<IDataContextScope?>())
+            .Returns(call =>
+            {
+                call[1] = scope;
+                return true;
+            });
+        return factory;
     }
 }

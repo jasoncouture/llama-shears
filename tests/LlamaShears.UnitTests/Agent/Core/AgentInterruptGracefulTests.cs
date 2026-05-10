@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -200,11 +201,13 @@ public sealed class AgentInterruptGracefulTests
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
         var currentAgent = new CurrentAgentAccessor();
-        return new global::LlamaShears.Core.Agent(
-            config: TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id),
+        var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agent = new global::LlamaShears.Core.Agent(
+            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
-            loggerFactory: NullLoggerFactory.Instance,
+            logger: NullLogger<global::LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
@@ -218,17 +221,19 @@ public sealed class AgentInterruptGracefulTests
                 TimeProvider.System,
                 Substitute.For<IPromptContextProvider>(),
                 TestAgentConfigs.EmptyMemorySearcher(),
-                Substitute.For<IAgentConfigProvider>(),
-                currentAgent),
+                dataContextFactory),
             currentAgent: currentAgent,
+            dataContextFactory: dataContextFactory,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
+            agent.Start();
+            return agent;
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
     {
         var stub = Substitute.For<ISystemPromptProvider>();
-        stub.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+        stub.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("system"));
         return stub;
     }

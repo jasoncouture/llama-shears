@@ -4,12 +4,11 @@ Agent-identity, configuration, and persistence contracts for [LlamaShears](https
 
 ## Public surface
 
-- **`AgentConfig`** / **`AgentConfiguration`** — the on-disk per-agent configuration record (model, embedding, memory, tools, channels, heartbeat).
+- **`AgentConfig`** — the on-disk per-agent configuration record (model, embedding, memory, tools, channels, heartbeat).
 - **`AgentInfo`** — runtime identity (id, display name) for an active agent.
 - **`AgentModelConfig`**, **`AgentEmbeddingConfig`**, **`AgentMemoryConfig`**, **`AgentToolConfig`** — per-section config shapes.
 - **`IAgent`** — the live agent surface (channel input, context handle).
 - **`IAgentManager`** — ownership of running agents; reconcile and lookup.
-- **`IAgentFactory`** — host-side construction.
 - **`IAgentConfigProvider`** — the watched `<Data>/agents/*.json` source.
 - **`IAgentTokenStore`** — single-use bearer tokens for agent-bound MCP requests.
 - **`SystemTick`** — the periodic signal the host publishes; agents consume their heartbeat off it.
@@ -31,15 +30,12 @@ Agent-identity, configuration, and persistence contracts for [LlamaShears](https
 ## LlamaShears.Core.Abstractions.Agent
 
 - [AgentConfig](LlamaShears/Core/Abstractions/Agent/AgentConfig.md)
-- [AgentConfiguration](LlamaShears/Core/Abstractions/Agent/AgentConfiguration.md)
 - [AgentEmbeddingConfig](LlamaShears/Core/Abstractions/Agent/AgentEmbeddingConfig.md)
-- [AgentInfo](LlamaShears/Core/Abstractions/Agent/AgentInfo.md)
 - [AgentMemoryConfig](LlamaShears/Core/Abstractions/Agent/AgentMemoryConfig.md)
 - [AgentModelConfig](LlamaShears/Core/Abstractions/Agent/AgentModelConfig.md)
 - [AgentToolConfig](LlamaShears/Core/Abstractions/Agent/AgentToolConfig.md)
 - [IAgent](LlamaShears/Core/Abstractions/Agent/IAgent.md)
 - [IAgentConfigProvider](LlamaShears/Core/Abstractions/Agent/IAgentConfigProvider.md)
-- [IAgentFactory](LlamaShears/Core/Abstractions/Agent/IAgentFactory.md)
 - [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
@@ -55,4 +51,8 @@ Agent-identity, configuration, and persistence contracts for [LlamaShears](https
 - [ISessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionFactory.md)
 - [ISessionQueue](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionQueue.md)
 - [SessionId](LlamaShears/Core/Abstractions/Agent/Sessions/SessionId.md)
+
+## LlamaShears.Core.Abstractions.Agent.Todo
+
+- [ITodoStorage](LlamaShears/Core/Abstractions/Agent/Todo/ITodoStorage.md)
 

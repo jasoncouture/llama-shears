@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Paths;
@@ -37,6 +38,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private IDisposable? _subscription;
     private CancellationTokenRegistration _appStartedRegistration;
     private int _reconciling;
+    private readonly IDataContextFactory _dataContextFactory;
 
     public AgentManager(
         IEventBus bus,
@@ -52,6 +54,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IModelContextProtocolToolDiscovery toolDiscovery,
         IModelContextProtocolServerRegistry serverRegistry,
         ICurrentAgentAccessor currentAgent,
+        IDataContextFactory dataContextFactory,
         IHostApplicationLifetime appLifetime)
     {
         _bus = bus;
@@ -68,6 +71,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _toolDiscovery = toolDiscovery;
         _serverRegistry = serverRegistry;
         _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
         _appLifetime = appLifetime;
     }
 
@@ -240,15 +244,16 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private async Task ReloadAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
+        if (_loaded.Remove(name, out var oldSlot))
+        {
+            oldSlot.Agent.Dispose();
+            _dataContextFactory.DeleteContext(name);
+        }
+
         var newSlot = await ReloadBuildAsync(name, config, cancellationToken).ConfigureAwait(false);
         if (newSlot is null)
         {
             return;
-        }
-
-        if (_loaded.Remove(name, out var oldSlot))
-        {
-            oldSlot.Agent.Dispose();
         }
 
         _loaded[name] = newSlot;
@@ -260,6 +265,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         if (_loaded.Remove(name, out var slot))
         {
             slot.Agent.Dispose();
+            _dataContextFactory.DeleteContext(name);
             LogAgentStopped(_logger, slot.Name);
         }
     }
@@ -305,24 +311,57 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         var model = providerFactory.CreateModel(modelConfig);
 
         var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
+        var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "agent_id", config.Id },
+            { "workspace_path", config.WorkspacePath },
+            { AgentConfig.DataKey, config },
+            { "model_configuration", modelConfig },
+            { "agent_context", agentContext },
+        };
 
         var scope = _scopeFactory.CreateAsyncScope();
         try
         {
-            return ActivatorUtilities.CreateInstance<Agent>(
-                scope.ServiceProvider,
-                config,
-                model,
-                agentContext,
-                modelConfig,
-                scope,
-                tools);
+            await CreateAgentRootScopeAsync(config.Id, scope.ServiceProvider, agentGlobalDataContext, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var agent = ActivatorUtilities.CreateInstance<Agent>(
+                    scope.ServiceProvider,
+                    config,
+                    model,
+                    agentContext,
+                    modelConfig,
+                    scope,
+                    tools);
+                agent.Start();
+                return agent;
+            }
+            finally
+            {
+                // Detach the scope from this call chain; the agent's loop
+                // rejoins it by key. Leaves the registry entry intact.
+                _dataContextFactory.ClearCurrent();
+            }
         }
         catch
         {
             await scope.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    private static async Task<IDataContextScope> CreateAgentRootScopeAsync(
+        string agentId,
+        IServiceProvider agentScopeServiceProvider,
+        IEnumerable<KeyValuePair<string, object?>> seedData,
+        CancellationToken cancellationToken)
+    {
+        var dataProviders = agentScopeServiceProvider.GetScopedDataProviders();
+        var dataContextFactory = agentScopeServiceProvider.GetRequiredService<IDataContextFactory>();
+        var scope = await dataContextFactory.StartContextAsync(agentId, dataProviders, cancellationToken).ConfigureAwait(false);
+        scope.SetItems(seedData);
+        return scope;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]

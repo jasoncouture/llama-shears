@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Memory;
@@ -170,16 +171,16 @@ public sealed class ContextCompactorTests
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
         var compactorCurrentAgent = new CurrentAgentAccessor();
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test"));
         var runner = new InferenceRunner(
             publisher,
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            Substitute.For<IAgentConfigProvider>(),
-            compactorCurrentAgent);
+            dataContextFactory);
         var systemPrompt = Substitute.For<ISystemPromptProvider>();
-        systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+        systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("compaction-system"));
         var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();
         serverRegistry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
@@ -191,9 +192,9 @@ public sealed class ContextCompactorTests
         var locator = Substitute.For<ITemplateFileLocator>();
         locator.Locate(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>()).Returns("/tmp/llamashears-test/PROMPT.md");
         var templateRenderer = Substitute.For<ITemplateRenderer>();
-        templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>())
+        templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
-        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, NullLogger<ContextCompactor>.Instance);
+        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, dataContextFactory, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

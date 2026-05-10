@@ -13,7 +13,8 @@ namespace LlamaShears.UnitTests.SystemPrompt;
 
 public sealed class FilesystemSystemPromptProviderTests
 {
-    private static readonly SystemPromptTemplateParameters _emptyParameters = new();
+    private static readonly IReadOnlyDictionary<string, object?> _emptyParameters
+        = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
     [Test]
     public async Task NamedTemplateInWorkspaceIsReturned()
@@ -129,7 +130,11 @@ public sealed class FilesystemSystemPromptProviderTests
 
         var body = await fixture.Provider.GetAsync(
             "DEFAULT",
-            new SystemPromptTemplateParameters(AgentId: "alice", WorkspacePath: "/tmp/work"),
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["agent_id"] = "alice",
+                ["workspace_path"] = "/tmp/work",
+            },
             CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("agent=alice ws=/tmp/work");
@@ -148,7 +153,10 @@ public sealed class FilesystemSystemPromptProviderTests
 
         var body = await fixture.Provider.GetAsync(
             "DEFAULT",
-            new SystemPromptTemplateParameters(WorkspacePath: fixture.WorkspaceFilesDir),
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["workspace_path"] = fixture.WorkspaceFilesDir,
+            },
             CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("[BOOTSTRAP.md=boot-body][IDENTITY.md=ident-body][SOUL.md=soul-body]");
@@ -165,7 +173,10 @@ public sealed class FilesystemSystemPromptProviderTests
 
         var body = await fixture.Provider.GetAsync(
             "DEFAULT",
-            new SystemPromptTemplateParameters(WorkspacePath: fixture.WorkspaceFilesDir),
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["workspace_path"] = fixture.WorkspaceFilesDir,
+            },
             CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("1|IDENTITY.md");
@@ -192,7 +203,10 @@ public sealed class FilesystemSystemPromptProviderTests
 
         var body = await fixture.Provider.GetAsync(
             "DEFAULT",
-            new SystemPromptTemplateParameters(AgentId: "alice"),
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["agent_id"] = "alice",
+            },
             CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("agent=alice ws=");

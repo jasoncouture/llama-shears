@@ -11,7 +11,7 @@ public sealed class TemplateRendererFilterTests
     public async Task FormatDateTimeOffsetAppliesNetFormatStringWithOffset()
     {
         var renderer = BuildRendererWith("{{ now | format_datetimeoffset 'yyyy-MM-ddTHH:mm:sszzz' }}");
-        var input = new TestInput(new DateTimeOffset(2026, 5, 9, 13, 59, 22, TimeSpan.FromHours(-4)));
+        var input = BuildInput(new DateTimeOffset(2026, 5, 9, 13, 59, 22, TimeSpan.FromHours(-4)));
 
         var result = await renderer.RenderAsync("ignored", input, CancellationToken.None);
 
@@ -22,7 +22,7 @@ public sealed class TemplateRendererFilterTests
     public async Task FormatDateTimeOffsetAcceptsAnyNetFormatString()
     {
         var renderer = BuildRendererWith("{{ now | format_datetimeoffset 'yyyy-MM-dd HH:mm' }}");
-        var input = new TestInput(new DateTimeOffset(2026, 5, 9, 13, 59, 22, TimeSpan.FromHours(2)));
+        var input = BuildInput(new DateTimeOffset(2026, 5, 9, 13, 59, 22, TimeSpan.FromHours(2)));
 
         var result = await renderer.RenderAsync("ignored", input, CancellationToken.None);
 
@@ -33,7 +33,7 @@ public sealed class TemplateRendererFilterTests
     public async Task FormatDateTimeOffsetReturnsEmptyForNullInput()
     {
         var renderer = BuildRendererWith("[{{ now | format_datetimeoffset 'yyyy-MM-dd' }}]");
-        var input = new TestInput(null);
+        var input = BuildInput(null);
 
         var result = await renderer.RenderAsync("ignored", input, CancellationToken.None);
 
@@ -45,7 +45,7 @@ public sealed class TemplateRendererFilterTests
     {
         var renderer = BuildRendererWith("{{ now | format_datetimeoffset 'yyyy-MM-ddTHH:mm:sszzz' }}");
         var stamp = new DateTime(2026, 5, 9, 13, 59, 22, DateTimeKind.Unspecified).AddTicks(1426858);
-        var input = new TestInput(new DateTimeOffset(stamp, TimeSpan.FromHours(-4)));
+        var input = BuildInput(new DateTimeOffset(stamp, TimeSpan.FromHours(-4)));
 
         var result = await renderer.RenderAsync("ignored", input, CancellationToken.None);
 
@@ -57,12 +57,18 @@ public sealed class TemplateRendererFilterTests
     {
         var renderer = BuildRendererWith("{{ now | format_datetimeoffset 'yyyy-MM-ddTHH:mm:ss.fffffffzzz' }}");
         var stamp = new DateTime(2026, 5, 9, 13, 59, 22, DateTimeKind.Unspecified).AddTicks(1426858);
-        var input = new TestInput(new DateTimeOffset(stamp, TimeSpan.FromHours(-4)));
+        var input = BuildInput(new DateTimeOffset(stamp, TimeSpan.FromHours(-4)));
 
         var result = await renderer.RenderAsync("ignored", input, CancellationToken.None);
 
         await Assert.That(result).IsEqualTo("2026-05-09T13:59:22.1426858-04:00");
     }
+
+    private static IReadOnlyDictionary<string, object?> BuildInput(DateTimeOffset? now) =>
+        new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["now"] = now,
+        };
 
     private static TemplateRenderer BuildRendererWith(string templateSource)
     {
@@ -77,5 +83,4 @@ public sealed class TemplateRendererFilterTests
         return new TemplateRenderer(cache);
     }
 
-    private sealed record TestInput(DateTimeOffset? Now);
 }

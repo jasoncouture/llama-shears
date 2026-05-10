@@ -1,4 +1,5 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -161,14 +162,12 @@ public sealed class AgentLoopTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedMemorySearcher = memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher();
         var resolvedConfig = config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
-        var agentConfigProvider = Substitute.For<IAgentConfigProvider>();
-        agentConfigProvider.GetConfigAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentConfig?>(resolvedConfig));
-        return new global::LlamaShears.Core.Agent(
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agent = new global::LlamaShears.Core.Agent(
             config: resolvedConfig,
             model: model,
             agentContext: agentContext,
-            loggerFactory: NullLoggerFactory.Instance,
+            logger: NullLogger<global::LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
@@ -182,17 +181,19 @@ public sealed class AgentLoopTests
                 TimeProvider.System,
                 Substitute.For<IPromptContextProvider>(),
                 resolvedMemorySearcher,
-                agentConfigProvider,
-                currentAgent),
+                dataContextFactory),
             currentAgent: currentAgent,
+            dataContextFactory: dataContextFactory,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
+        agent.Start();
+        return agent;
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()
     {
         var stub = Substitute.For<ISystemPromptProvider>();
-        stub.GetAsync(Arg.Any<string?>(), Arg.Any<SystemPromptTemplateParameters>(), Arg.Any<CancellationToken>())
+        stub.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("system"));
         return stub;
     }

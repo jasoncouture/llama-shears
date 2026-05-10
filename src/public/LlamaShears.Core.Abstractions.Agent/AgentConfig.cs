@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
+using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core.Abstractions.Agent;
 
@@ -31,4 +32,5 @@ public sealed record AgentConfig(
     public AgentToolConfig Tools { get; init; } = new AgentToolConfig();
     /// <summary>Memory-subsystem options (e.g. eager prefetch).</summary>
     public AgentMemoryConfig Memory { get; init; } = new AgentMemoryConfig();
+    public const string DataKey = "agent_configuration";
 }

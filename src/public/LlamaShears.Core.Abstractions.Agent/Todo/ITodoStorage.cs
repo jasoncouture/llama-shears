@@ -1,4 +1,4 @@
-namespace LlamaShears.Api.Tools.ModelContextProtocol.Todo;
+namespace LlamaShears.Core.Abstractions.Agent.Todo;
 
 /// <summary>
 /// Persists the agent's TODO list as a Markdown file at the workspace

@@ -1,19 +1,16 @@
 namespace LlamaShears.Core.Abstractions.SystemPrompt;
 
 /// <summary>
-/// Renders a template file against an input object. Implementations
+/// Renders a template file against a string-keyed data bag. Implementations
 /// own the template language (today: Scriban); callers see only the
-/// rendered string.
+/// rendered string. The bag is the full template input — the renderer
+/// does not resolve values itself, callers materialize whatever the
+/// template needs and hand it in.
 /// </summary>
 public interface ITemplateRenderer
 {
-    /// <summary>
-    /// Reads the template at <paramref name="templatePath"/>, binds it
-    /// to <paramref name="input"/>, and returns the rendered output.
-    /// Returns <see langword="null"/> when no file exists at
-    /// <paramref name="templatePath"/>; callers handle missing
-    /// templates as part of normal control flow rather than via
-    /// exceptions.
-    /// </summary>
-    ValueTask<string?> RenderAsync(string templatePath, object input, CancellationToken cancellationToken);
+    ValueTask<string?> RenderAsync(
+        string templatePath,
+        IReadOnlyDictionary<string, object?> data,
+        CancellationToken cancellationToken);
 }

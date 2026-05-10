@@ -22,7 +22,5 @@ Per-turn ephemeral prompt-context contracts for [LlamaShears](https://github.com
 
 ## LlamaShears.Core.Abstractions.PromptContext
 
-- [IPromptContextProvider](LlamaShears/Core/Abstractions/PromptContext/IPromptContextProvider.md)
 - [PromptContextMemory](LlamaShears/Core/Abstractions/PromptContext/PromptContextMemory.md)
-- [PromptContextParameters](LlamaShears/Core/Abstractions/PromptContext/PromptContextParameters.md)
 

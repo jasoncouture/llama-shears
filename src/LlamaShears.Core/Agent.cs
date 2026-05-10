@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
@@ -26,16 +27,17 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IDisposable _subscription;
     private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
-    private readonly Task _loop;
+    private Task? _loop;
     private readonly SemaphoreSlim _processGate = new(1, 1);
     private readonly Lock _interruptLock = new();
-    private CancellationTokenSource? _activeTurnCts;
+    private CancellationTokenSource? _activeTurnCancellationTokenSource;
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly ModelConfiguration _modelConfiguration;
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IDataContextFactory _dataContextFactory;
     private readonly ImmutableArray<ToolGroup> _tools;
     private readonly IServiceProvider _scopedServices;
     private IAsyncDisposable? _scope;
@@ -45,7 +47,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         AgentConfig config,
         ILanguageModel model,
         IAgentContext agentContext,
-        ILoggerFactory loggerFactory,
+        ILogger<Agent> logger,
         IEventBus bus,
         ISystemPromptProvider systemPromptProvider,
         TimeProvider timeProvider,
@@ -55,6 +57,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
         ICurrentAgentAccessor currentAgent,
+        IDataContextFactory dataContextFactory,
         ISessionFactory sessionFactory,
         AsyncServiceScope scope,
         ImmutableArray<ToolGroup> tools = default)
@@ -64,7 +67,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         _config = config;
         _model = model;
-        _logger = loggerFactory.CreateLogger($"{typeof(Agent).FullName}:{config.Id}");
+        _logger = logger;
         _eventPublisher = eventPublisher;
         _agentContext = agentContext;
         _systemPrompt = systemPromptProvider;
@@ -74,6 +77,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
         _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
         _tools = tools.IsDefault ? [] : tools;
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
@@ -83,7 +87,21 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             $"{Event.WellKnown.Channel.Message}:+",
             EventDeliveryMode.Awaited,
             this);
-        _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
+    }
+
+    public void Start()
+    {
+        if (_loop is not null)
+        {
+            throw new InvalidOperationException($"Agent '{Id}' has already been started.");
+        }
+        // Spawn the loop with flow suppressed so the caller's AsyncLocal state
+        // (including a partially-set data scope) does not leak in. The loop
+        // rejoins its own scope by key as its first action.
+        using (ExecutionContext.SuppressFlow())
+        {
+            _loop = Task.Run(() => RunLoopAsync(_shutdown.Token));
+        }
     }
 
     public string Id => _config.Id;
@@ -106,7 +124,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         CancellationTokenSource? cancellationTokenSource;
         lock (_interruptLock)
         {
-            cancellationTokenSource = _activeTurnCts;
+            cancellationTokenSource = _activeTurnCancellationTokenSource;
         }
         cancellationTokenSource?.Cancel();
         return Task.CompletedTask;
@@ -118,7 +136,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         try
         {
             var turns = _agentContext.Turns;
-            var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
+            var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, SnapshotDataScope(), cancellationToken).ConfigureAwait(false);
             var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
             var prompt = new ModelPrompt([systemTurn, .. turns]);
             var snapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
@@ -141,12 +159,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         _subscription.Dispose();
         _shutdown.Cancel();
-        try
+        if (_loop is not null)
         {
-            await _loop.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
+            try
+            {
+                await _loop.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
         _shutdown.Dispose();
         _processGate.Dispose();
@@ -180,7 +201,16 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
+        if (!_dataContextFactory.TryJoinContextScope(Id, out _))
+        {
+            throw new InvalidOperationException($"Data context for agent '{Id}' is not registered; cannot start the loop.");
+        }
         using var loggingScope = _logger.BeginScope("{AgentId}", Id);
+        await RunIterationsAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RunIterationsAsync(CancellationToken cancellationToken)
+    {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -194,16 +224,16 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                using var turnCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 lock (_interruptLock)
                 {
-                    _activeTurnCts = turnCts;
+                    _activeTurnCancellationTokenSource = turnCancellationTokenSource;
                 }
                 try
                 {
-                    await ProcessIterationAsync(batch, correlationId, cancellationToken, turnCts.Token).ConfigureAwait(false);
+                    await ProcessIterationAsync(batch, correlationId, cancellationToken, turnCancellationTokenSource.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (turnCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
                     LogTurnInterrupted(_logger, Id, correlationId);
                 }
@@ -211,7 +241,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 {
                     lock (_interruptLock)
                     {
-                        _activeTurnCts = null;
+                        _activeTurnCancellationTokenSource = null;
                     }
                     _processGate.Release();
                 }
@@ -245,7 +275,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 outerCancellationToken).ConfigureAwait(false);
         }
 
-        var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, BuildSystemPromptParameters(), cancellationToken).ConfigureAwait(false);
+        var systemBody = await _systemPrompt.GetAsync(_config.SystemPrompt, SnapshotDataScope(), cancellationToken).ConfigureAwait(false);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
         var agentInfo = new AgentInfo(
@@ -260,6 +290,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
 
+        using var inferenceDataScope = _dataContextFactory.Current?.BeginScope();
         var outcome = await _inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,
@@ -308,10 +339,9 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
-    private SystemPromptTemplateParameters BuildSystemPromptParameters() =>
-        new(
-            AgentId: _config.Id,
-            WorkspacePath: _config.WorkspacePath);
+    private IReadOnlyDictionary<string, object?> SnapshotDataScope()
+        => _dataContextFactory.Current?.Snapshot()
+            ?? ImmutableDictionary.Create<string, object?>(StringComparer.OrdinalIgnoreCase);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
     private static partial void LogEmptyResponse(ILogger logger, string agentId);
