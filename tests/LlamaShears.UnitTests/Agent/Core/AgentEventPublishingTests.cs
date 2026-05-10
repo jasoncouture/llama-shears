@@ -135,7 +135,7 @@ public sealed class AgentEventPublishingTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
-            modelConfiguration: new ModelConfiguration(new ModelIdentity("test", "test")),
+            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
             inferenceRunner: new InferenceRunner(

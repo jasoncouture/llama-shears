@@ -4,11 +4,11 @@ using System.Globalization;
 namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
-/// <see cref="TypeConverter"/> for <see cref="ModelIdentity"/> so it
+/// <see cref="TypeConverter"/> for <see cref="CompositeIdentity"/> so it
 /// flows through configuration binding and similar string-pivoted
 /// machinery as <c>"provider/model"</c>.
 /// </summary>
-public sealed class ModelIdentityTypeConverter : TypeConverter
+public sealed class CompositeIdentityTypeConverter : TypeConverter
 {
     /// <inheritdoc/>
     public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
@@ -27,7 +27,7 @@ public sealed class ModelIdentityTypeConverter : TypeConverter
         }
         if (string.IsNullOrWhiteSpace(raw))
         {
-            throw new FormatException($"{nameof(ModelIdentity)} must not be empty.");
+            throw new FormatException($"{nameof(CompositeIdentity)} must not be empty.");
         }
         var slash = raw.IndexOf('/');
         if (slash <= 0 || slash >= raw.Length - 1)
@@ -35,7 +35,7 @@ public sealed class ModelIdentityTypeConverter : TypeConverter
             throw new FormatException(
                 $"Expected '{raw}' to be in the form 'provider/model' (non-empty on both sides of the first '/').");
         }
-        return new ModelIdentity(raw[..slash], raw[(slash + 1)..]);
+        return new CompositeIdentity(raw[..slash], raw[(slash + 1)..]);
     }
 
     /// <inheritdoc/>
@@ -45,7 +45,7 @@ public sealed class ModelIdentityTypeConverter : TypeConverter
         object? value,
         Type destinationType)
     {
-        if (destinationType == typeof(string) && value is ModelIdentity id)
+        if (destinationType == typeof(string) && value is CompositeIdentity id)
         {
             return $"{id.Provider}/{id.Model}";
         }

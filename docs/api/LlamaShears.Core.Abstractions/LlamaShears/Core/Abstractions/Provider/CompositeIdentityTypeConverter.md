@@ -1,8 +1,8 @@
-# LlamaShears.Core.Abstractions.Provider.ModelIdentityTypeConverter
+# LlamaShears.Core.Abstractions.Provider.CompositeIdentityTypeConverter
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-TypeConverter for [ModelIdentity](ModelIdentity.md) so it
+TypeConverter for [CompositeIdentity](CompositeIdentity.md) so it
 flows through configuration binding and similar string-pivoted
 machinery as `"provider/model"`.
 

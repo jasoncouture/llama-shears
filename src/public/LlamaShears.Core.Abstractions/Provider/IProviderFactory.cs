@@ -13,7 +13,7 @@ public interface IProviderFactory
 {
     /// <summary>
     /// Unique name of the provider factory. Compared case-insensitively
-    /// against <see cref="ModelIdentity.Provider"/> when routing.
+    /// against <see cref="CompositeIdentity.Provider"/> when routing.
     /// </summary>
     string Name { get; }
 

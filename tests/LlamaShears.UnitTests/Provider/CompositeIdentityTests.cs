@@ -2,12 +2,12 @@ using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Provider;
 
-public sealed class ModelIdentityTests
+public sealed class CompositeIdentityTests
 {
     [Test]
     public async Task ToStringReturnsProviderSlashModel()
     {
-        var identity = new ModelIdentity("ollama", "llama3");
+        var identity = new CompositeIdentity("ollama", "llama3");
 
         await Assert.That(identity.ToString()).IsEqualTo("ollama/llama3");
     }
@@ -15,7 +15,7 @@ public sealed class ModelIdentityTests
     [Test]
     public async Task ImplicitToStringReturnsProviderSlashModel()
     {
-        var identity = new ModelIdentity("ollama", "llama3");
+        var identity = new CompositeIdentity("ollama", "llama3");
 
         string? rendered = identity;
 
@@ -25,7 +25,7 @@ public sealed class ModelIdentityTests
     [Test]
     public async Task ImplicitToStringMapsNullIdentityToNull()
     {
-        ModelIdentity? identity = null;
+        CompositeIdentity? identity = null;
 
         string? rendered = identity;
 
@@ -35,9 +35,9 @@ public sealed class ModelIdentityTests
     [Test]
     public async Task ExplicitFromStringRoundTripsThroughToString()
     {
-        var original = new ModelIdentity("ollama", "owner/repo:tag");
+        var original = new CompositeIdentity("ollama", "owner/repo:tag");
 
-        var parsed = (ModelIdentity?)original.ToString();
+        var parsed = (CompositeIdentity?)original.ToString();
 
         await Assert.That(parsed).IsEqualTo(original);
     }
@@ -47,7 +47,7 @@ public sealed class ModelIdentityTests
     {
         string? value = null;
 
-        var parsed = (ModelIdentity?)value;
+        var parsed = (CompositeIdentity?)value;
 
         await Assert.That(parsed).IsNull();
     }
@@ -55,14 +55,14 @@ public sealed class ModelIdentityTests
     [Test]
     public async Task ExplicitFromStringThrowsOnMissingSeparator()
     {
-        await Assert.That(() => _ = (ModelIdentity?)"no-slash-here")
+        await Assert.That(() => _ = (CompositeIdentity?)"no-slash-here")
             .Throws<FormatException>();
     }
 
     [Test]
     public async Task TryParseSplitsOnFirstSlashOnly()
     {
-        var ok = ModelIdentity.TryParse("ollama/owner/repo:tag", out var identity);
+        var ok = CompositeIdentity.TryParse("ollama/owner/repo:tag", out var identity);
 
         await Assert.That(ok).IsTrue();
         await Assert.That(identity).IsNotNull();
@@ -73,7 +73,7 @@ public sealed class ModelIdentityTests
     [Test]
     public async Task TryParseReturnsFalseOnMissingSeparator()
     {
-        var ok = ModelIdentity.TryParse("ollama", out var identity);
+        var ok = CompositeIdentity.TryParse("ollama", out var identity);
 
         await Assert.That(ok).IsFalse();
         await Assert.That(identity).IsNull();

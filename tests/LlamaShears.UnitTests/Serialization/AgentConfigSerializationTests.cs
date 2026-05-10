@@ -52,7 +52,7 @@ public sealed class AgentConfigSerializationTests
     }
 
     [Test]
-    public async Task ModelIdDeserializesViaModelIdentityConverter()
+    public async Task ModelIdDeserializesViaCompositeIdentityConverter()
     {
         const string json = """
             { "model": { "id": "OLLAMA/owner/repo:tag" } }

@@ -4,13 +4,13 @@ using System.Text.Json.Serialization;
 namespace LlamaShears.Core.Abstractions.Provider;
 
 /// <summary>
-/// JSON converter for <see cref="ModelIdentity"/>: serializes as the
+/// JSON converter for <see cref="CompositeIdentity"/>: serializes as the
 /// compact string <c>"provider/model"</c> rather than as an object.
 /// </summary>
-public sealed class ModelIdentityJsonConverter : JsonConverter<ModelIdentity>
+public sealed class CompositeIdentityJsonConverter : JsonConverter<CompositeIdentity>
 {
     /// <inheritdoc/>
-    public override ModelIdentity? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override CompositeIdentity? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
         {
@@ -20,13 +20,13 @@ public sealed class ModelIdentityJsonConverter : JsonConverter<ModelIdentity>
         if (reader.TokenType != JsonTokenType.String)
         {
             throw new JsonException(
-                $"Expected a string in the form 'provider/model' for {nameof(ModelIdentity)}; got {reader.TokenType}.");
+                $"Expected a string in the form 'provider/model' for {nameof(CompositeIdentity)}; got {reader.TokenType}.");
         }
 
         var raw = reader.GetString();
         if (string.IsNullOrWhiteSpace(raw))
         {
-            throw new JsonException($"{nameof(ModelIdentity)} must not be empty.");
+            throw new JsonException($"{nameof(CompositeIdentity)} must not be empty.");
         }
 
         var slash = raw.IndexOf('/');
@@ -36,11 +36,11 @@ public sealed class ModelIdentityJsonConverter : JsonConverter<ModelIdentity>
                 $"Expected '{raw}' to be in the form 'provider/model' (non-empty on both sides of the first '/').");
         }
 
-        return new ModelIdentity(raw[..slash], raw[(slash + 1)..]);
+        return new CompositeIdentity(raw[..slash], raw[(slash + 1)..]);
     }
 
     /// <inheritdoc/>
-    public override void Write(Utf8JsonWriter writer, ModelIdentity value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, CompositeIdentity value, JsonSerializerOptions options)
     {
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(value);

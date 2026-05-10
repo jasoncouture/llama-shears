@@ -16,7 +16,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="DocumentPrefix">Prefix prepended to texts being embedded as a document (asymmetric models only).</param>
 /// <param name="Options">Free-form provider/model JSON overrides merged on top of host defaults.</param>
 public sealed record AgentEmbeddingConfig(
-    [property: JsonRequired] ModelIdentity Id,
+    [property: JsonRequired] CompositeIdentity Id,
     TimeSpan? KeepAlive = null,
     string? QueryPrefix = null,
     string? DocumentPrefix = null,

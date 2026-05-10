@@ -13,7 +13,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         using var fixture = OnnxFactoryFixture.Create();
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration(new ModelIdentity("onnx", "does-not-exist"))));
+            fixture.Factory.CreateModel(new ModelConfiguration(new CompositeIdentity("onnx", "does-not-exist"))));
 
         await Assert.That(ex.Message).Contains("does-not-exist");
     }
@@ -27,7 +27,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         });
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration(new ModelIdentity("onnx", Path.Combine(Path.GetTempPath(), "abs")))));
+            fixture.Factory.CreateModel(new ModelConfiguration(new CompositeIdentity("onnx", Path.Combine(Path.GetTempPath(), "abs")))));
 
         await Assert.That(ex.Message).Contains("absolute");
     }
@@ -41,7 +41,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         });
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration(new ModelIdentity("onnx", Path.Combine("..", "..", "etc")))));
+            fixture.Factory.CreateModel(new ModelConfiguration(new CompositeIdentity("onnx", Path.Combine("..", "..", "etc")))));
 
         await Assert.That(ex.Message).Contains("outside");
     }
@@ -55,7 +55,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         });
 
         var ex = Assert.Throws<DirectoryNotFoundException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration(new ModelIdentity("onnx", "missing"))));
+            fixture.Factory.CreateModel(new ModelConfiguration(new CompositeIdentity("onnx", "missing"))));
 
         await Assert.That(ex.Message).Contains("missing");
     }
@@ -71,7 +71,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         await File.WriteAllTextAsync(Path.Combine(dir, "vocab.txt"), "[CLS]\n");
 
         var ex = Assert.Throws<FileNotFoundException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration(new ModelIdentity("onnx", "no-onnx"))));
+            fixture.Factory.CreateModel(new ModelConfiguration(new CompositeIdentity("onnx", "no-onnx"))));
 
         await Assert.That(ex.Message).Contains("*.onnx");
     }
@@ -89,7 +89,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         await File.WriteAllTextAsync(Path.Combine(dir, "vocab.txt"), "[CLS]\n");
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            fixture.Factory.CreateModel(new ModelConfiguration(new ModelIdentity("onnx", "dupes"))));
+            fixture.Factory.CreateModel(new ModelConfiguration(new CompositeIdentity("onnx", "dupes"))));
 
         await Assert.That(ex.Message).Contains("only one");
     }
@@ -102,7 +102,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
             opts.Models["known"] = new OnnxModelOptions();
         });
 
-        var result = await fixture.Factory.ValidateAsync(new ModelConfiguration(new ModelIdentity("onnx", "known")), CancellationToken.None);
+        var result = await fixture.Factory.ValidateAsync(new ModelConfiguration(new CompositeIdentity("onnx", "known")), CancellationToken.None);
 
         await Assert.That(result).IsNull();
     }
@@ -112,7 +112,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
     {
         using var fixture = OnnxFactoryFixture.Create();
 
-        var result = await fixture.Factory.ValidateAsync(new ModelConfiguration(new ModelIdentity("onnx", "missing")), CancellationToken.None);
+        var result = await fixture.Factory.ValidateAsync(new ModelConfiguration(new CompositeIdentity("onnx", "missing")), CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.ErrorMessage).Contains("missing");

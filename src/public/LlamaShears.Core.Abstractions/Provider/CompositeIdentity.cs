@@ -12,9 +12,9 @@ namespace LlamaShears.Core.Abstractions.Provider;
 /// </summary>
 /// <param name="Provider">Provider name (matches <see cref="IProviderFactory.Name"/>).</param>
 /// <param name="Model">Provider-scoped model identifier.</param>
-[JsonConverter(typeof(ModelIdentityJsonConverter))]
-[TypeConverter(typeof(ModelIdentityTypeConverter))]
-public sealed record ModelIdentity(string Provider, string Model)
+[JsonConverter(typeof(CompositeIdentityJsonConverter))]
+[TypeConverter(typeof(CompositeIdentityTypeConverter))]
+public sealed record CompositeIdentity(string Provider, string Model)
 {
     /// <summary>
     /// Renders the identity in wire form
@@ -29,11 +29,11 @@ public sealed record ModelIdentity(string Provider, string Model)
     /// string so callers do not need to null-check before formatting.
     /// </summary>
     /// <param name="identity">Identity to render, or <see langword="null"/>.</param>
-    public static implicit operator string?(ModelIdentity? identity) => identity?.ToString();
+    public static implicit operator string?(CompositeIdentity? identity) => identity?.ToString();
 
     /// <summary>
     /// Parses a string of the form <c>"&lt;provider&gt;/&lt;model&gt;"</c>
-    /// into a <see cref="ModelIdentity"/>. A <see langword="null"/> input
+    /// into a <see cref="CompositeIdentity"/>. A <see langword="null"/> input
     /// yields a <see langword="null"/> identity; a malformed input throws
     /// <see cref="FormatException"/>.
     /// </summary>
@@ -42,7 +42,7 @@ public sealed record ModelIdentity(string Provider, string Model)
     /// <paramref name="value"/> is non-null but does not contain the
     /// <c>provider/model</c> separator.
     /// </exception>
-    public static explicit operator ModelIdentity?(string? value)
+    public static explicit operator CompositeIdentity?(string? value)
     {
         if (value is null)
         {
@@ -59,7 +59,7 @@ public sealed record ModelIdentity(string Provider, string Model)
     /// <summary>
     /// Attempts to parse a string of the form
     /// <c>"&lt;provider&gt;/&lt;model&gt;"</c> into a
-    /// <see cref="ModelIdentity"/>.
+    /// <see cref="CompositeIdentity"/>.
     /// </summary>
     /// <param name="id">Wire-format identity to parse.</param>
     /// <param name="identity">
@@ -69,7 +69,7 @@ public sealed record ModelIdentity(string Provider, string Model)
     /// <see langword="true"/> when <paramref name="id"/> contains the
     /// <c>provider/model</c> separator; otherwise <see langword="false"/>.
     /// </returns>
-    public static bool TryParse(string id, [NotNullWhen(true)] out ModelIdentity? identity)
+    public static bool TryParse(string id, [NotNullWhen(true)] out CompositeIdentity? identity)
     {
         identity = null;
         var parts = id.Split('/', 2);
@@ -77,7 +77,7 @@ public sealed record ModelIdentity(string Provider, string Model)
         {
             return false;
         }
-        identity = new ModelIdentity(parts[0], parts[1]);
+        identity = new CompositeIdentity(parts[0], parts[1]);
         return true;
     }
 }

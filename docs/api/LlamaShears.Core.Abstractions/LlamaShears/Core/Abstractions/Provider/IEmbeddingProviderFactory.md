@@ -13,7 +13,7 @@ or both, registering each implemented contract separately into DI.
 
 Unique name of the provider; the embedding factory and chat factory
 for the same provider share the name. Compared case-insensitively
-against [ModelIdentity](ModelIdentity.md).`Provider` when routing.
+against [CompositeIdentity](CompositeIdentity.md).`Provider` when routing.
 
 ## Methods
 

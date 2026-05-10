@@ -29,7 +29,7 @@ public sealed class ContextCompactorTests
             new ModelTurn(ModelRole.Assistant, "hi back", _now),
             new ModelTurn(ModelRole.User, "what's up", _now),
         ]);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 50);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 50);
 
         var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
@@ -44,7 +44,7 @@ public sealed class ContextCompactorTests
         var model = BuildModel();
         var compactor = BuildCompactor();
         var prompt = LongPromptOver(charsPerTurn: 10_000);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: null);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: null);
 
         var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
@@ -59,7 +59,7 @@ public sealed class ContextCompactorTests
         var model = BuildModel();
         var compactor = BuildCompactor();
         var prompt = ShortPromptWithFiveTurns();
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 100_000, TokenLimit: 100);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 100_000, TokenLimit: 100);
 
         var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
@@ -74,7 +74,7 @@ public sealed class ContextCompactorTests
         var model = BuildModel(summary: "here is the summary");
         var compactor = BuildCompactor();
         var prompt = LongPromptOver(charsPerTurn: 2_000);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
 
         var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
@@ -94,7 +94,7 @@ public sealed class ContextCompactorTests
         var model = BuildModel(summary: "a summary");
         var compactor = BuildCompactor();
         var prompt = LongPromptOver(charsPerTurn: 2_000);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 900, TokenLimit: 100);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 900, TokenLimit: 100);
 
         await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
@@ -110,7 +110,7 @@ public sealed class ContextCompactorTests
         var model = BuildModel(summary: "a summary");
         var compactor = BuildCompactor();
         var prompt = LongPromptOver(charsPerTurn: 2_000);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 600, TokenLimit: 100);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 600, TokenLimit: 100);
 
         await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 
@@ -126,7 +126,7 @@ public sealed class ContextCompactorTests
         var model = BuildModel(summary: "   ");
         var compactor = BuildCompactor();
         var prompt = LongPromptOver(charsPerTurn: 2_000);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
 
         await Assert.That(async () => await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None))
             .Throws<CompactionFailedException>();
@@ -146,7 +146,7 @@ public sealed class ContextCompactorTests
             });
         var compactor = BuildCompactor();
         var prompt = LongPromptOver(charsPerTurn: 2_000);
-        var config = new ModelConfiguration(new ModelIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
 
         await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
 

@@ -33,7 +33,7 @@ Free-form metadata surfaced by the producer; `null` = none.
 
 ## Methods
 
-### `AgentInfo`(string AgentId, [ModelIdentity](../Provider/ModelIdentity.md) ModelId, int ContextWindowSize, IReadOnlyDictionary<string, object> Parameters)
+### `AgentInfo`(string AgentId, [CompositeIdentity](../Provider/CompositeIdentity.md) ModelId, int ContextWindowSize, IReadOnlyDictionary<string, object> Parameters)
 
 Lightweight catalog entry describing a known agent: enough metadata to
 render an agent in a list or pick one for routing without loading the

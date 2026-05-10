@@ -170,6 +170,9 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions.Provider
 
 - [AgentProviderOptions](LlamaShears/Core/Abstractions/Provider/AgentProviderOptions.md)
+- [CompositeIdentity](LlamaShears/Core/Abstractions/Provider/CompositeIdentity.md)
+- [CompositeIdentityJsonConverter](LlamaShears/Core/Abstractions/Provider/CompositeIdentityJsonConverter.md)
+- [CompositeIdentityTypeConverter](LlamaShears/Core/Abstractions/Provider/CompositeIdentityTypeConverter.md)
 - [IContextEntry](LlamaShears/Core/Abstractions/Provider/IContextEntry.md)
 - [IEmbeddingModel](LlamaShears/Core/Abstractions/Provider/IEmbeddingModel.md)
 - [IEmbeddingProviderFactory](LlamaShears/Core/Abstractions/Provider/IEmbeddingProviderFactory.md)
@@ -186,9 +189,6 @@ The package is organised into namespaces by concern; each namespace was previous
 - [LanguageModelExtensions](LlamaShears/Core/Abstractions/Provider/LanguageModelExtensions.md)
 - [ModelConfiguration](LlamaShears/Core/Abstractions/Provider/ModelConfiguration.md)
 - [ModelConfigurationExtensions](LlamaShears/Core/Abstractions/Provider/ModelConfigurationExtensions.md)
-- [ModelIdentity](LlamaShears/Core/Abstractions/Provider/ModelIdentity.md)
-- [ModelIdentityJsonConverter](LlamaShears/Core/Abstractions/Provider/ModelIdentityJsonConverter.md)
-- [ModelIdentityTypeConverter](LlamaShears/Core/Abstractions/Provider/ModelIdentityTypeConverter.md)
 - [ModelInfo](LlamaShears/Core/Abstractions/Provider/ModelInfo.md)
 - [ModelPrompt](LlamaShears/Core/Abstractions/Provider/ModelPrompt.md)
 - [ModelRole](LlamaShears/Core/Abstractions/Provider/ModelRole.md)

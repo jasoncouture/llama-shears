@@ -3,6 +3,9 @@
 ## Types
 
 - [AgentProviderOptions](AgentProviderOptions.md) — Helpers for layering an agent's per-model JSON options blob on top of host-level defaults. Used by providers that expose a strongly-typed options record for their host config and a free-form `Options` JSON blob in agent config.
+- [CompositeIdentity](CompositeIdentity.md) — Globally unique model identifier formed by pairing a provider name with that provider's model id. Serializes to/from `"<provider>/<model>"` for human readability and concise JSON.
+- [CompositeIdentityJsonConverter](CompositeIdentityJsonConverter.md) — JSON converter for [CompositeIdentity](CompositeIdentity.md): serializes as the compact string `"provider/model"` rather than as an object.
+- [CompositeIdentityTypeConverter](CompositeIdentityTypeConverter.md) — TypeConverter for [CompositeIdentity](CompositeIdentity.md) so it flows through configuration binding and similar string-pivoted machinery as `"provider/model"`.
 - [IContextEntry](IContextEntry.md) — Base contract for any entry that can be appended to an agent's conversation log. Polymorphic JSON serialization is keyed by the `kind` discriminator on the wire.
 - [IEmbeddingModel](IEmbeddingModel.md) — Provider-agnostic seam for generating embeddings. Parallel to [ILanguageModel](ILanguageModel.md); an underlying provider may implement chat, embeddings, or both. Implementations send the supplied text to their underlying API verbatim — any model-specific decoration (asymmetric query/document prefixes, normalization) is the caller's responsibility, configured separately.
 - [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md) — Plugin contract for an embedding provider, parallel to [IProviderFactory](IProviderFactory.md). A given provider may implement chat ([IProviderFactory](IProviderFactory.md)), embeddings (this interface), or both, registering each implemented contract separately into DI.
@@ -19,9 +22,6 @@
 - [LanguageModelExtensions](LanguageModelExtensions.md) — Convenience extensions over [ILanguageModel](ILanguageModel.md).
 - [ModelConfiguration](ModelConfiguration.md) — Construction-time inputs for [IProviderFactory](IProviderFactory.md).`CreateModel` and [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md).`CreateModel`.
 - [ModelConfigurationExtensions](ModelConfigurationExtensions.md) — Convenience accessors for pulling the active [ModelConfiguration](ModelConfiguration.md) off an [IDataContextScope](../Common/IDataContextScope.md) without callers having to remember the well-known key.
-- [ModelIdentity](ModelIdentity.md) — Globally unique model identifier formed by pairing a provider name with that provider's model id. Serializes to/from `"<provider>/<model>"` for human readability and concise JSON.
-- [ModelIdentityJsonConverter](ModelIdentityJsonConverter.md) — JSON converter for [ModelIdentity](ModelIdentity.md): serializes as the compact string `"provider/model"` rather than as an object.
-- [ModelIdentityTypeConverter](ModelIdentityTypeConverter.md) — TypeConverter for [ModelIdentity](ModelIdentity.md) so it flows through configuration binding and similar string-pivoted machinery as `"provider/model"`.
 - [ModelInfo](ModelInfo.md) — Catalog entry returned by a provider's [IProviderFactory](IProviderFactory.md).`ListModelsAsync`. Enough metadata for callers to choose a model without actually loading it.
 - [ModelPrompt](ModelPrompt.md) — Provider-agnostic prompt: an ordered list of [ModelTurn](ModelTurn.md) values destined for an [ILanguageModel](ILanguageModel.md). Providers translate it into their wire format; consumers do not see that translation.
 - [ModelRole](ModelRole.md) — Speaker role attached to a [ModelTurn](ModelTurn.md). Distinguishes genuine user/assistant traffic from framework-injected scaffolding and from hidden reasoning that must be filtered out before the turn is sent back to the model.

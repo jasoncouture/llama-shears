@@ -13,6 +13,6 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="Parameters">Free-form metadata surfaced by the producer; <see langword="null"/> = none.</param>
 public record AgentInfo(
     string AgentId,
-    ModelIdentity ModelId,
+    CompositeIdentity ModelId,
     int ContextWindowSize,
     IReadOnlyDictionary<string, object>? Parameters = null);

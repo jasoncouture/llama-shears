@@ -13,7 +13,7 @@ public interface IEmbeddingProviderFactory
     /// <summary>
     /// Unique name of the provider; the embedding factory and chat factory
     /// for the same provider share the name. Compared case-insensitively
-    /// against <see cref="ModelIdentity.Provider"/> when routing.
+    /// against <see cref="CompositeIdentity.Provider"/> when routing.
     /// </summary>
     string Name { get; }
 

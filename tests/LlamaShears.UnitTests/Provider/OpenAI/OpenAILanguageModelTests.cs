@@ -184,7 +184,7 @@ public sealed class OpenAiLanguageModelTests
         return new OpenAiLanguageModel(
             httpClientFactory,
             optionsMonitor,
-            new ModelConfiguration(ModelId: new ModelIdentity("openai", "test-model")),
+            new ModelConfiguration(ModelId: new CompositeIdentity("openai", "test-model")),
             new LlamaShears.Core.Provider.ModelTextFormatter(),
             NullLogger<OpenAiLanguageModel>.Instance);
     }

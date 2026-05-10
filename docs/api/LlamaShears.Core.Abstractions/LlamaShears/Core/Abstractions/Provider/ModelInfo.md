@@ -8,7 +8,7 @@ callers to choose a model without actually loading it.
 
 ## Parameters
 
-- `ModelId` — Provider-scoped identifier; pair with the provider name to get a globally unique [ModelIdentity](ModelIdentity.md).
+- `ModelId` — Provider-scoped identifier; pair with the provider name to get a globally unique [CompositeIdentity](CompositeIdentity.md).
 - `DisplayName` — Human-readable name surfaced in UI.
 - `Description` — Optional longer-form description; `null` when the provider does not supply one.
 - `SupportedInputs` — Bit-set of input modalities this model accepts.
@@ -31,7 +31,7 @@ Maximum prompt-token budget for a single call.
 
 ### `ModelId`
 
-Provider-scoped identifier; pair with the provider name to get a globally unique [ModelIdentity](ModelIdentity.md).
+Provider-scoped identifier; pair with the provider name to get a globally unique [CompositeIdentity](CompositeIdentity.md).
 
 ### `SupportedInputs`
 
@@ -51,7 +51,7 @@ callers to choose a model without actually loading it.
 
 #### Parameters
 
-- `ModelId` — Provider-scoped identifier; pair with the provider name to get a globally unique [ModelIdentity](ModelIdentity.md).
+- `ModelId` — Provider-scoped identifier; pair with the provider name to get a globally unique [CompositeIdentity](CompositeIdentity.md).
 - `DisplayName` — Human-readable name surfaced in UI.
 - `Description` — Optional longer-form description; `null` when the provider does not supply one.
 - `SupportedInputs` — Bit-set of input modalities this model accepts.

@@ -14,7 +14,7 @@ namespace LlamaShears.Core.Abstractions.Provider;
 /// <param name="TokenLimit">Maximum response tokens; <c>0</c> = unbounded.</param>
 /// <param name="AgentOptions">Agent-supplied JSON options merged on top of the provider's host defaults at request time.</param>
 public record ModelConfiguration(
-    ModelIdentity ModelId,
+    CompositeIdentity ModelId,
     ThinkLevel Think = ThinkLevel.None,
     int? ContextLength = null,
     TimeSpan? KeepAlive = null,

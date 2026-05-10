@@ -4,7 +4,7 @@ namespace LlamaShears.Core.Memory;
 
 public sealed class MemoryServiceOptions
 {
-    public ModelIdentity? DefaultEmbeddingModel { get; set; }
+    public CompositeIdentity? DefaultEmbeddingModel { get; set; }
     public TimeSpan? DefaultEmbeddingKeepAlive { get; set; }
     public string? DefaultEmbeddingQueryPrefix { get; set; }
     public string? DefaultEmbeddingDocumentPrefix { get; set; }

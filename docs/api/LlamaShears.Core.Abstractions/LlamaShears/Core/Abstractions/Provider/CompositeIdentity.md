@@ -1,4 +1,4 @@
-# LlamaShears.Core.Abstractions.Provider.ModelIdentity
+# LlamaShears.Core.Abstractions.Provider.CompositeIdentity
 
 Assembly: `LlamaShears.Core.Abstractions`
 
@@ -24,7 +24,7 @@ Provider name (matches [IProviderFactory](IProviderFactory.md).`Name`).
 
 ## Methods
 
-### `ModelIdentity`(string Provider, string Model)
+### `CompositeIdentity`(string Provider, string Model)
 
 Globally unique model identifier formed by pairing a provider name
 with that provider's model id. Serializes to/from
@@ -45,11 +45,11 @@ Renders the identity in wire form
 
 The wire-format identity.
 
-### `TryParse`(string id, [ModelIdentity](ModelIdentity.md)& identity)
+### `TryParse`(string id, [CompositeIdentity](CompositeIdentity.md)& identity)
 
 Attempts to parse a string of the form
 `"<provider>/<model>"` into a
-[ModelIdentity](ModelIdentity.md).
+[CompositeIdentity](CompositeIdentity.md).
 
 #### Parameters
 
@@ -61,10 +61,10 @@ Attempts to parse a string of the form
 `true` when `id` contains the
 `provider/model` separator; otherwise `false`.
 
-### `op_Explicit`(ModelIdentity value)
+### `op_Explicit`(CompositeIdentity value)
 
 Parses a string of the form `"<provider>/<model>"`
-into a [ModelIdentity](ModelIdentity.md). A `null` input
+into a [CompositeIdentity](CompositeIdentity.md). A `null` input
 yields a `null` identity; a malformed input throws
 FormatException.
 
