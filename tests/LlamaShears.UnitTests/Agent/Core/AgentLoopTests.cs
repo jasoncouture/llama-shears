@@ -163,6 +163,15 @@ public sealed class AgentLoopTests
         var resolvedMemorySearcher = memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher();
         var resolvedConfig = config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            publisher,
+            Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            resolvedMemorySearcher,
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
             model: model,
             agentContext: agentContext,
@@ -173,17 +182,10 @@ public sealed class AgentLoopTests
             compactor: compactor,
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(
-                publisher,
-                Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                resolvedMemorySearcher,
-                dataContextFactory),
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: services.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
         return agent;
     }

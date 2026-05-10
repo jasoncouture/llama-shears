@@ -231,25 +231,15 @@ public sealed class InferenceRunner : IInferenceRunner
 
         var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
 
-        var now = _time.GetLocalNow();
         var scope = _dataContextFactory.Current!;
-        using var turnFrame = scope.BeginScope();
-        scope.SetItems(
-        [
-            new KeyValuePair<string, object?>("now", now),
-            new KeyValuePair<string, object?>("timezone", TimeZoneInfo.Local.Id),
-            new KeyValuePair<string, object?>("day_of_week", now.DayOfWeek.ToString()),
-            new KeyValuePair<string, object?>("channel_id", ChannelId.Value),
-            new KeyValuePair<string, object?>("important_message", null),
-            new KeyValuePair<string, object?>("memories", memories),
-        ]);
+        scope.SetItem("memories", memories);
         var body = await _promptContext.GetAsync(config.PromptContext, scope.Snapshot(), cancellationToken);
         if (string.IsNullOrWhiteSpace(body))
         {
             return prompt;
         }
 
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, now, Ephemeral: true);
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, _time.GetLocalNow(), Ephemeral: true);
         return new ModelPrompt(InsertAfterLastNonUser(prompt.Turns, ephemeral));
     }
 

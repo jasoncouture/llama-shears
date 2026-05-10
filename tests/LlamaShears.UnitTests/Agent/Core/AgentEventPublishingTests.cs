@@ -127,6 +127,15 @@ public sealed class AgentEventPublishingTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            capturing,
+            Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            TestAgentConfigs.EmptyMemorySearcher(),
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         using var agent = new LlamaShears.Core.Agent(
             model: model,
             agentContext: ctx,
@@ -137,17 +146,10 @@ public sealed class AgentEventPublishingTests
             compactor: BuildNoOpCompactor(),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
-            inferenceRunner: new InferenceRunner(
-                capturing,
-                Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                TestAgentConfigs.EmptyMemorySearcher(),
-                dataContextFactory),
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            scope: provider.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
 
         await capturing.PublishAsync(

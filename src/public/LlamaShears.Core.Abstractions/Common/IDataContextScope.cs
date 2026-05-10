@@ -36,6 +36,14 @@ public interface IDataContextScope : IEnumerable<KeyValuePair<string, object?>>
     /// dictionary. Existing keys are overwritten.
     /// </summary>
     void SetItems(IEnumerable<KeyValuePair<string, object?>> items);
+    /// <summary>
+    /// Sets <paramref name="key"/> to the provided value.
+    /// Existing keys are overwritten.
+    /// </summary>
+    public void SetItem(string key, object? value)
+    {
+        SetItems([new KeyValuePair<string, object?>(key, value)]);
+    }
 
     /// <summary>Clears every entry in the current dictionary.</summary>
     void Clear();

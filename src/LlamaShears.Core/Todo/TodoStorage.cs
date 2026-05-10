@@ -214,7 +214,7 @@ internal sealed partial class TodoStorage : ITodoStorage
 
     private void PushToScope(ImmutableArray<TodoItem> items)
     {
-        _scope?.SetItems([new KeyValuePair<string, object?>(TodoStorageConstants.DataKey, items)]);
+        _scope.SetItem(TodoStorageConstants.DataKey, items);
     }
 
     private ValueTask<string> GetPathAsync(CancellationToken cancellationToken)

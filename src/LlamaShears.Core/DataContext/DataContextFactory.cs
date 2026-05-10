@@ -73,8 +73,6 @@ internal sealed class DataContextFactory : IDataContextFactory
         {
             await scope.SetItemsAsync(provider, cancellationToken);
         }
-        
-        
     }
 
     public bool TryJoinContextScope(string key, [NotNullWhen(true)] out IDataContextScope? context)

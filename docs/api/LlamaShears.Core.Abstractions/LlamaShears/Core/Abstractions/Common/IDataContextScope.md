@@ -32,6 +32,11 @@ dictionary. Returns `true` when an entry was
 removed, `false` when no entry existed at that
 key.
 
+### `SetItem`(string key, object value)
+
+Sets `key` to the provided value.
+Existing keys are overwritten.
+
 ### `SetItems`(IEnumerable<KeyValuePair<string, object>> items)
 
 Sets each `items` pair into the current

@@ -34,7 +34,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IEventPublisher _eventPublisher;
     private readonly IContextCompactor _compactor;
     private readonly IAgentContextProvider _agentContextProvider;
-    private readonly IInferenceRunner _inferenceRunner;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IDataContextScope _dataScope;
     private readonly ImmutableArray<ToolGroup> _tools;
@@ -52,7 +51,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IContextCompactor compactor,
         IAgentContextProvider agentContextProvider,
         IEventPublisher eventPublisher,
-        IInferenceRunner inferenceRunner,
         ICurrentAgentAccessor currentAgent,
         IDataContextScope dataScope,
         ISessionFactory sessionFactory,
@@ -67,15 +65,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _time = timeProvider;
         _compactor = compactor;
         _agentContextProvider = agentContextProvider;
-        _inferenceRunner = inferenceRunner;
         _currentAgent = currentAgent;
         _dataScope = dataScope;
         _tools = tools.IsDefault ? [] : tools;
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
-        var currentExecutionContext = ExecutionContext.Capture();
         _id = _dataScope.GetAgentConfig().Id;
-        GC.KeepAlive(currentExecutionContext);
         _sessionQueue = sessionFactory.Get(new SessionId(_id, DefaultChannel));
         _shutdown = new CancellationTokenSource();
         _subscription = bus.Subscribe(
@@ -297,7 +292,13 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             ;
 
         using var inferenceDataScope = _dataScope.BeginScope();
-        var outcome = await _inferenceRunner.RunAsync(
+        var iterationNow = _time.GetLocalNow();
+        _dataScope.SetItem("now", iterationNow);
+        _dataScope.SetItem("timezone", TimeZoneInfo.Local.Id);
+        _dataScope.SetItem("day_of_week", iterationNow.DayOfWeek.ToString());
+        _dataScope.SetItem("channel_id", prompt.Turns[^1].ChannelId);
+        var inferenceRunner = loopScope.ServiceProvider.GetRequiredService<IInferenceRunner>();
+        var outcome = await inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,
             prompt: prompt,

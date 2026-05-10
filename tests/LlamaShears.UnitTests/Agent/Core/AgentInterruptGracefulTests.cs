@@ -203,6 +203,15 @@ public sealed class AgentInterruptGracefulTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            publisher,
+            dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            TestAgentConfigs.EmptyMemorySearcher(),
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
             model: model,
             agentContext: agentContext,
@@ -213,17 +222,10 @@ public sealed class AgentInterruptGracefulTests
             compactor: compactor,
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(
-                publisher,
-                dispatcher ?? Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                TestAgentConfigs.EmptyMemorySearcher(),
-                dataContextFactory),
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: services.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
         return agent;
     }
