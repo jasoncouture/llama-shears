@@ -53,8 +53,7 @@ internal sealed class DataContextFactory : IDataContextFactory
         IDataContextScope? scope;
         lock (_lock)
         {
-            if (!_scopes.TryGetValue(key, out var weakScopeReference) || !weakScopeReference.TryGetTarget(out scope) ||
-                scope is null)
+            if (!_scopes.TryGetValue(key, out var weakScopeReference) || !weakScopeReference.TryGetTarget(out scope))
             {
                 throw new InvalidOperationException($"No such scope exists: {key}");
             }
