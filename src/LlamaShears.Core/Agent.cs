@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
@@ -36,6 +37,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IDataContextFactory _dataContextFactory;
     private readonly ImmutableArray<ToolGroup> _tools;
     private readonly IServiceProvider _scopedServices;
     private IAsyncDisposable? _scope;
@@ -55,6 +57,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IEventPublisher eventPublisher,
         IInferenceRunner inferenceRunner,
         ICurrentAgentAccessor currentAgent,
+        IDataContextFactory dataContextFactory,
         ISessionFactory sessionFactory,
         AsyncServiceScope scope,
         ImmutableArray<ToolGroup> tools = default)
@@ -74,6 +77,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _agentContextProvider = agentContextProvider;
         _inferenceRunner = inferenceRunner;
         _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
         _tools = tools.IsDefault ? [] : tools;
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
@@ -181,6 +185,20 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
         using var loggingScope = _logger.BeginScope("{AgentId}", Id);
+        var providers = _scopedServices.GetServices<IDataContextItemProvider>();
+        await _dataContextFactory.StartContextAsync(Id, providers, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await RunIterationsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _dataContextFactory.ClearCurrent(owner: true);
+        }
+    }
+
+    private async Task RunIterationsAsync(CancellationToken cancellationToken)
+    {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -260,6 +278,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
         prompt = await _compactor.CompactAsync(agentContextSnapshot, prompt, _model, _modelConfiguration, force: false, cancellationToken).ConfigureAwait(false);
 
+        using var inferenceDataScope = _dataContextFactory.Current?.BeginScope();
         var outcome = await _inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -221,6 +222,7 @@ public sealed class AgentInterruptGracefulTests
                 Substitute.For<IAgentConfigProvider>(),
                 currentAgent),
             currentAgent: currentAgent,
+            dataContextFactory: Substitute.For<IDataContextFactory>(),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scope: services.CreateAsyncScope());
     }

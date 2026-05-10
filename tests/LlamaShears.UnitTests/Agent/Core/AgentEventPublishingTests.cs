@@ -1,4 +1,5 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -147,6 +148,7 @@ public sealed class AgentEventPublishingTests
                 Substitute.For<IAgentConfigProvider>(),
                 currentAgent),
             currentAgent: currentAgent,
+            dataContextFactory: Substitute.For<IDataContextFactory>(),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             scope: provider.CreateAsyncScope());
 
