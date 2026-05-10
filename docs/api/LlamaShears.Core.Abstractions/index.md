@@ -62,6 +62,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [TodoItem](LlamaShears/Core/Abstractions/Agent/Todo/TodoItem.md)
 - [TodoItemUpdate](LlamaShears/Core/Abstractions/Agent/Todo/TodoItemUpdate.md)
 - [TodoResultState](LlamaShears/Core/Abstractions/Agent/Todo/TodoResultState.md)
+- [TodoStorageConstants](LlamaShears/Core/Abstractions/Agent/Todo/TodoStorageConstants.md)
 
 ## LlamaShears.Core.Abstractions.Caching
 

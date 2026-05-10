@@ -15,10 +15,10 @@ public static class AgentConfigExtensions
     /// </summary>
     /// <param name="scope">Data-context scope to inspect.</param>
     /// <returns>The active agent configuration, or <see langword="null"/> when the scope has none.</returns>
-    public static AgentConfig? GetAgentConfig(this IDataContextScope? scope)
+    public static AgentConfig? TryGetAgentConfig(this IDataContextScope? scope)
     {
-        AgentConfig? config = null;
-        scope?.TryGetValue(AgentConfig.DataKey, out config);
+        if (scope is null) return null;
+        scope.TryGetValue<AgentConfig>(AgentConfig.DataKey, out var config);
         return config;
     }
 }

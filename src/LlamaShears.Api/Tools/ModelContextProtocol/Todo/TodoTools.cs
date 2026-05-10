@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using LlamaShears.Core.Abstractions.Agent.Todo;
+using LlamaShears.Core.Abstractions.Common;
 using ModelContextProtocol.Server;
 
 namespace LlamaShears.Api.Tools.ModelContextProtocol.Todo;
@@ -8,10 +9,12 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 public sealed class TodoTools
 {
     private readonly ITodoStorage _storage;
+    private readonly IDataContextFactory _dataContextFactory;
 
-    public TodoTools(ITodoStorage storage)
+    public TodoTools(ITodoStorage storage, IDataContextFactory dataContextFactory)
     {
         _storage = storage;
+        _dataContextFactory = dataContextFactory;
     }
 
     [McpServerTool(Name = "todo_add")]
@@ -22,6 +25,7 @@ public sealed class TodoTools
         CancellationToken cancellationToken = default)
     {
         var result = await _storage.AddAsync(items, done, cancellationToken);
+        PushToScope(result);
         return result.ToString();
     }
 
@@ -32,6 +36,7 @@ public sealed class TodoTools
         CancellationToken cancellationToken = default)
     {
         var result = await _storage.UpdateAsync(updates, cancellationToken);
+        PushToScope(result);
         return result.ToString();
     }
 
@@ -42,6 +47,7 @@ public sealed class TodoTools
         CancellationToken cancellationToken = default)
     {
         var result = await _storage.DeleteAsync(indices, cancellationToken);
+        PushToScope(result);
         return result.ToString();
     }
 
@@ -52,6 +58,7 @@ public sealed class TodoTools
         CancellationToken cancellationToken = default)
     {
         var result = await _storage.ClearAsync(includeIncomplete, cancellationToken);
+        PushToScope(result);
         return result.ToString();
     }
 
@@ -65,5 +72,10 @@ public sealed class TodoTools
         var result = await _storage.ListAsync(offset, limit, cancellationToken);
         var rendered = result.ToString();
         return string.IsNullOrEmpty(rendered) ? "No todo items found." : rendered;
+    }
+
+    private void PushToScope(TodoCommandResult result)
+    {
+        _dataContextFactory.Current?.SetItems([new KeyValuePair<string, object?>(TodoStorageConstants.DataKey, result.Items)]);
     }
 }

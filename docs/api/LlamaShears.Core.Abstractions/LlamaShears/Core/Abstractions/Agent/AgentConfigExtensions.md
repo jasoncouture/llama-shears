@@ -8,7 +8,7 @@ well-known key.
 
 ## Methods
 
-### `GetAgentConfig`([IDataContextScope](../Common/IDataContextScope.md) scope)
+### `TryGetAgentConfig`([IDataContextScope](../Common/IDataContextScope.md) scope)
 
 Returns the [AgentConfig](AgentConfig.md) attached to the given scope under
 [AgentConfig](AgentConfig.md).`DataKey`, or `null` if none is set.

@@ -7,4 +7,5 @@
 - [TodoItem](TodoItem.md) — Single entry in an agent's persistent todo list.
 - [TodoItemUpdate](TodoItemUpdate.md) — Patch applied to a single [TodoItem](TodoItem.md) when the agent toggles its completion state.
 - [TodoResultState](TodoResultState.md) — Overall outcome reported by a todo command.
+- [TodoStorageConstants](TodoStorageConstants.md) — Well-known keys for the TODO subsystem.
 

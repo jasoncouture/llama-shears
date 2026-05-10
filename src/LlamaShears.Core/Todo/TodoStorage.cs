@@ -211,7 +211,7 @@ internal sealed partial class TodoStorage : ITodoStorage
 
     private async ValueTask<string> GetPathAsync(CancellationToken cancellationToken)
     {
-        var config = _dataContextFactory.Current?.GetAgentConfig();
+        var config = _dataContextFactory.Current?.TryGetAgentConfig();
         var agentId = config?.Id
             ?? throw new InvalidOperationException("TodoStorage requires an agent scope on the current call chain.");
         var resolved = config ?? await _configs.GetConfigAsync(agentId, cancellationToken);
