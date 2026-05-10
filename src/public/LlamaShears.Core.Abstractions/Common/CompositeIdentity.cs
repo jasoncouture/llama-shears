@@ -2,15 +2,15 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace LlamaShears.Core.Abstractions.Provider;
+namespace LlamaShears.Core.Abstractions.Common;
 
 /// <summary>
-/// Globally unique model identifier formed by pairing a provider name
-/// with that provider's model id. Serializes to/from
+/// Two-part identifier that pairs a provider name with a provider-scoped
+/// model id to form a globally unique handle. Serializes to/from
 /// <c>"&lt;provider&gt;/&lt;model&gt;"</c> for human readability and
 /// concise JSON.
 /// </summary>
-/// <param name="Provider">Provider name (matches <see cref="IProviderFactory.Name"/>).</param>
+/// <param name="Provider">Provider name.</param>
 /// <param name="Model">Provider-scoped model identifier.</param>
 [JsonConverter(typeof(CompositeIdentityJsonConverter))]
 [TypeConverter(typeof(CompositeIdentityTypeConverter))]

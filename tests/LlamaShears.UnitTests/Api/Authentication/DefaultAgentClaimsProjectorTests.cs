@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Api.Authentication;
 
 public sealed class DefaultAgentClaimsProjectorTests

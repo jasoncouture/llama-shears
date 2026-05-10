@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentInterruptTests

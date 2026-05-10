@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 
-namespace LlamaShears.Core.Abstractions.Provider;
+namespace LlamaShears.Core.Abstractions.Common;
 
 /// <summary>
 /// <see cref="TypeConverter"/> for <see cref="CompositeIdentity"/> so it

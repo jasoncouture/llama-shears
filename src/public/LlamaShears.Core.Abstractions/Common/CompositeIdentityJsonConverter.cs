@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace LlamaShears.Core.Abstractions.Provider;
+namespace LlamaShears.Core.Abstractions.Common;
 
 /// <summary>
 /// JSON converter for <see cref="CompositeIdentity"/>: serializes as the

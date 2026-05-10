@@ -2,6 +2,9 @@
 
 ## Types
 
+- [CompositeIdentity](CompositeIdentity.md) — Two-part identifier that pairs a provider name with a provider-scoped model id to form a globally unique handle. Serializes to/from `"<provider>/<model>"` for human readability and concise JSON.
+- [CompositeIdentityJsonConverter](CompositeIdentityJsonConverter.md) — JSON converter for [CompositeIdentity](CompositeIdentity.md): serializes as the compact string `"provider/model"` rather than as an object.
+- [CompositeIdentityTypeConverter](CompositeIdentityTypeConverter.md) — TypeConverter for [CompositeIdentity](CompositeIdentity.md) so it flows through configuration binding and similar string-pivoted machinery as `"provider/model"`.
 - [DataContextConstants](DataContextConstants.md) — Constants used by the data-context infrastructure.
 - [DataContextServiceCollectionExtensions](DataContextServiceCollectionExtensions.md) — DI registration helpers for [IDataContextItemProvider](IDataContextItemProvider.md).
 - [IDataContextFactory](IDataContextFactory.md) — Manages keyed [IDataContextScope](IDataContextScope.md) instances flowing on the current call chain via AsyncLocal. Other call chains looking up the same key can rejoin via [IDataContextFactory](IDataContextFactory.md).`TryJoinContextScope`.

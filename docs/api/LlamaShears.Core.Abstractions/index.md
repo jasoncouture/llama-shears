@@ -81,6 +81,9 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Common
 
+- [CompositeIdentity](LlamaShears/Core/Abstractions/Common/CompositeIdentity.md)
+- [CompositeIdentityJsonConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityJsonConverter.md)
+- [CompositeIdentityTypeConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityTypeConverter.md)
 - [DataContextConstants](LlamaShears/Core/Abstractions/Common/DataContextConstants.md)
 - [DataContextServiceCollectionExtensions](LlamaShears/Core/Abstractions/Common/DataContextServiceCollectionExtensions.md)
 - [IDataContextFactory](LlamaShears/Core/Abstractions/Common/IDataContextFactory.md)
@@ -170,9 +173,6 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions.Provider
 
 - [AgentProviderOptions](LlamaShears/Core/Abstractions/Provider/AgentProviderOptions.md)
-- [CompositeIdentity](LlamaShears/Core/Abstractions/Provider/CompositeIdentity.md)
-- [CompositeIdentityJsonConverter](LlamaShears/Core/Abstractions/Provider/CompositeIdentityJsonConverter.md)
-- [CompositeIdentityTypeConverter](LlamaShears/Core/Abstractions/Provider/CompositeIdentityTypeConverter.md)
 - [IContextEntry](LlamaShears/Core/Abstractions/Provider/IContextEntry.md)
 - [IEmbeddingModel](LlamaShears/Core/Abstractions/Provider/IEmbeddingModel.md)
 - [IEmbeddingProviderFactory](LlamaShears/Core/Abstractions/Provider/IEmbeddingProviderFactory.md)

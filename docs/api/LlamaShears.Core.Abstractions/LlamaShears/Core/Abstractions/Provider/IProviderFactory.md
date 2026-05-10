@@ -13,7 +13,7 @@ future cloud providers, etc.).
 ### `Name`
 
 Unique name of the provider factory. Compared case-insensitively
-against [CompositeIdentity](CompositeIdentity.md).`Provider` when routing.
+against [CompositeIdentity](../Common/CompositeIdentity.md).`Provider` when routing.
 
 ## Methods
 

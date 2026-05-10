@@ -8,6 +8,7 @@ using NSubstitute;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.Ollama;
 
 public sealed class OllamaLanguageModelToolFlatteningTests

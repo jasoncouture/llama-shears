@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.OpenAI;
 
 public sealed class OpenAiLanguageModelTests

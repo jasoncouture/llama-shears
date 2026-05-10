@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Provider;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider;
 
 public sealed class CompositeIdentityTests

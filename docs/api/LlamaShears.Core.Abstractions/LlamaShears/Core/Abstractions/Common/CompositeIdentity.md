@@ -1,15 +1,15 @@
-# LlamaShears.Core.Abstractions.Provider.CompositeIdentity
+# LlamaShears.Core.Abstractions.Common.CompositeIdentity
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Globally unique model identifier formed by pairing a provider name
-with that provider's model id. Serializes to/from
+Two-part identifier that pairs a provider name with a provider-scoped
+model id to form a globally unique handle. Serializes to/from
 `"<provider>/<model>"` for human readability and
 concise JSON.
 
 ## Parameters
 
-- `Provider` — Provider name (matches [IProviderFactory](IProviderFactory.md).`Name`).
+- `Provider` — Provider name.
 - `Model` — Provider-scoped model identifier.
 
 ## Properties
@@ -20,20 +20,20 @@ Provider-scoped model identifier.
 
 ### `Provider`
 
-Provider name (matches [IProviderFactory](IProviderFactory.md).`Name`).
+Provider name.
 
 ## Methods
 
 ### `CompositeIdentity`(string Provider, string Model)
 
-Globally unique model identifier formed by pairing a provider name
-with that provider's model id. Serializes to/from
+Two-part identifier that pairs a provider name with a provider-scoped
+model id to form a globally unique handle. Serializes to/from
 `"<provider>/<model>"` for human readability and
 concise JSON.
 
 #### Parameters
 
-- `Provider` — Provider name (matches [IProviderFactory](IProviderFactory.md).`Name`).
+- `Provider` — Provider name.
 - `Model` — Provider-scoped model identifier.
 
 ### `ToString`

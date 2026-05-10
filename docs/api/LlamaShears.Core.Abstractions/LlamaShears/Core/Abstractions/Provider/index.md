@@ -3,9 +3,6 @@
 ## Types
 
 - [AgentProviderOptions](AgentProviderOptions.md) — Helpers for layering an agent's per-model JSON options blob on top of host-level defaults. Used by providers that expose a strongly-typed options record for their host config and a free-form `Options` JSON blob in agent config.
-- [CompositeIdentity](CompositeIdentity.md) — Globally unique model identifier formed by pairing a provider name with that provider's model id. Serializes to/from `"<provider>/<model>"` for human readability and concise JSON.
-- [CompositeIdentityJsonConverter](CompositeIdentityJsonConverter.md) — JSON converter for [CompositeIdentity](CompositeIdentity.md): serializes as the compact string `"provider/model"` rather than as an object.
-- [CompositeIdentityTypeConverter](CompositeIdentityTypeConverter.md) — TypeConverter for [CompositeIdentity](CompositeIdentity.md) so it flows through configuration binding and similar string-pivoted machinery as `"provider/model"`.
 - [IContextEntry](IContextEntry.md) — Base contract for any entry that can be appended to an agent's conversation log. Polymorphic JSON serialization is keyed by the `kind` discriminator on the wire.
 - [IEmbeddingModel](IEmbeddingModel.md) — Provider-agnostic seam for generating embeddings. Parallel to [ILanguageModel](ILanguageModel.md); an underlying provider may implement chat, embeddings, or both. Implementations send the supplied text to their underlying API verbatim — any model-specific decoration (asymmetric query/document prefixes, normalization) is the caller's responsibility, configured separately.
 - [IEmbeddingProviderFactory](IEmbeddingProviderFactory.md) — Plugin contract for an embedding provider, parallel to [IProviderFactory](IProviderFactory.md). A given provider may implement chat ([IProviderFactory](IProviderFactory.md)), embeddings (this interface), or both, registering each implemented contract separately into DI.

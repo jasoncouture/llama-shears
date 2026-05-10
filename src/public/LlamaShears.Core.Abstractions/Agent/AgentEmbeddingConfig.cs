@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Provider;
 
+using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>

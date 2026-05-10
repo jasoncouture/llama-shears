@@ -1,4 +1,4 @@
-# LlamaShears.Core.Abstractions.Provider.CompositeIdentityJsonConverter
+# LlamaShears.Core.Abstractions.Common.CompositeIdentityJsonConverter
 
 Assembly: `LlamaShears.Core.Abstractions`
 
