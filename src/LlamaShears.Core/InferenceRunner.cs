@@ -50,9 +50,7 @@ public sealed class InferenceRunner : IInferenceRunner
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(prompt);
-        var config = _dataContextFactory.Current?.TryGetAgentConfig();
-        if (string.IsNullOrWhiteSpace(config?.Id))
-            throw new InvalidOperationException("Agent ID context is required, but is not present");
+        var config = _dataContextFactory.Current.GetAgentConfig();
 
         if (prompt.Turns.Count == 0)
         {

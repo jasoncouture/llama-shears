@@ -77,9 +77,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _scope = scope;
         _scopedServices = scope.ServiceProvider;
         var currentExecutionContext = ExecutionContext.Capture();
-        _id = _dataContextFactory.Current?.TryGetAgentConfig()?.Id
-              ?? throw new InvalidOperationException(
-                  $"Agent constructor expected an {nameof(AgentConfig)} stashed under '{AgentConfig.DataKey}' in the active data context scope.");
+        _id = _dataContextFactory.Current.GetAgentConfig().Id;
         GC.KeepAlive(currentExecutionContext);
         _sessionQueue = sessionFactory.Get(new SessionId(_id, DefaultChannel));
         _shutdown = new CancellationTokenSource();
@@ -132,7 +130,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         try
         {
             var turns = _agentContext.Turns;
-            var systemPromptFile = _dataContextFactory.Current?.TryGetAgentConfig()?.SystemPrompt;
+            var systemPromptFile = _dataContextFactory.Current.GetAgentConfig().SystemPrompt;
             var data = _dataContextFactory.Current?.Snapshot() ?? [];
             var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken)
                 ;
@@ -281,7 +279,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 outerCancellationToken);
         }
 
-        var systemPromptFile = _dataContextFactory.Current?.TryGetAgentConfig()?.SystemPrompt;
+        var systemPromptFile = _dataContextFactory.Current.GetAgentConfig().SystemPrompt;
         var data = _dataContextFactory.Current?.Snapshot() ?? [];
         var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());

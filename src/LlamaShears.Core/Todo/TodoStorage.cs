@@ -19,18 +19,15 @@ internal sealed partial class TodoStorage : ITodoStorage
     private static partial Regex ItemPattern();
 
     private readonly IDataContextFactory _dataContextFactory;
-    private readonly IAgentConfigProvider _configs;
     private readonly IFileParserCache<TodoStorage> _cache;
     private readonly ILogger<TodoStorage> _logger;
 
     public TodoStorage(
         IDataContextFactory dataContextFactory,
-        IAgentConfigProvider configs,
         IFileParserCache<TodoStorage> cache,
         ILogger<TodoStorage> logger)
     {
         _dataContextFactory = dataContextFactory;
-        _configs = configs;
         _cache = cache;
         _logger = logger;
     }
@@ -209,16 +206,13 @@ internal sealed partial class TodoStorage : ITodoStorage
         return new TodoCommandResult(renumbered, TodoResultState.Success);
     }
 
-    private async ValueTask<string> GetPathAsync(CancellationToken cancellationToken)
+    private ValueTask<string> GetPathAsync(CancellationToken cancellationToken)
     {
-        var config = _dataContextFactory.Current?.TryGetAgentConfig();
-        var agentId = config?.Id
-            ?? throw new InvalidOperationException("TodoStorage requires an agent scope on the current call chain.");
-        var resolved = config ?? await _configs.GetConfigAsync(agentId, cancellationToken);
-        var root = resolved is null || string.IsNullOrEmpty(resolved.WorkspacePath)
+        var config = _dataContextFactory.Current.GetAgentConfig();
+        var root = string.IsNullOrEmpty(config.WorkspacePath)
             ? Environment.CurrentDirectory
-            : resolved.WorkspacePath;
-        return Path.Combine(root, FileName);
+            : config.WorkspacePath;
+        return ValueTask.FromResult(Path.Combine(root, FileName));
     }
 
     private async ValueTask<ParsedList> ParseAsync(string path, CancellationToken cancellationToken)

@@ -21,4 +21,17 @@ public static class AgentConfigExtensions
         scope.TryGetValue<AgentConfig>(AgentConfig.DataKey, out var config);
         return config;
     }
+
+    /// <summary>
+    /// Returns the <see cref="AgentConfig"/> attached to the given scope under
+    /// <see cref="AgentConfig.DataKey"/>. Throws when the scope is
+    /// <see langword="null"/> or has no config stashed; intended for sites
+    /// that legitimately cannot proceed without one.
+    /// </summary>
+    public static AgentConfig GetAgentConfig(this IDataContextScope? scope)
+    {
+        var config = scope.TryGetAgentConfig() ?? throw new InvalidOperationException(
+                $"Tried to get current agent scope from {AgentConfig.DataKey}, but no config was found");
+        return config;
+    }
 }
