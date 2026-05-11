@@ -10,6 +10,8 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 public sealed partial class ReadFileTool
 {
     private const int ByteCap = 8 * 1024;
+    private const int DefaultLineCount = 50;
+    private const int MaxLineCount = 100;
 
     private readonly IAgentWorkspaceLocator _workspace;
     private readonly IPathExpander _pathExpander;
@@ -33,7 +35,7 @@ public sealed partial class ReadFileTool
     public async Task<string> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
-        [Description("Number of lines to return. 0 (default) means read to end of file, subject to the byte cap.")] int lineCount = 0,
+        [Description("Number of lines to return. Defaults to 50, hard-capped at 100; out-of-range values are clamped.")] int lineCount = DefaultLineCount,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -44,10 +46,7 @@ public sealed partial class ReadFileTool
         {
             startLine = 1;
         }
-        if (lineCount < 0)
-        {
-            lineCount = 0;
-        }
+        lineCount = Math.Clamp(lineCount, 1, MaxLineCount);
 
         var workspace = await _workspace.GetAsync(cancellationToken);
         var resolved = Path.GetFullPath(Path.IsPathRooted(path)
