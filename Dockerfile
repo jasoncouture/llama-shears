@@ -30,6 +30,11 @@ RUN dotnet subset restore src/LlamaShears/LlamaShears.csproj \
 FROM ${SDK_IMAGE} AS build
 WORKDIR /src
 ENV HUSKY=0
+# Node + npm are needed by the Api.Web project's BundleJs MSBuild target
+# (esbuild bundles JS sources into wwwroot/dist during dotnet publish).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=prepare-restore-files /output .
 RUN dotnet restore src/LlamaShears/LlamaShears.csproj
 COPY . .
