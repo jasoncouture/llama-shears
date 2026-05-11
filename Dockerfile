@@ -43,12 +43,19 @@ RUN dotnet publish src/LlamaShears/LlamaShears.csproj \
     --no-restore \
     -o /app/publish
 
-# Runtime stage. Debian-based aspnet — keeps the project's glibc-built
+# Runtime base. Debian-based aspnet — keeps the project's glibc-built
 # native deps (ONNX Runtime, sqlite-vec) happy without gcompat shims.
-FROM ${ASPNET_IMAGE} AS runtime
+# Layered with the tools an in-container agent shell will reach for
+# (`tree`, `git`), and the apt cache is refreshed last so the agent
+# doesn't have to spend a turn running `apt-get update` before it can
+# install anything else.
+FROM ${ASPNET_IMAGE} AS runtime-base
 WORKDIR /app
 
-COPY --from=build /app/publish ./
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tree git \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get update
 
 # All persistent state lives under Paths:DataRoot. /data is mounted by
 # compose; nothing should land outside it.
@@ -69,5 +76,12 @@ EXPOSE 8080
 USER root
 
 VOLUME ["/data"]
+
+# Final runtime layer — drops the publish output on top of the prepared
+# base. Splitting the published bits into their own stage keeps the
+# base layer cacheable across code-only changes.
+FROM runtime-base AS runtime
+
+COPY --from=build /app/publish ./
 
 ENTRYPOINT ["dotnet", "LlamaShears.dll"]
