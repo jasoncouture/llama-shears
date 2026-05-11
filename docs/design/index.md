@@ -27,3 +27,4 @@ If you're orienting from scratch:
 - [Eventing](eventing.md)
 - [Paths and data layout](paths.md)
 - [Plugins](plugins.md) — SDK and chassis for loading external plugins into the host
+- [Typed data keys](data-keys.md) — design intent; not yet implemented
