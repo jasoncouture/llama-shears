@@ -76,7 +76,9 @@ Today the rebuild keeps the trailing user turn and drops every assistant/tool tu
 
 Planned rule: **keep the last user turn and every assistant + tool turn that followed it, unless doing so would consume more than 25% of the max allowed tokens**, in which case fall back to the current "keep just the trailing user" behavior. The 25% bound prevents a pathological tool-heavy tail from defeating compaction entirely — if the suffix is already a quarter of the window, the summary's working budget is too small to be useful, so we drop the tail and rely on the summary.
 
-Estimation uses the same accounting as the auto-compaction trigger: the most recent reported token count for each turn, falling back to a length-based estimate for turns that don't carry one. The math runs against `floor(window * 0.25)`; the floor matters because token estimates are coarse and we'd rather flip to the old behavior a turn early than overflow the window after the summary is back.
+Estimation **skips** the `ModelTokenInformationContextEntry` ledger entries entirely and rebuilds a heuristic estimate from the surviving inputs: the rendered system prompt, the prompt-context block, the message turns themselves, and the tool catalog text. The estimate is only used to gate the "keep the trailing cluster?" decision; the *next* `token_count` event the model emits will correct any drift downstream. Treat the heuristic as a coarse spend predictor, not a budget tracker.
+
+The math runs against `floor(window * 0.25)`. The floor matters because the heuristic is intentionally cheap (length-based, no real tokenizer round-trip) and we'd rather flip back to the trailing-user-only behavior a turn early than overflow the window after the summary lands.
 
 ## Failure modes
 
