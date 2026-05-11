@@ -168,7 +168,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             {
                 await StartAsync(name, config, cancellationToken);
             }
-            else if (slot.Config != config)
+            else if (!string.Equals(slot.Config.Hash, config.Hash, StringComparison.OrdinalIgnoreCase))
             {
                 await ReloadAsync(name, config, cancellationToken);
             }
