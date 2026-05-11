@@ -20,6 +20,7 @@ public sealed partial class ContextCompactor : IContextCompactor
 
     private const int DefaultPredictDivisor = 6;
     private const int SummaryDivisor = 3;
+    private const int MaxToolCallingTurns = 5;
 
     private const string CompactionTemplateFileName = "COMPACTION.md";
     private const string MemoryToolSource = "llamashears";
@@ -168,6 +169,9 @@ public sealed partial class ContextCompactor : IContextCompactor
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private partial void LogContextCompacted(string agentId);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' compaction reached the tool-calling turn cap ({Limit}); stripping tools and forcing a text-only summary turn.")]
+    private partial void LogCompactionToolLimitReached(string agentId, int limit);
+
     private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
     {
         var servers = _serverRegistry.Resolve(whitelist: [MemoryToolSource]);
@@ -250,6 +254,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
         var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
         var correlationId = Guid.CreateVersion7();
+        var toolCallingTurns = 0;
 
         while (true)
         {
@@ -270,6 +275,7 @@ public sealed partial class ContextCompactor : IContextCompactor
 
             if (!outcome.ToolCalls.IsDefaultOrEmpty)
             {
+                toolCallingTurns++;
                 var assistantTurn = new ModelTurn(ModelRole.Assistant, outcome.Content, prompt.Turns[^1].Timestamp)
                 {
                     ToolCalls = outcome.ToolCalls,
@@ -282,6 +288,11 @@ public sealed partial class ContextCompactor : IContextCompactor
                         ToolCall = outcome.ToolCalls[i],
                         IsError = outcome.ToolResults[i].IsError,
                     });
+                }
+                if (toolCallingTurns >= MaxToolCallingTurns)
+                {
+                    LogCompactionToolLimitReached(agentId, MaxToolCallingTurns);
+                    options = options with { Tools = [] };
                 }
                 continue;
             }

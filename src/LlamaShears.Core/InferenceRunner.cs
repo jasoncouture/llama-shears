@@ -14,6 +14,7 @@ namespace LlamaShears.Core;
 
 public sealed partial class InferenceRunner : IInferenceRunner
 {
+    private const int ConsecutiveToolCallLimit = 3;
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IEventPublisher _eventPublisher;
@@ -54,7 +55,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(prompt);
-        var config = _dataContextFactory.Current.GetAgentConfig();
 
         if (prompt.Turns.Count == 0)
         {
@@ -106,7 +106,14 @@ public sealed partial class InferenceRunner : IInferenceRunner
                                 toolFragment.Call.CallId);
                         await PublishModelFragment(ModelRole.Tool, agentToolCallFragment, cancellationToken);
                         var predecessor = dispatchTasks.Count > 0 ? dispatchTasks[^1] : Task.CompletedTask;
-                        dispatchTasks.Add(EnqueueDispatchAsync(predecessor, toolFragment.Call));
+                        if (toolCalls.Count > ConsecutiveToolCallLimit)
+                        {
+                            dispatchTasks.Add(EnqueueLimitedAsync(predecessor, toolFragment.Call));
+                        }
+                        else
+                        {
+                            dispatchTasks.Add(EnqueueDispatchAsync(predecessor, toolFragment.Call));
+                        }
                         break;
                     case IModelCompletionResponse completion:
                         tokenCount = completion.TokenCount;
@@ -172,6 +179,22 @@ public sealed partial class InferenceRunner : IInferenceRunner
             => predecessor.ContinueWith(async _ =>
             {
                 var result = await _toolDispatcher.DispatchAsync(call, tools, eventId, correlationId, cancellationToken);
+                await PublishCompletedToolCallAsync(result, call, cancellationToken);
+                return result;
+            }, cancellationToken).Unwrap();
+
+        Task<ToolCallResult> EnqueueLimitedAsync(Task predecessor, ToolCall call)
+            => predecessor.ContinueWith(async _ =>
+            {
+                LogToolCallLimitExceeded(call.Source, call.Name, ConsecutiveToolCallLimit);
+                var result = new ToolCallResult(
+                    $"Tool call limit exceeded, concurrent tool calls are limited to {ConsecutiveToolCallLimit}",
+                    IsError: true);
+                await _eventPublisher.PublishAsync(
+                    Event.WellKnown.Agent.ToolResult with { Id = eventId },
+                    new AgentToolResultFragment(call.Source, call.Name, result.Content, result.IsError, call.CallId),
+                    correlationId,
+                    cancellationToken);
                 await PublishCompletedToolCallAsync(result, call, cancellationToken);
                 return result;
             }, cancellationToken).Unwrap();
@@ -283,6 +306,9 @@ public sealed partial class InferenceRunner : IInferenceRunner
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tool call received: '{Source}.{Name}' (callId={CallId}) args={Arguments}")]
     private partial void LogToolCall(string source, string name, string? callId, string arguments);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Tool call '{Source}.{Name}' refused: limit of {Limit} per turn exceeded.")]
+    private partial void LogToolCallLimitExceeded(string source, string name, int limit);
 
     private ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
     {
