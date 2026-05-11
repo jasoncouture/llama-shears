@@ -62,6 +62,16 @@ home before they drift. Group by area; trim freely.
   uncooperative converters) fall back to `value?.ToString() ?? "null"`
   so the page never blanks on one bad entry. Live counterpart to the
   generated [data-keys reference](../docs/design/data-keys.md).
+- [ ] **MCP editor.** UI for adding/editing/removing MCP server
+  registrations (the entries that drive `IModelContextProtocolServerRegistry`).
+  Same edit affordances as the agent-config editor: JSON view with
+  validation, optimistic-concurrency save.
+- [ ] **Tool explorer.** Per-agent view of the full tool catalog
+  discovered for the agent, plus the live active pool when the
+  on-demand-loading work lands. Read-only: name, source, description,
+  schema, `LastUsedAt`.
+- [ ] **Skill explorer.** Browse the agent's loaded skills/playbooks
+  (paired with the skills support task under Plugins & extensibility).
 - [ ] **View archived sessions.** Browse compaction-archived context
   (`<Context>/<agent>/<unix-ms>.json`) from the UI as read-only history
   alongside the live conversation.
