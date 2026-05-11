@@ -28,3 +28,4 @@ If you're orienting from scratch:
 - [Paths and data layout](paths.md)
 - [Plugins](plugins.md) — SDK and chassis for loading external plugins into the host
 - [Typed data keys](data-keys.md) — design intent; not yet implemented
+- [On-demand tool loading](tool-loading.md) — design intent; not yet implemented

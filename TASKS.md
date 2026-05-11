@@ -45,6 +45,13 @@ home before they drift. Group by area; trim freely.
 - [ ] **Smarter compaction.** Safely preserve tools (tool-call ↔ tool-result
   pairs, schema-anchored entries) and other invariants the current compactor
   can break.
+- [ ] **On-demand tool loading.** Stop sending the full tool catalog every
+  turn — currently ~10 k tokens of system prompt before the conversation
+  even starts. Replace with three meta-tools (`tool_search`, `tool_load`,
+  `tool_unload`); the model searches a per-agent in-memory RAG index over
+  tool descriptions, loads what it needs, and the active pool is capped at
+  5 slots with LRU-by-last-used eviction. See
+  [tool loading design](docs/design/tool-loading.md).
 
 ## Web UI
 - [ ] **Expose config.** Surface host config in the UI (read/write where
