@@ -3,24 +3,24 @@
 
     /* Dark theme is the default. Native form controls (select, scrollbars,
        etc.) follow `color-scheme`; custom-styled regions read these vars. */
-    --bg: #0f172a;
-    --surface: #1e293b;
-    --surface-hover: #273449;
-    --border: #334155;
-    --border-strong: #475569;
-    --text: #e2e8f0;
-    --text-muted: #94a3b8;
-    --text-subtle: #64748b;
+    --bg: #141414;
+    --surface: #1f1d1d;
+    --surface-hover: #2a2725;
+    --border: #2c2a28;
+    --border-strong: #45413d;
+    --text: #e8e6e3;
+    --text-muted: #a3a09c;
+    --text-subtle: #6f6c68;
     --primary: #3b82f6;
     --primary-hover: #60a5fa;
     --primary-ring: rgba(59, 130, 246, 0.25);
-    --button-disabled-bg: #475569;
-    --code-bg: #273449;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --button-disabled-bg: #45413d;
+    --code-bg: #2a2725;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
 
-    --bubble-bg: #243044;
-    --bubble-border: #334155;
-    --bubble-user-bg: #1e3a5f;
+    --bubble-bg: #1e1c1c;
+    --bubble-border: #2c2a28;
+    --bubble-user-bg: #1c2230;
     --bubble-user-border: #3b82f6;
     --bubble-thought-bg: #3d3322;
     --bubble-thought-border: #78623a;

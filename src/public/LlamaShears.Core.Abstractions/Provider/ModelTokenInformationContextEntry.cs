@@ -6,7 +6,8 @@ namespace LlamaShears.Core.Abstractions.Provider;
 /// TokenCount accessor to surface the latest value without re-counting.
 /// </summary>
 /// <param name="TokenCount">Cumulative token count reported by the model at the time the entry was appended.</param>
-public sealed record ModelTokenInformationContextEntry(int TokenCount) : IContextEntry
+/// <param name="Timestamp">Wall-clock time at which the token count was observed.</param>
+public sealed record ModelTokenInformationContextEntry(int TokenCount, DateTimeOffset Timestamp) : IContextEntry
 {
 
 }

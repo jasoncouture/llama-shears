@@ -69,19 +69,19 @@ public sealed partial class AppendFileTool
                 Directory.CreateDirectory(parent);
             }
             await File.AppendAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken);
-            LogAppend(_logger, workspace.AgentId, resolution.FullPath, byteCount);
+            LogAppend(workspace.AgentId, resolution.FullPath, byteCount);
             return $"Appended {byteCount} bytes to '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogAppendFailed(_logger, workspace.AgentId, resolution.FullPath, ex.Message, ex);
+            LogAppendFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
             return $"Append failed: {ex.Message}";
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' appended {Bytes} bytes to '{Path}'.")]
-    private static partial void LogAppend(ILogger logger, string? agentId, string path, int bytes);
+    private partial void LogAppend(string? agentId, string path, int bytes);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Append failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogAppendFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
+    private partial void LogAppendFailed(string? agentId, string path, string message, Exception ex);
 }

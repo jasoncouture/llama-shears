@@ -8,10 +8,11 @@ using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Tools.ModelContextProtocol;
+using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed class InferenceRunner : IInferenceRunner
+public sealed partial class InferenceRunner : IInferenceRunner
 {
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
@@ -21,6 +22,7 @@ public sealed class InferenceRunner : IInferenceRunner
     private readonly IPromptContextProvider _promptContext;
     private readonly IMemorySearcher _memorySearcher;
     private readonly IDataContextFactory _dataContextFactory;
+    private readonly ILogger<InferenceRunner> _logger;
 
     public InferenceRunner(
         IEventPublisher eventPublisher,
@@ -28,7 +30,8 @@ public sealed class InferenceRunner : IInferenceRunner
         TimeProvider time,
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
-        IDataContextFactory dataContextFactory)
+        IDataContextFactory dataContextFactory,
+        ILogger<InferenceRunner> logger)
     {
         _eventPublisher = eventPublisher;
         _toolDispatcher = toolDispatcher;
@@ -36,6 +39,7 @@ public sealed class InferenceRunner : IInferenceRunner
         _promptContext = promptContext;
         _memorySearcher = memorySearcher;
         _dataContextFactory = dataContextFactory;
+        _logger = logger;
     }
 
     public async Task<InferenceOutcome> RunAsync(
@@ -93,6 +97,7 @@ public sealed class InferenceRunner : IInferenceRunner
                         await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: ChannelId.Value, Final: false), cancellationToken);
                         break;
                     case IModelToolCallFragment toolFragment:
+                        LogToolCall(toolFragment.Call.Source, toolFragment.Call.Name, toolFragment.Call.CallId, toolFragment.Call.ArgumentsJson);
                         toolCalls.Add(toolFragment.Call);
                         var agentToolCallFragment = new AgentToolCallFragment(
                                 toolFragment.Call.Source,
@@ -275,6 +280,9 @@ public sealed class InferenceRunner : IInferenceRunner
     }
 
     private record struct PromptSearchState(bool UserMessageSeen, bool Complete, ImmutableArray<ModelTurn> Turns);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tool call received: '{Source}.{Name}' (callId={CallId}) args={Arguments}")]
+    private partial void LogToolCall(string source, string name, string? callId, string arguments);
 
     private ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
     {

@@ -230,7 +230,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested &&
                                                          !cancellationToken.IsCancellationRequested)
                 {
-                    LogTurnInterrupted(_logger, Id, correlationId);
+                    LogTurnInterrupted(Id, correlationId);
                 }
                 finally
                 {
@@ -309,13 +309,13 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         if (outcome.TokenCount is { } tokens)
         {
-            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), publishToken)
+            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens, _time.GetLocalNow()), publishToken)
                 ;
         }
 
         if (outcome.Interrupted)
         {
-            LogTurnInterrupted(_logger, Id, correlationId);
+            LogTurnInterrupted(Id, correlationId);
             return;
         }
 
@@ -323,7 +323,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         {
             if (outcome.Content.Length == 0)
             {
-                LogEmptyResponse(_logger, Id);
+                LogEmptyResponse(Id);
             }
 
             return;
@@ -347,7 +347,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
-    private static partial void LogEmptyResponse(ILogger logger, string agentId);
+    private partial void LogEmptyResponse(string agentId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' is stopping.")]
     private partial void LogAgentStopping(string agentId);
@@ -359,5 +359,5 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     [LoggerMessage(Level = LogLevel.Information,
         Message =
             "Agent '{AgentId}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
-    private static partial void LogTurnInterrupted(ILogger logger, string agentId, Guid correlationId);
+    private partial void LogTurnInterrupted(string agentId, Guid correlationId);
 }

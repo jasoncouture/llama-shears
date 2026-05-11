@@ -39,19 +39,19 @@ public sealed partial class StoreMemoryTool
         try
         {
             var memoryRef = await _store.StoreAsync(workspace.AgentId, content, cancellationToken);
-            LogStored(_logger, workspace.AgentId, memoryRef.RelativePath);
+            LogStored(workspace.AgentId, memoryRef.RelativePath);
             return $"Stored '{memoryRef.RelativePath}'.";
         }
         catch (InvalidOperationException ex)
         {
-            LogStoreFailed(_logger, workspace.AgentId, ex.Message, ex);
+            LogStoreFailed(workspace.AgentId, ex.Message, ex);
             return $"Refused: {ex.Message}";
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' stored memory '{Path}'.")]
-    private static partial void LogStored(ILogger logger, string agentId, string path);
+    private partial void LogStored(string agentId, string path);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "store_memory failed for agent '{AgentId}': {Message}")]
-    private static partial void LogStoreFailed(ILogger logger, string agentId, string message, Exception ex);
+    private partial void LogStoreFailed(string agentId, string message, Exception ex);
 }

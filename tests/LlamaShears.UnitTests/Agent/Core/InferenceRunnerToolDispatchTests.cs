@@ -7,6 +7,7 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -50,7 +51,8 @@ public sealed class InferenceRunnerToolDispatchTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")));
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")),
+            NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
             eventId: "alpha",
             model: model,
@@ -89,7 +91,8 @@ public sealed class InferenceRunnerToolDispatchTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")));
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")),
+            NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
             eventId: "alpha",
             model: model,

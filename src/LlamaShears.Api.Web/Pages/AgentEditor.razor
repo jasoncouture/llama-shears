@@ -1,0 +1,260 @@
+@page "/agents/{AgentId}/edit"
+@implements IAsyncDisposable
+@using System.Text.Json
+@using LlamaShears.Core.Abstractions.Agent
+@inject IAgentConfigProvider Configs
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<PageTitle>@($"Edit {AgentId} — LlamaShears")</PageTitle>
+
+<div class="agent-editor">
+    <header class="agent-editor-header">
+        <h2>@AgentId</h2>
+        <div class="agent-editor-actions">
+            <a class="agent-editor-link" href="/chat/@Uri.EscapeDataString(AgentId)">Back to chat</a>
+            <button type="button"
+                    class="agent-editor-save"
+                    disabled="@(!CanSave)"
+                    @onclick="SaveAsync">
+                Save
+            </button>
+        </div>
+    </header>
+
+    @if (_loadState == LoadState.Loading)
+    {
+        <p class="agent-editor-status">Loading…</p>
+    }
+    else if (_loadState == LoadState.NotFound)
+    {
+        <p class="agent-editor-status agent-editor-error">No config file exists for agent <code>@AgentId</code>.</p>
+    }
+    else
+    {
+        @if (_conflict is not null)
+        {
+            <div class="agent-editor-banner agent-editor-banner-conflict">
+                <strong>File changed on disk.</strong>
+                <span>Another writer updated <code>@(AgentId).json</code> while you were editing. Saving is blocked until you reload — your draft is preserved in this browser; copy it elsewhere first if you want to keep it.</span>
+                <button type="button" class="agent-editor-banner-action" @onclick="ReloadAsync">Reload</button>
+            </div>
+        }
+        else if (_serverError is not null)
+        {
+            <div class="agent-editor-banner agent-editor-banner-error">
+                <strong>Save rejected.</strong>
+                <span>@_serverError</span>
+            </div>
+        }
+        else if (_justSaved)
+        {
+            <div class="agent-editor-banner agent-editor-banner-ok">
+                <strong>Saved.</strong>
+            </div>
+        }
+
+        @if (_parseError is not null)
+        {
+            <p class="agent-editor-status agent-editor-error">JSON: @_parseError</p>
+        }
+
+        <div class="agent-editor-mount" @ref="_mount"></div>
+
+        <footer class="agent-editor-footer">
+            <span class="agent-editor-hash" title="On-disk hash at load">@ShortHash</span>
+        </footer>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string AgentId { get; set; } = default!;
+
+    private enum LoadState { Loading, Ok, NotFound }
+
+    private LoadState _loadState = LoadState.Loading;
+    private AgentConfigFile? _file;
+    private string _draft = string.Empty;
+    private string? _parseError;
+    private string? _serverError;
+    private SaveAgentConfigResult.Conflict? _conflict;
+    private bool _justSaved;
+    private bool _saving;
+    private bool _editorMounted;
+    private ElementReference _mount;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<AgentEditor>? _selfRef;
+
+    private bool CanSave =>
+        _loadState == LoadState.Ok
+        && !_saving
+        && _conflict is null
+        && _parseError is null
+        && _file is not null;
+
+    private string ShortHash => _file is null ? string.Empty : $"hash {_file.Hash[..12].ToLowerInvariant()}…";
+
+    private string DraftKey => $"llamashears:agent-config-draft:{AgentId}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loadState != LoadState.Ok || _file is null || _editorMounted)
+        {
+            return;
+        }
+        _editorMounted = true;
+
+        var initial = await ResolveInitialDraftAsync(_file);
+        _draft = initial;
+        RecomputeParseError();
+
+        _module ??= await Js.InvokeAsync<IJSObjectReference>(
+            "import",
+            "/" + Assets["_content/LlamaShears.Api.Web/dist/agent-editor.js"]);
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await _module.InvokeVoidAsync("init", _mount, initial, _selfRef);
+
+        StateHasChanged();
+    }
+
+    private async Task<string> ResolveInitialDraftAsync(AgentConfigFile file)
+    {
+        var stored = await Js.InvokeAsync<string?>("localStorage.getItem", DraftKey);
+        if (stored is null)
+        {
+            return file.Content;
+        }
+        StoredDraft? parsed;
+        try
+        {
+            parsed = JsonSerializer.Deserialize<StoredDraft>(stored);
+        }
+        catch (JsonException)
+        {
+            await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
+            return file.Content;
+        }
+        if (parsed is null || !string.Equals(parsed.Hash, file.Hash, StringComparison.OrdinalIgnoreCase))
+        {
+            await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
+            return file.Content;
+        }
+        return parsed.Content;
+    }
+
+    private async Task LoadAsync()
+    {
+        var file = await Configs.ReadFileAsync(AgentId, CancellationToken.None);
+        if (file is null)
+        {
+            _loadState = LoadState.NotFound;
+            return;
+        }
+        _file = file;
+        _draft = file.Content;
+        _loadState = LoadState.Ok;
+        _parseError = null;
+        _serverError = null;
+        _conflict = null;
+        _justSaved = false;
+    }
+
+    [JSInvokable]
+    public async Task OnContentChanged(string content)
+    {
+        _draft = content ?? string.Empty;
+        _justSaved = false;
+        _serverError = null;
+        RecomputeParseError();
+        if (_file is not null)
+        {
+            var payload = JsonSerializer.Serialize(new StoredDraft(_file.Hash, _draft));
+            await Js.InvokeVoidAsync("localStorage.setItem", DraftKey, payload);
+        }
+        StateHasChanged();
+    }
+
+    private void RecomputeParseError()
+    {
+        if (string.IsNullOrWhiteSpace(_draft))
+        {
+            _parseError = "Document is empty.";
+            return;
+        }
+        try
+        {
+            using var _ = JsonDocument.Parse(_draft);
+            _parseError = null;
+        }
+        catch (JsonException ex)
+        {
+            _parseError = ex.Message;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_file is null || !CanSave)
+        {
+            return;
+        }
+        _saving = true;
+        _serverError = null;
+        try
+        {
+            var result = await Configs.SaveAsync(AgentId, _file.Hash, _draft, CancellationToken.None);
+            switch (result)
+            {
+                case SaveAgentConfigResult.Ok ok:
+                    _file = new AgentConfigFile(_draft, ok.NewHash);
+                    _justSaved = true;
+                    await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
+                    break;
+                case SaveAgentConfigResult.Conflict conflict:
+                    _conflict = conflict;
+                    break;
+                case SaveAgentConfigResult.InvalidJson invalid:
+                    _serverError = invalid.Message;
+                    break;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
+        await LoadAsync();
+        if (_module is not null && _file is not null)
+        {
+            await _module.InvokeVoidAsync("setValue", _mount, _file.Content);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("dispose", _mount);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            await _module.DisposeAsync();
+        }
+        _selfRef?.Dispose();
+    }
+
+    private sealed record StoredDraft(string Hash, string Content);
+}

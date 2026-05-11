@@ -115,18 +115,18 @@ public sealed partial class EagerCompactor : BackgroundService,
             try
             {
                 await agent.RequestCompactionAsync(cancellationToken);
-                LogCompactionTriggered(_logger, agentId);
+                LogCompactionTriggered(agentId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                LogCompactionFailed(_logger, agentId, ex);
+                LogCompactionFailed(agentId, ex);
             }
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Eager compaction triggered for idle agent '{AgentId}'.")]
-    private static partial void LogCompactionTriggered(ILogger logger, string agentId);
+    private partial void LogCompactionTriggered(string agentId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Eager compaction failed for agent '{AgentId}'.")]
-    private static partial void LogCompactionFailed(ILogger logger, string agentId, Exception ex);
+    private partial void LogCompactionFailed(string agentId, Exception ex);
 }

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -20,6 +21,7 @@ public sealed class ChatSession :
     private readonly IEventPublisher _publisher;
     private readonly IAgentDirectory _directory;
     private readonly ISlashCommandRegistry _slashCommands;
+    private readonly IDataContextFactory _dataContextFactory;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
@@ -40,12 +42,14 @@ public sealed class ChatSession :
         IEventBus bus,
         IEventPublisher publisher,
         IAgentDirectory directory,
-        ISlashCommandRegistry slashCommands)
+        ISlashCommandRegistry slashCommands,
+        IDataContextFactory dataContextFactory)
     {
         _bus = bus;
         _publisher = publisher;
         _directory = directory;
         _slashCommands = slashCommands;
+        _dataContextFactory = dataContextFactory;
     }
 
     public string? SelectedAgentId
@@ -495,6 +499,7 @@ public sealed class ChatSession :
         var args = parts.Length == 1
             ? []
             : ImmutableArray.Create(parts, 1, parts.Length - 1);
+        _dataContextFactory.TryJoinContextScope(agentId, out _);
         var result = await command.ExecuteAsync(new SlashCommandContext(agentId, args), cancellationToken);
         if (result.ContextChanged)
         {

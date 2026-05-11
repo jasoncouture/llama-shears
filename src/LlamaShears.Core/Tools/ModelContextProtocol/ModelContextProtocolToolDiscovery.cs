@@ -76,7 +76,7 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            LogServerDiscoveryFailed(_logger, serverName, serverUri, ex.Message, ex);
+            LogServerDiscoveryFailed(serverName, serverUri, ex.Message, ex);
             return null;
         }
     }
@@ -137,5 +137,5 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "MCP discovery failed for server '{ServerName}' at {ServerUri}: {Message}")]
-    private static partial void LogServerDiscoveryFailed(ILogger logger, string serverName, Uri serverUri, string message, Exception ex);
+    private partial void LogServerDiscoveryFailed(string serverName, Uri serverUri, string message, Exception ex);
 }

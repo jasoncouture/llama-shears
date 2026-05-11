@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
@@ -62,6 +64,118 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
         return raw is null ? null : Stamp(raw, agentId);
     }
 
+    public async ValueTask<AgentConfigFile?> ReadFileAsync(string agentId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+
+        var path = Path.Combine(_paths.GetPath(PathKind.Agents), agentId + ".json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var bytes = await File.ReadAllBytesAsync(path, cancellationToken);
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        return new AgentConfigFile(Encoding.UTF8.GetString(bytes), hash);
+    }
+
+    public async ValueTask<SaveAgentConfigResult> SaveAsync(
+        string agentId,
+        string expectedHash,
+        string content,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedHash);
+        ArgumentNullException.ThrowIfNull(content);
+
+        var path = Path.Combine(_paths.GetPath(PathKind.Agents), agentId + ".json");
+
+        var currentHash = string.Empty;
+        if (File.Exists(path))
+        {
+            var existing = await File.ReadAllBytesAsync(path, cancellationToken);
+            currentHash = Convert.ToHexString(SHA256.HashData(existing));
+        }
+        if (!string.Equals(expectedHash, currentHash, StringComparison.OrdinalIgnoreCase))
+        {
+            return new SaveAgentConfigResult.Conflict(currentHash);
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(content);
+        AgentConfig? parsed;
+        try
+        {
+            parsed = JsonSerializer.Deserialize<AgentConfig>(bytes, _jsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            return new SaveAgentConfigResult.InvalidJson(ex.Message);
+        }
+        if (parsed is null)
+        {
+            return new SaveAgentConfigResult.InvalidJson("Document was empty.");
+        }
+
+        if (File.Exists(path))
+        {
+            var unixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var backupPath = $"{path}.{unixSeconds}.bak";
+            File.Copy(path, backupPath, overwrite: false);
+            PruneOldBackups(path);
+        }
+
+        var tempPath = path + ".tmp";
+        await File.WriteAllBytesAsync(tempPath, bytes, cancellationToken);
+        File.Move(tempPath, path, overwrite: true);
+
+        var newHash = Convert.ToHexString(SHA256.HashData(bytes));
+        return new SaveAgentConfigResult.Ok(newHash);
+    }
+
+    private const int BackupRetentionCount = 10;
+
+    private static void PruneOldBackups(string configPath)
+    {
+        var directory = Path.GetDirectoryName(configPath);
+        if (string.IsNullOrEmpty(directory))
+        {
+            return;
+        }
+        var prefix = Path.GetFileName(configPath) + ".";
+        var stale = Directory.EnumerateFiles(directory, prefix + "*.bak")
+            .Select(static p => (Path: p, Timestamp: ParseBackupTimestamp(p)))
+            .OrderByDescending(static entry => entry.Timestamp)
+            .Skip(BackupRetentionCount)
+            .Select(static entry => entry.Path);
+        foreach (var path in stale)
+        {
+            try
+            {
+                File.Delete(path);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    private static long ParseBackupTimestamp(string fullPath)
+    {
+        var fileName = Path.GetFileName(fullPath);
+        if (!fileName.EndsWith(".bak", StringComparison.Ordinal))
+        {
+            return 0;
+        }
+        var withoutBak = fileName.AsSpan(0, fileName.Length - ".bak".Length);
+        var lastDot = withoutBak.LastIndexOf('.');
+        if (lastDot < 0)
+        {
+            return 0;
+        }
+        return long.TryParse(withoutBak[(lastDot + 1)..], out var ts) ? ts : 0;
+    }
+
     private AgentConfig Stamp(AgentConfig raw, string agentId) =>
         raw with
         {
@@ -69,31 +183,46 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
             WorkspacePath = ResolveWorkspacePath(raw.WorkspacePath, agentId),
         };
 
-    private static ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
+    private static async ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
     {
         if (stream is null)
         {
-            return ValueTask.FromResult<AgentConfig?>(null);
+            return null;
         }
+
+        byte[] bytes;
+        try
+        {
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            bytes = buffer.ToArray();
+        }
+        catch (IOException ex)
+        {
+            LogParseFailure(state.Logger, state.AgentId, state.Path, ex.Message, ex);
+            return null;
+        }
+
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
 
         AgentConfig? config;
         try
         {
-            config = JsonSerializer.Deserialize<AgentConfig>(stream, _jsonOptions);
+            config = JsonSerializer.Deserialize<AgentConfig>(bytes, _jsonOptions);
         }
-        catch (Exception ex) when (ex is IOException or JsonException)
+        catch (JsonException ex)
         {
             LogParseFailure(state.Logger, state.AgentId, state.Path, ex.Message, ex);
-            return ValueTask.FromResult<AgentConfig?>(null);
+            return null;
         }
 
         if (config is null)
         {
             LogEmptyConfig(state.Logger, state.AgentId, state.Path);
-            return ValueTask.FromResult<AgentConfig?>(null);
+            return null;
         }
 
-        return ValueTask.FromResult<AgentConfig?>(config);
+        return config with { Hash = hash };
     }
 
     private string ResolveWorkspacePath(string? configured, string agentId)

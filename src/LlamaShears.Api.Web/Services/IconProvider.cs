@@ -34,7 +34,7 @@ public sealed partial class IconProvider : IIconProvider
         var fileInfo = _files.GetFileInfo(path);
         if (!fileInfo.Exists)
         {
-            LogIconMissing(_logger, name, path);
+            LogIconMissing(name, path);
             return string.Empty;
         }
 
@@ -45,7 +45,7 @@ public sealed partial class IconProvider : IIconProvider
         var inner = ExtractInner(content);
         if (inner.Length == 0)
         {
-            LogIconMalformed(_logger, name, path);
+            LogIconMalformed(name, path);
         }
         return inner;
     }
@@ -68,8 +68,8 @@ public sealed partial class IconProvider : IIconProvider
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Icon '{Name}' not found at {Path}.")]
-    private static partial void LogIconMissing(ILogger logger, string name, string path);
+    private partial void LogIconMissing(string name, string path);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Icon '{Name}' at {Path} did not parse — no inner svg body.")]
-    private static partial void LogIconMalformed(ILogger logger, string name, string path);
+    private partial void LogIconMalformed(string name, string path);
 }

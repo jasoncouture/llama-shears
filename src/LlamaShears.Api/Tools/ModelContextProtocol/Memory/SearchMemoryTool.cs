@@ -49,12 +49,12 @@ public sealed partial class SearchMemoryTool
         try
         {
             var hits = await _searcher.SearchAsync(workspace.AgentId, query, cap, floor, cancellationToken);
-            LogSearched(_logger, workspace.AgentId, query, hits.Count);
+            LogSearched(workspace.AgentId, query, hits.Count);
             return Render(query, hits, floor, cap);
         }
         catch (InvalidOperationException ex)
         {
-            LogSearchFailed(_logger, workspace.AgentId, ex.Message, ex);
+            LogSearchFailed(workspace.AgentId, ex.Message, ex);
             return $"Refused: {ex.Message}";
         }
     }
@@ -83,8 +83,8 @@ public sealed partial class SearchMemoryTool
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' searched memory: '{Query}' → {Hits} hits.")]
-    private static partial void LogSearched(ILogger logger, string agentId, string query, int hits);
+    private partial void LogSearched(string agentId, string query, int hits);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "search_memory failed for agent '{AgentId}': {Message}")]
-    private static partial void LogSearchFailed(ILogger logger, string agentId, string message, Exception ex);
+    private partial void LogSearchFailed(string agentId, string message, Exception ex);
 }

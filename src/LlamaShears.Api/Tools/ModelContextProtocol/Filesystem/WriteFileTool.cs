@@ -75,19 +75,19 @@ public sealed partial class WriteFileTool
                 Directory.CreateDirectory(parent);
             }
             await File.WriteAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken);
-            LogWrite(_logger, workspace.AgentId, resolution.FullPath, byteCount, overwrite);
+            LogWrite(workspace.AgentId, resolution.FullPath, byteCount, overwrite);
             return $"Wrote {byteCount} bytes to '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogWriteFailed(_logger, workspace.AgentId, resolution.FullPath, ex.Message, ex);
+            LogWriteFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
             return $"Write failed: {ex.Message}";
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' wrote {Bytes} bytes to '{Path}' (overwrite={Overwrite}).")]
-    private static partial void LogWrite(ILogger logger, string? agentId, string path, int bytes, bool overwrite);
+    private partial void LogWrite(string? agentId, string path, int bytes, bool overwrite);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Write failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogWriteFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
+    private partial void LogWriteFailed(string? agentId, string path, string message, Exception ex);
 }

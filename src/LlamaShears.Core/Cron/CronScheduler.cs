@@ -47,7 +47,7 @@ public sealed partial class CronScheduler : ICronScheduler
         };
 
         await _store.UpsertAsync(job, cancellationToken);
-        LogScheduled(_logger, agentId, job.Id, name, cronExpression);
+        LogScheduled(agentId, job.Id, name, cronExpression);
         return job;
     }
 
@@ -72,7 +72,7 @@ public sealed partial class CronScheduler : ICronScheduler
         var removed = await _store.RemoveAsync(id, cancellationToken);
         if (removed)
         {
-            LogCancelled(_logger, agentId, id, existing.Name);
+            LogCancelled(agentId, id, existing.Name);
         }
         return removed;
     }
@@ -126,7 +126,7 @@ public sealed partial class CronScheduler : ICronScheduler
         };
 
         await _store.UpsertAsync(updated, cancellationToken);
-        LogEdited(_logger, agentId, id, newName);
+        LogEdited(agentId, id, newName);
         return updated;
     }
 
@@ -159,7 +159,7 @@ public sealed partial class CronScheduler : ICronScheduler
             }
             if (!_agents.Contains(job.AgentId))
             {
-                LogSkippedMissingAgent(_logger, job.Id, job.AgentId);
+                LogSkippedMissingAgent(job.Id, job.AgentId);
                 continue;
             }
 
@@ -173,14 +173,14 @@ public sealed partial class CronScheduler : ICronScheduler
             }
             catch (Exception ex)
             {
-                LogFireFailed(_logger, job.Id, job.AgentId, ex);
+                LogFireFailed(job.Id, job.AgentId, ex);
             }
         }
     }
 
     private async Task FireSingleAsync(CronJob job, DateTimeOffset firedAt, bool manual, CancellationToken cancellationToken)
     {
-        LogStubFire(_logger, job.Id, job.AgentId, manual, job.Prompt.Length);
+        LogStubFire(job.Id, job.AgentId, manual, job.Prompt.Length);
 
         var parsed = ParseOrThrow(job.CronExpression);
         var nextFireAt = parsed.GetNextOccurrence(firedAt, TimeZoneInfo.Utc);
@@ -208,20 +208,20 @@ public sealed partial class CronScheduler : ICronScheduler
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' scheduled cron job '{JobId}' '{Name}' (expression '{Expression}').")]
-    private static partial void LogScheduled(ILogger logger, string agentId, Guid jobId, string name, string expression);
+    private partial void LogScheduled(string agentId, Guid jobId, string name, string expression);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' cancelled cron job '{JobId}' '{Name}'.")]
-    private static partial void LogCancelled(ILogger logger, string agentId, Guid jobId, string name);
+    private partial void LogCancelled(string agentId, Guid jobId, string name);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' edited cron job '{JobId}' '{Name}'.")]
-    private static partial void LogEdited(ILogger logger, string agentId, Guid jobId, string name);
+    private partial void LogEdited(string agentId, Guid jobId, string name);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "[cron stub] Job '{JobId}' for agent '{AgentId}' (manual={Manual}) would fire with a prompt of length {PromptLength}.")]
-    private static partial void LogStubFire(ILogger logger, Guid jobId, string agentId, bool manual, int promptLength);
+    private partial void LogStubFire(Guid jobId, string agentId, bool manual, int promptLength);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Cron job '{JobId}' due but agent '{AgentId}' is not currently loaded; skipping.")]
-    private static partial void LogSkippedMissingAgent(ILogger logger, Guid jobId, string agentId);
+    private partial void LogSkippedMissingAgent(Guid jobId, string agentId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron job '{JobId}' for agent '{AgentId}' failed to fire on this tick; remaining jobs continue.")]
-    private static partial void LogFireFailed(ILogger logger, Guid jobId, string agentId, Exception ex);
+    private partial void LogFireFailed(Guid jobId, string agentId, Exception ex);
 }

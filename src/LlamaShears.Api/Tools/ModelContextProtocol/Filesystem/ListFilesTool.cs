@@ -64,12 +64,12 @@ public sealed partial class ListFilesTool
         try
         {
             var rendered = Render(resolved, workspace.Root, displayPath, recursive, cap, _protection, out var entryCount, out var truncated);
-            LogList(_logger, workspace.AgentId, resolved, entryCount, truncated);
+            LogList(workspace.AgentId, resolved, entryCount, truncated);
             return rendered;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogListFailed(_logger, workspace.AgentId, resolved, ex.Message, ex);
+            LogListFailed(workspace.AgentId, resolved, ex.Message, ex);
             return $"List failed: {ex.Message}";
         }
     }
@@ -152,8 +152,8 @@ public sealed partial class ListFilesTool
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' listed {Entries} entries under '{Path}' (truncated={Truncated}).")]
-    private static partial void LogList(ILogger logger, string? agentId, string path, int entries, bool truncated);
+    private partial void LogList(string? agentId, string path, int entries, bool truncated);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "List failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogListFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
+    private partial void LogListFailed(string? agentId, string path, string message, Exception ex);
 }

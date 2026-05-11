@@ -46,6 +46,7 @@
     background: var(--surface);
     color: var(--text);
     cursor: pointer;
+    text-decoration: none;
     transition: background 120ms, color 120ms, border-color 120ms, box-shadow 120ms;
 }
 

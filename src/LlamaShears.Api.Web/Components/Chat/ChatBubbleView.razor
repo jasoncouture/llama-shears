@@ -20,7 +20,7 @@ else if (Bubble.Kind == ChatBubbleKind.ToolResult)
 {
     <article class="bubble bubble-tool-result @(Bubble.IsError ? "bubble-tool-error" : null)">
         <header class="bubble-header">
-            <span class="bubble-kind">tool result</span>
+            <span class="bubble-kind">tool</span>
             <code class="bubble-tool-name">@FormatToolName(Bubble.CompletedCall!.Source, Bubble.CompletedCall!.Name)</code>
             <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
             @if (Bubble.IsError)
@@ -30,13 +30,32 @@ else if (Bubble.Kind == ChatBubbleKind.ToolResult)
         </header>
         @if (HasArguments)
         {
-            <details class="bubble-tool-args" open>
+            <details class="bubble-tool-args">
                 <summary>arguments</summary>
                 <pre class="bubble-tool-args-body">@Bubble.CompletedCall!.ArgumentsJson</pre>
             </details>
         }
         <details class="bubble-tool-body">
             <summary>result</summary>
+            <pre class="bubble-content">@Bubble.Content</pre>
+        </details>
+    </article>
+}
+else if (Bubble.Kind == ChatBubbleKind.Thought)
+{
+    <article class="bubble bubble-thought @(Bubble.IsStreaming ? "bubble-pulse" : null)">
+        <header class="bubble-header">
+            <span class="bubble-kind">@KindLabel</span>
+            <time datetime="@Bubble.At.ToString("O")" title="@FullTimestamp">@Bubble.At.ToLocalTime().ToString("HH:mm:ss")</time>
+            @if (Bubble.IsStreaming)
+            {
+                <span class="bubble-streaming">…</span>
+            }
+        </header>
+        <details class="bubble-thought-collapse">
+            <summary class="bubble-thought-summary">
+                <span class="bubble-thought-title">@ThoughtSummary</span>
+            </summary>
             <pre class="bubble-content">@Bubble.Content</pre>
         </details>
     </article>
@@ -100,6 +119,21 @@ else
         : Bubble.Kind.ToString();
 
     private string FullTimestamp => Bubble.At.ToLocalTime().ToString("F", System.Globalization.CultureInfo.CurrentCulture);
+
+    private string ThoughtSummary
+    {
+        get
+        {
+            var content = Bubble.Content;
+            if (string.IsNullOrEmpty(content))
+            {
+                return string.Empty;
+            }
+            var newlineIndex = content.IndexOf('\n');
+            var firstLine = newlineIndex < 0 ? content : content[..newlineIndex];
+            return firstLine.TrimEnd('\r').Trim();
+        }
+    }
 
     // Only User and Assistant content gets markdown-rendered. Thought
     // bubbles stay raw — they're scratchpad text with mid-token line

@@ -64,23 +64,23 @@ public sealed partial class DeleteFileTool
             if (isDir)
             {
                 Directory.Delete(resolution.FullPath, recursive);
-                LogDelete(_logger, workspace.AgentId, resolution.FullPath, isDirectory: true);
+                LogDelete(workspace.AgentId, resolution.FullPath, isDirectory: true);
                 return $"Deleted directory '{path}'.";
             }
             File.Delete(resolution.FullPath);
-            LogDelete(_logger, workspace.AgentId, resolution.FullPath, isDirectory: false);
+            LogDelete(workspace.AgentId, resolution.FullPath, isDirectory: false);
             return $"Deleted file '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogDeleteFailed(_logger, workspace.AgentId, resolution.FullPath, ex.Message, ex);
+            LogDeleteFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
             return $"Delete failed: {ex.Message}";
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' deleted '{Path}' (directory={IsDirectory}).")]
-    private static partial void LogDelete(ILogger logger, string? agentId, string path, bool isDirectory);
+    private partial void LogDelete(string? agentId, string path, bool isDirectory);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Delete failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogDeleteFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
+    private partial void LogDeleteFailed(string? agentId, string path, string message, Exception ex);
 }

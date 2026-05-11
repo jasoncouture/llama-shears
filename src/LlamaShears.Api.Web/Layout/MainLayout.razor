@@ -10,10 +10,16 @@
         <h1 class="app-title">LlamaShears</h1>
     </header>
 
-    <nav class="nav @(_navOpen ? "nav-open" : null)">
-        <NavLink class="nav-item" ActiveClass="nav-item-active" href="/chat" @onclick="CloseNav">
-            <span class="nav-item-text">Chat</span>
-        </NavLink>
+    <nav class="nav @(_navOpen ? "nav-open" : null)" aria-label="Primary">
+        <div class="nav-section">
+            <h2 class="nav-section-label">Navigation</h2>
+            <NavLink class="nav-item" ActiveClass="nav-item-active" href="/chat" @onclick="CloseNav">
+                <span class="nav-item-text">Chat</span>
+            </NavLink>
+            <NavLink class="nav-item" ActiveClass="nav-item-active" href="/agents" @onclick="CloseNav">
+                <span class="nav-item-text">Agents</span>
+            </NavLink>
+        </div>
     </nav>
 
     @if (_navOpen)

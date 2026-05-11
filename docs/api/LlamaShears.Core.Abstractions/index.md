@@ -34,6 +34,7 @@ The package is organised into namespaces by concern; each namespace was previous
 
 - [AgentConfig](LlamaShears/Core/Abstractions/Agent/AgentConfig.md)
 - [AgentConfigExtensions](LlamaShears/Core/Abstractions/Agent/AgentConfigExtensions.md)
+- [AgentConfigFile](LlamaShears/Core/Abstractions/Agent/AgentConfigFile.md)
 - [AgentInfo](LlamaShears/Core/Abstractions/Agent/AgentInfo.md)
 - [AgentMemoryConfig](LlamaShears/Core/Abstractions/Agent/AgentMemoryConfig.md)
 - [AgentToolConfig](LlamaShears/Core/Abstractions/Agent/AgentToolConfig.md)
@@ -41,6 +42,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentConfigProvider](LlamaShears/Core/Abstractions/Agent/IAgentConfigProvider.md)
 - [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
+- [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
 
 ## LlamaShears.Core.Abstractions.Agent.Persistence
@@ -48,6 +50,12 @@ The package is organised into namespaces by concern; each namespace was previous
 - [ArchiveId](LlamaShears/Core/Abstractions/Agent/Persistence/ArchiveId.md)
 - [IAgentContext](LlamaShears/Core/Abstractions/Agent/Persistence/IAgentContext.md)
 - [IContextStore](LlamaShears/Core/Abstractions/Agent/Persistence/IContextStore.md)
+
+## LlamaShears.Core.Abstractions.Agent.SaveAgentConfigResult
+
+- [Conflict](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult/Conflict.md)
+- [InvalidJson](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult/InvalidJson.md)
+- [Ok](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult/Ok.md)
 
 ## LlamaShears.Core.Abstractions.Agent.Sessions
 

@@ -30,7 +30,7 @@ public sealed partial class HostRestarter : IHostRestarter
             "true",
             StringComparison.OrdinalIgnoreCase);
 
-        LogRestartRequested(_logger, inContainer);
+        LogRestartRequested(inContainer);
 
         _lifetime.ApplicationStopped.Register(() => FinalizeRestart(inContainer));
         _lifetime.StopApplication();
@@ -40,7 +40,7 @@ public sealed partial class HostRestarter : IHostRestarter
     {
         if (inContainer)
         {
-            LogContainerExit(_logger);
+            LogContainerExit();
             Environment.Exit(1);
             return;
         }
@@ -48,7 +48,7 @@ public sealed partial class HostRestarter : IHostRestarter
         var entrypoint = Environment.ProcessPath;
         if (string.IsNullOrEmpty(entrypoint))
         {
-            LogNoEntrypoint(_logger);
+            LogNoEntrypoint();
             Environment.Exit(1);
             return;
         }
@@ -70,15 +70,15 @@ public sealed partial class HostRestarter : IHostRestarter
             using var spawned = Process.Start(psi);
             if (spawned is null)
             {
-                LogReExecReturnedNull(_logger, entrypoint);
+                LogReExecReturnedNull(entrypoint);
                 Environment.Exit(1);
                 return;
             }
-            LogReExecuted(_logger, entrypoint, spawned.Id);
+            LogReExecuted(entrypoint, spawned.Id);
         }
         catch (Exception ex)
         {
-            LogReExecFailed(_logger, ex);
+            LogReExecFailed(ex);
             Environment.Exit(1);
             return;
         }
@@ -87,20 +87,20 @@ public sealed partial class HostRestarter : IHostRestarter
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Host restart requested (in-container={InContainer}); stopping application.")]
-    private static partial void LogRestartRequested(ILogger logger, bool inContainer);
+    private partial void LogRestartRequested(bool inContainer);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Host restart: in container, exiting non-zero so the supervisor restarts us.")]
-    private static partial void LogContainerExit(ILogger logger);
+    private partial void LogContainerExit();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Host restart: Environment.ProcessPath is empty; cannot re-execute entrypoint, exiting non-zero instead.")]
-    private static partial void LogNoEntrypoint(ILogger logger);
+    private partial void LogNoEntrypoint();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Host restart: re-executed '{Entrypoint}' as pid {Pid}; exiting current process.")]
-    private static partial void LogReExecuted(ILogger logger, string entrypoint, int pid);
+    private partial void LogReExecuted(string entrypoint, int pid);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Host restart: Process.Start returned null for '{Entrypoint}'; exiting non-zero so the host doesn't disappear silently.")]
-    private static partial void LogReExecReturnedNull(ILogger logger, string entrypoint);
+    private partial void LogReExecReturnedNull(string entrypoint);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Host restart: failed to re-execute the entrypoint.")]
-    private static partial void LogReExecFailed(ILogger logger, Exception ex);
+    private partial void LogReExecFailed(Exception ex);
 }

@@ -76,7 +76,7 @@ public sealed partial class ReadFileTool
         try
         {
             var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, cap, cancellationToken);
-            LogRead(_logger, workspace.AgentId, resolved, content.Length, truncated);
+            LogRead(workspace.AgentId, resolved, content.Length, truncated);
             if (truncated)
             {
                 content = $"{content}\n[... truncated; exceeded {cap}-byte cap. Re-call with a tighter line range or a higher byte_cap (max {MaxByteCap}) to see more.]";
@@ -85,7 +85,7 @@ public sealed partial class ReadFileTool
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogReadFailed(_logger, workspace.AgentId, resolved, ex.Message, ex);
+            LogReadFailed(workspace.AgentId, resolved, ex.Message, ex);
             return $"Read failed: {ex.Message}";
         }
     }
@@ -142,8 +142,8 @@ public sealed partial class ReadFileTool
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' read {Bytes} bytes from '{Path}' (truncated={Truncated}).")]
-    private static partial void LogRead(ILogger logger, string? agentId, string path, int bytes, bool truncated);
+    private partial void LogRead(string? agentId, string path, int bytes, bool truncated);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Read failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogReadFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
+    private partial void LogReadFailed(string? agentId, string path, string message, Exception ex);
 }

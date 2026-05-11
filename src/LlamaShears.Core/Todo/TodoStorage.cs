@@ -39,7 +39,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         if (parsed.Corrupt)
         {
             await WriteEmptyAsync(path, cancellationToken);
-            LogRecovered(_logger, path);
+            LogRecovered(path);
             return new TodoCommandResult([], TodoResultState.Corrupt);
         }
 
@@ -84,7 +84,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         {
             var recovered = BuildBatch(items, done, startIndex: 1);
             await RewriteAsync(path, recovered, cancellationToken);
-            LogRecovered(_logger, path);
+            LogRecovered(path);
             return new TodoCommandResult(recovered, TodoResultState.Corrupt);
         }
 
@@ -116,7 +116,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         if (parsed.Corrupt)
         {
             await WriteEmptyAsync(path, cancellationToken);
-            LogRecovered(_logger, path);
+            LogRecovered(path);
             return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to update.");
         }
 
@@ -160,7 +160,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         if (parsed.Corrupt)
         {
             await WriteEmptyAsync(path, cancellationToken);
-            LogRecovered(_logger, path);
+            LogRecovered(path);
             PushToScope([]);
             return new TodoCommandResult([], TodoResultState.Corrupt, "No todo items to delete.");
         }
@@ -189,7 +189,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         if (parsed.Corrupt)
         {
             await WriteEmptyAsync(path, cancellationToken);
-            LogRecovered(_logger, path);
+            LogRecovered(path);
             PushToScope([]);
             return new TodoCommandResult([], TodoResultState.Corrupt);
         }
@@ -381,7 +381,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         => RewriteAsync(path, [], cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "TODO list at '{Path}' was corrupt; reset to empty.")]
-    private static partial void LogRecovered(ILogger logger, string path);
+    private partial void LogRecovered(string path);
 
     private readonly record struct ParseState(string Path);
     private sealed record ParsedList(ImmutableArray<TodoItem> Items, bool Corrupt);

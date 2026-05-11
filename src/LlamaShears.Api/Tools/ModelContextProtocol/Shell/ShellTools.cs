@@ -57,7 +57,7 @@ public sealed partial class ShellTools
             : Path.IsPathRooted(workingDirectory)
                 ? workingDirectory
                 : Path.GetFullPath(Path.Combine(workspace.Root, workingDirectory));
-        LogStarting(_logger, workspace.AgentId, shellPath, command);
+        LogStarting(workspace.AgentId, shellPath, command);
 
         var startInfo = new ProcessStartInfo
         {
@@ -127,7 +127,7 @@ public sealed partial class ShellTools
                 catch (IOException) { }
             }
 
-            LogFinished(_logger, workspace.AgentId, shellPath, command, exitCode, timedOut, fileLength, truncated);
+            LogFinished(workspace.AgentId, shellPath, command, exitCode, timedOut, fileLength, truncated);
             var header = BuildHeader(exitCode, elapsed, timedOut, truncated, tempPath);
             return $"{header}\n{body}";
         }
@@ -249,8 +249,8 @@ public sealed partial class ShellTools
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' running {Shell}: {Command}")]
-    private static partial void LogStarting(ILogger logger, string? agentId, string shell, string command);
+    private partial void LogStarting(string? agentId, string shell, string command);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' {Shell} finished (exit={ExitCode}, timedOut={TimedOut}, bytes={Bytes}, truncated={Truncated}): {Command}")]
-    private static partial void LogFinished(ILogger logger, string? agentId, string shell, string command, int exitCode, bool timedOut, long bytes, bool truncated);
+    private partial void LogFinished(string? agentId, string shell, string command, int exitCode, bool timedOut, long bytes, bool truncated);
 }

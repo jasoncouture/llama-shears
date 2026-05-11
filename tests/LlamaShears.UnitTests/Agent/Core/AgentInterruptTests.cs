@@ -95,7 +95,8 @@ public sealed class AgentInterruptTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory));
+            dataContextFactory,
+            NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
             model: model,

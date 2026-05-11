@@ -171,7 +171,8 @@ public sealed class AgentLoopTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             resolvedMemorySearcher,
-            dataContextFactory));
+            dataContextFactory,
+            NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
             model: model,
