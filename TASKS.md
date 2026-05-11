@@ -48,6 +48,17 @@ home before they drift. Group by area; trim freely.
 - [ ] **Transient controllable contexts.** Agent can carve scratch contexts
   to hold a task's working state without bloating its main context window or
   forcing compaction.
+- [ ] **Ephemeral session support.** Sibling concept to a loaded agent
+  but lifecycle is caller-owned, not config-file-driven: take the base
+  `AgentConfig`, apply an in-memory overlay (alternate system prompt,
+  tool allowlist, model knobs, etc.), and run inferences against it.
+  Never written to disk. `AgentManager`'s reconcile loop must not see
+  it as a candidate to unload — the owning subsystem manages start/stop.
+  Prerequisite for the cron-tool agent execution and the agent
+  heartbeat (both fire inferences against tweaked configs without
+  contaminating the main agent's persistent context). Port the
+  compactor's current bespoke session-setup onto this primitive once it
+  lands. See [ephemeral sessions design](docs/design/ephemeral-sessions.md).
 - [ ] **Smarter compaction.** Safely preserve tools (tool-call ↔ tool-result
   pairs, schema-anchored entries) and other invariants the current compactor
   can break.

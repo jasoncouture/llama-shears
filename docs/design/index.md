@@ -29,3 +29,4 @@ If you're orienting from scratch:
 - [Plugins](plugins.md) — SDK and chassis for loading external plugins into the host
 - [Typed data keys](data-keys.md) — design intent; not yet implemented
 - [On-demand tool loading](tool-loading.md) — design intent; not yet implemented
+- [Ephemeral sessions](ephemeral-sessions.md) — design intent; compactor will be the canary, prereq for cron + heartbeat
