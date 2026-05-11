@@ -9,7 +9,7 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 [McpServerToolType]
 public sealed partial class ReadFileTool
 {
-    private const int ByteCap = 64 * 1024;
+    private const int ByteCap = 8 * 1024;
 
     private readonly IAgentWorkspaceLocator _workspace;
     private readonly IPathExpander _pathExpander;
@@ -29,7 +29,7 @@ public sealed partial class ReadFileTool
     }
 
     [McpServerTool(Name = "file_read")]
-    [Description("Reads a file from the host filesystem. Returns at most 64 KiB from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
+    [Description("Reads a file from the host filesystem. Returns at most 8 KiB (~4k tokens) from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
     public async Task<string> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
