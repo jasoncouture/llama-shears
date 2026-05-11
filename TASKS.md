@@ -19,6 +19,12 @@ home before they drift. Group by area; trim freely.
 
 ## Plugins & extensibility
 - [ ] **Skills support.** Plugin-side equivalent to skill files / playbooks.
+  Loaded from two roots: `./skills` next to the installed app (bundled
+  defaults, ships with the image) and `<DataRoot>/skills` (host-mounted
+  overrides). On name collision the data-root variant wins — same
+  pattern as templates. Per-agent allow/deny config so a tool/skill
+  pack written for openclaw can be denied on this host without
+  uninstalling it.
 - [ ] **NuGet package plugin loading.** Download + load plugin packages from
   nuget.org-shaped feeds at runtime.
 - [ ] **Plugin source flexibility.** One config field, auto-detected:
@@ -72,6 +78,8 @@ home before they drift. Group by area; trim freely.
   schema, `LastUsedAt`.
 - [ ] **Skill explorer.** Browse the agent's loaded skills/playbooks
   (paired with the skills support task under Plugins & extensibility).
+  Includes the per-agent block list editor — the host needs to deny a
+  skill pack (e.g. an openclaw-flavored one) without uninstalling it.
 - [ ] **View archived sessions.** Browse compaction-archived context
   (`<Context>/<agent>/<unix-ms>.json`) from the UI as read-only history
   alongside the live conversation.
