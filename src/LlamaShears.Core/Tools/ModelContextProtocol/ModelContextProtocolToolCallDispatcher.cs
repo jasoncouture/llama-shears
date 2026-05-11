@@ -106,7 +106,7 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
                 cancellationToken: cancellationToken);
 
             return new ToolCallResult(
-                FlattenContent(result.Content),
+                ToolResponseClamp.Apply(FlattenContent(result.Content)),
                 IsError: result.IsError ?? false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
