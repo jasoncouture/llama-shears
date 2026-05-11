@@ -9,8 +9,7 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 [McpServerToolType]
 public sealed partial class ReadFileTool
 {
-    private const int DefaultByteCap = 64 * 1024;
-    private const int MaxByteCap = 256 * 1024;
+    private const int ByteCap = 64 * 1024;
 
     private readonly IAgentWorkspaceLocator _workspace;
     private readonly IPathExpander _pathExpander;
@@ -30,12 +29,11 @@ public sealed partial class ReadFileTool
     }
 
     [McpServerTool(Name = "file_read")]
-    [Description("Reads a file from the host filesystem. Returns at most byte_cap bytes from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
+    [Description("Reads a file from the host filesystem. Returns at most 64 KiB from the requested line range and appends a truncation marker if the file content exceeded the cap.")]
     public async Task<string> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
         [Description("Number of lines to return. 0 (default) means read to end of file, subject to the byte cap.")] int lineCount = 0,
-        [Description("Maximum bytes of content to return. Defaults to 65536 (64 KiB). Hard-capped at 262144 (256 KiB).")] int byteCap = DefaultByteCap,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -50,7 +48,6 @@ public sealed partial class ReadFileTool
         {
             lineCount = 0;
         }
-        var cap = Math.Clamp(byteCap, 1, MaxByteCap);
 
         var workspace = await _workspace.GetAsync(cancellationToken);
         var resolved = Path.GetFullPath(Path.IsPathRooted(path)
@@ -75,11 +72,11 @@ public sealed partial class ReadFileTool
 
         try
         {
-            var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, cap, cancellationToken);
+            var (content, truncated) = await ReadRangeAsync(resolved, startLine, lineCount, ByteCap, cancellationToken);
             LogRead(workspace.AgentId, resolved, content.Length, truncated);
             if (truncated)
             {
-                content = $"{content}\n[... truncated; exceeded {cap}-byte cap. Re-call with a tighter line range or a higher byte_cap (max {MaxByteCap}) to see more.]";
+                content = $"{content}\n[... truncated; exceeded {ByteCap}-byte cap. Re-call with a tighter line range to see more.]";
             }
             return content;
         }
