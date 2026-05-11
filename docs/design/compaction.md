@@ -70,6 +70,14 @@ prompt after:
 
 The summary call uses `PromptOptions.TokenLimit = max(window / 3, 256)` — a hard cap on the summary length to bound the rebuilt context.
 
+## Planned: preserve the trailing user turn cluster
+
+Today the rebuild keeps the trailing user turn and drops every assistant/tool turn that followed it. That's lossy when the model had already started replying (or already invoked tools) before compaction decided to fire — the assistant fragments + tool-call/tool-result pairs after the last user message disappear from durable context even though they're often what the conversation hinges on.
+
+Planned rule: **keep the last user turn and every assistant + tool turn that followed it, unless doing so would consume more than 25% of the max allowed tokens**, in which case fall back to the current "keep just the trailing user" behavior. The 25% bound prevents a pathological tool-heavy tail from defeating compaction entirely — if the suffix is already a quarter of the window, the summary's working budget is too small to be useful, so we drop the tail and rely on the summary.
+
+Estimation uses the same accounting as the auto-compaction trigger: the most recent reported token count for each turn, falling back to a length-based estimate for turns that don't carry one. The math runs against `floor(window * 0.25)`; the floor matters because token estimates are coarse and we'd rather flip to the old behavior a turn early than overflow the window after the summary is back.
+
 ## Failure modes
 
 - **Empty summary.** If the model returns whitespace-only content, `ContextCompactor` throws `CompactionFailedException`. The agent loop does not catch it; the iteration aborts and the caller sees the failure. (For the eager compactor, the exception is caught and logged, and the agent's last-seen timestamp is *not* re-added — so the next eager scan won't immediately retry.)
