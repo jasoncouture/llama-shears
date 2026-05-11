@@ -80,6 +80,16 @@ public sealed class AgentContextProviderTests
 
         public ValueTask<AgentConfig?> GetConfigAsync(string agentId, CancellationToken cancellationToken) =>
             ValueTask.FromResult(Configs.TryGetValue(agentId, out var config) ? config : null);
+
+        public ValueTask<AgentConfigFile?> ReadFileAsync(string agentId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public ValueTask<SaveAgentConfigResult> SaveAsync(
+            string agentId,
+            string expectedHash,
+            string content,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 
     private sealed class StubContextStore : IContextStore

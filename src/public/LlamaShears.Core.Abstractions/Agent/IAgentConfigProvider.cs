@@ -22,4 +22,29 @@ public interface IAgentConfigProvider
     /// parse.
     /// </summary>
     ValueTask<AgentConfig?> GetConfigAsync(string agentId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the raw JSON text of the agent's config file plus a hash
+    /// of the bytes, or <see langword="null"/> when no file exists.
+    /// The hash is the change token <see cref="SaveAsync"/> validates
+    /// against; pair this call with a later save to detect concurrent
+    /// edits to the same file.
+    /// </summary>
+    ValueTask<AgentConfigFile?> ReadFileAsync(string agentId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes <paramref name="content"/> to the agent's config file if
+    /// the current on-disk hash equals <paramref name="expectedHash"/>
+    /// (case-insensitive) and the content deserializes to an
+    /// <see cref="AgentConfig"/>. Returns the outcome:
+    /// <see cref="SaveAgentConfigResult.Ok"/> on success,
+    /// <see cref="SaveAgentConfigResult.Conflict"/> when the hash
+    /// doesn't match, or <see cref="SaveAgentConfigResult.InvalidJson"/>
+    /// when the content fails validation.
+    /// </summary>
+    ValueTask<SaveAgentConfigResult> SaveAsync(
+        string agentId,
+        string expectedHash,
+        string content,
+        CancellationToken cancellationToken);
 }

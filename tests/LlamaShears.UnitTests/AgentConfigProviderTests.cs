@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Caching;
@@ -42,6 +43,127 @@ public sealed class AgentConfigProviderTests
         var second = await fixture.Provider.GetConfigAsync("alpha", CancellationToken.None);
 
         await Assert.That(first!.Hash).IsNotEqualTo(second!.Hash);
+    }
+
+    [Test]
+    public async Task ReadFileAsyncReturnsRawContentAndHash()
+    {
+        using var fixture = new Fixture();
+        var body = """{ "model": { "id": "TEST/stub" } }""";
+        var bytes = await fixture.WriteAgentAsync("alpha", body);
+
+        var file = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
+
+        await Assert.That(file).IsNotNull();
+        await Assert.That(file!.Content).IsEqualTo(body);
+        await Assert.That(file.Hash).IsEqualTo(Convert.ToHexString(SHA256.HashData(bytes)));
+    }
+
+    [Test]
+    public async Task ReadFileAsyncReturnsNullWhenAgentMissing()
+    {
+        using var fixture = new Fixture();
+
+        var file = await fixture.Provider.ReadFileAsync("nope", CancellationToken.None);
+
+        await Assert.That(file).IsNull();
+    }
+
+    [Test]
+    public async Task SaveAsyncRejectsWhenExpectedHashMismatches()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteAgentAsync("alpha", """{ "model": { "id": "TEST/stub" } }""");
+
+        var result = await fixture.Provider.SaveAsync(
+            "alpha",
+            expectedHash: "0000000000000000000000000000000000000000000000000000000000000000",
+            content: """{ "model": { "id": "TEST/edited" } }""",
+            CancellationToken.None);
+
+        await Assert.That(result).IsTypeOf<SaveAgentConfigResult.Conflict>();
+        var conflict = (SaveAgentConfigResult.Conflict)result;
+        await Assert.That(conflict.CurrentHash).IsNotEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task SaveAsyncRejectsMalformedJson()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteAgentAsync("alpha", """{ "model": { "id": "TEST/stub" } }""");
+        var current = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
+
+        var result = await fixture.Provider.SaveAsync(
+            "alpha",
+            expectedHash: current!.Hash,
+            content: "this is not json",
+            CancellationToken.None);
+
+        await Assert.That(result).IsTypeOf<SaveAgentConfigResult.InvalidJson>();
+    }
+
+    [Test]
+    public async Task SaveAsyncWritesContentAndReturnsNewHash()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteAgentAsync("alpha", """{ "model": { "id": "TEST/stub" } }""");
+        var current = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
+
+        var newContent = """{ "model": { "id": "TEST/edited" } }""";
+        var result = await fixture.Provider.SaveAsync(
+            "alpha",
+            expectedHash: current!.Hash,
+            content: newContent,
+            CancellationToken.None);
+
+        await Assert.That(result).IsTypeOf<SaveAgentConfigResult.Ok>();
+        var ok = (SaveAgentConfigResult.Ok)result;
+        await Assert.That(ok.NewHash).IsEqualTo(
+            Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(newContent))));
+
+        var roundTripped = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
+        await Assert.That(roundTripped!.Content).IsEqualTo(newContent);
+    }
+
+    [Test]
+    public async Task SaveAsyncPrunesBackupsBeyondTheRetentionLimit()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteAgentAsync("alpha", """{ "model": { "id": "TEST/stub" } }""");
+        for (var i = 1; i <= 10; i++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(fixture.AgentsDir, $"alpha.json.{i}.bak"), $"backup-{i}");
+        }
+        var current = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
+
+        await fixture.Provider.SaveAsync(
+            "alpha",
+            expectedHash: current!.Hash,
+            content: """{ "model": { "id": "TEST/edited" } }""",
+            CancellationToken.None);
+
+        var backups = Directory.EnumerateFiles(fixture.AgentsDir, "alpha.json.*.bak").ToArray();
+        await Assert.That(backups).Count().IsEqualTo(10);
+        await Assert.That(File.Exists(Path.Combine(fixture.AgentsDir, "alpha.json.1.bak"))).IsFalse();
+    }
+
+    [Test]
+    public async Task SaveAsyncCopiesPreviousBytesToTimestampedBackup()
+    {
+        using var fixture = new Fixture();
+        var originalBytes = await fixture.WriteAgentAsync("alpha", """{ "model": { "id": "TEST/stub" } }""");
+        var current = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
+
+        await fixture.Provider.SaveAsync(
+            "alpha",
+            expectedHash: current!.Hash,
+            content: """{ "model": { "id": "TEST/edited" } }""",
+            CancellationToken.None);
+
+        var backups = Directory.EnumerateFiles(fixture.AgentsDir, "alpha.json.*.bak").ToArray();
+        await Assert.That(backups).HasSingleItem();
+        var backupBytes = await File.ReadAllBytesAsync(backups[0]);
+        await Assert.That(backupBytes).IsEquivalentTo(originalBytes);
     }
 
     private sealed class Fixture : IDisposable
