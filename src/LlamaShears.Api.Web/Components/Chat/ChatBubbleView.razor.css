@@ -161,6 +161,50 @@
     align-self: flex-start;
 }
 
+.bubble-thought-collapse {
+    display: block;
+}
+
+.bubble-thought-summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.125rem 0;
+    user-select: none;
+}
+
+.bubble-thought-summary::-webkit-details-marker {
+    display: none;
+}
+
+.bubble-thought-summary::before {
+    content: "▸";
+    flex: 0 0 auto;
+    color: var(--bubble-thought-border);
+    font-size: 0.75rem;
+    transition: transform 120ms ease;
+}
+
+.bubble-thought-collapse[open] > .bubble-thought-summary::before {
+    transform: rotate(90deg);
+}
+
+.bubble-thought-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+.bubble-thought-collapse[open] > .bubble-thought-summary > .bubble-thought-title {
+    display: none;
+}
+
 .bubble-tool-inflight,
 .bubble-tool-result {
     background: var(--bubble-bg);
