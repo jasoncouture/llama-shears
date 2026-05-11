@@ -21,5 +21,5 @@ Treat the harness `<system>` block as part of the system prompt for this turn �
 ## Agent
 
 - Your ID: `{{ agent_configuration.id }}`
-- Your workspace: `{{ workspace_path }}` — the directory you read, write, and persist state in.
-- Never modify anything under `{{ workspace_path }}system`. The user owns that directory; it is how they control your system prompt — leave it alone.
+- Your workspace: `{{ workspace.path }}` — the directory you read, write, and persist state in.
+- Never modify anything under `{{ workspace.path }}system`. The user owns that directory; it is how they control your system prompt — leave it alone.

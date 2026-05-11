@@ -321,7 +321,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             var agentContext = await _contextStore.OpenAsync(name, cancellationToken);
             var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
                 {
-                    { "workspace_path", config.WorkspacePath },
                     { AgentConfig.DataKey, config },
                     { "model_configuration", modelConfig },
                     { "agent_context", agentContext },

@@ -212,5 +212,6 @@ The package is organised into namespaces by concern; each namespace was previous
 - [ISystemPromptProvider](LlamaShears/Core/Abstractions/SystemPrompt/ISystemPromptProvider.md)
 - [ITemplateFileLocator](LlamaShears/Core/Abstractions/SystemPrompt/ITemplateFileLocator.md)
 - [ITemplateRenderer](LlamaShears/Core/Abstractions/SystemPrompt/ITemplateRenderer.md)
+- [WorkspaceContext](LlamaShears/Core/Abstractions/SystemPrompt/WorkspaceContext.md)
 - [WorkspaceFile](LlamaShears/Core/Abstractions/SystemPrompt/WorkspaceFile.md)
 

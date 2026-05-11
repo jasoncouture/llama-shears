@@ -93,6 +93,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddScoped<ITodoStorage, TodoStorage>();
         services.AddScopedDataProvider<TodoListDataProvider>();
         services.AddScopedDataProvider<WallClockDataProvider>();
+        services.AddScopedDataProvider<WorkspaceContextDataProvider>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddSingleton<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();

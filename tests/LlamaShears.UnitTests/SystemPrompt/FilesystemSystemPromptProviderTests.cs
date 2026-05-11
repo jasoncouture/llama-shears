@@ -144,59 +144,6 @@ public sealed class FilesystemSystemPromptProviderTests
     }
 
     [Test]
-    public async Task WorkspaceFilesAreLoadedAndRenderedInOrder()
-    {
-        using var fixture = new Fixture();
-        await fixture.WriteWorkspaceFileAsync("BOOTSTRAP.md", "boot-body");
-        await fixture.WriteWorkspaceFileAsync("IDENTITY.md", "ident-body");
-        await fixture.WriteWorkspaceFileAsync("SOUL.md", "soul-body");
-        await fixture.WriteWorkspaceTemplateAsync(
-            "DEFAULT",
-            "{{- for file in files -}}\n[{{ file.name }}={{ file.content }}]\n{{- end -}}");
-
-        var body = await fixture.Provider.GetAsync(
-            "DEFAULT",
-            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["workspace_path"] = fixture.WorkspaceFilesDir,
-            },
-            CancellationToken.None);
-
-        await Assert.That(body).IsEqualTo("[BOOTSTRAP.md=boot-body][IDENTITY.md=ident-body][SOUL.md=soul-body]");
-    }
-
-    [Test]
-    public async Task MissingWorkspaceFilesAreSilentlySkipped()
-    {
-        using var fixture = new Fixture();
-        await fixture.WriteWorkspaceFileAsync("IDENTITY.md", "only-identity");
-        await fixture.WriteWorkspaceTemplateAsync(
-            "DEFAULT",
-            "{{ files.size }}|{{- for file in files -}}{{ file.name }}{{- end -}}");
-
-        var body = await fixture.Provider.GetAsync(
-            "DEFAULT",
-            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["workspace_path"] = fixture.WorkspaceFilesDir,
-            },
-            CancellationToken.None);
-
-        await Assert.That(body).IsEqualTo("1|IDENTITY.md");
-    }
-
-    [Test]
-    public async Task NoWorkspacePathYieldsEmptyFiles()
-    {
-        using var fixture = new Fixture();
-        await fixture.WriteWorkspaceTemplateAsync("DEFAULT", "{{ files.size }}");
-
-        var body = await fixture.Provider.GetAsync("DEFAULT.md", _emptyParameters, CancellationToken.None);
-
-        await Assert.That(body).IsEqualTo("0");
-    }
-
-    [Test]
     public async Task AgentConfigurationIdResolvesThroughScribanMemberAccess()
     {
         using var fixture = new Fixture();
@@ -217,6 +164,53 @@ public sealed class FilesystemSystemPromptProviderTests
             CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("id=alice");
+    }
+
+    [Test]
+    public async Task WorkspacePathResolvesThroughScribanMemberAccess()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteWorkspaceTemplateAsync(
+            "DEFAULT",
+            "ws={{ workspace.path }}");
+
+        var workspace = new WorkspaceContext("/tmp/work", []);
+
+        var body = await fixture.Provider.GetAsync(
+            "DEFAULT",
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [WorkspaceContext.DataKey] = workspace,
+            },
+            CancellationToken.None);
+
+        await Assert.That(body).IsEqualTo("ws=/tmp/work");
+    }
+
+    [Test]
+    public async Task WorkspaceFilesResolveThroughScribanMemberAccess()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteWorkspaceTemplateAsync(
+            "DEFAULT",
+            "{{- for file in workspace.files -}}[{{ file.name }}={{ file.content }}]{{- end -}}");
+
+        var workspace = new WorkspaceContext(
+            "/tmp/work",
+            [
+                new WorkspaceFile("BOOTSTRAP.md", "boot-body"),
+                new WorkspaceFile("IDENTITY.md", "ident-body"),
+            ]);
+
+        var body = await fixture.Provider.GetAsync(
+            "DEFAULT",
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [WorkspaceContext.DataKey] = workspace,
+            },
+            CancellationToken.None);
+
+        await Assert.That(body).IsEqualTo("[BOOTSTRAP.md=boot-body][IDENTITY.md=ident-body]");
     }
 
     [Test]
@@ -250,7 +244,6 @@ public sealed class FilesystemSystemPromptProviderTests
             Directory.CreateDirectory(_root);
             WorkspaceSystemDir = Path.Combine(_root, "templates", "workspace", "system");
             BundledRoot = Path.Combine(_root, "bundled");
-            WorkspaceFilesDir = Path.Combine(_root, "agent-workspace");
 
             var pathsOptions = Options.Create(new ShearsPathsOptions
             {
@@ -274,8 +267,6 @@ public sealed class FilesystemSystemPromptProviderTests
 
         public string BundledRoot { get; }
 
-        public string WorkspaceFilesDir { get; }
-
         public FilesystemSystemPromptProvider Provider { get; }
 
         public Task WriteWorkspaceTemplateAsync(string name, string content)
@@ -288,12 +279,6 @@ public sealed class FilesystemSystemPromptProviderTests
         {
             Directory.CreateDirectory(BundledRoot);
             return File.WriteAllTextAsync(Path.Combine(BundledRoot, $"{name}.md"), content);
-        }
-
-        public Task WriteWorkspaceFileAsync(string fileName, string content)
-        {
-            Directory.CreateDirectory(WorkspaceFilesDir);
-            return File.WriteAllTextAsync(Path.Combine(WorkspaceFilesDir, fileName), content);
         }
 
         public void Dispose()
