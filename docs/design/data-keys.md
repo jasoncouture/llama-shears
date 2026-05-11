@@ -64,6 +64,16 @@ public static readonly DataKey<WorkspaceContext> Workspace = new();   // key def
 
 A new analyzer (provisional `LS00xx`) raises an error when a `DataKey<T>` field is missing `<summary>`. Bare minimum: a sentence. Anything richer goes on `T`'s own XML doc, where the API-docs generator will already pick it up.
 
+### Constructor argument must be compile-time-known
+
+A sibling analyzer hooks `ObjectCreationExpressionSyntax`, narrows to instantiations of `DataKey<T>`, and inspects the argument list:
+
+- **No argument** — accept. The default `nameof(T)` path applies.
+- **One argument** — call `SemanticModel.GetConstantValue(argExpression)`. If `HasValue` is true, accept; otherwise emit the diagnostic. `GetConstantValue` collapses literal strings, `const string` field references, and `nameof(...)` expressions to a compile-time value, so all three forms pass without separate handling.
+- **Two or more arguments** — the ctor signature catches this before the analyzer sees it.
+
+The intent: a key's wire string is part of the source code, not assembled at runtime. The docs-gen scanner can read it from the syntax tree; templates and other consumers see a stable identifier; reviewers never have to wonder which path computes which key.
+
 ### Why not a dedicated attribute?
 
 Two channels for the same prose drift apart. ADR-0012 already mandates XML doc on public interface members; the field declaration is exactly that. IntelliSense surfaces the summary at every use site without a custom attribute reader. The docs-build pipeline already parses XML doc comments. Reuse what's there.
