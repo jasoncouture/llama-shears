@@ -370,7 +370,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private partial void LogBuildFailure(string agentId, string message, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information,
+    [LoggerMessage(Level = LogLevel.Debug,
         Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
     private partial void LogToolDiscovered(string agentId, string serverName, string toolName);
 
