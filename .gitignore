@@ -504,3 +504,6 @@ docker-bake.override.json
 
 # Local Claude Code per-project state
 .claude/
+
+# JS bundler outputs
+**/dist/*

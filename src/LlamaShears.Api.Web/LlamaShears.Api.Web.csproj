@@ -19,4 +19,32 @@
     <PackageReference Include="Markdig" Version="0.42.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <JsSource Include="js\scripts\**\*.js" />
+    <JsSource Include="js\entries\**\*.js" />
+    <JsSource Include="js\package.json" />
+    <JsSource Include="js\package-lock.json" />
+  </ItemGroup>
+
+  <Target Name="BundleJs"
+          BeforeTargets="BeforeBuild"
+          Inputs="@(JsSource)"
+          Outputs="js\dist\site.js;js\dist\agent-editor.js">
+    <RemoveDir Directories="$(MSBuildProjectDirectory)\js\dist;$(MSBuildProjectDirectory)\wwwroot\dist" />
+    <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)\js" />
+    <Exec Command="npx esbuild entries/site.js --bundle --format=iife --target=es2022 --outfile=dist/site.js" WorkingDirectory="$(MSBuildProjectDirectory)\js" />
+    <Exec Command="npx esbuild scripts/agent-editor.js --bundle --format=esm --target=es2022 --outfile=dist/agent-editor.js" WorkingDirectory="$(MSBuildProjectDirectory)\js" />
+  </Target>
+
+  <Target Name="CopyBundleToWwwroot"
+          BeforeTargets="BeforeBuild"
+          DependsOnTargets="BundleJs">
+    <ItemGroup>
+      <BundleOutput Include="$(MSBuildProjectDirectory)\js\dist\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BundleOutput)"
+          DestinationFiles="@(BundleOutput->'$(MSBuildProjectDirectory)\wwwroot\dist\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

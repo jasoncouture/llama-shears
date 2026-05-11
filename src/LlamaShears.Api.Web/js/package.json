@@ -1,0 +1,19 @@
+{
+  "name": "llamashears-ui",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Web UI script sources + bundler for LlamaShears.Api.Web.",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "dependencies": {
+    "codemirror": "6.0.2",
+    "@codemirror/lang-json": "^6.0.0",
+    "@codemirror/lint": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0"
+  }
+}

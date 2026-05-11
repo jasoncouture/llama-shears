@@ -7,30 +7,12 @@
     <link rel="stylesheet" href="@Assets["_content/LlamaShears.Api.Web/site.css"]" />
     <link rel="stylesheet" href="@Assets["_content/LlamaShears.Api.Web/highlight-github-dark.min.css"]" />
     <link rel="stylesheet" href="@Assets["LlamaShears.styles.css"]" />
-    <script type="importmap">
-    {
-        "imports": {
-            "codemirror": "https://esm.sh/*codemirror@6.0.2",
-            "@@codemirror/": "https://esm.sh/*@@codemirror/",
-            "@@lezer/": "https://esm.sh/*@@lezer/",
-            "style-mod": "https://esm.sh/style-mod",
-            "w3c-keyname": "https://esm.sh/w3c-keyname",
-            "crelt": "https://esm.sh/crelt",
-            "@@marijn/find-cluster-break": "https://esm.sh/@@marijn/find-cluster-break"
-        }
-    }
-    </script>
     <ImportMap />
     <HeadOutlet />
 </head>
 <body>
     <Routes @rendermode="InteractiveServer" />
-    <script src="@Assets["_content/LlamaShears.Api.Web/composer.js"]"></script>
-    <script src="@Assets["_content/LlamaShears.Api.Web/composer-paste.js"]"></script>
-    <script src="@Assets["_content/LlamaShears.Api.Web/messages.js"]"></script>
-    <script src="@Assets["_content/LlamaShears.Api.Web/highlight.min.js"]"></script>
-    <script src="@Assets["_content/LlamaShears.Api.Web/highlight-init.js"]"></script>
-    <script src="@Assets["_content/LlamaShears.Api.Web/reconnect-auto-reload.js"]"></script>
+    <script src="@Assets["_content/LlamaShears.Api.Web/dist/site.js"]"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 </html>
