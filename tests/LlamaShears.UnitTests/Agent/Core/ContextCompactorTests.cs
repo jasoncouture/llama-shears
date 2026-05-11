@@ -177,7 +177,8 @@ public sealed class ContextCompactorTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            dataContextFactory);
+            dataContextFactory,
+            NullLogger<InferenceRunner>.Instance);
         var systemPrompt = Substitute.For<ISystemPromptProvider>();
         systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult("compaction-system"));

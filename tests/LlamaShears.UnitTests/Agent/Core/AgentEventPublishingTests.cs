@@ -135,7 +135,8 @@ public sealed class AgentEventPublishingTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory));
+            dataContextFactory,
+            NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         using var agent = new LlamaShears.Core.Agent(
             model: model,
