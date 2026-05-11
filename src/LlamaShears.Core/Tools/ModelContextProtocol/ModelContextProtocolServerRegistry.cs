@@ -40,7 +40,7 @@ public sealed partial class ModelContextProtocolServerRegistry : IModelContextPr
             }
             else
             {
-                LogUnknownServer(_logger, name);
+                LogUnknownServer(name);
             }
         }
         return resolved;
@@ -62,5 +62,5 @@ public sealed partial class ModelContextProtocolServerRegistry : IModelContextPr
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "MCP server '{Name}' is whitelisted by an agent but is not registered; skipping.")]
-    private static partial void LogUnknownServer(ILogger logger, string name);
+    private partial void LogUnknownServer(string name);
 }

@@ -25,15 +25,15 @@ public sealed partial class DirectorySeeder : IDirectorySeeder
         {
             if (!Directory.Exists(sourcePath))
             {
-                LogSourceMissing(_logger, sourcePath, destinationPath);
+                LogSourceMissing(sourcePath, destinationPath);
                 throw new DirectoryNotFoundException($"Seeder source path does not exist: {sourcePath}");
             }
             CopyDirectory(sourcePath, destinationPath);
-            LogSeedComplete(_logger, destinationPath, sourcePath);
+            LogSeedComplete(destinationPath, sourcePath);
         }
         else
         {
-            LogDestinationNotEmpty(_logger, destinationPath);
+            LogDestinationNotEmpty(destinationPath);
         }
 
         EnsureKeepMarker(destinationPath);
@@ -47,7 +47,7 @@ public sealed partial class DirectorySeeder : IDirectorySeeder
             return;
         }
         File.WriteAllBytes(keepPath, []);
-        LogKeepWritten(_logger, keepPath);
+        LogKeepWritten(keepPath);
     }
 
     private void CopyDirectory(string source, string destination)
@@ -57,7 +57,7 @@ public sealed partial class DirectorySeeder : IDirectorySeeder
             var relative = Path.GetRelativePath(source, dir);
             var target = Path.Combine(destination, relative);
             Directory.CreateDirectory(target);
-            LogDirectoryCreated(_logger, target, dir);
+            LogDirectoryCreated(target, dir);
         }
 
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
@@ -66,25 +66,25 @@ public sealed partial class DirectorySeeder : IDirectorySeeder
             var target = Path.Combine(destination, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target, overwrite: false);
-            LogFileCopied(_logger, target, file);
+            LogFileCopied(target, file);
         }
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Destination {Destination} is non-empty; skipping seed.")]
-    private static partial void LogDestinationNotEmpty(ILogger logger, string destination);
+    private partial void LogDestinationNotEmpty(string destination);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Seeder source {Source} does not exist; cannot populate empty destination {Destination}.")]
-    private static partial void LogSourceMissing(ILogger logger, string source, string destination);
+    private partial void LogSourceMissing(string source, string destination);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created directory {Target} (from {Source}).")]
-    private static partial void LogDirectoryCreated(ILogger logger, string target, string source);
+    private partial void LogDirectoryCreated(string target, string source);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Copied file {Target} (from {Source}).")]
-    private static partial void LogFileCopied(ILogger logger, string target, string source);
+    private partial void LogFileCopied(string target, string source);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Wrote {KeepFile}.")]
-    private static partial void LogKeepWritten(ILogger logger, string keepFile);
+    private partial void LogKeepWritten(string keepFile);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Seeded {Destination} from {Source}.")]
-    private static partial void LogSeedComplete(ILogger logger, string destination, string source);
+    private partial void LogSeedComplete(string destination, string source);
 }

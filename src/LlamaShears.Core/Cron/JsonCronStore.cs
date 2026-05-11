@@ -119,15 +119,15 @@ public sealed partial class JsonCronStore : ICronStore
             {
                 if (_cache.ContainsKey(job.Id))
                 {
-                    LogDuplicateJobId(_logger, path, job.Id);
+                    LogDuplicateJobId(path, job.Id);
                 }
                 _cache[job.Id] = job;
             }
-            LogLoaded(_logger, path, _cache.Count);
+            LogLoaded(path, _cache.Count);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            LogLoadFailed(_logger, path, ex.Message, ex);
+            LogLoadFailed(path, ex.Message, ex);
             _cache = [];
         }
     }
@@ -146,11 +146,11 @@ public sealed partial class JsonCronStore : ICronStore
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded {JobCount} cron job(s) from '{Path}'.")]
-    private static partial void LogLoaded(ILogger logger, string path, int jobCount);
+    private partial void LogLoaded(string path, int jobCount);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to load cron store '{Path}': {Reason}. Starting empty.")]
-    private static partial void LogLoadFailed(ILogger logger, string path, string reason, Exception ex);
+    private partial void LogLoadFailed(string path, string reason, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron store '{Path}' contains duplicate job id '{JobId}'; keeping the last occurrence.")]
-    private static partial void LogDuplicateJobId(ILogger logger, string path, Guid jobId);
+    private partial void LogDuplicateJobId(string path, Guid jobId);
 }

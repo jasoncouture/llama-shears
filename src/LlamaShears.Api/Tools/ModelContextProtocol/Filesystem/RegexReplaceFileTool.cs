@@ -116,24 +116,24 @@ public sealed partial class RegexReplaceFileTool
 
             if (count == 0)
             {
-                LogReplace(_logger, workspace.AgentId, resolution.FullPath, count);
+                LogReplace(workspace.AgentId, resolution.FullPath, count);
                 return $"No matches in '{path}'.";
             }
 
             await File.WriteAllTextAsync(resolution.FullPath, updated, Encoding.UTF8, cancellationToken);
-            LogReplace(_logger, workspace.AgentId, resolution.FullPath, count);
+            LogReplace(workspace.AgentId, resolution.FullPath, count);
             return $"Replaced {count} match(es) in '{path}'.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogReplaceFailed(_logger, workspace.AgentId, resolution.FullPath, ex.Message, ex);
+            LogReplaceFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
             return $"Replace failed: {ex.Message}";
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' applied regex replace to '{Path}' ({Count} matches).")]
-    private static partial void LogReplace(ILogger logger, string? agentId, string path, int count);
+    private partial void LogReplace(string? agentId, string path, int count);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Regex replace failed for agent '{AgentId}' path '{Path}': {Message}")]
-    private static partial void LogReplaceFailed(ILogger logger, string? agentId, string path, string message, Exception ex);
+    private partial void LogReplaceFailed(string? agentId, string path, string message, Exception ex);
 }

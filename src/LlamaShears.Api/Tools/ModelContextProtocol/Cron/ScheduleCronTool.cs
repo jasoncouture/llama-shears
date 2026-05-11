@@ -43,7 +43,7 @@ public sealed partial class ScheduleCronTool
         }
         catch (ArgumentException ex)
         {
-            LogScheduleFailed(_logger, workspace.AgentId, ex.Message, ex);
+            LogScheduleFailed(workspace.AgentId, ex.Message, ex);
             return $"Refused: {ex.Message}";
         }
     }
@@ -52,5 +52,5 @@ public sealed partial class ScheduleCronTool
         when is null ? "n/a" : when.Value.ToString("u");
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "cron_schedule failed for agent '{AgentId}': {Message}")]
-    private static partial void LogScheduleFailed(ILogger logger, string agentId, string message, Exception ex);
+    private partial void LogScheduleFailed(string agentId, string message, Exception ex);
 }

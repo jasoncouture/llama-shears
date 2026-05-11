@@ -34,12 +34,12 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
         var startupOptions = _options.CurrentValue.Indexer;
         if (!startupOptions.Enabled)
         {
-            LogDisabled(_logger);
+            LogDisabled();
             return;
         }
         if (startupOptions.Interval <= TimeSpan.Zero)
         {
-            LogInvalidInterval(_logger, startupOptions.Interval);
+            LogInvalidInterval(startupOptions.Interval);
             return;
         }
 
@@ -75,47 +75,47 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            LogListFailed(_logger, ex);
+            LogListFailed(ex);
             return;
         }
 
-        LogScanStarting(_logger, agentIds.Count, force);
+        LogScanStarting(agentIds.Count, force);
         foreach (var agentId in agentIds)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                LogReconcilingAgent(_logger, agentId, force);
+                LogReconcilingAgent(agentId, force);
                 var startedAt = Stopwatch.GetTimestamp();
                 var summary = await _indexer.ReconcileAsync(agentId, force, cancellationToken);
                 var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
-                LogReconciled(_logger, agentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
+                LogReconciled(agentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                LogReconcileFailed(_logger, agentId, ex);
+                LogReconcileFailed(agentId, ex);
             }
         }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexer disabled by configuration.")]
-    private static partial void LogDisabled(ILogger logger);
+    private partial void LogDisabled();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory indexer interval '{Interval}' is non-positive; service will not run.")]
-    private static partial void LogInvalidInterval(ILogger logger, TimeSpan interval);
+    private partial void LogInvalidInterval(TimeSpan interval);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory indexer failed to enumerate agents.")]
-    private static partial void LogListFailed(ILogger logger, Exception ex);
+    private partial void LogListFailed(Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexer scan starting: {AgentCount} agent(s), force={Force}.")]
-    private static partial void LogScanStarting(ILogger logger, int agentCount, bool force);
+    private partial void LogScanStarting(int agentCount, bool force);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconciling memory index for agent '{AgentId}' (force={Force})…")]
-    private static partial void LogReconcilingAgent(ILogger logger, string agentId, bool force);
+    private partial void LogReconcilingAgent(string agentId, bool force);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconciled agent '{AgentId}': {Added} added, {Updated} updated, {Removed} removed, {Total} total, elapsed={ElapsedMs:F2}ms.")]
-    private static partial void LogReconciled(ILogger logger, string agentId, int added, int updated, int removed, int total, double elapsedMs);
+    private partial void LogReconciled(string agentId, int added, int updated, int removed, int total, double elapsedMs);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory indexer failed to reconcile agent '{AgentId}'.")]
-    private static partial void LogReconcileFailed(ILogger logger, string agentId, Exception ex);
+    private partial void LogReconcileFailed(string agentId, Exception ex);
 }

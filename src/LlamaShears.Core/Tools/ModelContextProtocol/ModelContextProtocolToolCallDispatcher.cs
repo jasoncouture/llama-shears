@@ -72,7 +72,7 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
     {
         if (string.IsNullOrEmpty(call.Source))
         {
-            LogMissingSource(_logger, call.Name);
+            LogMissingSource(call.Name);
             return new ToolCallResult(
                 $"Tool '{call.Name}' was rejected: no server was specified.",
                 IsError: true);
@@ -80,7 +80,7 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
 
         if (!IsAdvertised(tools, call.Source, call.Name))
         {
-            LogNotAdvertised(_logger, call.Source, call.Name);
+            LogNotAdvertised(call.Source, call.Name);
             return new ToolCallResult(
                 $"Tool '{call.Name}' on server '{call.Source}' was rejected: not advertised on this turn.",
                 IsError: true);
@@ -89,7 +89,7 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
         var servers = _serverRegistry.Resolve(whitelist: [call.Source]);
         if (!servers.TryGetValue(call.Source, out var serverUri))
         {
-            LogUnknownSource(_logger, call.Source, call.Name);
+            LogUnknownSource(call.Source, call.Name);
             return new ToolCallResult(
                 $"Tool '{call.Name}' on server '{call.Source}' was rejected: server is not registered.",
                 IsError: true);
@@ -117,7 +117,7 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
         }
         catch (Exception ex)
         {
-            LogDispatchFailed(_logger, call.Source, call.Name, ex.Message, ex);
+            LogDispatchFailed(call.Source, call.Name, ex.Message, ex);
             return new ToolCallResult(
                 $"Tool '{call.Name}' on server '{call.Source}' failed: {ex.Message}",
                 IsError: true);
@@ -202,14 +202,14 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing tool call '{Name}': no server was specified.")]
-    private static partial void LogMissingSource(ILogger logger, string name);
+    private partial void LogMissingSource(string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing tool '{Name}' on server '{Source}': server is not registered.")]
-    private static partial void LogUnknownSource(ILogger logger, string source, string name);
+    private partial void LogUnknownSource(string source, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing tool '{Name}' on server '{Source}': not advertised on this turn.")]
-    private static partial void LogNotAdvertised(ILogger logger, string source, string name);
+    private partial void LogNotAdvertised(string source, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Tool '{Name}' on server '{Source}' failed: {Message}")]
-    private static partial void LogDispatchFailed(ILogger logger, string source, string name, string message, Exception ex);
+    private partial void LogDispatchFailed(string source, string name, string message, Exception ex);
 }

@@ -25,12 +25,12 @@ public sealed partial class AgentTurnLogger : IEventHandler<ModelTurn>, IDisposa
         {
             return ValueTask.CompletedTask;
         }
-        LogTurn(_logger, agentId, envelope.Data.Role, envelope.Data.Content);
+        LogTurn(agentId, envelope.Data.Role, envelope.Data.Content);
         return ValueTask.CompletedTask;
     }
 
     public void Dispose() => _subscription.Dispose();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "[{AgentId}] [{Role}] {Content}")]
-    private static partial void LogTurn(ILogger logger, string agentId, ModelRole role, string content);
+    private partial void LogTurn(string agentId, ModelRole role, string content);
 }

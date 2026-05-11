@@ -62,11 +62,11 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             await collection.UpsertAsync(
                 new MemoryVectorRecord { Path = relativePath, Hash = hash, Vector = vector },
                 cancellationToken);
-            LogStored(_logger, agentId, relativePath);
+            LogStored(agentId, relativePath);
         }
         catch (Exception ex) when (ex is VectorStoreException or InvalidOperationException or HttpRequestException)
         {
-            LogIndexingFailed(_logger, agentId, relativePath, ex.Message, ex);
+            LogIndexingFailed(agentId, relativePath, ex.Message, ex);
         }
 
         return new MemoryRef(relativePath);
@@ -142,7 +142,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
 
         ranked.Sort(static (a, b) => b.Score.CompareTo(a.Score));
         var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
-        LogSearchScored(_logger, agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, effectiveMinScore, elapsedMs);
+        LogSearchScored(agentId, scanned, ranked.Count, topRawScore == double.NegativeInfinity ? 0 : topRawScore, effectiveMinScore, elapsedMs);
         if (ranked.Count > effectiveLimit)
         {
             ranked.RemoveRange(effectiveLimit, ranked.Count - effectiveLimit);
@@ -163,7 +163,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
         catch (Exception ex) when (IsVectorDimensionMismatch(ex))
         {
-            LogIndexSchemaMismatchRebuilding(_logger, agentId, ctx.IndexDbPath);
+            LogIndexSchemaMismatchRebuilding(agentId, ctx.IndexDbPath);
             ResetIndex(ctx.IndexDbPath);
             return await ReconcileCoreAsync(agentId, force: true, ctx, cancellationToken);
         }
@@ -213,12 +213,12 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 if (existingHash is null)
                 {
                     added++;
-                    LogIndexedAdded(_logger, agentId, relativePath);
+                    LogIndexedAdded(agentId, relativePath);
                 }
                 else
                 {
                     updated++;
-                    LogIndexedUpdated(_logger, agentId, relativePath, force);
+                    LogIndexedUpdated(agentId, relativePath, force);
                 }
             }
         }
@@ -234,7 +234,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         foreach (var path in orphans)
         {
             await collection.DeleteAsync(path, cancellationToken);
-            LogIndexedRemoved(_logger, agentId, path);
+            LogIndexedRemoved(agentId, path);
         }
         return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count, Total: seen.Count);
     }
@@ -416,23 +416,23 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Stored memory for agent '{AgentId}' at '{Path}'.")]
-    private static partial void LogStored(ILogger logger, string agentId, string path);
+    private partial void LogStored(string agentId, string path);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Indexing failed for agent '{AgentId}' memory '{Path}': {Message}")]
-    private static partial void LogIndexingFailed(ILogger logger, string agentId, string path, string message, Exception ex);
+    private partial void LogIndexingFailed(string agentId, string path, string message, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory search for agent '{AgentId}': scanned={Scanned}, hits={Hits}, top-raw-score={TopScore:F4}, min-score={MinScore:F2}, elapsed={ElapsedMs:F2}ms.")]
-    private static partial void LogSearchScored(ILogger logger, string agentId, int scanned, int hits, double topScore, double minScore, double elapsedMs);
+    private partial void LogSearchScored(string agentId, int scanned, int hits, double topScore, double minScore, double elapsedMs);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (added) for agent '{AgentId}': {Path}")]
-    private static partial void LogIndexedAdded(ILogger logger, string agentId, string path);
+    private partial void LogIndexedAdded(string agentId, string path);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (updated, force={Force}) for agent '{AgentId}': {Path}")]
-    private static partial void LogIndexedUpdated(ILogger logger, string agentId, string path, bool force);
+    private partial void LogIndexedUpdated(string agentId, string path, bool force);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Memory indexed (removed orphan) for agent '{AgentId}': {Path}")]
-    private static partial void LogIndexedRemoved(ILogger logger, string agentId, string path);
+    private partial void LogIndexedRemoved(string agentId, string path);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Memory index for agent '{AgentId}' has a vector dimension mismatch (likely an embedding-model change); resetting '{Path}' and rebuilding from disk.")]
-    private static partial void LogIndexSchemaMismatchRebuilding(ILogger logger, string agentId, string path);
+    private partial void LogIndexSchemaMismatchRebuilding(string agentId, string path);
 }

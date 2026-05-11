@@ -47,7 +47,7 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
                     "Outbound MCP request targets the internal listener but no agent is on the current call's ICurrentAgentAccessor scope; the caller must establish a scope before issuing tool calls.");
             var token = _tokenStore.Issue(agent);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            LogInjectedBearer(_logger, agent.AgentId, request.RequestUri!);
+            LogInjectedBearer(agent.AgentId, request.RequestUri!);
         }
         return base.SendAsync(request, cancellationToken);
     }
@@ -75,5 +75,5 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
     }
 
     [LoggerMessage(Level = LogLevel.Trace, Message = "Injected loopback bearer for agent '{AgentId}' on request to {RequestUri}.")]
-    private static partial void LogInjectedBearer(ILogger logger, string agentId, Uri requestUri);
+    private partial void LogInjectedBearer(string agentId, Uri requestUri);
 }

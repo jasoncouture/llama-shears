@@ -50,7 +50,7 @@ public sealed partial class EditCronTool
         }
         catch (ArgumentException ex)
         {
-            LogEditFailed(_logger, workspace.AgentId, jobId, ex.Message, ex);
+            LogEditFailed(workspace.AgentId, jobId, ex.Message, ex);
             return $"Refused: {ex.Message}";
         }
     }
@@ -59,5 +59,5 @@ public sealed partial class EditCronTool
         when is null ? "n/a" : when.Value.ToString("u");
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "cron_edit failed for agent '{AgentId}', job '{JobId}': {Message}")]
-    private static partial void LogEditFailed(ILogger logger, string agentId, Guid jobId, string message, Exception ex);
+    private partial void LogEditFailed(string agentId, Guid jobId, string message, Exception ex);
 }

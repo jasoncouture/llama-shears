@@ -51,79 +51,12 @@ internal sealed partial class EventBus : IEventBus, IEventPublisher
         var handlerWrapper = ActivatorUtilities.CreateInstance<EventHandlerWrapper<T>>(_serviceProvider, handler, new EventHandlerWrapperOptions(pattern, mode));
         var asyncSubscriber = _serviceProvider.GetRequiredService<IAsyncSubscriber<IEventEnvelope<T>>>();
         var subscription = asyncSubscriber.Subscribe(handlerWrapper);
-        LogSubscribed(_logger, handler.GetType(), typeof(T), pattern);
+        LogSubscribed(handler.GetType(), typeof(T), pattern);
         return new SubscriptionHandle(subscription, _logger, handler.GetType(), typeof(T), pattern);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Subscribed {EventHandlerType} to {EventType} with filter pattern {EventTypePattern}")]
-    private static partial void LogSubscribed(ILogger logger, Type eventHandlerType, Type eventType, string? eventTypePattern);
+    private partial void LogSubscribed(Type eventHandlerType, Type eventType, string? eventTypePattern);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Unsubscribed {EventHandlerType} from {EventType} with filter pattern {EventTypePattern}")]
-    private static partial void LogUnsubscribed(ILogger logger, Type eventHandlerType, Type eventType, string? eventTypePattern);
-
-    [LoggerMessage(Level = LogLevel.Trace, Message = "Handler {EventHandlerType} for {EventType} ({DeliveryMode}) observed cancellation; stopping.")]
-    private static partial void LogHandlerCancelled(ILogger logger, Type eventHandlerType, Type eventType, EventDeliveryMode deliveryMode);
-
-    private sealed class SubscriptionHandle : IDisposable
-    {
-        private readonly IDisposable _inner;
-        private readonly ILogger _logger;
-        private readonly Type _handlerType;
-        private readonly Type _eventType;
-        private readonly string? _pattern;
-        private int _disposed;
-
-        public SubscriptionHandle(IDisposable inner, ILogger logger, Type handlerType, Type eventType, string? pattern)
-        {
-            _inner = inner;
-            _logger = logger;
-            _handlerType = handlerType;
-            _eventType = eventType;
-            _pattern = pattern;
-        }
-
-        public void Dispose()
-        {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-            _inner.Dispose();
-            LogUnsubscribed(_logger, _handlerType, _eventType, _pattern);
-        }
-    }
-
-    sealed record EventHandlerWrapperOptions(string? Pattern, EventDeliveryMode DeliveryMode);
-
-    sealed class EventHandlerWrapper<T> : IAsyncMessageHandler<IEventEnvelope<T>> where T : class
-    {
-        private readonly IEventHandler<T> _handler;
-        private readonly string? _pattern;
-        private readonly EventDeliveryMode _deliveryMode;
-        private readonly IPatternMatcher _patternMatcher;
-        private readonly ILogger<EventBus> _logger;
-
-        public EventHandlerWrapper(IEventHandler<T> handler, EventHandlerWrapperOptions options, IPatternMatcher patternMatcher, ILogger<EventBus> logger)
-        {
-            _handler = handler;
-            _pattern = options.Pattern;
-            _deliveryMode = options.DeliveryMode;
-            _patternMatcher = patternMatcher;
-            _logger = logger;
-        }
-
-        public async ValueTask HandleAsync(IEventEnvelope<T> envelope, CancellationToken cancellationToken)
-        {
-            if (envelope.DeliveryMode != _deliveryMode) return;
-            if (!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await _handler.HandleAsync(envelope, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                LogHandlerCancelled(_logger, _handler.GetType(), typeof(T), _deliveryMode);
-            }
-        }
-    }
     record EventEnvelope<T>(EventType Type, EventDeliveryMode DeliveryMode, Guid CorrelationId, T? Data) : IEventEnvelope<T> where T : class;
 }

@@ -75,14 +75,14 @@ public partial class OllamaLanguageModel : ILanguageModel
                 var thinking = chunk?.Message?.Thinking;
                 if (!string.IsNullOrEmpty(thinking))
                 {
-                    LogThoughtReceived(_logger, _configuration.Id.Model, thinking);
+                    LogThoughtReceived(_configuration.Id.Model, thinking);
                     yield return new OllamaThoughtFragment(thinking);
                 }
 
                 var content = chunk?.Message?.Content;
                 if (!string.IsNullOrEmpty(content))
                 {
-                    LogTokenReceived(_logger, _configuration.Id.Model, content);
+                    LogTokenReceived(_configuration.Id.Model, content);
                     yield return new OllamaResponseFragment(content);
                 }
 
@@ -101,7 +101,7 @@ public partial class OllamaLanguageModel : ILanguageModel
                         var callId = string.IsNullOrEmpty(ollamaCall.Id)
                             ? Guid.CreateVersion7().ToString()
                             : ollamaCall.Id;
-                        LogToolCallReceived(_logger, _configuration.Id.Model, source, name);
+                        LogToolCallReceived(_configuration.Id.Model, source, name);
                         yield return new OllamaToolCallFragment(
                             new ToolCall(source, name, argumentsJson, callId));
                     }
@@ -301,11 +301,11 @@ public partial class OllamaLanguageModel : ILanguageModel
     };
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Token from {ModelId}: {Content}")]
-    private static partial void LogTokenReceived(ILogger logger, string modelId, string content);
+    private partial void LogTokenReceived(string modelId, string content);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Thought from {ModelId}: {Content}")]
-    private static partial void LogThoughtReceived(ILogger logger, string modelId, string content);
+    private partial void LogThoughtReceived(string modelId, string content);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Tool call from {ModelId}: {Source}__{Name}")]
-    private static partial void LogToolCallReceived(ILogger logger, string modelId, string source, string name);
+    private partial void LogToolCallReceived(string modelId, string source, string name);
 }

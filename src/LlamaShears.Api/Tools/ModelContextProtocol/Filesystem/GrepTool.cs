@@ -143,7 +143,7 @@ public sealed partial class GrepTool
 
         if (matchCount == 0)
         {
-            LogGrep(_logger, workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
+            LogGrep(workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
             return $"No matches found for pattern in glob '{pathGlob}'.";
         }
 
@@ -153,7 +153,7 @@ public sealed partial class GrepTool
             output.Append($"[... truncated; exceeded {cap}-match cap. Re-call with a tighter glob/pattern or a higher max_matches (max {HardMaxMatches}).]");
         }
 
-        LogGrep(_logger, workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
+        LogGrep(workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
         return output.ToString().TrimStart('\n');
     }
 
@@ -200,5 +200,5 @@ public sealed partial class GrepTool
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' grep glob '{Glob}' scanned {Files} files, {Matches} matches (truncated={Truncated}).")]
-    private static partial void LogGrep(ILogger logger, string? agentId, string glob, int files, int matches, bool truncated);
+    private partial void LogGrep(string? agentId, string glob, int files, int matches, bool truncated);
 }

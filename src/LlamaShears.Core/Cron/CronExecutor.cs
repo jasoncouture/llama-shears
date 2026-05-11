@@ -38,12 +38,12 @@ public sealed partial class CronExecutor : IEventHandler<SystemTick>, IDisposabl
         }
         catch (Exception ex)
         {
-            LogTickFailed(_logger, ex);
+            LogTickFailed(ex);
         }
     }
 
     public void Dispose() => _subscription.Dispose();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron executor tick failed.")]
-    private static partial void LogTickFailed(ILogger logger, Exception ex);
+    private partial void LogTickFailed(Exception ex);
 }

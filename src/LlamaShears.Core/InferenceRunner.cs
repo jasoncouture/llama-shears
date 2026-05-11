@@ -97,7 +97,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                         await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: ChannelId.Value, Final: false), cancellationToken);
                         break;
                     case IModelToolCallFragment toolFragment:
-                        LogToolCall(_logger, toolFragment.Call.Source, toolFragment.Call.Name, toolFragment.Call.CallId, toolFragment.Call.ArgumentsJson);
+                        LogToolCall(toolFragment.Call.Source, toolFragment.Call.Name, toolFragment.Call.CallId, toolFragment.Call.ArgumentsJson);
                         toolCalls.Add(toolFragment.Call);
                         var agentToolCallFragment = new AgentToolCallFragment(
                                 toolFragment.Call.Source,
@@ -282,7 +282,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private record struct PromptSearchState(bool UserMessageSeen, bool Complete, ImmutableArray<ModelTurn> Turns);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tool call received: '{Source}.{Name}' (callId={CallId}) args={Arguments}")]
-    private static partial void LogToolCall(ILogger logger, string source, string name, string? callId, string arguments);
+    private partial void LogToolCall(string source, string name, string? callId, string arguments);
 
     private ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
     {

@@ -71,7 +71,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            LogRequestFailed(_logger, _configuration.Id.Model, (int)response.StatusCode, errorBody);
+            LogRequestFailed(_configuration.Id.Model, (int)response.StatusCode, errorBody);
             throw new HttpRequestException(
                 $"OpenAI-compatible chat request failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {errorBody}");
         }
@@ -107,7 +107,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
             }
             catch (JsonException ex)
             {
-                LogMalformedEvent(_logger, _configuration.Id.Model, ex.Message);
+                LogMalformedEvent(_configuration.Id.Model, ex.Message);
                 continue;
             }
             if (eventNode is not JsonObject eventObject)
@@ -165,7 +165,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
                 var content = delta["content"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(content))
                 {
-                    LogTokenReceived(_logger, _configuration.Id.Model, content);
+                    LogTokenReceived(_configuration.Id.Model, content);
                     emitted.Add(new OpenAiResponseFragment(content));
                 }
 
@@ -173,7 +173,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
                     ?? delta["reasoning"]?.GetValue<string?>();
                 if (!string.IsNullOrEmpty(reasoning))
                 {
-                    LogThoughtReceived(_logger, _configuration.Id.Model, reasoning);
+                    LogThoughtReceived(_configuration.Id.Model, reasoning);
                     emitted.Add(new OpenAiThoughtFragment(reasoning));
                 }
 
@@ -499,20 +499,20 @@ public partial class OpenAiLanguageModel : ILanguageModel
     }
 
     [LoggerMessage(Level = LogLevel.Trace, Message = "OpenAI[{ModelId}] token: {Content}")]
-    private static partial void LogTokenReceived(ILogger logger, string modelId, string content);
+    private partial void LogTokenReceived(string modelId, string content);
 
     [LoggerMessage(Level = LogLevel.Trace, Message = "OpenAI[{ModelId}] thought: {Content}")]
-    private static partial void LogThoughtReceived(ILogger logger, string modelId, string content);
+    private partial void LogThoughtReceived(string modelId, string content);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "OpenAI[{ModelId}] tool call: {Source}/{Name}")]
     private static partial void LogToolCallReceived(ILogger logger, string modelId, string source, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "OpenAI[{ModelId}] dropped malformed event: {Reason}")]
-    private static partial void LogMalformedEvent(ILogger logger, string modelId, string reason);
+    private partial void LogMalformedEvent(string modelId, string reason);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "OpenAI[{ModelId}] tool call delta at index {Index} ended without a name; dropping.")]
     private static partial void LogIncompleteToolCall(ILogger logger, string modelId, int index);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "OpenAI[{ModelId}] chat request failed with status {Status}. Body: {Body}")]
-    private static partial void LogRequestFailed(ILogger logger, string modelId, int status, string body);
+    private partial void LogRequestFailed(string modelId, int status, string body);
 }

@@ -140,7 +140,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             }
             var rebuiltPrompt = new ModelPrompt(rebuilt);
 
-            LogContextCompacted(_logger, agentContext.AgentId);
+            LogContextCompacted(agentContext.AgentId);
             await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken);
             var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken);
             foreach (var turn in rebuiltPrompt.Turns)
@@ -163,7 +163,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
-    private static partial void LogContextCompacted(ILogger logger, string agentId);
+    private partial void LogContextCompacted(string agentId);
 
     private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
     {

@@ -113,7 +113,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             }
             catch (Exception ex)
             {
-                LogInitialReconcileFailure(_logger, ex);
+                LogInitialReconcileFailure(ex);
             }
         });
     }
@@ -193,7 +193,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
 
         _loaded[name] = slot;
-        LogAgentStarted(_logger, name);
+        LogAgentStarted(name);
 
         await _publisher.PublishAsync(
             Event.WellKnown.Agent.Loaded with { Id = name },
@@ -227,7 +227,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         {
             foreach (var tool in group.Tools)
             {
-                LogToolDiscovered(_logger, config.Id, group.Source, tool.Name);
+                LogToolDiscovered(config.Id, group.Source, tool.Name);
             }
         }
 
@@ -258,7 +258,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
 
         _loaded[name] = newSlot;
-        LogAgentReloaded(_logger, name);
+        LogAgentReloaded(name);
     }
 
     private void Stop(string name)
@@ -267,7 +267,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         {
             slot.Agent.Dispose();
             _dataContextFactory.DeleteContext(name);
-            LogAgentStopped(_logger, slot.Name);
+            LogAgentStopped(slot.Name);
         }
     }
 
@@ -284,7 +284,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
-            LogBuildFailure(_logger, name, ex.Message, ex);
+            LogBuildFailure(name, ex.Message, ex);
             return null;
         }
 
@@ -359,23 +359,23 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
-    private static partial void LogAgentStarted(ILogger logger, string agentId);
+    private partial void LogAgentStarted(string agentId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reloaded agent '{AgentId}'.")]
-    private static partial void LogAgentReloaded(ILogger logger, string agentId);
+    private partial void LogAgentReloaded(string agentId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Stopped agent '{AgentId}'.")]
-    private static partial void LogAgentStopped(ILogger logger, string agentId);
+    private partial void LogAgentStopped(string agentId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
-    private static partial void LogBuildFailure(ILogger logger, string agentId, string message, Exception ex);
+    private partial void LogBuildFailure(string agentId, string message, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
-    private static partial void LogToolDiscovered(ILogger logger, string agentId, string serverName, string toolName);
+    private partial void LogToolDiscovered(string agentId, string serverName, string toolName);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Initial agent reconcile failed.")]
-    private static partial void LogInitialReconcileFailure(ILogger logger, Exception ex);
+    private partial void LogInitialReconcileFailure(Exception ex);
 
     private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config);
 }
