@@ -1,6 +1,9 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Caching;
 using LlamaShears.Core.Paths;
@@ -191,6 +194,29 @@ public sealed class FilesystemSystemPromptProviderTests
         var body = await fixture.Provider.GetAsync("DEFAULT.md", _emptyParameters, CancellationToken.None);
 
         await Assert.That(body).IsEqualTo("0");
+    }
+
+    [Test]
+    public async Task AgentConfigurationIdResolvesThroughScribanMemberAccess()
+    {
+        using var fixture = new Fixture();
+        await fixture.WriteWorkspaceTemplateAsync(
+            "DEFAULT",
+            "id={{ agent_configuration.id }}");
+
+        var config = new AgentConfig(
+            Model: new ModelConfiguration(Id: new CompositeIdentity("TEST", "stub")),
+            Id: "alice");
+
+        var body = await fixture.Provider.GetAsync(
+            "DEFAULT",
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [AgentConfig.DataKey] = config,
+            },
+            CancellationToken.None);
+
+        await Assert.That(body).IsEqualTo("id=alice");
     }
 
     [Test]
