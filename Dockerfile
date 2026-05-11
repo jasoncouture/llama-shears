@@ -52,11 +52,6 @@ RUN dotnet publish src/LlamaShears/LlamaShears.csproj \
 FROM ${ASPNET_IMAGE} AS runtime-base
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tree git \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get update
-
 # All persistent state lives under Paths:DataRoot. /data is mounted by
 # compose; nothing should land outside it.
 #
@@ -76,6 +71,11 @@ EXPOSE 8080
 USER root
 
 VOLUME ["/data"]
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tree git \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get update
 
 # Final runtime layer — drops the publish output on top of the prepared
 # base. Splitting the published bits into their own stage keeps the
