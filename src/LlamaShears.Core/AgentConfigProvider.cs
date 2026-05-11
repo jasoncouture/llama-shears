@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
@@ -69,31 +70,46 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
             WorkspacePath = ResolveWorkspacePath(raw.WorkspacePath, agentId),
         };
 
-    private static ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
+    private static async ValueTask<AgentConfig?> ParseAsync(Stream? stream, ParseState state, CancellationToken cancellationToken)
     {
         if (stream is null)
         {
-            return ValueTask.FromResult<AgentConfig?>(null);
+            return null;
         }
+
+        byte[] bytes;
+        try
+        {
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            bytes = buffer.ToArray();
+        }
+        catch (IOException ex)
+        {
+            LogParseFailure(state.Logger, state.AgentId, state.Path, ex.Message, ex);
+            return null;
+        }
+
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
 
         AgentConfig? config;
         try
         {
-            config = JsonSerializer.Deserialize<AgentConfig>(stream, _jsonOptions);
+            config = JsonSerializer.Deserialize<AgentConfig>(bytes, _jsonOptions);
         }
-        catch (Exception ex) when (ex is IOException or JsonException)
+        catch (JsonException ex)
         {
             LogParseFailure(state.Logger, state.AgentId, state.Path, ex.Message, ex);
-            return ValueTask.FromResult<AgentConfig?>(null);
+            return null;
         }
 
         if (config is null)
         {
             LogEmptyConfig(state.Logger, state.AgentId, state.Path);
-            return ValueTask.FromResult<AgentConfig?>(null);
+            return null;
         }
 
-        return ValueTask.FromResult<AgentConfig?>(config);
+        return config with { Hash = hash };
     }
 
     private string ResolveWorkspacePath(string? configured, string agentId)

@@ -13,6 +13,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// </summary>
 /// <param name="Model">Language model selection and per-call options.</param>
 /// <param name="Id">Stable agent identifier; populated from the file name and not serialized back into the JSON body.</param>
+/// <param name="Hash">Content hash of the on-disk config file bytes, computed before deserialization. Used as a change token for concurrent-edit detection; not serialized into the JSON body.</param>
 /// <param name="WorkspacePath">Absolute or workspace-relative path to the agent's workspace overlay; <see langword="null"/> falls back to the framework default.</param>
 /// <param name="SystemPrompt">File name (including extension) of the system-prompt template to render, e.g. <c>DEFAULT.md</c>; <see langword="null"/> uses <c>DEFAULT.md</c>.</param>
 /// <param name="PromptContext">Name of the per-turn prompt-context template; <see langword="null"/> uses <c>PROMPT</c>.</param>
@@ -21,6 +22,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 public sealed record AgentConfig(
     [property: JsonRequired] ModelConfiguration Model,
     [property: JsonIgnore] string Id = "",
+    [property: JsonIgnore] string Hash = "",
     string? WorkspacePath = null,
     string? SystemPrompt = null,
     string? PromptContext = null,

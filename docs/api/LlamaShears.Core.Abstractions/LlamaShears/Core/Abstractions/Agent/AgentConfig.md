@@ -11,6 +11,7 @@ turn sees one consistent configuration end-to-end.
 
 - `Model` — Language model selection and per-call options.
 - `Id` — Stable agent identifier; populated from the file name and not serialized back into the JSON body.
+- `Hash` — Content hash of the on-disk config file bytes, computed before deserialization. Used as a change token for concurrent-edit detection; not serialized into the JSON body.
 - `WorkspacePath` — Absolute or workspace-relative path to the agent's workspace overlay; `null` falls back to the framework default.
 - `SystemPrompt` — File name (including extension) of the system-prompt template to render, e.g. `DEFAULT.md`; `null` uses `DEFAULT.md`.
 - `PromptContext` — Name of the per-turn prompt-context template; `null` uses `PROMPT`.
@@ -28,6 +29,10 @@ Key used to stash the active [AgentConfig](AgentConfig.md) in the per-turn data 
 ### `Embedding`
 
 Embedding model selection used for memory search; `null` disables memory features.
+
+### `Hash`
+
+Content hash of the on-disk config file bytes, computed before deserialization. Used as a change token for concurrent-edit detection; not serialized into the JSON body.
 
 ### `HeartbeatPeriod`
 
@@ -67,7 +72,7 @@ Absolute or workspace-relative path to the agent's workspace overlay; `null` fal
 
 ## Methods
 
-### `AgentConfig`([ModelConfiguration](../Provider/ModelConfiguration.md) Model, string Id, string WorkspacePath, string SystemPrompt, string PromptContext, [ModelConfiguration](../Provider/ModelConfiguration.md) Embedding, ImmutableHashSet<string> ModelContextProtocolServers)
+### `AgentConfig`([ModelConfiguration](../Provider/ModelConfiguration.md) Model, string Id, string Hash, string WorkspacePath, string SystemPrompt, string PromptContext, [ModelConfiguration](../Provider/ModelConfiguration.md) Embedding, ImmutableHashSet<string> ModelContextProtocolServers)
 
 Immutable on-disk configuration snapshot for one agent. Loaded from
 `<Data>/agents/<id>.json` by [IAgentConfigProvider](IAgentConfigProvider.md)
@@ -78,6 +83,7 @@ turn sees one consistent configuration end-to-end.
 
 - `Model` — Language model selection and per-call options.
 - `Id` — Stable agent identifier; populated from the file name and not serialized back into the JSON body.
+- `Hash` — Content hash of the on-disk config file bytes, computed before deserialization. Used as a change token for concurrent-edit detection; not serialized into the JSON body.
 - `WorkspacePath` — Absolute or workspace-relative path to the agent's workspace overlay; `null` falls back to the framework default.
 - `SystemPrompt` — File name (including extension) of the system-prompt template to render, e.g. `DEFAULT.md`; `null` uses `DEFAULT.md`.
 - `PromptContext` — Name of the per-turn prompt-context template; `null` uses `PROMPT`.
