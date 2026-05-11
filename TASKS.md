@@ -19,6 +19,12 @@ home before they drift. Group by area; trim freely.
 
 ## Plugins & extensibility
 - [ ] **Skills support.** Plugin-side equivalent to skill files / playbooks.
+  Loaded from two roots: `./skills` next to the installed app (bundled
+  defaults, ships with the image) and `<DataRoot>/skills` (host-mounted
+  overrides). On name collision the data-root variant wins — same
+  pattern as templates. Per-agent allow/deny config so a tool/skill
+  pack written for openclaw can be denied on this host without
+  uninstalling it.
 - [ ] **NuGet package plugin loading.** Download + load plugin packages from
   nuget.org-shaped feeds at runtime.
 - [ ] **Plugin source flexibility.** One config field, auto-detected:
@@ -42,13 +48,52 @@ home before they drift. Group by area; trim freely.
 - [ ] **Transient controllable contexts.** Agent can carve scratch contexts
   to hold a task's working state without bloating its main context window or
   forcing compaction.
+- [ ] **Ephemeral session support.** Sibling concept to a loaded agent
+  but lifecycle is caller-owned, not config-file-driven: take the base
+  `AgentConfig`, apply an in-memory overlay (alternate system prompt,
+  tool allowlist, model knobs, etc.), and run inferences against it.
+  Never written to disk. `AgentManager`'s reconcile loop must not see
+  it as a candidate to unload — the owning subsystem manages start/stop.
+  Prerequisite for the cron-tool agent execution and the agent
+  heartbeat (both fire inferences against tweaked configs without
+  contaminating the main agent's persistent context). Port the
+  compactor's current bespoke session-setup onto this primitive once it
+  lands. See [ephemeral sessions design](docs/design/ephemeral-sessions.md).
 - [ ] **Smarter compaction.** Safely preserve tools (tool-call ↔ tool-result
   pairs, schema-anchored entries) and other invariants the current compactor
-  can break.
+  can break. Plus: keep the last user turn *and* every assistant/tool turn
+  that followed it, unless that suffix exceeds 25% of the model's max
+  allowed tokens — in which case fall back to the trailing-user-only
+  behavior. See [compaction design](docs/design/compaction.md#planned-preserve-the-trailing-user-turn-cluster).
+- [ ] **On-demand tool loading.** Stop sending the full tool catalog every
+  turn — currently ~10 k tokens of system prompt before the conversation
+  even starts. Replace with three meta-tools (`tool_search`, `tool_load`,
+  `tool_unload`); the model searches a per-agent in-memory RAG index over
+  tool descriptions, loads what it needs, and the active pool is capped at
+  5 slots with LRU-by-last-used eviction. See
+  [tool loading design](docs/design/tool-loading.md).
 
 ## Web UI
 - [ ] **Expose config.** Surface host config in the UI (read/write where
   safe).
+- [ ] **Data explorer.** Per-agent UI page that walks the live data
+  context scope and shows every key → value pair. Values render as
+  pretty-printed JSON; on serializer failure (cycles, unmappable types,
+  uncooperative converters) fall back to `value?.ToString() ?? "null"`
+  so the page never blanks on one bad entry. Live counterpart to the
+  generated [data-keys reference](../docs/design/data-keys.md).
+- [ ] **MCP editor.** UI for adding/editing/removing MCP server
+  registrations (the entries that drive `IModelContextProtocolServerRegistry`).
+  Same edit affordances as the agent-config editor: JSON view with
+  validation, optimistic-concurrency save.
+- [ ] **Tool explorer.** Per-agent view of the full tool catalog
+  discovered for the agent, plus the live active pool when the
+  on-demand-loading work lands. Read-only: name, source, description,
+  schema, `LastUsedAt`.
+- [ ] **Skill explorer.** Browse the agent's loaded skills/playbooks
+  (paired with the skills support task under Plugins & extensibility).
+  Includes the per-agent block list editor — the host needs to deny a
+  skill pack (e.g. an openclaw-flavored one) without uninstalling it.
 - [ ] **View archived sessions.** Browse compaction-archived context
   (`<Context>/<agent>/<unix-ms>.json`) from the UI as read-only history
   alongside the live conversation.
