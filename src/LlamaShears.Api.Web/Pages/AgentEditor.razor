@@ -116,7 +116,7 @@
 
         _module ??= await Js.InvokeAsync<IJSObjectReference>(
             "import",
-            "./agent-editor.js");
+            "/_content/LlamaShears.Api.Web/agent-editor.js");
         _selfRef ??= DotNetObjectReference.Create(this);
         await _module.InvokeVoidAsync("init", _mount, initial, _selfRef);
 
