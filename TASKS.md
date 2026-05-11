@@ -47,7 +47,6 @@ home before they drift. Group by area; trim freely.
   can break.
 
 ## Web UI
-- [ ] **Agent creator/editor.** Build / edit agent JSON from the UI.
 - [ ] **Expose config.** Surface host config in the UI (read/write where
   safe).
 - [ ] **View archived sessions.** Browse compaction-archived context
@@ -74,6 +73,18 @@ home before they drift. Group by area; trim freely.
   scopes can run what.
 - [ ] **Unsafe tools.** Shell execution, background processes — gated behind
   explicit permission (per-agent, per-call, or both).
+
+## Documentation enforcement
+- [ ] **Typed `DataKey<T>` + auto-generated data-key reference.** Replace
+  the loose `const string DataKey = "..."` keys with a `DataKey<T>`
+  type (non-generic `DataKey` base for the dictionary key, `T` for the
+  value side, implicit `→ string` for transitional dict access).
+  Default key from `nameof(T)`; explicit string when callers want a
+  different scriban name. Analyzer enforces an XML `<summary>` on every
+  `DataKey<T>` field (one-liner). A docs target walks the assembly,
+  emits a `## Template data` table where each row links to the *generic
+  parameter*'s class docs (not `DataKey<T>` itself), with the field's
+  one-liner as the row text. See [data-keys design](docs/design/data-keys.md).
 
 ## Build / infrastructure
 - [ ] **Cron `FireSingleAsync` lost-update window.** `JsonCronStore`
