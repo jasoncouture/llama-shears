@@ -49,6 +49,12 @@ home before they drift. Group by area; trim freely.
 ## Web UI
 - [ ] **Expose config.** Surface host config in the UI (read/write where
   safe).
+- [ ] **Data explorer.** Per-agent UI page that walks the live data
+  context scope and shows every key → value pair. Values render as
+  pretty-printed JSON; on serializer failure (cycles, unmappable types,
+  uncooperative converters) fall back to `value?.ToString() ?? "null"`
+  so the page never blanks on one bad entry. Live counterpart to the
+  generated [data-keys reference](../docs/design/data-keys.md).
 - [ ] **View archived sessions.** Browse compaction-archived context
   (`<Context>/<agent>/<unix-ms>.json`) from the UI as read-only history
   alongside the live conversation.

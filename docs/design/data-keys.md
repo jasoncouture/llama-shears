@@ -116,3 +116,7 @@ Lean toward central. Picking it is the first decision tomorrow; the rest of the 
 5. Wire the docs-build extension to emit the table; thread it into the existing API-docs index.
 
 `IDataContextScope` keeps its current `string`-keyed API during the sweep (because of the implicit conversion); once everything is migrated, the storage backing dictionary can switch to `Dictionary<DataKey, object?>` and typed accessors replace the `TryGetValue<T>(string, out _)` paths.
+
+## Live counterpart: data explorer
+
+The generated reference describes the keys *statically*. A per-agent **data explorer** in the Web UI gives the *runtime* view: walk the live scope, render each entry as a table row of `key` → pretty-printed JSON. When `JsonSerializer.Serialize` chokes on a value (cycles, unmappable types, recalcitrant converters), fall back to `value?.ToString() ?? "null"` so one bad entry doesn't blank the page. The static doc and the live explorer share the same key vocabulary; together they answer "what's supposed to be in the scope" and "what's actually in the scope right now" in one place each.
