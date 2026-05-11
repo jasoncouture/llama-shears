@@ -88,6 +88,7 @@ public sealed class AgentInterruptTests
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             publisher,
             Substitute.For<IToolCallDispatcher>(),

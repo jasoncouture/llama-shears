@@ -128,6 +128,7 @@ public sealed class AgentEventPublishingTests
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             capturing,
             Substitute.For<IToolCallDispatcher>(),

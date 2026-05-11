@@ -260,7 +260,9 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         CancellationToken outerCancellationToken,
         CancellationToken cancellationToken)
     {
-        await using var loopScope = _scopedServices.CreateAsyncScope();
+        await using var bundle = _scopedServices.GetRequiredService<IServiceScopeFactory>().CreateAsyncScopeWithData();
+        await bundle.ServiceScope.ApplyScopeDataAsync(cancellationToken);
+        _dataScope.SetItem("channel_id", batch[^1].ChannelId);
 
         foreach (var turn in batch)
         {
@@ -291,13 +293,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             .CompactAsync(agentContextSnapshot, prompt, _model, _dataScope.GetModelConfiguration(), force: false, cancellationToken)
             ;
 
-        using var inferenceDataScope = _dataScope.BeginScope();
-        var iterationNow = _time.GetLocalNow();
-        _dataScope.SetItem("now", iterationNow);
-        _dataScope.SetItem("timezone", TimeZoneInfo.Local.Id);
-        _dataScope.SetItem("day_of_week", iterationNow.DayOfWeek.ToString());
-        _dataScope.SetItem("channel_id", prompt.Turns[^1].ChannelId);
-        var inferenceRunner = loopScope.ServiceProvider.GetRequiredService<IInferenceRunner>();
+        var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
         var outcome = await inferenceRunner.RunAsync(
             eventId: Id,
             model: _model,

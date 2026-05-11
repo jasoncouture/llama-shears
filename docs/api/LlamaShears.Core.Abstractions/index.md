@@ -80,11 +80,13 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Common
 
+- [AsyncDataContextServiceScope](LlamaShears/Core/Abstractions/Common/AsyncDataContextServiceScope.md)
 - [CompositeIdentity](LlamaShears/Core/Abstractions/Common/CompositeIdentity.md)
 - [CompositeIdentityJsonConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityJsonConverter.md)
 - [CompositeIdentityTypeConverter](LlamaShears/Core/Abstractions/Common/CompositeIdentityTypeConverter.md)
 - [DataContextConstants](LlamaShears/Core/Abstractions/Common/DataContextConstants.md)
 - [DataContextScopeExtensions](LlamaShears/Core/Abstractions/Common/DataContextScopeExtensions.md)
+- [DataContextScopeFactoryExtensions](LlamaShears/Core/Abstractions/Common/DataContextScopeFactoryExtensions.md)
 - [DataContextServiceCollectionExtensions](LlamaShears/Core/Abstractions/Common/DataContextServiceCollectionExtensions.md)
 - [IDataContextFactory](LlamaShears/Core/Abstractions/Common/IDataContextFactory.md)
 - [IDataContextItemProvider](LlamaShears/Core/Abstractions/Common/IDataContextItemProvider.md)

@@ -217,6 +217,7 @@ public sealed class AgentTurnFlowTests
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             publisher,
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
