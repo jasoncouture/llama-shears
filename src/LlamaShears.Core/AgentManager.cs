@@ -323,7 +323,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 {
                     { AgentConfig.DataKey, config },
                     { "model_configuration", modelConfig },
-                    { "agent_context", agentContext },
                 };
 
             var scope = _scopeFactory.CreateAsyncScope();
