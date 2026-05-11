@@ -92,9 +92,12 @@ public sealed partial class ContextCompactor : IContextCompactor
 
         if (!force)
         {
-            var totalEstimate = agentContext.LanguageModel.ContextWindowTokenCount;
+            var lastReportedTokens = agentContext.LanguageModel.ContextWindowTokenCount;
             var predictBudget = ResolvePredictBudget(configuration, window);
-            if (totalEstimate + predictBudget < window)
+            var nextLength = prompt.Turns[^1].Content?.Length ?? 0;
+            var nextTokenEstimate = (nextLength + 1) / 2;
+            var threshold = (int)Math.Floor(window * 0.75);
+            if (lastReportedTokens + predictBudget + nextTokenEstimate < threshold)
             {
                 return prompt;
             }
