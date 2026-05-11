@@ -49,19 +49,19 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         ArgumentNullException.ThrowIfNull(content);
 
-        var ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var ctx = await ResolveAsync(agentId, cancellationToken);
         var (relativePath, fullPath) = AllocateMemoryPath(ctx.WorkspaceRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        await File.WriteAllTextAsync(fullPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(fullPath, content, Encoding.UTF8, cancellationToken);
 
         try
         {
             var hash = ComputeHash(content);
-            var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken).ConfigureAwait(false);
-            var collection = await OpenCollectionAsync(ctx, vector.Length, cancellationToken).ConfigureAwait(false);
+            var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken);
+            var collection = await OpenCollectionAsync(ctx, vector.Length, cancellationToken);
             await collection.UpsertAsync(
                 new MemoryVectorRecord { Path = relativePath, Hash = hash, Vector = vector },
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
             LogStored(_logger, agentId, relativePath);
         }
         catch (Exception ex) when (ex is VectorStoreException or InvalidOperationException or HttpRequestException)
@@ -88,7 +88,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         MemoryContext ctx;
         try
         {
-            ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
+            ctx = await ResolveAsync(agentId, cancellationToken);
         }
         catch (InvalidOperationException)
         {
@@ -106,8 +106,8 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
 
         var startedAt = Stopwatch.GetTimestamp();
-        var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken).ConfigureAwait(false);
-        var collection = await OpenCollectionAsync(ctx, queryVector.Length, cancellationToken).ConfigureAwait(false);
+        var queryVector = await ctx.Embedding.EmbedAsync($"{ctx.QueryPrefix}{query}", cancellationToken);
+        var collection = await OpenCollectionAsync(ctx, queryVector.Length, cancellationToken);
 
         var ranked = new List<MemorySearchResult>();
         var scanned = 0;
@@ -132,7 +132,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 fullPath,
                 state: null,
                 parser: ParseSnapshotAsync,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
             if (snapshot is null)
             {
                 continue;
@@ -154,18 +154,18 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var ctx = await ResolveAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var ctx = await ResolveAsync(agentId, cancellationToken);
         Directory.CreateDirectory(Path.GetDirectoryName(ctx.IndexDbPath)!);
 
         try
         {
-            return await ReconcileCoreAsync(agentId, force, ctx, cancellationToken).ConfigureAwait(false);
+            return await ReconcileCoreAsync(agentId, force, ctx, cancellationToken);
         }
         catch (Exception ex) when (IsVectorDimensionMismatch(ex))
         {
             LogIndexSchemaMismatchRebuilding(_logger, agentId, ctx.IndexDbPath);
             ResetIndex(ctx.IndexDbPath);
-            return await ReconcileCoreAsync(agentId, force: true, ctx, cancellationToken).ConfigureAwait(false);
+            return await ReconcileCoreAsync(agentId, force: true, ctx, cancellationToken);
         }
     }
 
@@ -175,8 +175,8 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         MemoryContext ctx,
         CancellationToken cancellationToken)
     {
-        var dimension = await ProbeDimensionAsync(ctx, cancellationToken).ConfigureAwait(false);
-        var collection = await OpenCollectionAsync(ctx, dimension, cancellationToken).ConfigureAwait(false);
+        var dimension = await ProbeDimensionAsync(ctx, cancellationToken);
+        var collection = await OpenCollectionAsync(ctx, dimension, cancellationToken);
 
         var indexed = new Dictionary<string, string>(StringComparer.Ordinal);
         await foreach (var record in collection
@@ -198,7 +198,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 cancellationToken.ThrowIfCancellationRequested();
                 var relativePath = ToRelative(ctx.WorkspaceRoot, fullPath);
                 seen.Add(relativePath);
-                var content = await File.ReadAllTextAsync(fullPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                var content = await File.ReadAllTextAsync(fullPath, Encoding.UTF8, cancellationToken);
                 var hash = ComputeHash(content);
                 indexed.TryGetValue(relativePath, out var existingHash);
                 var unchanged = existingHash is not null && string.Equals(existingHash, hash, StringComparison.Ordinal);
@@ -206,10 +206,10 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
                 {
                     continue;
                 }
-                var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken).ConfigureAwait(false);
+                var vector = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}{content}", cancellationToken);
                 await collection.UpsertAsync(
                     new MemoryVectorRecord { Path = relativePath, Hash = hash, Vector = vector },
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken);
                 if (existingHash is null)
                 {
                     added++;
@@ -233,7 +233,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         }
         foreach (var path in orphans)
         {
-            await collection.DeleteAsync(path, cancellationToken).ConfigureAwait(false);
+            await collection.DeleteAsync(path, cancellationToken);
             LogIndexedRemoved(_logger, agentId, path);
         }
         return new MemoryReconciliation(Added: added, Updated: updated, Removed: orphans.Count, Total: seen.Count);
@@ -337,13 +337,13 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
         };
         var store = new SqliteVectorStore(connectionString);
         var collection = store.GetCollection<string, MemoryVectorRecord>(CollectionName, definition);
-        await collection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
+        await collection.EnsureCollectionExistsAsync(cancellationToken);
         return collection;
     }
 
     private static async ValueTask<int> ProbeDimensionAsync(MemoryContext ctx, CancellationToken cancellationToken)
     {
-        var probe = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}probe", cancellationToken).ConfigureAwait(false);
+        var probe = await ctx.Embedding.EmbedAsync($"{ctx.DocumentPrefix}probe", cancellationToken);
         return probe.Length;
     }
 
@@ -409,7 +409,7 @@ public sealed partial class SqliteMemoryService : IMemoryStore, IMemorySearcher,
             return null;
         }
         using var reader = new StreamReader(stream, Encoding.UTF8);
-        var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var content = await reader.ReadToEndAsync(cancellationToken);
         var firstLineEnd = content.IndexOfAny(['\r', '\n']);
         var summary = firstLineEnd < 0 ? content : content[..firstLineEnd];
         return new MemoryFileSnapshot(summary, content);

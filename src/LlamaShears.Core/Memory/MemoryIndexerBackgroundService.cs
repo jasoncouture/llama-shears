@@ -53,11 +53,11 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
             }
             var force = first && indexerOptions.ForceOnStartup;
             first = false;
-            await ScanAsync(force, stoppingToken).ConfigureAwait(false);
+            await ScanAsync(force, stoppingToken);
 
             try
             {
-                await Task.Delay(indexerOptions.Interval, _time, stoppingToken).ConfigureAwait(false);
+                await Task.Delay(indexerOptions.Interval, _time, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -87,7 +87,7 @@ public sealed partial class MemoryIndexerBackgroundService : BackgroundService
             {
                 LogReconcilingAgent(_logger, agentId, force);
                 var startedAt = Stopwatch.GetTimestamp();
-                var summary = await _indexer.ReconcileAsync(agentId, force, cancellationToken).ConfigureAwait(false);
+                var summary = await _indexer.ReconcileAsync(agentId, force, cancellationToken);
                 var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
                 LogReconciled(_logger, agentId, summary.Added, summary.Updated, summary.Removed, summary.Total, elapsedMs);
             }

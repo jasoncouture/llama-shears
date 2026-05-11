@@ -12,6 +12,13 @@ configuration to a provider-specific options record.
 ### `GetModelConfiguration`([IDataContextScope](../Common/IDataContextScope.md) scope)
 
 Returns the [ModelConfiguration](ModelConfiguration.md) attached to the given scope
+under [ModelConfiguration](ModelConfiguration.md).`DataKey`. Throws when the scope is
+`null` or has no model configuration stashed; intended
+for sites that legitimately cannot proceed without one.
+
+### `TryGetModelConfiguration`([IDataContextScope](../Common/IDataContextScope.md) scope)
+
+Returns the [ModelConfiguration](ModelConfiguration.md) attached to the given scope
 under [ModelConfiguration](ModelConfiguration.md).`DataKey`, or `null`
 if none is set.
 

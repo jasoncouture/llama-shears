@@ -65,7 +65,7 @@ public sealed partial class GrepTool
             return $"Invalid regex: {ex.Message}";
         }
 
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (!Directory.Exists(workspace.Root))
         {
             return $"Workspace not found: {workspace.Root}";
@@ -120,7 +120,7 @@ public sealed partial class GrepTool
             filesScanned++;
             try
             {
-                var fileMatches = await ScanFileAsync(fullPath, hit.Path, regex, output, cap - matchCount, cancellationToken).ConfigureAwait(false);
+                var fileMatches = await ScanFileAsync(fullPath, hit.Path, regex, output, cap - matchCount, cancellationToken);
                 matchCount += fileMatches;
             }
             catch (RegexMatchTimeoutException)

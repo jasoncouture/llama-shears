@@ -39,9 +39,9 @@ public sealed partial class OpenAiProviderFactory : IProviderFactory
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         }
         var httpClient = _httpClientFactory.CreateClient(nameof(OpenAiLanguageModel));
-        using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
         var root = JsonNode.Parse(body) as JsonObject;
         if (root?["data"] is not JsonArray entries)

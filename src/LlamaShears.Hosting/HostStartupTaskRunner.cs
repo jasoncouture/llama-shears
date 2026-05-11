@@ -20,7 +20,7 @@ public sealed class HostStartupTaskRunner : IHostedService
         foreach (var task in tasks)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await task.StartAsync(cancellationToken).ConfigureAwait(false);
+            await task.StartAsync(cancellationToken);
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices.ComTypes;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,23 +8,30 @@ namespace LlamaShears.Core.DataContext;
 
 internal sealed class DataContextFactory : IDataContextFactory
 {
-    public DataContextFactory([FromKeyedServices(DataContextConstants.SingletonKey)] IEnumerable<IDataContextItemProvider> providers)
+    private readonly ImmutableArray<IDataContextItemProvider> _providers;
+
+    public DataContextFactory(
+        [FromKeyedServices(DataContextConstants.SingletonKey)] IEnumerable<IDataContextItemProvider> providers)
     {
         _providers = [.. providers];
     }
+
     private readonly Dictionary<string, WeakReference<IDataContextScope>> _scopes =
         new Dictionary<string, WeakReference<IDataContextScope>>(StringComparer.OrdinalIgnoreCase);
+
     private readonly object _lock = new object();
 
     private readonly AsyncLocal<IDataContextScope?> _current = new AsyncLocal<IDataContextScope?>();
-    private readonly ImmutableArray<IDataContextItemProvider> _providers;
 
-    public IDataContextScope? Current => _current.Value;
+    public IDataContextScope? Current
+    {
+        get => _current.Value;
+        set => _current.Value = value;
+    }
 
-    public async Task<IDataContextScope> StartContextAsync(string key, IEnumerable<IDataContextItemProvider> providers, CancellationToken cancellationToken)
+    public IDataContextScope CreateContext(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        ArgumentNullException.ThrowIfNull(providers);
         SweepDeadEntries();
 
         var scope = new DataContextScope(key);
@@ -33,30 +41,38 @@ internal sealed class DataContextFactory : IDataContextFactory
             {
                 throw new InvalidOperationException($"A data context with key '{key}' is already active.");
             }
+
             _scopes[key] = new WeakReference<IDataContextScope>(scope);
-            _current.Value = scope;
+            return _current.Value = scope;
+        }
+    }
+
+    public async ValueTask InitializeAsync(string key,IEnumerable<IDataContextItemProvider> scopeProviders, IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        IDataContextScope? scope;
+        lock (_lock)
+        {
+            if (!_scopes.TryGetValue(key, out var weakScopeReference) || !weakScopeReference.TryGetTarget(out scope))
+            {
+                throw new InvalidOperationException($"No such scope exists: {key}");
+            }
         }
 
-        try
+        var hadAny = scope.Any();
+        scope.SetItems(values); // Values are always set first, because providers might need them.
+        if (!hadAny)
         {
-            foreach (var provider in _providers.Concat(providers))
+            foreach (var provider in _providers)
             {
-                await scope.SetItemsAsync(provider, cancellationToken).ConfigureAwait(false);
+                await scope.SetItemsAsync(provider, cancellationToken);
             }
         }
-        catch
+
+        foreach (var provider in scopeProviders)
         {
-            lock (_lock)
-            {
-                _scopes.Remove(key);
-                if (ReferenceEquals(_current.Value, scope))
-                {
-                    _current.Value = null;
-                }
-            }
-            throw;
+            await scope.SetItemsAsync(provider, cancellationToken);
         }
-        return scope;
     }
 
     public bool TryJoinContextScope(string key, [NotNullWhen(true)] out IDataContextScope? context)
@@ -73,16 +89,21 @@ internal sealed class DataContextFactory : IDataContextFactory
                     context = Current;
                     return true;
                 }
-                throw new InvalidOperationException("A scope is already present on this call chain; cannot join a different scope.");
+
+                throw new InvalidOperationException(
+                    "A scope is already present on this call chain; cannot join a different scope.");
             }
+
             if (!_scopes.TryGetValue(key, out var reference) || !reference.TryGetTarget(out var target))
             {
                 if (reference is not null)
                 {
                     _scopes.Remove(key);
                 }
+
                 return false;
             }
+
             _current.Value = target;
             context = target;
             return true;
@@ -98,6 +119,7 @@ internal sealed class DataContextFactory : IDataContextFactory
             {
                 _current.Value = null;
             }
+
             _scopes.Remove(key);
         }
     }
@@ -112,6 +134,7 @@ internal sealed class DataContextFactory : IDataContextFactory
             {
                 return;
             }
+
             _current.Value = null;
             if (owner)
             {
@@ -132,6 +155,7 @@ internal sealed class DataContextFactory : IDataContextFactory
                     dead.Add(pair.Key);
                 }
             }
+
             foreach (var key in dead)
             {
                 _scopes.Remove(key);

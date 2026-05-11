@@ -87,8 +87,17 @@ public sealed class AgentInterruptTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            publisher,
+            Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            TestAgentConfigs.EmptyMemorySearcher(),
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
-            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
@@ -96,20 +105,12 @@ public sealed class AgentInterruptTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
-            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(
-                publisher,
-                Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                TestAgentConfigs.EmptyMemorySearcher(),
-                dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: dataContextFactory,
+            dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: services.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
         return agent;
     }

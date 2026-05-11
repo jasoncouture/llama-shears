@@ -22,7 +22,7 @@ public sealed class AgentWorkspaceLocator : IAgentWorkspaceLocator
         {
             return new AgentWorkspace(null, Environment.CurrentDirectory);
         }
-        var config = await _configs.GetConfigAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var config = await _configs.GetConfigAsync(agentId, cancellationToken);
         var root = config is null || string.IsNullOrEmpty(config.WorkspacePath)
             ? Environment.CurrentDirectory
             : Path.GetFullPath(config.WorkspacePath);

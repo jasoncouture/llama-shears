@@ -127,8 +127,17 @@ public sealed class AgentEventPublishingTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            capturing,
+            Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            TestAgentConfigs.EmptyMemorySearcher(),
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         using var agent = new LlamaShears.Core.Agent(
-            config: resolvedConfig,
             model: model,
             agentContext: ctx,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
@@ -136,20 +145,12 @@ public sealed class AgentEventPublishingTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: BuildNoOpCompactor(),
-            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
-            inferenceRunner: new InferenceRunner(
-                capturing,
-                Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                TestAgentConfigs.EmptyMemorySearcher(),
-                dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: dataContextFactory,
+            dataScope: dataContextFactory.Current!,
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            scope: provider.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
 
         await capturing.PublishAsync(
@@ -239,7 +240,7 @@ public sealed class AgentEventPublishingTests
             {
                 _captured.Add(new CapturedEvent(eventType, data, correlationId));
             }
-            await _inner.PublishAsync(eventType, data, correlationId, cancellationToken).ConfigureAwait(false);
+            await _inner.PublishAsync(eventType, data, correlationId, cancellationToken);
         }
     }
 

@@ -104,7 +104,7 @@ public sealed class AgentInterruptGracefulTests
         {
             yield return new TextFragment(_text);
             _emitted.TrySetResult();
-            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(Timeout.Infinite, cancellationToken);
             yield break;
         }
     }
@@ -124,7 +124,7 @@ public sealed class AgentInterruptGracefulTests
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             yield return new ToolCallFragmentImpl(_call);
-            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(Timeout.Infinite, cancellationToken);
             yield break;
         }
     }
@@ -152,7 +152,7 @@ public sealed class AgentInterruptGracefulTests
             _dispatched.TrySetResult();
             try
             {
-                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(Timeout.Infinite, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -162,7 +162,7 @@ public sealed class AgentInterruptGracefulTests
                 Event.WellKnown.Agent.ToolResult with { Id = eventId },
                 new AgentToolResultFragment(call.Source, call.Name, result.Content, result.IsError, call.CallId),
                 correlationId,
-                CancellationToken.None).ConfigureAwait(false);
+                CancellationToken.None);
             return result;
         }
     }
@@ -203,8 +203,17 @@ public sealed class AgentInterruptGracefulTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            publisher,
+            dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            TestAgentConfigs.EmptyMemorySearcher(),
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
-            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
@@ -212,20 +221,12 @@ public sealed class AgentInterruptGracefulTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
-            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(
-                publisher,
-                dispatcher ?? Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                TestAgentConfigs.EmptyMemorySearcher(),
-                dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: dataContextFactory,
+            dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: services.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
         return agent;
     }

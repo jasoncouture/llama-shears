@@ -67,10 +67,10 @@ public partial class OpenAiLanguageModel : ILanguageModel
 
         using var response = await httpClient
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
+            ;
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
             LogRequestFailed(_logger, _configuration.Id.Model, (int)response.StatusCode, errorBody);
             throw new HttpRequestException(
                 $"OpenAI-compatible chat request failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {errorBody}");
@@ -79,12 +79,12 @@ public partial class OpenAiLanguageModel : ILanguageModel
         var toolCallAccumulator = new Dictionary<int, ToolCallAccumulator>();
         int? totalTokens = null;
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream, Encoding.UTF8);
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            var line = await reader.ReadLineAsync(cancellationToken);
             if (line is null)
             {
                 break;

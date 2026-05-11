@@ -52,7 +52,7 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
         var builder = ImmutableArray.CreateBuilder<ToolGroup>(servers.Count);
         foreach (var (name, uri) in servers)
         {
-            var group = await DiscoverServerAsync(name, uri, cancellationToken).ConfigureAwait(false);
+            var group = await DiscoverServerAsync(name, uri, cancellationToken);
             if (group is not null)
             {
                 builder.Add(group);
@@ -68,8 +68,8 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
     {
         try
         {
-            var client = await _connections.GetOrCreateAsync((serverName, serverUri), cancellationToken).ConfigureAwait(false);
-            var tools = await client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            var client = await _connections.GetOrCreateAsync((serverName, serverUri), cancellationToken);
+            var tools = await client.ListToolsAsync(cancellationToken: cancellationToken);
             return new ToolGroup(
                 Source: serverName,
                 Tools: [.. tools.Select(MapTool)]);

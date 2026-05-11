@@ -23,7 +23,7 @@ public sealed class OneTypePerFileCodeFixProvider : CodeFixProvider
 
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
         if (root is null)
         {
             return;
@@ -54,7 +54,7 @@ public sealed class OneTypePerFileCodeFixProvider : CodeFixProvider
         string typeName,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var root = await document.GetSyntaxRootAsync(cancellationToken);
         if (root is not CompilationUnitSyntax compilationUnit)
         {
             return document.Project.Solution;
@@ -76,7 +76,7 @@ public sealed class OneTypePerFileCodeFixProvider : CodeFixProvider
 
         var addedDocument = solution.GetDocument(newDocumentId)!;
         var formatted = await Formatter.FormatAsync(addedDocument, Formatter.Annotation, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+            ;
         return formatted.Project.Solution;
     }
 

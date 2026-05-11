@@ -62,7 +62,7 @@ internal sealed class AgentContext : IAgentContext
         ArgumentNullException.ThrowIfNull(entry);
 
         var line = JsonSerializer.Serialize(entry, _jsonOptions) + "\n";
-        await File.AppendAllTextAsync(_currentPath, line, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        await File.AppendAllTextAsync(_currentPath, line, Encoding.UTF8, cancellationToken);
 
         lock (_lock)
         {

@@ -46,7 +46,7 @@ public sealed partial class CronScheduler : ICronScheduler
             NextFireAt = nextFireAt,
         };
 
-        await _store.UpsertAsync(job, cancellationToken).ConfigureAwait(false);
+        await _store.UpsertAsync(job, cancellationToken);
         LogScheduled(_logger, agentId, job.Id, name, cronExpression);
         return job;
     }
@@ -55,7 +55,7 @@ public sealed partial class CronScheduler : ICronScheduler
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var all = await _store.GetAllAsync(cancellationToken).ConfigureAwait(false);
+        var all = await _store.GetAllAsync(cancellationToken);
         return [.. all.Where(j => string.Equals(j.AgentId, agentId, StringComparison.Ordinal))];
     }
 
@@ -63,13 +63,13 @@ public sealed partial class CronScheduler : ICronScheduler
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var existing = await _store.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        var existing = await _store.GetAsync(id, cancellationToken);
         if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
         {
             return false;
         }
 
-        var removed = await _store.RemoveAsync(id, cancellationToken).ConfigureAwait(false);
+        var removed = await _store.RemoveAsync(id, cancellationToken);
         if (removed)
         {
             LogCancelled(_logger, agentId, id, existing.Name);
@@ -98,7 +98,7 @@ public sealed partial class CronScheduler : ICronScheduler
             throw new ArgumentException("Cron expression must not be blank.", nameof(edit));
         }
 
-        var existing = await _store.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        var existing = await _store.GetAsync(id, cancellationToken);
         if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
         {
             return null;
@@ -125,7 +125,7 @@ public sealed partial class CronScheduler : ICronScheduler
             NextFireAt = nextFireAt,
         };
 
-        await _store.UpsertAsync(updated, cancellationToken).ConfigureAwait(false);
+        await _store.UpsertAsync(updated, cancellationToken);
         LogEdited(_logger, agentId, id, newName);
         return updated;
     }
@@ -134,19 +134,19 @@ public sealed partial class CronScheduler : ICronScheduler
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var existing = await _store.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        var existing = await _store.GetAsync(id, cancellationToken);
         if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
         {
             return false;
         }
 
-        await FireSingleAsync(existing, _time.GetUtcNow(), manual: true, cancellationToken).ConfigureAwait(false);
+        await FireSingleAsync(existing, _time.GetUtcNow(), manual: true, cancellationToken);
         return true;
     }
 
     public async ValueTask FireDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        var jobs = await _store.GetAllAsync(cancellationToken).ConfigureAwait(false);
+        var jobs = await _store.GetAllAsync(cancellationToken);
         foreach (var job in jobs)
         {
             if (!job.Enabled)
@@ -165,7 +165,7 @@ public sealed partial class CronScheduler : ICronScheduler
 
             try
             {
-                await FireSingleAsync(job, now, manual: false, cancellationToken).ConfigureAwait(false);
+                await FireSingleAsync(job, now, manual: false, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -189,7 +189,7 @@ public sealed partial class CronScheduler : ICronScheduler
             LastFiredAt = firedAt,
             NextFireAt = nextFireAt,
         };
-        await _store.UpsertAsync(updated, cancellationToken).ConfigureAwait(false);
+        await _store.UpsertAsync(updated, cancellationToken);
     }
 
     private static CronExpression ParseOrThrow(string expression)

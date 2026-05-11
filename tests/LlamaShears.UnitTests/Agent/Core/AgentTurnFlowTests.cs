@@ -135,7 +135,7 @@ public sealed class AgentTurnFlowTests
             await _publisher.PublishAsync(
                 Event.WellKnown.Channel.Message with { Id = TestChannelId },
                 new ChannelMessage(_text, _agentId, DateTimeOffset.UtcNow),
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
             return new ToolCallResult("ok", IsError: false);
         }
     }
@@ -179,7 +179,7 @@ public sealed class AgentTurnFlowTests
             {
                 return;
             }
-            await Task.Delay(20).ConfigureAwait(false);
+            await Task.Delay(20);
         }
         throw new TimeoutException($"Predicate never became true within {timeout}.");
     }
@@ -216,8 +216,17 @@ public sealed class AgentTurnFlowTests
         var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var agentServices = new ServiceCollection();
+        agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            publisher,
+            dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            Substitute.For<IPromptContextProvider>(),
+            TestAgentConfigs.EmptyMemorySearcher(),
+            dataContextFactory));
+        var agentProvider = agentServices.BuildServiceProvider();
         var agent = new LlamaShears.Core.Agent(
-            config: resolvedConfig,
             model: model,
             agentContext: agentContext,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
@@ -225,20 +234,12 @@ public sealed class AgentTurnFlowTests
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             compactor: compactor,
-            modelConfiguration: new ModelConfiguration(new CompositeIdentity("test", "test")),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            inferenceRunner: new InferenceRunner(
-                publisher,
-                dispatcher ?? Substitute.For<IToolCallDispatcher>(),
-                TimeProvider.System,
-                Substitute.For<IPromptContextProvider>(),
-                TestAgentConfigs.EmptyMemorySearcher(),
-                dataContextFactory),
             currentAgent: currentAgent,
-            dataContextFactory: dataContextFactory,
+            dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: services.CreateAsyncScope());
+            scope: agentProvider.CreateAsyncScope());
         agent.Start();
         return agent;
     }

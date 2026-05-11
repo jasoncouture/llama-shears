@@ -29,10 +29,10 @@ public sealed class LifetimeCache<TKey, TValue> : IAsyncDisposable
     public async Task<TValue> GetOrCreateAsync(TKey key, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-        await SweepIdleAsync().ConfigureAwait(false);
+        await SweepIdleAsync();
         var entry = _entries.GetOrAdd(key, k => new Entry(_factory.Invoke(k, CancellationToken.None)));
         entry.Touch();
-        return await entry.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await entry.Value.WaitAsync(cancellationToken);
     }
 
     public async ValueTask<bool> InvalidateAsync(TKey key)
@@ -41,7 +41,7 @@ public sealed class LifetimeCache<TKey, TValue> : IAsyncDisposable
         {
             return false;
         }
-        await DisposeEntryAsync(entry).ConfigureAwait(false);
+        await DisposeEntryAsync(entry);
         return true;
     }
 
@@ -51,7 +51,7 @@ public sealed class LifetimeCache<TKey, TValue> : IAsyncDisposable
         {
             if (kvp.Value.IdleFor() < _idleTimeout) continue;
             if (!_entries.TryRemove(kvp.Key, out var removed)) continue;
-            await DisposeEntryAsync(removed).ConfigureAwait(false);
+            await DisposeEntryAsync(removed);
         }
     }
 
@@ -59,10 +59,10 @@ public sealed class LifetimeCache<TKey, TValue> : IAsyncDisposable
     {
         try
         {
-            var value = await entry.Value.ConfigureAwait(false);
+            var value = await entry.Value;
             switch (value)
             {
-                case IAsyncDisposable a: await a.DisposeAsync().ConfigureAwait(false); break;
+                case IAsyncDisposable a: await a.DisposeAsync(); break;
                 case IDisposable d: d.Dispose(); break;
             }
         }
@@ -76,7 +76,7 @@ public sealed class LifetimeCache<TKey, TValue> : IAsyncDisposable
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         foreach (var kvp in _entries)
         {
-            await DisposeEntryAsync(kvp.Value).ConfigureAwait(false);
+            await DisposeEntryAsync(kvp.Value);
         }
         _entries.Clear();
     }

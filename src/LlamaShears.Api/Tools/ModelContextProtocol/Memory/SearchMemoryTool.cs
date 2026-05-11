@@ -33,7 +33,7 @@ public sealed partial class SearchMemoryTool
         [Description("Minimum cosine similarity (0.0 - 1.0). Hits below this score are dropped. Defaults to 0.30 — relevant matches typically land 0.40-0.60 with task-prefixed asymmetric encoders, noise stays under 0.10, so 0.30 sits safely in the gap. Don't raise above ~0.55 unless you want very tight matches only.")] double minScore = DefaultMinScore,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: search_memory requires an authenticated agent on the request.";
@@ -48,7 +48,7 @@ public sealed partial class SearchMemoryTool
 
         try
         {
-            var hits = await _searcher.SearchAsync(workspace.AgentId, query, cap, floor, cancellationToken).ConfigureAwait(false);
+            var hits = await _searcher.SearchAsync(workspace.AgentId, query, cap, floor, cancellationToken);
             LogSearched(_logger, workspace.AgentId, query, hits.Count);
             return Render(query, hits, floor, cap);
         }

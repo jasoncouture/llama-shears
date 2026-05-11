@@ -27,7 +27,7 @@ public sealed class TemplateRenderer : ITemplateRenderer
             templatePath,
             templatePath,
             ParseAsync,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
         if (template is null)
         {
             return null;
@@ -50,7 +50,7 @@ public sealed class TemplateRenderer : ITemplateRenderer
         }
 
         using var reader = new StreamReader(stream);
-        var source = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var source = await reader.ReadToEndAsync(cancellationToken);
         return Template.Parse(source, path);
     }
 }

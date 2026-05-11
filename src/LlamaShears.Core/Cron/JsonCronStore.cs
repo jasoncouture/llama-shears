@@ -32,10 +32,10 @@ public sealed partial class JsonCronStore : ICronStore
 
     public async ValueTask<IReadOnlyList<CronJob>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+            await EnsureLoadedAsync(cancellationToken);
             return [.. _cache!.Values];
         }
         finally
@@ -46,10 +46,10 @@ public sealed partial class JsonCronStore : ICronStore
 
     public async ValueTask<CronJob?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+            await EnsureLoadedAsync(cancellationToken);
             return _cache!.GetValueOrDefault(id);
         }
         finally
@@ -62,12 +62,12 @@ public sealed partial class JsonCronStore : ICronStore
     {
         ArgumentNullException.ThrowIfNull(job);
 
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+            await EnsureLoadedAsync(cancellationToken);
             _cache![job.Id] = job;
-            await PersistAsync(cancellationToken).ConfigureAwait(false);
+            await PersistAsync(cancellationToken);
         }
         finally
         {
@@ -77,15 +77,15 @@ public sealed partial class JsonCronStore : ICronStore
 
     public async ValueTask<bool> RemoveAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+            await EnsureLoadedAsync(cancellationToken);
             if (!_cache!.Remove(id))
             {
                 return false;
             }
-            await PersistAsync(cancellationToken).ConfigureAwait(false);
+            await PersistAsync(cancellationToken);
             return true;
         }
         finally
@@ -140,7 +140,7 @@ public sealed partial class JsonCronStore : ICronStore
         {
             await JsonSerializer
                 .SerializeAsync(stream, _cache!.Values.OrderBy(j => j.CreatedAt).ToList(), _jsonOptions, cancellationToken)
-                .ConfigureAwait(false);
+                ;
         }
         File.Move(temp, path, overwrite: true);
     }

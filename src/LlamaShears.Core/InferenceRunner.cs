@@ -50,9 +50,7 @@ public sealed class InferenceRunner : IInferenceRunner
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(prompt);
-        var config = _dataContextFactory.Current?.GetAgentConfig();
-        if (string.IsNullOrWhiteSpace(config?.Id))
-            throw new InvalidOperationException("Agent ID context is required, but is not present");
+        var config = _dataContextFactory.Current.GetAgentConfig();
 
         if (prompt.Turns.Count == 0)
         {
@@ -65,7 +63,7 @@ public sealed class InferenceRunner : IInferenceRunner
 
         if (options is { InjectEphemeralContext: true })
         {
-            prompt = await InjectEphemeralAsync(prompt, cancellationToken).ConfigureAwait(false);
+            prompt = await InjectEphemeralAsync(prompt, cancellationToken);
         }
 
 
@@ -225,30 +223,23 @@ public sealed class InferenceRunner : IInferenceRunner
             return prompt;
         }
 
-        var config = _dataContextFactory.Current?.GetAgentConfig();
+        var config = _dataContextFactory.Current?.TryGetAgentConfig();
         if (config is null)
         {
             return prompt;
         }
 
-        var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken).ConfigureAwait(false);
+        var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
 
-        var now = _time.GetLocalNow();
-        var snapshot = _dataContextFactory.Current?.Snapshot() ?? [];
-        var data = snapshot.ToBuilder();
-        data["now"] = now;
-        data["timezone"] = TimeZoneInfo.Local.Id;
-        data["day_of_week"] = now.DayOfWeek.ToString();
-        data["channel_id"] = ChannelId.Value;
-        data["important_message"] = null;
-        data["memories"] = memories;
-        var body = await _promptContext.GetAsync(config.PromptContext, data.ToImmutable(), cancellationToken).ConfigureAwait(false);
+        var scope = _dataContextFactory.Current!;
+        scope.SetItem("memories", memories);
+        var body = await _promptContext.GetAsync(config.PromptContext, scope.Snapshot(), cancellationToken);
         if (string.IsNullOrWhiteSpace(body))
         {
             return prompt;
         }
 
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, now, Ephemeral: true);
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, _time.GetLocalNow(), Ephemeral: true);
         return new ModelPrompt(InsertAfterLastNonUser(prompt.Turns, ephemeral));
     }
 

@@ -146,7 +146,7 @@ public sealed class ChatSession :
         IReadOnlyList<ModelTurn> history = [];
         if (!string.IsNullOrWhiteSpace(agentId))
         {
-            history = await _directory.GetTurnsAsync(agentId, cancellationToken).ConfigureAwait(false);
+            history = await _directory.GetTurnsAsync(agentId, cancellationToken);
         }
 
         lock (_gate)
@@ -252,7 +252,7 @@ public sealed class ChatSession :
             {
                 Attachments = safeAttachments,
             },
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
     }
 
     public bool IsCompacting
@@ -495,7 +495,7 @@ public sealed class ChatSession :
         var args = parts.Length == 1
             ? []
             : ImmutableArray.Create(parts, 1, parts.Length - 1);
-        var result = await command.ExecuteAsync(new SlashCommandContext(agentId, args), cancellationToken).ConfigureAwait(false);
+        var result = await command.ExecuteAsync(new SlashCommandContext(agentId, args), cancellationToken);
         if (result.ContextChanged)
         {
             ResetBubbles();

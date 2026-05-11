@@ -17,7 +17,7 @@ internal sealed class HangingLanguageModel : ILanguageModel
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         _invoked.TrySetResult();
-        await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(Timeout.Infinite, cancellationToken);
         yield break;
     }
 }

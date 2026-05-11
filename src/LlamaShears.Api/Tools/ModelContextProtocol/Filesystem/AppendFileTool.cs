@@ -35,7 +35,7 @@ public sealed partial class AppendFileTool
         [Description("Content to append. Hard-capped at 1 MiB per call.")] string content,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {
@@ -68,7 +68,7 @@ public sealed partial class AppendFileTool
             {
                 Directory.CreateDirectory(parent);
             }
-            await File.AppendAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            await File.AppendAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken);
             LogAppend(_logger, workspace.AgentId, resolution.FullPath, byteCount);
             return $"Appended {byteCount} bytes to '{path}'.";
         }

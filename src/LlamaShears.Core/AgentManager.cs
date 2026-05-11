@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Common;
@@ -23,10 +24,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IEventPublisher _publisher;
     private readonly IEnumerable<IProviderFactory> _providers;
     private readonly IAgentConfigProvider _configs;
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AgentManager> _logger;
     private readonly IContextStore _contextStore;
-    private readonly IServiceProvider _services;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
@@ -34,8 +33,10 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IHostApplicationLifetime _appLifetime;
+
     private readonly Dictionary<string, AgentSlot> _loaded =
         new Dictionary<string, AgentSlot>(StringComparer.OrdinalIgnoreCase);
+
     private IDisposable? _subscription;
     private CancellationTokenRegistration _appStartedRegistration;
     private int _reconciling;
@@ -48,7 +49,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
         IContextStore contextStore,
-        IServiceProvider services,
         IServiceScopeFactory scopeFactory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
@@ -62,10 +62,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _publisher = publisher;
         _providers = providers;
         _configs = configs;
-        _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<AgentManager>();
         _contextStore = contextStore;
-        _services = services;
         _scopeFactory = scopeFactory;
         _paths = paths;
         _seeder = seeder;
@@ -108,7 +106,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         {
             try
             {
-                await ReconcileIfIdleAsync(_appLifetime.ApplicationStopping).ConfigureAwait(false);
+                await ReconcileIfIdleAsync(_appLifetime.ApplicationStopping);
             }
             catch (OperationCanceledException)
             {
@@ -144,7 +142,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         try
         {
-            await ReconcileAsync(cancellationToken).ConfigureAwait(false);
+            await ReconcileAsync(cancellationToken);
         }
         finally
         {
@@ -157,7 +155,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         var present = new Dictionary<string, AgentConfig>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in _configs.ListAgentIds())
         {
-            var config = await _configs.GetConfigAsync(name, cancellationToken).ConfigureAwait(false);
+            var config = await _configs.GetConfigAsync(name, cancellationToken);
             if (config is not null)
             {
                 present[name] = config;
@@ -168,11 +166,11 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         {
             if (!_loaded.TryGetValue(name, out var slot))
             {
-                await StartAsync(name, config, cancellationToken).ConfigureAwait(false);
+                await StartAsync(name, config, cancellationToken);
             }
             else if (slot.Config != config)
             {
-                await ReloadAsync(name, config, cancellationToken).ConfigureAwait(false);
+                await ReloadAsync(name, config, cancellationToken);
             }
         }
 
@@ -185,10 +183,10 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private async Task StartAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
         SeedAgentWorkspace(config);
+        // Why can't the agent do this when it starts?
+        var tools = await DiscoverToolsAsync(config, cancellationToken);
 
-        var tools = await DiscoverToolsAsync(config, cancellationToken).ConfigureAwait(false);
-
-        var slot = await TryBuildSlotAsync(name, config, tools, cancellationToken).ConfigureAwait(false);
+        var slot = await TryBuildSlotAsync(name, config, tools, cancellationToken);
         if (slot is null)
         {
             return;
@@ -200,13 +198,14 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         await _publisher.PublishAsync(
             Event.WellKnown.Agent.Loaded with { Id = name },
             new AgentLifecycleMarker(),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
     }
 
-    private async Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config, CancellationToken cancellationToken)
+    private async Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config,
+        CancellationToken cancellationToken)
     {
-        var tools = await DiscoverToolsAsync(config, cancellationToken).ConfigureAwait(false);
-        return await TryBuildSlotAsync(name, config, tools, cancellationToken).ConfigureAwait(false);
+        var tools = await DiscoverToolsAsync(config, cancellationToken);
+        return await TryBuildSlotAsync(name, config, tools, cancellationToken);
     }
 
     private async Task<ImmutableArray<ToolGroup>> DiscoverToolsAsync(
@@ -222,7 +221,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         var servers = _serverRegistry.Resolve(config.ModelContextProtocolServers);
         var groups = await _toolDiscovery
             .DiscoverAsync(servers, cancellationToken)
-            .ConfigureAwait(false);
+            ;
 
         foreach (var group in groups)
         {
@@ -231,6 +230,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 LogToolDiscovered(_logger, config.Id, group.Source, tool.Name);
             }
         }
+
         return groups;
     }
 
@@ -251,7 +251,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             _dataContextFactory.DeleteContext(name);
         }
 
-        var newSlot = await ReloadBuildAsync(name, config, cancellationToken).ConfigureAwait(false);
+        var newSlot = await ReloadBuildAsync(name, config, cancellationToken);
         if (newSlot is null)
         {
             return;
@@ -280,7 +280,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IAgent agent;
         try
         {
-            agent = await BuildAgentAsync(name, config, tools, cancellationToken).ConfigureAwait(false);
+            agent = await BuildAgentAsync(name, config, tools, cancellationToken);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
@@ -297,66 +297,65 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         ImmutableArray<ToolGroup> tools,
         CancellationToken cancellationToken)
     {
-        var providerFactory = _providers.FirstOrDefault(p =>
-            string.Equals(p.Name, config.Model.Id.Provider, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
-                $"No provider factory registered with name '{config.Model.Id.Provider}'.");
-
-        var modelConfig = config.Model;
-        var model = providerFactory.CreateModel(modelConfig);
-
-        var agentContext = await _contextStore.OpenAsync(name, cancellationToken).ConfigureAwait(false);
-        var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "agent_id", config.Id },
-            { "workspace_path", config.WorkspacePath },
-            { AgentConfig.DataKey, config },
-            { "model_configuration", modelConfig },
-            { "agent_context", agentContext },
-        };
-
-        var scope = _scopeFactory.CreateAsyncScope();
+        var previousContext = ExecutionContext.Capture();
         try
         {
-            await CreateAgentRootScopeAsync(config.Id, scope.ServiceProvider, agentGlobalDataContext, cancellationToken).ConfigureAwait(false);
+            var uiCulture = Thread.CurrentThread.CurrentUICulture;
+            var culture = Thread.CurrentThread.CurrentCulture;
+            var blankExecutionContext = await ExecutionState.CreateBlankContextAsync();
+
+            ExecutionContext.Restore(blankExecutionContext);
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = uiCulture;
+            // And we now look like we are a fresh process or thread!
+
+            var providerFactory = _providers.FirstOrDefault(p =>
+                                      string.Equals(p.Name, config.Model.Id.Provider,
+                                          StringComparison.OrdinalIgnoreCase))
+                                  ?? throw new InvalidOperationException(
+                                      $"No provider factory registered with name '{config.Model.Id.Provider}'.");
+
+            var modelConfig = config.Model;
+            var model = providerFactory.CreateModel(modelConfig);
+
+            var agentContext = await _contextStore.OpenAsync(name, cancellationToken);
+            var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { AgentConfig.DataKey, config },
+                    { "model_configuration", modelConfig },
+                };
+
+            var scope = _scopeFactory.CreateAsyncScope();
             try
             {
+                var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
+                dataContextFactory.CreateContext(config.Id);
+                var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
+                await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
+                    cancellationToken);
                 var agent = ActivatorUtilities.CreateInstance<Agent>(
                     scope.ServiceProvider,
-                    config,
                     model,
                     agentContext,
-                    modelConfig,
                     scope,
                     tools);
                 agent.Start();
+                
                 return agent;
             }
-            finally
+            catch
             {
-                // Detach the scope from this call chain; the agent's loop
-                // rejoins it by key. Leaves the registry entry intact.
-                _dataContextFactory.ClearCurrent();
+                await scope.DisposeAsync();
+                throw;
             }
         }
-        catch
+        finally
         {
-            await scope.DisposeAsync().ConfigureAwait(false);
-            throw;
+            // We don't need to worry about cleaning up after ourselves, the data context lives within the execution
+            // context as an async local, once all are gone, the weak reference gets GC'd and it gets cleaned up.
+            // We're going back to our caller, with the state they called us in.
+            ExecutionContext.Restore(previousContext!);
         }
-    }
-
-    private static async Task<IDataContextScope> CreateAgentRootScopeAsync(
-        string agentId,
-        IServiceProvider agentScopeServiceProvider,
-        IEnumerable<KeyValuePair<string, object?>> seedData,
-        CancellationToken cancellationToken)
-    {
-        var dataProviders = agentScopeServiceProvider.GetScopedDataProviders();
-        var dataContextFactory = agentScopeServiceProvider.GetRequiredService<IDataContextFactory>();
-        var scope = await dataContextFactory.StartContextAsync(agentId, dataProviders, cancellationToken).ConfigureAwait(false);
-        scope.SetItems(seedData);
-        return scope;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
@@ -371,7 +370,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private static partial void LogBuildFailure(ILogger logger, string agentId, string message, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
     private static partial void LogToolDiscovered(ILogger logger, string agentId, string serverName, string toolName);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Initial agent reconcile failed.")]

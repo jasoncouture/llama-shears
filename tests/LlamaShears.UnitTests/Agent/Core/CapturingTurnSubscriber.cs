@@ -56,7 +56,7 @@ internal sealed class CapturingTurnSubscriber : IEventHandler<ModelTurn>, IDispo
         using var cts = new CancellationTokenSource(timeout);
         try
         {
-            await _firstTurn.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+            await _firstTurn.Task.WaitAsync(cts.Token);
         }
         catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
         {

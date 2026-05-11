@@ -58,7 +58,7 @@ public sealed class FilesystemPromptContextProvider : IPromptContextProvider
 
         foreach (var path in candidates)
         {
-            var rendered = await _renderer.RenderAsync(path, data, cancellationToken).ConfigureAwait(false);
+            var rendered = await _renderer.RenderAsync(path, data, cancellationToken);
             if (rendered is not null)
             {
                 return rendered;

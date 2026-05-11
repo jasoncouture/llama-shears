@@ -14,8 +14,8 @@ internal sealed class PassthroughFileParserCache<T> : IFileParserCache<T> where 
         if (File.Exists(path))
         {
             await using var stream = File.OpenRead(path);
-            return await parser(stream, state, cancellationToken).ConfigureAwait(false);
+            return await parser(stream, state, cancellationToken);
         }
-        return await parser(null, state, cancellationToken).ConfigureAwait(false);
+        return await parser(null, state, cancellationToken);
     }
 }

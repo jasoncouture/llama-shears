@@ -26,7 +26,7 @@ public sealed partial class StoreMemoryTool
         [Description("Memory content (markdown). Stored verbatim. The first line is surfaced as the memory's summary in injected context — make it a meaningful one-line description.")] string content,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
             return "Refused: store_memory requires an authenticated agent on the request.";
@@ -38,7 +38,7 @@ public sealed partial class StoreMemoryTool
 
         try
         {
-            var memoryRef = await _store.StoreAsync(workspace.AgentId, content, cancellationToken).ConfigureAwait(false);
+            var memoryRef = await _store.StoreAsync(workspace.AgentId, content, cancellationToken);
             LogStored(_logger, workspace.AgentId, memoryRef.RelativePath);
             return $"Stored '{memoryRef.RelativePath}'.";
         }

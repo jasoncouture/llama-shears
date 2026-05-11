@@ -11,7 +11,7 @@ internal sealed class StubEmbeddingProviderFactory : IEmbeddingProviderFactory
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
+        await Task.CompletedTask;
         yield break;
     }
 

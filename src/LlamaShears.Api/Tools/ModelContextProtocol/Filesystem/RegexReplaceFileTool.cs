@@ -47,7 +47,7 @@ public sealed partial class RegexReplaceFileTool
         }
         replacement ??= string.Empty;
 
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {
@@ -97,7 +97,7 @@ public sealed partial class RegexReplaceFileTool
 
         try
         {
-            var original = await File.ReadAllTextAsync(resolution.FullPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            var original = await File.ReadAllTextAsync(resolution.FullPath, Encoding.UTF8, cancellationToken);
             var count = 0;
             var limit = maxReplacements <= 0 ? -1 : maxReplacements;
             string updated;
@@ -120,7 +120,7 @@ public sealed partial class RegexReplaceFileTool
                 return $"No matches in '{path}'.";
             }
 
-            await File.WriteAllTextAsync(resolution.FullPath, updated, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(resolution.FullPath, updated, Encoding.UTF8, cancellationToken);
             LogReplace(_logger, workspace.AgentId, resolution.FullPath, count);
             return $"Replaced {count} match(es) in '{path}'.";
         }

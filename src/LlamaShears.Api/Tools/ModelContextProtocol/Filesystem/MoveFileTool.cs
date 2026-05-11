@@ -33,7 +33,7 @@ public sealed partial class MoveFileTool
         [Description("If true, overwrite an existing target file. Defaults to false (error if the target exists).")] bool force = false,
         CancellationToken cancellationToken = default)
     {
-        var workspace = await _workspace.GetAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await _workspace.GetAsync(cancellationToken);
 
         var sourceResolution = WorkspacePathResolver.ResolveForWrite(workspace, source);
         if (!sourceResolution.IsSuccess)

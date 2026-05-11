@@ -30,8 +30,8 @@ public sealed class AgentTurnContextPersister : IEventHandler<ModelTurn>, IDispo
             return;
         }
 
-        var context = await _store.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
-        await context.AppendAsync(envelope.Data, cancellationToken).ConfigureAwait(false);
+        var context = await _store.OpenAsync(agentId, cancellationToken);
+        await context.AppendAsync(envelope.Data, cancellationToken);
     }
 
     public void Dispose() => _subscription.Dispose();

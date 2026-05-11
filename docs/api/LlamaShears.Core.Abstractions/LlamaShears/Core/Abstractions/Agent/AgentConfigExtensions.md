@@ -11,6 +11,13 @@ well-known key.
 ### `GetAgentConfig`([IDataContextScope](../Common/IDataContextScope.md) scope)
 
 Returns the [AgentConfig](AgentConfig.md) attached to the given scope under
+[AgentConfig](AgentConfig.md).`DataKey`. Throws when the scope is
+`null` or has no config stashed; intended for sites
+that legitimately cannot proceed without one.
+
+### `TryGetAgentConfig`([IDataContextScope](../Common/IDataContextScope.md) scope)
+
+Returns the [AgentConfig](AgentConfig.md) attached to the given scope under
 [AgentConfig](AgentConfig.md).`DataKey`, or `null` if none is set.
 
 #### Parameters

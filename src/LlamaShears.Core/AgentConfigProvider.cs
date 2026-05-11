@@ -51,7 +51,7 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
                 path,
                 state,
                 ParseAsync,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
         }
         catch (IOException ex)
         {

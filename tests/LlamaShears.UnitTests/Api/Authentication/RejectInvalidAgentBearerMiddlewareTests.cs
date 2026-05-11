@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using NSubstitute;
 
 using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Api.Authentication;
@@ -72,6 +73,7 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddSingleton(Substitute.For<IDataContextFactory>());
         services.AddLogging();
         services.AddAgentBearerAuthentication();
 

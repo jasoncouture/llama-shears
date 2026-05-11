@@ -21,7 +21,7 @@ internal sealed class AgentDirectory : IAgentDirectory
     public async Task<IReadOnlyList<ModelTurn>> GetTurnsAsync(string agentId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var context = await _contextStore.OpenAsync(agentId, cancellationToken).ConfigureAwait(false);
+        var context = await _contextStore.OpenAsync(agentId, cancellationToken);
         return context.Turns;
     }
 

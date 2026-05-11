@@ -29,7 +29,7 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
     public async IAsyncEnumerable<ModelInfo> ListModelsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
+        await Task.CompletedTask;
         foreach (var (id, model) in _options.CurrentValue.Models)
         {
             cancellationToken.ThrowIfCancellationRequested();

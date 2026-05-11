@@ -39,7 +39,7 @@ internal sealed class DataContextScope : IDataContextScope
     public async Task SetItemsAsync(IDataContextItemProvider provider, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        var items = await provider.GetItemsForCurrentContext(cancellationToken).ConfigureAwait(false);
+        var items = await provider.GetItemsForCurrentContext(cancellationToken);
         SetItems(items);
     }
 
@@ -62,8 +62,6 @@ internal sealed class DataContextScope : IDataContextScope
         value = null;
         return false;
     }
-
-    public ImmutableDictionary<string, object?> Snapshot() => [.. _current];
 
     public IEnumerator<KeyValuePair<string, object?>> GetEnumerator() => _current.GetEnumerator();
 

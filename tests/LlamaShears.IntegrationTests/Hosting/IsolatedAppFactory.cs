@@ -79,7 +79,7 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
         await publisher.PublishAsync(
             Event.WellKnown.Host.Tick,
             new SystemTick(DateTimeOffset.UtcNow),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
     }
 
     /// <summary>
@@ -111,12 +111,12 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
             return;
         }
 
-        await TickAsync().ConfigureAwait(false);
+        await TickAsync();
 
         using var cts = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(5));
         try
         {
-            await loaded.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+            await loaded.Task.WaitAsync(cts.Token);
         }
         catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
         {
