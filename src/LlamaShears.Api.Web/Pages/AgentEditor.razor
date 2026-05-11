@@ -1,4 +1,5 @@
 @page "/agents/{AgentId}/edit"
+@implements IAsyncDisposable
 @using System.Text.Json
 @using LlamaShears.Core.Abstractions.Agent
 @inject IAgentConfigProvider Configs
@@ -58,13 +59,7 @@
             <p class="agent-editor-status agent-editor-error">JSON: @_parseError</p>
         }
 
-        <textarea class="agent-editor-textarea"
-                  spellcheck="false"
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  value="@_draft"
-                  @oninput="OnDraftChanged"></textarea>
+        <div class="agent-editor-mount" @ref="_mount"></div>
 
         <footer class="agent-editor-footer">
             <span class="agent-editor-hash" title="On-disk hash at load">@ShortHash</span>
@@ -86,7 +81,10 @@
     private SaveAgentConfigResult.Conflict? _conflict;
     private bool _justSaved;
     private bool _saving;
-    private bool _restoredDraft;
+    private bool _editorMounted;
+    private ElementReference _mount;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<AgentEditor>? _selfRef;
 
     private bool CanSave =>
         _loadState == LoadState.Ok
@@ -106,15 +104,31 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _restoredDraft || _file is null)
+        if (_loadState != LoadState.Ok || _file is null || _editorMounted)
         {
             return;
         }
-        _restoredDraft = true;
+        _editorMounted = true;
+
+        var initial = await ResolveInitialDraftAsync(_file);
+        _draft = initial;
+        RecomputeParseError();
+
+        _module ??= await Js.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./agent-editor.js");
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await _module.InvokeVoidAsync("init", _mount, initial, _selfRef);
+
+        StateHasChanged();
+    }
+
+    private async Task<string> ResolveInitialDraftAsync(AgentConfigFile file)
+    {
         var stored = await Js.InvokeAsync<string?>("localStorage.getItem", DraftKey);
         if (stored is null)
         {
-            return;
+            return file.Content;
         }
         StoredDraft? parsed;
         try
@@ -124,16 +138,14 @@
         catch (JsonException)
         {
             await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
-            return;
+            return file.Content;
         }
-        if (parsed is null || !string.Equals(parsed.Hash, _file.Hash, StringComparison.OrdinalIgnoreCase))
+        if (parsed is null || !string.Equals(parsed.Hash, file.Hash, StringComparison.OrdinalIgnoreCase))
         {
             await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
-            return;
+            return file.Content;
         }
-        _draft = parsed.Content;
-        RecomputeParseError();
-        StateHasChanged();
+        return parsed.Content;
     }
 
     private async Task LoadAsync()
@@ -151,12 +163,12 @@
         _serverError = null;
         _conflict = null;
         _justSaved = false;
-        _restoredDraft = false;
     }
 
-    private async Task OnDraftChanged(ChangeEventArgs e)
+    [JSInvokable]
+    public async Task OnContentChanged(string content)
     {
-        _draft = (e.Value as string) ?? string.Empty;
+        _draft = content ?? string.Empty;
         _justSaved = false;
         _serverError = null;
         RecomputeParseError();
@@ -165,6 +177,7 @@
             var payload = JsonSerializer.Serialize(new StoredDraft(_file.Hash, _draft));
             await Js.InvokeVoidAsync("localStorage.setItem", DraftKey, payload);
         }
+        StateHasChanged();
     }
 
     private void RecomputeParseError()
@@ -221,6 +234,26 @@
     {
         await Js.InvokeVoidAsync("localStorage.removeItem", DraftKey);
         await LoadAsync();
+        if (_module is not null && _file is not null)
+        {
+            await _module.InvokeVoidAsync("setValue", _mount, _file.Content);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("dispose", _mount);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            await _module.DisposeAsync();
+        }
+        _selfRef?.Dispose();
     }
 
     private sealed record StoredDraft(string Hash, string Content);
