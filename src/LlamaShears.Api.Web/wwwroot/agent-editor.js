@@ -1,4 +1,5 @@
-import { EditorView, basicSetup } from "codemirror";
+import { basicSetup } from "codemirror";
+import { EditorView } from "@codemirror/view";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter } from "@codemirror/lint";
 
