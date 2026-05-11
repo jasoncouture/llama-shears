@@ -309,7 +309,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         if (outcome.TokenCount is { } tokens)
         {
-            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens), publishToken)
+            await _agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens, _time.GetLocalNow()), publishToken)
                 ;
         }
 
