@@ -3,6 +3,18 @@
 ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0
 ARG ASPNET_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0
 
+# Shared SDK base for every build-time stage. Static layers
+# (WORKDIR, HUSKY=0 to short-circuit the post-restore git-hooks
+# install target, and the apt install of node+npm needed by the
+# Api.Web BundleJs MSBuild target) live here once, so a code-only
+# rebuild reuses everything below the COPYs in the derived stages.
+FROM ${SDK_IMAGE} AS sdk-base
+WORKDIR /src
+ENV HUSKY=0
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
 # Stage 1: collect just the files needed for `dotnet restore`. dotnet-subset
 # walks project references from the entry project and copies every csproj /
 # Directory.Build.props / Directory.Packages.props / nuget.config into a
@@ -12,9 +24,7 @@ ARG ASPNET_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0
 # root manifest (dotnet-tools.json — the SDK no longer requires the
 # .config/ subfolder); restore the manifest first to make `dotnet subset`
 # available.
-FROM ${SDK_IMAGE} AS prepare-restore-files
-WORKDIR /src
-ENV HUSKY=0
+FROM sdk-base AS prepare-restore-files
 COPY dotnet-tools.json ./
 RUN dotnet tool restore
 COPY . .
@@ -24,17 +34,8 @@ RUN dotnet subset restore src/LlamaShears/LlamaShears.csproj \
 
 # Stage 2: restore + publish. The minimal tree from stage 1 lands first so
 # the restore layer can be cached; only after restore succeeds do we lay
-# down the full source tree for the actual build. HUSKY=0 short-circuits
-# the post-restore git-hooks install target, which has no .git to bind to
-# inside the container.
-FROM ${SDK_IMAGE} AS build
-WORKDIR /src
-ENV HUSKY=0
-# Node + npm are needed by the Api.Web project's BundleJs MSBuild target
-# (esbuild bundles JS sources into wwwroot/dist during dotnet publish).
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+# down the full source tree for the actual build.
+FROM sdk-base AS build
 COPY --from=prepare-restore-files /output .
 RUN dotnet restore src/LlamaShears/LlamaShears.csproj
 COPY . .
