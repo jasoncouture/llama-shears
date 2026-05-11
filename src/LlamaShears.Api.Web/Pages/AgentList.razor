@@ -1,0 +1,35 @@
+@page "/agents"
+@using LlamaShears.Core.Abstractions.Agent
+@inject IAgentConfigProvider Configs
+
+<PageTitle>Agents — LlamaShears</PageTitle>
+
+<div class="agent-list">
+    <header class="agent-list-header">
+        <h2>Agents</h2>
+    </header>
+    @if (_ids.Count == 0)
+    {
+        <p class="agent-list-empty">No agent config files found on disk.</p>
+    }
+    else
+    {
+        <ul class="agent-list-items">
+            @foreach (var id in _ids)
+            {
+                <li>
+                    <a class="agent-list-link" href="/agents/@Uri.EscapeDataString(id)/edit">@id</a>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<string> _ids = [];
+
+    protected override void OnInitialized()
+    {
+        _ids = Configs.ListAgentIds();
+    }
+}

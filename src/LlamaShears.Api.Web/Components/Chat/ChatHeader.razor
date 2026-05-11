@@ -23,6 +23,15 @@
         <button type="button" class="chat-header-button" title="Refresh" aria-label="Refresh agents" @onclick="Refresh">
             <Icon Name="arrow-clockwise" />
         </button>
+        @if (Session.SelectedAgentId is { } selectedAgentId)
+        {
+            <a class="chat-header-button"
+               title="Edit agent config"
+               aria-label="Edit agent config"
+               href="/agents/@Uri.EscapeDataString(selectedAgentId)/edit">
+                <Icon Name="pencil-square" />
+            </a>
+        }
         <span class="chat-header-sep" aria-hidden="true"></span>
         <button type="button"
                 class="chat-header-button chat-header-toggle @(Session.ShowThoughts ? "is-on" : null)"
