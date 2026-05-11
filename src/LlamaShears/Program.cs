@@ -38,6 +38,8 @@ sources.Insert(insertAt, overrideSource);
 builder.Services.AddShearsPaths();
 builder.Services.AddHostStartupTask<TemplateSeedingStartupTask>();
 builder.AddApi();
+builder.Services.AddResponseCompression();
+builder.Services.AddResponseCaching();
 
 var pluginPaths = Array.Empty<string>();
 
@@ -45,6 +47,8 @@ await builder.Services.LoadPluginsAsync(failureCallback: null, CancellationToken
 
 var app = builder.Build();
 
+app.UseResponseCompression();
+app.UseResponseCaching();
 await app.UsePluginsAsync(app.Lifetime.ApplicationStopping);
 
 app.UseApi();
