@@ -29,7 +29,7 @@ public sealed partial class ReadFileTool
     }
 
     [McpServerTool(Name = "file_read")]
-    [Description("Reads a file from the host filesystem starting at startLine. Returns up to the shared response budget (~8 KiB / 100 lines); the tail of any longer file is truncated with a marker. Refuses files larger than 512 KiB outright.")]
+    [Description("Reads a file from the host filesystem starting at startLine. Returns up to the shared response budget (~8 KiB / 100 lines); the tail of any longer file is truncated with a marker that reports the line range returned and the next startLine to resume from. Refuses files larger than 512 KiB outright.")]
     public async Task<string> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
@@ -74,13 +74,9 @@ public sealed partial class ReadFileTool
 
         try
         {
-            var (content, truncated) = await ReadRangeAsync(resolved, startLine, cancellationToken);
-            LogRead(workspace.AgentId, resolved, content.Length, truncated);
-            if (truncated)
-            {
-                content = $"{content}\n[... truncated; response budget reached. Re-call with a higher startLine to continue reading.]";
-            }
-            return content;
+            var result = await ReadRangeAsync(resolved, startLine, cancellationToken);
+            LogRead(workspace.AgentId, resolved, result.Content.Length, result.Truncated);
+            return FormatResponse(result, startLine);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -89,7 +85,26 @@ public sealed partial class ReadFileTool
         }
     }
 
-    private static async Task<(string Content, bool Truncated)> ReadRangeAsync(
+    private static string FormatResponse(ReadResult result, int requestedStartLine)
+    {
+        if (result.LinesReturned == 0)
+        {
+            return result.Truncated
+                ? $"[empty range; response budget reached before any line at startLine={requestedStartLine} fit. Re-call with a higher startLine to continue reading.]"
+                : $"[empty range; file has fewer than {requestedStartLine} lines.]";
+        }
+
+        var firstLine = result.FirstLine;
+        var lastLine = result.LastLine;
+        if (!result.Truncated)
+        {
+            return $"{result.Content}\n[lines {firstLine}-{lastLine}; end of file.]";
+        }
+        var nextStart = lastLine + 1;
+        return $"{result.Content}\n[lines {firstLine}-{lastLine}; truncated, response budget reached. Re-call with startLine={nextStart} to continue reading.]";
+    }
+
+    private static async Task<ReadResult> ReadRangeAsync(
         string fullPath,
         int startLine,
         CancellationToken cancellationToken)
@@ -107,6 +122,8 @@ public sealed partial class ReadFileTool
         var line = 0;
         var collected = 0;
         var bytes = 0;
+        var firstLine = 0;
+        var lastLine = 0;
 
         while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } current)
         {
@@ -117,20 +134,32 @@ public sealed partial class ReadFileTool
             }
             if (!ResponseBudget.CanAppendResponse(bytes, collected, current))
             {
-                return (builder.ToString(), Truncated: true);
+                return new ReadResult(builder.ToString(), Truncated: true, firstLine, lastLine, collected);
             }
 
-            if (collected > 0)
+            if (collected == 0)
+            {
+                firstLine = line;
+            }
+            else
             {
                 builder.Append('\n');
             }
             builder.Append(current);
+            lastLine = line;
             collected++;
             bytes += current.Length + 1;
         }
 
-        return (builder.ToString(), Truncated: false);
+        return new ReadResult(builder.ToString(), Truncated: false, firstLine, lastLine, collected);
     }
+
+    private readonly record struct ReadResult(
+        string Content,
+        bool Truncated,
+        int FirstLine,
+        int LastLine,
+        int LinesReturned);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' read {Bytes} bytes from '{Path}' (truncated={Truncated}).")]
     private partial void LogRead(string? agentId, string path, int bytes, bool truncated);
