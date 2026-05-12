@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Provider;
@@ -49,9 +50,27 @@ public partial class OllamaLanguageModel : ILanguageModel
         var messages = _messageListPool.Get();
         try
         {
+            StringBuilder? pendingThought = null;
             foreach (var turn in prompt.Turns)
             {
-                messages.Add(ToMessage(turn, _textFormatter));
+                if (turn.Role == ModelRole.Thought)
+                {
+                    pendingThought ??= new StringBuilder();
+                    if (pendingThought.Length > 0)
+                    {
+                        pendingThought.Append('\n');
+                    }
+                    pendingThought.Append(turn.Content);
+                    continue;
+                }
+                var message = ToMessage(turn, _textFormatter);
+                if (pendingThought is not null
+                    && (turn.Role == ModelRole.Assistant || turn.Role == ModelRole.FrameworkAssistant))
+                {
+                    message.Thinking = pendingThought.ToString();
+                }
+                pendingThought = null;
+                messages.Add(message);
             }
 
             var request = new ChatRequest
@@ -288,6 +307,8 @@ public partial class OllamaLanguageModel : ILanguageModel
         ModelRole.FrameworkAssistant => ChatRole.Assistant,
         ModelRole.Tool => ChatRole.Tool,
         ModelRole.SystemEphemeral => ChatRole.User,
+        ModelRole.Thought => throw new InvalidOperationException(
+            "ModelRole.Thought must be folded into the following assistant turn before MapRole; never produces its own wire message."),
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported model role.")
     };
 
