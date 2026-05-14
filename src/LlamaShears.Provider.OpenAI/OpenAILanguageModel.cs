@@ -61,6 +61,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
         }
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        OpenAiRequestHeaders.Apply(request, _options.Headers);
 
         var httpClient = _httpClientFactory.CreateClient(nameof(OpenAiLanguageModel));
         httpClient.Timeout = _options.RequestTimeout;

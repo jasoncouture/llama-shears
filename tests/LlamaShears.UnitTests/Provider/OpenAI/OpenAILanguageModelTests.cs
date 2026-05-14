@@ -263,7 +263,30 @@ public sealed class OpenAiLanguageModelTests
         await Assert.That(toolCalls[0]!["function"]!["name"]!.GetValue<string>()).IsEqualTo("svc__do");
     }
 
-    private sealed record CapturedRequest(HttpMethod Method, string Path, string Body);
+    [Test]
+    public async Task PromptAsyncAppliesCustomHeadersFromOptions()
+    {
+        var hostOptions = new OpenAiProviderOptions
+        {
+            ApiKey = "key-from-config",
+        };
+        hostOptions.Headers["X-Org"] = "shears";
+        hostOptions.Headers["Authorization"] = "Bearer override-key";
+
+        var captured = await CaptureRequestAsync(
+            options: new PromptOptions(),
+            sseBody: "data: [DONE]\n\n",
+            hostOptions: hostOptions);
+
+        await Assert.That(captured.Headers["X-Org"]).IsEqualTo("shears");
+        await Assert.That(captured.Headers["Authorization"]).IsEqualTo("Bearer override-key");
+    }
+
+    private sealed record CapturedRequest(
+        HttpMethod Method,
+        string Path,
+        string Body,
+        IReadOnlyDictionary<string, string> Headers);
 
     private static Task<CapturedRequest> CaptureRequestAsync(
         PromptOptions options,
@@ -284,10 +307,16 @@ public sealed class OpenAiLanguageModelTests
         CapturedRequest? captured = null;
         var handler = new StubHandler(async request =>
         {
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var header in request.Headers)
+            {
+                headers[header.Key] = string.Join(",", header.Value);
+            }
             captured = new CapturedRequest(
                 request.Method,
                 request.RequestUri!.AbsolutePath,
-                await request.Content!.ReadAsStringAsync().ConfigureAwait(false));
+                await request.Content!.ReadAsStringAsync().ConfigureAwait(false),
+                headers);
             return BuildSseResponse(sseBody);
         });
 

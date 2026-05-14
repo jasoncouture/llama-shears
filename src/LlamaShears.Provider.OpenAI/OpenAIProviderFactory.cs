@@ -38,6 +38,7 @@ public sealed partial class OpenAiProviderFactory : IProviderFactory
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         }
+        OpenAiRequestHeaders.Apply(request, options.Headers);
         var httpClient = _httpClientFactory.CreateClient(nameof(OpenAiLanguageModel));
         using var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
