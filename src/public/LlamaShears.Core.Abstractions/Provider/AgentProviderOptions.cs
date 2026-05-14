@@ -72,25 +72,44 @@ public static class AgentProviderOptions
     {
         if (@base is JsonObject baseObj && overlay is JsonObject overlayObj)
         {
-            foreach (var (key, value) in overlayObj.ToList())
+            var result = new JsonObject();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in overlayObj)
             {
-                if (value is null)
+                if (!seen.Add(key))
                 {
-                    baseObj[key] = null;
                     continue;
                 }
-                overlayObj.Remove(key);
-                if (baseObj.TryGetPropertyValue(key, out var existing) && existing is not null)
+                var baseKey = baseObj
+                    .Select(kv => kv.Key)
+                    .FirstOrDefault(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
+                var resultKey = baseKey ?? key;
+                if (value is null)
                 {
-                    baseObj[key] = Merge(existing, value);
+                    result[resultKey] = null;
+                    continue;
+                }
+                if (baseKey is not null
+                    && baseObj.TryGetPropertyValue(baseKey, out var existing)
+                    && existing is not null)
+                {
+                    result[resultKey] = Merge(existing, value);
                 }
                 else
                 {
-                    baseObj[key] = value;
+                    result[resultKey] = value.DeepClone();
                 }
             }
-            return baseObj;
+            foreach (var (key, value) in baseObj)
+            {
+                if (!seen.Add(key))
+                {
+                    continue;
+                }
+                result[key] = value?.DeepClone();
+            }
+            return result;
         }
-        return overlay;
+        return overlay.DeepClone();
     }
 }
