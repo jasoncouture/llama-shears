@@ -11,4 +11,6 @@ public class OpenAiProviderOptions
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(300);
 
     public JsonObject ExtraRequestParams { get; set; } = [];
+
+    public Dictionary<string, string> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
