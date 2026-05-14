@@ -9,16 +9,6 @@
 {{- if channel_id }}
 - Channel: {{ channel_id }}
 {{- end }}
-{{- if todo.size > 0 }}
-
-## TODO list
-
-{{ todo.size }} item{{ if todo.size != 1 }}s{{ end }} on the agent's persistent list (1-based; addressable by index via the `todo_*` tools):
-
-{{- for item in todo }}
-- {{ item }}
-{{- end }}
-{{- end }}
 {{- if memories.size > 0 }}
 
 ## Memory search matches
