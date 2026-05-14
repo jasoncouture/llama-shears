@@ -30,6 +30,7 @@ ADRs are accepted by definition — if a record is not yet accepted, it is a pro
 - **ADR-0023** — [Tests bind to the interface, not the concrete class](0023-tests-bind-to-the-interface.md)
 - **ADR-0024** — [PR merges use merge commits only — never squash, never rebase](0024-pr-merge-method-is-merge-commit-only.md)
 - **ADR-0025** — [`CA1822` (mark members as static) is disabled repo-wide](0025-no-mark-members-static-analyzer.md)
+- **ADR-0026** — [Avoid mutation of data structures that are not local to the function](0026-avoid-mutation-of-non-local-data.md)
 
 ## Superseded
 
