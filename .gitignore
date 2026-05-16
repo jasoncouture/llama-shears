@@ -507,3 +507,4 @@ docker-bake.override.json
 
 # JS bundler outputs
 **/dist/*
+**/*.lscache

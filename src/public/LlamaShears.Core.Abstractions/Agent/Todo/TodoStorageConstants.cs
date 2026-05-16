@@ -10,5 +10,5 @@ public static class TodoStorageConstants
     /// (<see cref="System.Collections.Immutable.ImmutableArray{TodoItem}"/>)
     /// flow on the active scope.
     /// </summary>
-    public const string DataKey = "todo_list";
+    public const string DataKey = "todo";
 }

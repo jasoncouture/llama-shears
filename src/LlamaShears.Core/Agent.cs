@@ -17,6 +17,7 @@ namespace LlamaShears.Core;
 public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyncDisposable
 {
     private const string DefaultChannel = "default";
+    private const int EmptyResponseRetryLimit = 3;
 
     private readonly string _id;
     private readonly ILanguageModel _model;
@@ -294,14 +295,34 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             ;
 
         var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
-        var outcome = await inferenceRunner.RunAsync(
-            eventId: Id,
-            model: _model,
-            prompt: prompt,
-            options: new PromptOptions(Tools: _tools, InjectEphemeralContext: true),
-            emitTurns: true,
-            correlationId: correlationId,
-            cancellationToken: cancellationToken);
+        InferenceOutcome outcome;
+        var emptyAttempt = 0;
+        while (true)
+        {
+            outcome = await inferenceRunner.RunAsync(
+                eventId: Id,
+                model: _model,
+                prompt: prompt,
+                options: new PromptOptions(Tools: _tools, InjectEphemeralContext: true),
+                emitTurns: true,
+                correlationId: correlationId,
+                cancellationToken: cancellationToken);
+            if (outcome.Interrupted)
+            {
+                break;
+            }
+            if (!outcome.ToolCalls.IsDefaultOrEmpty || outcome.Content.Length > 0)
+            {
+                break;
+            }
+            emptyAttempt++;
+            if (emptyAttempt > EmptyResponseRetryLimit)
+            {
+                LogEmptyResponseGaveUp(Id, emptyAttempt);
+                break;
+            }
+            LogEmptyResponseRetrying(Id, emptyAttempt);
+        }
 
         using var interruptedTokenSource =
             outcome.Interrupted ? new CancellationTokenSource(_interruptFinalizeTimeout) : null;
@@ -321,11 +342,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         if (outcome.ToolCalls.IsDefaultOrEmpty)
         {
-            if (outcome.Content.Length == 0)
-            {
-                LogEmptyResponse(Id);
-            }
-
             return;
         }
 
@@ -346,8 +362,13 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' received an empty response from the model.")]
-    private partial void LogEmptyResponse(string agentId);
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Agent '{AgentId}' received an empty response from the model; retrying without committing the turn (attempt {Attempt}).")]
+    private partial void LogEmptyResponseRetrying(string agentId, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Agent '{AgentId}' received {Attempts} consecutive empty responses from the model; giving up on this turn.")]
+    private partial void LogEmptyResponseGaveUp(string agentId, int attempts);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' is stopping.")]
     private partial void LogAgentStopping(string agentId);
