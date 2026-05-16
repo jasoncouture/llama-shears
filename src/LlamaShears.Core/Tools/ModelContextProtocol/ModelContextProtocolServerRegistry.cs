@@ -22,7 +22,7 @@ public sealed partial class ModelContextProtocolServerRegistry : IModelContextPr
         _logger = logger;
     }
 
-    public IReadOnlyDictionary<string, Uri> Resolve(ImmutableHashSet<string>? whitelist)
+    public IReadOnlyDictionary<string, ModelContextProtocolServerOptions> Resolve(ImmutableHashSet<string>? whitelist)
     {
         var all = BuildAllKnown();
 
@@ -31,12 +31,12 @@ public sealed partial class ModelContextProtocolServerRegistry : IModelContextPr
             return all;
         }
 
-        var resolved = new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase);
+        var resolved = new Dictionary<string, ModelContextProtocolServerOptions>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in whitelist)
         {
-            if (all.TryGetValue(name, out var uri))
+            if (all.TryGetValue(name, out var config))
             {
-                resolved[name] = uri;
+                resolved[name] = config;
             }
             else
             {
@@ -46,17 +46,24 @@ public sealed partial class ModelContextProtocolServerRegistry : IModelContextPr
         return resolved;
     }
 
-    private Dictionary<string, Uri> BuildAllKnown()
+    public ModelContextProtocolServerOptions? TryGet(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var all = BuildAllKnown();
+        return all.TryGetValue(name, out var config) ? config : null;
+    }
+
+    private Dictionary<string, ModelContextProtocolServerOptions> BuildAllKnown()
     {
         var configured = _options.CurrentValue.Servers;
-        var all = new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (name, uri) in configured)
+        var all = new Dictionary<string, ModelContextProtocolServerOptions>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, config) in configured)
         {
-            all[name] = uri;
+            all[name] = config;
         }
         if (_internal.Uri is { } internalUri)
         {
-            all[InternalServerName] = internalUri;
+            all[InternalServerName] = new ModelContextProtocolServerOptions { Uri = internalUri };
         }
         return all;
     }

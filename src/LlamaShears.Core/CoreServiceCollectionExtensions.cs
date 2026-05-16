@@ -11,6 +11,7 @@ using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Caching;
+using LlamaShears.Core.Common;
 using LlamaShears.Core.Context;
 using LlamaShears.Core.Cron;
 using LlamaShears.Core.DataContext;
@@ -72,6 +73,7 @@ public static class CoreServiceCollectionExtensions
         services.AddHostedService<SystemTickService>();
 
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IUriMerger, UriMerger>();
         services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
         services.TryAddSingleton<ITemplateRenderer, TemplateRenderer>();
         services.TryAddSingleton<ITemplateFileLocator, TemplateFileLocator>();
@@ -115,9 +117,9 @@ public static class CoreServiceCollectionExtensions
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
         services.TryAddTransient<LoopbackBearerHandler>();
-        services.AddHttpClient(nameof(ModelContextProtocolToolDiscovery))
-            .AddHttpMessageHandler<LoopbackBearerHandler>();
-        services.AddHttpClient(nameof(ModelContextProtocolToolCallDispatcher))
+        services.TryAddTransient<ModelContextProtocolRoutingHandler>();
+        services.AddHttpClient<IModelContextProtocolClient, ModelContextProtocolClient>()
+            .AddHttpMessageHandler<ModelContextProtocolRoutingHandler>()
             .AddHttpMessageHandler<LoopbackBearerHandler>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();

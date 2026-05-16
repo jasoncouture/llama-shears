@@ -62,59 +62,82 @@ The single-use property is what makes the loopback dispatch story safe (next sec
 
 ## Outbound: dispatching tool calls
 
-When the agent loop has tool calls to dispatch (see [agent-loop.md](agent-loop.md), step 8), it calls [`IToolCallDispatcher.DispatchAsync(ToolCall, cancellationToken)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/IToolCallDispatcher.cs). The implementation is [`ModelContextProtocolToolCallDispatcher`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolCallDispatcher.cs).
+When the agent loop has tool calls to dispatch (see [agent-loop.md](agent-loop.md), step 8), it calls [`IToolCallDispatcher.DispatchAsync(ToolCall, cancellationToken)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/IToolCallDispatcher.cs). The implementation is [`ModelContextProtocolToolCallDispatcher`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolCallDispatcher.cs); it delegates the network call to [`IModelContextProtocolClient`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/IModelContextProtocolClient.cs), a transient typed `HttpClient` whose pipeline rewrites a sentinel URI into the real endpoint and stamps configured headers.
 
 ```
 ToolCall(Source = "github", Name = "list_issues", ArgumentsJson = "{...}")
    │
    ▼
-ServerRegistry.Resolve(["github"])
-   │
+IModelContextProtocolClient.CallToolAsync("github", "list_issues", args)
+   │  builds HttpClientTransport(endpoint = http://github/, sharedHttpClient)
+   │  per-call McpClient — no pool
    ▼
-HttpClient (named "ModelContextProtocol", with LoopbackBearerHandler)
-   │
+HttpClient pipeline:
+   1. ModelContextProtocolRoutingHandler — looks up "github" in the registry,
+      rewrites RequestUri via IUriMerger (registry path appended, registry
+      query wins on collisions), stamps configured headers (overwriting any
+      caller-supplied values). Unknown server → synthesizes 404 locally with
+      a JSON error body and never calls inner.
+   2. LoopbackBearerHandler — if the (now real) URI is the internal listener,
+      mints a one-shot agent bearer; otherwise passes through.
+   3. Primary handler — IHttpClientFactory-pooled SocketsHttpHandler.
    ▼
-McpClient.CreateAsync(HttpClientTransport(serverUri))
-   │
-   ▼
-client.CallToolAsync(name, args)
-   │
-   ▼
-ToolCallResult(FlattenedText, IsError)
+client.CallToolAsync(name, args) → ToolCallResult(FlattenedText, IsError)
 ```
 
 Per-call rules:
 
-- **Empty `Source`** → reject with an error `ToolCallResult` immediately, without making a network call.
-- **Unknown `Source`** → reject with an error result. The model sees the rejection on the next iteration.
+- **Empty `Source`** → dispatcher rejects with an error `ToolCallResult` before touching the client.
+- **Unknown `Source`** → routing handler synthesizes a `404` locally; the SDK throws on the bad response; the dispatcher catches and returns an error result.
 - **Server present but unreachable / throws** → catch, log, return error result. The agent loop persists the failure as a `Tool` turn with `IsError = true`.
-- **Pooled MCP client.** Each consumer (`ModelContextProtocolToolCallDispatcher` and `ModelContextProtocolToolDiscovery`) holds a `LifetimeCache<(string Name, Uri Endpoint), McpClient>` keyed by server identity. The first call to a server pays the MCP `initialize` / capabilities-exchange handshake; subsequent calls reuse the connection. Idle entries (default 5 min) are evicted from the cache and properly disposed; the consumers themselves implement `IAsyncDisposable` so DI shutdown drains the pool. This replaces an earlier design where every dispatch built and tore down a fresh `McpClient` — the old shape worked but flooded `Information` logs with "client created and connected" / "message processing canceled" lines on every tool call.
+- **No MCP-client pool.** Each `CallToolAsync` / `ListToolsAsync` constructs an `McpClient` over the shared `HttpClient`, awaits the operation, and disposes — handshake is paid per call. The routing handler in front of the pipeline means there's no per-server `HttpClient` to keep warm; the underlying `SocketsHttpHandler` is factory-pooled.
 
 ### Server registry
 
 [`ModelContextProtocolServerRegistry`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs) merges two sources:
 
-- Operator-configured servers from `ModelContextProtocolOptions.Servers` (`appsettings.json`):
+- Operator-configured servers from `ModelContextProtocolOptions.Servers` (`appsettings.json`). Each entry is a [`ModelContextProtocolServerOptions`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerOptions.cs) — a `Uri` plus an optional `Headers` map that the routing handler stamps onto every outbound request to that server:
 
   ```json
   "ModelContextProtocol": {
     "Servers": {
-      "github": "https://mcp.example.com/github",
-      "internal-tools": "http://10.0.1.5:8080/mcp"
+      "github": {
+        "Uri": "https://mcp.example.com/github",
+        "Headers": {
+          "Authorization": "Bearer ghp_abc123"
+        }
+      },
+      "internal-tools": {
+        "Uri": "http://10.0.1.5:8080/mcp"
+      }
     }
   }
   ```
 
-- The host's own listener, published under the fixed name `llamashears` if `IInternalModelContextProtocolServer.Uri` resolves to a non-null value. The internal URI is read off `IServer.Features` at request time, so it picks up whatever Kestrel actually bound to.
+- The host's own listener, published under the fixed name `llamashears` if `IInternalModelContextProtocolServer.Uri` resolves to a non-null value. The internal URI is read off `IServer.Features` at request time, so it picks up whatever Kestrel actually bound to. The internal entry has no configured headers; auth is minted on the fly by `LoopbackBearerHandler`.
 
-`Resolve(whitelist)` returns:
+`Resolve(whitelist)` returns a name→`ModelContextProtocolServerOptions` map:
 
 - The full registry if `whitelist` is `null` (omit `mcpServers` in agent config to opt into everything the host knows about).
 - Only the named servers if `whitelist` is non-null. Names that don't resolve are logged at `Warning` and skipped — the agent gets a strictly smaller catalog rather than a hard failure.
 
+`TryGet(name)` is the single-lookup path used by `ModelContextProtocolRoutingHandler`; it returns `null` for unknown names so the handler can synthesize a 404 instead of throwing.
+
+### Routing handler
+
+[`ModelContextProtocolRoutingHandler`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolRoutingHandler.cs) is the outermost handler on the typed client's pipeline. The `IModelContextProtocolClient` impl always issues requests to a sentinel URI of the shape `http://{server-name}/...`. The routing handler:
+
+1. Reads `request.RequestUri.Host` as the server name.
+2. Calls `_registry.TryGet(serverName)`. On miss → returns a synthetic `404` response with body `{"error":"unknown MCP server '<name>'"}` (Content-Type `application/json`) and never calls `base.SendAsync`.
+3. On hit, replaces `request.RequestUri` with `IUriMerger.Merge(config.Uri, sentinelUri)` — scheme/host/port and base path come from the registry entry; any tail path the MCP SDK transport added is appended; registry query keys win over caller-supplied ones.
+4. Stamps every configured header onto `request.Headers`, removing any existing value first so the registry's configuration wins over anything the caller (or earlier handler) put there.
+5. Calls `base.SendAsync`.
+
+Order on the pipeline matters: `LoopbackBearerHandler` runs *after* routing, so when it inspects `request.RequestUri` to decide loopback, it's looking at the real endpoint (and matches the internal listener's host:port for the `llamashears` entry).
+
 ### Loopback bearer minting
 
-[`LoopbackBearerHandler`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/LoopbackBearerHandler.cs) is a `DelegatingHandler` registered on each consumer's named HTTP client. The clients are named after the consumer class via `nameof(ModelContextProtocolToolDiscovery)` and `nameof(ModelContextProtocolToolCallDispatcher)` — both at the registration side and the resolution side, so a rename of either consumer carries through automatically and a string-typo can't silently fall back to a default-configured client.
+[`LoopbackBearerHandler`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/LoopbackBearerHandler.cs) is a `DelegatingHandler` registered on the `IModelContextProtocolClient` typed HTTP client, slotted after `ModelContextProtocolRoutingHandler` in the pipeline. By the time it runs, the request URI has already been rewritten from the sentinel `http://server-name/` into the registered endpoint, so the loopback-detection logic sees the real host:port.
 
 On every outbound request:
 
@@ -128,9 +151,7 @@ The `ICurrentAgentAccessor` scope is opened by `Agent.DispatchToolCallsAsync` *a
 
 ### Tool discovery
 
-[`ModelContextProtocolToolDiscovery.DiscoverAsync(servers, cancellationToken)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolDiscovery.cs) is called once per agent at load (from `AgentManager.DiscoverToolsAsync`). For each `(name, uri)` pair in the resolved registry it acquires (or reuses) the cached `McpClient`, lists the server's tools, and translates each into a `ToolDescriptor`. The result is grouped per server (`ToolGroup(Source, Tools)`) and handed to the `Agent` constructor as `ImmutableArray<ToolGroup>`.
-
-Discovery uses its own named HTTP client (`nameof(ModelContextProtocolToolDiscovery)`) and therefore picks up `LoopbackBearerHandler` independently of the dispatcher. Calls to `llamashears` during discovery mint and consume a one-shot token just like every other loopback call. There is no "discovery-only" auth path. Discovery's `McpClient` cache is the same `LifetimeCache` shape as the dispatcher's, so an agent that discovers tools once at load and then makes calls a few minutes later reuses the connection.
+[`ModelContextProtocolToolDiscovery.DiscoverAsync(serverNames, cancellationToken)`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolToolDiscovery.cs) is called once per agent at load (from `AgentManager.DiscoverToolsAsync`). For each server name in the resolved registry it calls `IModelContextProtocolClient.ListToolsAsync(name)`, then wraps the result in a `ToolGroup(Source, Tools)` and accumulates. Per-server failures are logged at `Warning` and the server is dropped from the result so one bad server can't take the whole discovery pass down. There is no "discovery-only" auth path — all outbound MCP traffic shares the same typed client and the same routing+loopback pipeline.
 
 ## Why this shape
 

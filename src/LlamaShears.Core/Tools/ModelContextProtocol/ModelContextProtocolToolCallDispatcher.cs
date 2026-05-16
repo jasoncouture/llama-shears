@@ -1,54 +1,29 @@
 using System.Collections.Immutable;
-using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Caching;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol;
 
 namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
-public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDispatcher, IAsyncDisposable
+public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDispatcher
 {
-    private static readonly TimeSpan _connectionIdleTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly IModelContextProtocolServerRegistry _serverRegistry;
+    private readonly IModelContextProtocolClient _client;
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<ModelContextProtocolToolCallDispatcher> _logger;
-    private readonly LifetimeCache<(string Name, Uri Endpoint), McpClient> _connections;
 
     public ModelContextProtocolToolCallDispatcher(
-        IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory,
-        IModelContextProtocolServerRegistry serverRegistry,
-        IEventPublisher eventPublisher)
+        IModelContextProtocolClient client,
+        IEventPublisher eventPublisher,
+        ILogger<ModelContextProtocolToolCallDispatcher> logger)
     {
-        _httpClientFactory = httpClientFactory;
-        _loggerFactory = loggerFactory;
-        _serverRegistry = serverRegistry;
+        _client = client;
         _eventPublisher = eventPublisher;
-        _logger = loggerFactory.CreateLogger<ModelContextProtocolToolCallDispatcher>();
-        _connections = new LifetimeCache<(string, Uri), McpClient>(ConnectAsync, _connectionIdleTimeout);
+        _logger = logger;
     }
-
-    private Task<McpClient> ConnectAsync((string Name, Uri Endpoint) key, CancellationToken cancellationToken)
-    {
-        var httpClient = _httpClientFactory.CreateClient(nameof(ModelContextProtocolToolCallDispatcher));
-        var transport = new HttpClientTransport(
-            new HttpClientTransportOptions { Endpoint = key.Endpoint, Name = key.Name },
-            httpClient,
-            _loggerFactory,
-            ownsHttpClient: false);
-        return McpClient.CreateAsync(transport, clientOptions: null, loggerFactory: _loggerFactory, cancellationToken: cancellationToken);
-    }
-
-    public ValueTask DisposeAsync() => _connections.DisposeAsync();
 
     public async ValueTask<ToolCallResult> DispatchAsync(
         ToolCall call,
@@ -86,28 +61,16 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
                 IsError: true);
         }
 
-        var servers = _serverRegistry.Resolve(whitelist: [call.Source]);
-        if (!servers.TryGetValue(call.Source, out var serverUri))
-        {
-            LogUnknownSource(call.Source, call.Name);
-            return new ToolCallResult(
-                $"Tool '{call.Name}' on server '{call.Source}' was rejected: server is not registered.",
-                IsError: true);
-        }
-
         var arguments = DeserializeArguments(call.ArgumentsJson);
 
         try
         {
-            var client = await _connections.GetOrCreateAsync((call.Source, serverUri), cancellationToken);
-            var result = await client.CallToolAsync(
+            var result = await _client.CallToolAsync(
+                call.Source,
                 call.Name,
                 arguments,
-                cancellationToken: cancellationToken);
-
-            return new ToolCallResult(
-                ToolResponseClamp.Apply(FlattenContent(result.Content)),
-                IsError: result.IsError ?? false);
+                cancellationToken);
+            return result with { Content = ToolResponseClamp.Apply(result.Content) };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -179,33 +142,8 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
         return JsonSerializer.Deserialize<Dictionary<string, object?>>(argumentsJson);
     }
 
-    private static string FlattenContent(IList<ContentBlock> blocks)
-    {
-        if (blocks.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        var builder = new StringBuilder();
-        foreach (var block in blocks)
-        {
-            if (block is TextContentBlock text)
-            {
-                if (builder.Length > 0)
-                {
-                    builder.Append('\n');
-                }
-                builder.Append(text.Text);
-            }
-        }
-        return builder.ToString();
-    }
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing tool call '{Name}': no server was specified.")]
     private partial void LogMissingSource(string name);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing tool '{Name}' on server '{Source}': server is not registered.")]
-    private partial void LogUnknownSource(string source, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refusing tool '{Name}' on server '{Source}': not advertised on this turn.")]
     private partial void LogNotAdvertised(string source, string name);
