@@ -179,7 +179,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             return [];
         }
-        var groups = await _toolDiscovery.DiscoverAsync(servers, cancellationToken);
+        var groups = await _toolDiscovery.DiscoverAsync(servers.Keys, cancellationToken);
         foreach (var group in groups)
         {
             if (!string.Equals(group.Source, MemoryToolSource, StringComparison.Ordinal))

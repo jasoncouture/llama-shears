@@ -184,9 +184,9 @@ public sealed class ContextCompactorTests
             .Returns(ValueTask.FromResult("compaction-system"));
         var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();
         serverRegistry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
-            .Returns(new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase));
+            .Returns(new Dictionary<string, ModelContextProtocolServerOptions>(StringComparer.OrdinalIgnoreCase));
         var toolDiscovery = Substitute.For<IModelContextProtocolToolDiscovery>();
-        toolDiscovery.DiscoverAsync(Arg.Any<IReadOnlyDictionary<string, Uri>>(), Arg.Any<CancellationToken>())
+        toolDiscovery.DiscoverAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
         var currentAgent = compactorCurrentAgent;
         var locator = Substitute.For<ITemplateFileLocator>();

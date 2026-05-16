@@ -13,7 +13,10 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveWithNullWhitelistReturnsConfiguredAndInternal()
     {
         var registry = BuildRegistry(
-            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["github"] = Server("https://gh/"),
+            },
             internalUri: _internalUri);
 
         var resolved = registry.Resolve(whitelist: null);
@@ -26,7 +29,10 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveWithNullWhitelistOmitsInternalWhenItsUriIsUnavailable()
     {
         var registry = BuildRegistry(
-            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["github"] = Server("https://gh/"),
+            },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: null);
@@ -38,7 +44,10 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveWithEmptyWhitelistReturnsEmptyMapEvenWhenInternalIsAvailable()
     {
         var registry = BuildRegistry(
-            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["github"] = Server("https://gh/"),
+            },
             internalUri: _internalUri);
 
         var resolved = registry.Resolve(whitelist: []);
@@ -50,17 +59,17 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveExplicitWhitelistFiltersToTheNamedSubset()
     {
         var registry = BuildRegistry(
-            configured: new Dictionary<string, Uri>
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
             {
-                ["github"] = new Uri("https://gh/"),
-                ["linear"] = new Uri("https://lin/"),
+                ["github"] = Server("https://gh/"),
+                ["linear"] = Server("https://lin/"),
             },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: ["github"]);
 
         await Assert.That(resolved.Keys).IsEquivalentTo(["github"]);
-        await Assert.That(resolved["github"]).IsEqualTo(new Uri("https://gh/"));
+        await Assert.That(resolved["github"].Uri).IsEqualTo(new Uri("https://gh/"));
     }
 
     [Test]
@@ -73,14 +82,17 @@ public sealed class ModelContextProtocolServerRegistryTests
         var resolved = registry.Resolve(whitelist: ["llamashears"]);
 
         await Assert.That(resolved.Keys).IsEquivalentTo(["llamashears"]);
-        await Assert.That(resolved["llamashears"]).IsEqualTo(_internalUri);
+        await Assert.That(resolved["llamashears"].Uri).IsEqualTo(_internalUri);
     }
 
     [Test]
     public async Task ResolveDropsUnknownNamesFromWhitelist()
     {
         var registry = BuildRegistry(
-            configured: new Dictionary<string, Uri> { ["github"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["github"] = Server("https://gh/"),
+            },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: ["github", "nope"]);
@@ -92,7 +104,10 @@ public sealed class ModelContextProtocolServerRegistryTests
     public async Task ResolveLooksUpWhitelistEntriesCaseInsensitively()
     {
         var registry = BuildRegistry(
-            configured: new Dictionary<string, Uri> { ["GitHub"] = new Uri("https://gh/") },
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["GitHub"] = Server("https://gh/"),
+            },
             internalUri: null);
 
         var resolved = registry.Resolve(whitelist: ["github"]);
@@ -101,14 +116,94 @@ public sealed class ModelContextProtocolServerRegistryTests
         await Assert.That(resolved.ContainsKey("github")).IsTrue();
     }
 
+    [Test]
+    public async Task ResolveCarriesConfiguredHeaders()
+    {
+        var registry = BuildRegistry(
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["github"] = new ModelContextProtocolServerOptions
+                {
+                    Uri = new Uri("https://gh/"),
+                    Headers = { ["Authorization"] = "Bearer abc", ["X-Trace"] = "1" },
+                },
+            },
+            internalUri: null);
+
+        var resolved = registry.Resolve(whitelist: ["github"]);
+
+        await Assert.That(resolved["github"].Headers["Authorization"]).IsEqualTo("Bearer abc");
+        await Assert.That(resolved["github"].Headers["X-Trace"]).IsEqualTo("1");
+    }
+
+    [Test]
+    public async Task TryGetReturnsConfiguredEntry()
+    {
+        var registry = BuildRegistry(
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["github"] = Server("https://gh/"),
+            },
+            internalUri: null);
+
+        var entry = registry.TryGet("github");
+
+        await Assert.That(entry).IsNotNull();
+        await Assert.That(entry!.Uri).IsEqualTo(new Uri("https://gh/"));
+    }
+
+    [Test]
+    public async Task TryGetReturnsInternalEntry()
+    {
+        var registry = BuildRegistry(
+            configured: [],
+            internalUri: _internalUri);
+
+        var entry = registry.TryGet("llamashears");
+
+        await Assert.That(entry).IsNotNull();
+        await Assert.That(entry!.Uri).IsEqualTo(_internalUri);
+    }
+
+    [Test]
+    public async Task TryGetReturnsNullForUnknownName()
+    {
+        var registry = BuildRegistry(
+            configured: [],
+            internalUri: null);
+
+        var entry = registry.TryGet("nope");
+
+        await Assert.That(entry).IsNull();
+    }
+
+    [Test]
+    public async Task TryGetIsCaseInsensitive()
+    {
+        var registry = BuildRegistry(
+            configured: new Dictionary<string, ModelContextProtocolServerOptions>
+            {
+                ["GitHub"] = Server("https://gh/"),
+            },
+            internalUri: null);
+
+        var entry = registry.TryGet("github");
+
+        await Assert.That(entry).IsNotNull();
+        await Assert.That(entry!.Uri).IsEqualTo(new Uri("https://gh/"));
+    }
+
+    private static ModelContextProtocolServerOptions Server(string uri) =>
+        new() { Uri = new Uri(uri) };
+
     private static ModelContextProtocolServerRegistry BuildRegistry(
-        Dictionary<string, Uri> configured,
+        Dictionary<string, ModelContextProtocolServerOptions> configured,
         Uri? internalUri)
     {
         var options = new TestOptionsMonitor<ModelContextProtocolOptions>(
             new ModelContextProtocolOptions
             {
-                Servers = new Dictionary<string, Uri>(configured, StringComparer.OrdinalIgnoreCase),
+                Servers = new Dictionary<string, ModelContextProtocolServerOptions>(configured, StringComparer.OrdinalIgnoreCase),
             });
         var internalServer = Substitute.For<IInternalModelContextProtocolServer>();
         internalServer.Uri.Returns(internalUri);

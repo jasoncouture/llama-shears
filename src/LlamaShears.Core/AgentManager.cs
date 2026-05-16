@@ -220,7 +220,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         using var scope = _currentAgent.BeginScope(agentInfo);
         var servers = _serverRegistry.Resolve(config.ModelContextProtocolServers);
         var groups = await _toolDiscovery
-            .DiscoverAsync(servers, cancellationToken)
+            .DiscoverAsync(servers.Keys, cancellationToken)
             ;
 
         foreach (var group in groups)
