@@ -121,6 +121,7 @@ public static class CoreServiceCollectionExtensions
             .AddHttpMessageHandler<LoopbackBearerHandler>();
         services.AddHttpClient(nameof(ModelContextProtocolToolCallDispatcher))
             .AddHttpMessageHandler<LoopbackBearerHandler>();
+        services.AddHttpClient<IModelContextProtocolClient, ModelContextProtocolClient>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
         services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();
