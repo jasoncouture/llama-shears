@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEventHandler<SystemTick>, IDisposable
+public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEventHandler<SystemTick>, IAsyncDisposable
 {
     private const string WorkspaceTemplateSubpath = "workspace";
 
@@ -29,9 +29,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
-    private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
-    private readonly IModelContextProtocolServerRegistry _serverRegistry;
-    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IHostApplicationLifetime _appLifetime;
 
     private readonly Dictionary<string, AgentSlot> _loaded =
@@ -52,9 +49,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         IServiceScopeFactory scopeFactory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
-        IModelContextProtocolToolDiscovery toolDiscovery,
-        IModelContextProtocolServerRegistry serverRegistry,
-        ICurrentAgentAccessor currentAgent,
         IDataContextFactory dataContextFactory,
         IHostApplicationLifetime appLifetime)
     {
@@ -67,9 +61,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         _scopeFactory = scopeFactory;
         _paths = paths;
         _seeder = seeder;
-        _toolDiscovery = toolDiscovery;
-        _serverRegistry = serverRegistry;
-        _currentAgent = currentAgent;
         _dataContextFactory = dataContextFactory;
         _appLifetime = appLifetime;
     }
@@ -118,7 +109,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         });
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _appStartedRegistration.Dispose();
         _subscription?.Dispose();
@@ -126,7 +117,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         foreach (var name in _loaded.Keys.ToArray())
         {
-            Stop(name);
+            await StopAsync(name);
         }
     }
 
@@ -176,17 +167,15 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         foreach (var name in _loaded.Keys.Where(k => !present.ContainsKey(k)).ToArray())
         {
-            Stop(name);
+            await StopAsync(name);
         }
     }
 
     private async Task StartAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
         SeedAgentWorkspace(config);
-        // Why can't the agent do this when it starts?
-        var tools = await DiscoverToolsAsync(config, cancellationToken);
 
-        var slot = await TryBuildSlotAsync(name, config, tools, cancellationToken);
+        var slot = await TryBuildSlotAsync(name, config, cancellationToken);
         if (slot is null)
         {
             return;
@@ -201,38 +190,9 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             cancellationToken);
     }
 
-    private async Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config,
+    private Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config,
         CancellationToken cancellationToken)
-    {
-        var tools = await DiscoverToolsAsync(config, cancellationToken);
-        return await TryBuildSlotAsync(name, config, tools, cancellationToken);
-    }
-
-    private async Task<ImmutableArray<ToolGroup>> DiscoverToolsAsync(
-        AgentConfig config,
-        CancellationToken cancellationToken)
-    {
-        var agentInfo = new AgentInfo(
-            AgentId: config.Id,
-            ModelId: config.Model.Id,
-            ContextWindowSize: config.Model.ContextLength ?? 0);
-
-        using var scope = _currentAgent.BeginScope(agentInfo);
-        var servers = _serverRegistry.Resolve(config.ModelContextProtocolServers);
-        var groups = await _toolDiscovery
-            .DiscoverAsync(servers.Keys, cancellationToken)
-            ;
-
-        foreach (var group in groups)
-        {
-            foreach (var tool in group.Tools)
-            {
-                LogToolDiscovered(config.Id, group.Source, tool.Name);
-            }
-        }
-
-        return groups;
-    }
+        => TryBuildSlotAsync(name, config, cancellationToken);
 
     private void SeedAgentWorkspace(AgentConfig config)
     {
@@ -247,7 +207,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         if (_loaded.Remove(name, out var oldSlot))
         {
-            oldSlot.Agent.Dispose();
+            await DisposeSlotAsync(oldSlot);
             _dataContextFactory.DeleteContext(name);
         }
 
@@ -261,11 +221,11 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         LogAgentReloaded(name);
     }
 
-    private void Stop(string name)
+    private async Task StopAsync(string name)
     {
         if (_loaded.Remove(name, out var slot))
         {
-            slot.Agent.Dispose();
+            await DisposeSlotAsync(slot);
             _dataContextFactory.DeleteContext(name);
             LogAgentStopped(slot.Name);
         }
@@ -274,27 +234,22 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     private async Task<AgentSlot?> TryBuildSlotAsync(
         string name,
         AgentConfig config,
-        ImmutableArray<ToolGroup> tools,
         CancellationToken cancellationToken)
     {
-        IAgent agent;
         try
         {
-            agent = await BuildAgentAsync(name, config, tools, cancellationToken);
+            return await BuildSlotAsync(name, config, cancellationToken);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
             LogBuildFailure(name, ex.Message, ex);
             return null;
         }
-
-        return new AgentSlot(name, agent, config);
     }
 
-    private async Task<IAgent> BuildAgentAsync(
+    private async Task<AgentSlot> BuildSlotAsync(
         string name,
         AgentConfig config,
-        ImmutableArray<ToolGroup> tools,
         CancellationToken cancellationToken)
     {
         var previousContext = ExecutionContext.Capture();
@@ -309,20 +264,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             Thread.CurrentThread.CurrentUICulture = uiCulture;
             // And we now look like we are a fresh process or thread!
 
-            var providerFactory = _providers.FirstOrDefault(p =>
-                                      string.Equals(p.Name, config.Model.Id.Provider,
-                                          StringComparison.OrdinalIgnoreCase))
-                                  ?? throw new InvalidOperationException(
-                                      $"No provider factory registered with name '{config.Model.Id.Provider}'.");
-
             var modelConfig = config.Model;
-            var model = providerFactory.CreateModel(modelConfig);
-
-            var agentContext = await _contextStore.OpenAsync(name, cancellationToken);
+            
             var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
                 {
                     { AgentConfig.DataKey, config },
-                    { "model_configuration", modelConfig },
+                    { ModelConfiguration.DataKey, modelConfig },
                 };
 
             var scope = _scopeFactory.CreateAsyncScope();
@@ -333,15 +280,11 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
                 await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
                     cancellationToken);
-                var agent = ActivatorUtilities.CreateInstance<Agent>(
-                    scope.ServiceProvider,
-                    model,
-                    agentContext,
-                    scope,
-                    tools);
-                agent.Start();
-                
-                return agent;
+                _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
+                var agent = ActivatorUtilities.CreateInstance<Agent>(scope.ServiceProvider);
+                await agent.StartAsync(cancellationToken);
+
+                return new AgentSlot(name, agent, config, scope);
             }
             catch
             {
@@ -358,6 +301,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
     }
 
+    private static async ValueTask DisposeSlotAsync(AgentSlot slot)
+    {
+        await slot.Agent.DisposeAsync();
+        await slot.Scope.DisposeAsync();
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
     private partial void LogAgentStarted(string agentId);
 
@@ -370,12 +319,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private partial void LogBuildFailure(string agentId, string message, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Debug,
-        Message = "Discovered MCP tool '{ToolName}' on server '{ServerName}' for agent '{AgentId}'.")]
-    private partial void LogToolDiscovered(string agentId, string serverName, string toolName);
-
     [LoggerMessage(Level = LogLevel.Error, Message = "Initial agent reconcile failed.")]
     private partial void LogInitialReconcileFailure(Exception ex);
 
-    private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config);
+    private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config, AsyncServiceScope Scope);
 }
