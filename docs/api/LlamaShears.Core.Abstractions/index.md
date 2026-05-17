@@ -103,6 +103,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [DataContextScopeExtensions](LlamaShears/Core/Abstractions/Common/DataContextScopeExtensions.md)
 - [DataContextScopeFactoryExtensions](LlamaShears/Core/Abstractions/Common/DataContextScopeFactoryExtensions.md)
 - [DataContextServiceCollectionExtensions](LlamaShears/Core/Abstractions/Common/DataContextServiceCollectionExtensions.md)
+- [HostData](LlamaShears/Core/Abstractions/Common/HostData.md)
 - [IDataContextFactory](LlamaShears/Core/Abstractions/Common/IDataContextFactory.md)
 - [IDataContextItemProvider](LlamaShears/Core/Abstractions/Common/IDataContextItemProvider.md)
 - [IDataContextScope](LlamaShears/Core/Abstractions/Common/IDataContextScope.md)

@@ -104,6 +104,7 @@ public static class CoreServiceCollectionExtensions
             return scope;
         });
         services.TryAddScoped<ITodoStorage, TodoStorage>();
+        services.AddSingletonDataProvider<HostDataProvider>();
         services.AddScopedDataProvider<TodoListDataProvider>();
         services.AddScopedDataProvider<WallClockDataProvider>();
         services.AddScopedDataProvider<WorkspaceContextDataProvider>();
