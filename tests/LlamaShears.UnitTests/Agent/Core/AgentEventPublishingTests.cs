@@ -124,8 +124,6 @@ public sealed class AgentEventPublishingTests
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
 
         using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
-
-        var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
@@ -141,8 +139,10 @@ public sealed class AgentEventPublishingTests
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
+            BuildStubSystemPromptProvider(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory,
+            dataContextFactory.Current!,
+            model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(agentId, ctx);
@@ -150,14 +150,14 @@ public sealed class AgentEventPublishingTests
             contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: bus,
-            systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
-            currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
+            agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            agentServices: []);
         await agent.StartAsync(CancellationToken.None);
 
         await capturing.PublishAsync(
@@ -188,8 +188,6 @@ public sealed class AgentEventPublishingTests
         compactor.CompactAsync(
                 Arg.Any<AgentContext>(),
                 Arg.Any<ModelPrompt>(),
-                Arg.Any<ILanguageModel>(),
-                Arg.Any<ModelConfiguration>(),
                 Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));

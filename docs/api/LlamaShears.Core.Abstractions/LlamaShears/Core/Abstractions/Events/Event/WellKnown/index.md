@@ -4,5 +4,6 @@
 
 - [Agent](Agent.md) — Agent-level events.
 - [Channel](Channel.md) — Channel-level events.
+- [Command](Command.md) — Command events targeting a specific agent.
 - [Host](Host.md) — Host-level events.
 

@@ -28,6 +28,8 @@ public sealed class AgentInterruptGracefulTests
 {
     private const string TestChannelId = "test";
 
+    private readonly AgentLockManager _lockManager = new AgentLockManager();
+
     [Test]
     public async Task InterruptDuringTextStreamPersistsPartialAssistantTurn()
     {
@@ -41,11 +43,10 @@ public sealed class AgentInterruptGracefulTests
         await PublishChannelMessageAsync(publisher, "alice", "go");
         await model.WaitForFragmentEmittedAsync(TimeSpan.FromSeconds(5));
 
-        await agent.InterruptAsync(CancellationToken.None);
+        await PublishInterruptAsync(publisher, "alice");
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await agent.LockAsync(lockTimeout.Token);
-        await agent.UnlockAsync();
+        using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
         await Assert.That(assistantTurns).Count().IsEqualTo(1);
@@ -68,11 +69,10 @@ public sealed class AgentInterruptGracefulTests
         await PublishChannelMessageAsync(publisher, "alice", "go");
         await dispatcher.WaitForDispatchAsync(TimeSpan.FromSeconds(5));
 
-        await agent.InterruptAsync(CancellationToken.None);
+        await PublishInterruptAsync(publisher, "alice");
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await agent.LockAsync(lockTimeout.Token);
-        await agent.UnlockAsync();
+        using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
         await Assert.That(assistantTurns).Count().IsEqualTo(1);
@@ -181,7 +181,13 @@ public sealed class AgentInterruptGracefulTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static async Task<LlamaShears.Core.Agent> BuildAgent(
+    private static ValueTask PublishInterruptAsync(IEventPublisher publisher, string agentId)
+        => publisher.PublishAsync(
+            Event.WellKnown.Command.InterruptAgent with { Id = agentId },
+            AgentInterruptRequest.Instance,
+            CancellationToken.None);
+
+    private async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
@@ -192,8 +198,6 @@ public sealed class AgentInterruptGracefulTests
         compactor.CompactAsync(
                 Arg.Any<AgentContext>(),
                 Arg.Any<ModelPrompt>(),
-                Arg.Any<ILanguageModel>(),
-                Arg.Any<ModelConfiguration>(),
                 Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
@@ -201,7 +205,6 @@ public sealed class AgentInterruptGracefulTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
-        var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
@@ -217,8 +220,10 @@ public sealed class AgentInterruptGracefulTests
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
+            BuildStubSystemPromptProvider(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory,
+            dataContextFactory.Current!,
+            model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(id, agentContext);
@@ -226,14 +231,14 @@ public sealed class AgentInterruptGracefulTests
             contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
-            systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
+            agentLock: new AgentLock(_lockManager, dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            agentServices: []);
         await agent.StartAsync(CancellationToken.None);
         return agent;
     }

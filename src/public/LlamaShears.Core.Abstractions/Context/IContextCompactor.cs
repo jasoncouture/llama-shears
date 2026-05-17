@@ -24,8 +24,6 @@ public interface IContextCompactor
     ValueTask<ModelPrompt> CompactAsync(
         AgentContext agentContext,
         ModelPrompt prompt,
-        ILanguageModel model,
-        ModelConfiguration configuration,
         bool force,
         CancellationToken cancellationToken);
 }

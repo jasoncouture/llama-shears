@@ -42,9 +42,13 @@ The package is organised into namespaces by concern; each namespace was previous
 - [AgentToolConfig](LlamaShears/Core/Abstractions/Agent/AgentToolConfig.md)
 - [IAgent](LlamaShears/Core/Abstractions/Agent/IAgent.md)
 - [IAgentConfigProvider](LlamaShears/Core/Abstractions/Agent/IAgentConfigProvider.md)
+- [IAgentLock](LlamaShears/Core/Abstractions/Agent/IAgentLock.md)
+- [IAgentLockManager](LlamaShears/Core/Abstractions/Agent/IAgentLockManager.md)
 - [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
+- [IAgentService](LlamaShears/Core/Abstractions/Agent/IAgentService.md)
 - [IAgentStateTracker](LlamaShears/Core/Abstractions/Agent/IAgentStateTracker.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
+- [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)
 - [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
 
@@ -135,7 +139,8 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Events.Agent
 
-- [AgentCompactionMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionMarker.md)
+- [AgentCompactionRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionRequest.md)
+- [AgentInterruptRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentInterruptRequest.md)
 - [AgentLifecycleMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentLifecycleMarker.md)
 - [AgentMessageBase](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageBase.md)
 - [AgentMessageFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageFragment.md)
@@ -157,6 +162,7 @@ The package is organised into namespaces by concern; each namespace was previous
 
 - [Agent](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Agent.md)
 - [Channel](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Channel.md)
+- [Command](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Command.md)
 - [Host](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Host.md)
 
 ## LlamaShears.Core.Abstractions.Memory

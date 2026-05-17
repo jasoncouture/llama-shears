@@ -20,7 +20,7 @@ internal sealed class CapturingTurnSubscriber : IEventHandler<ModelTurn>, IDispo
     public CapturingTurnSubscriber(IEventBus bus, string agentId)
     {
         _subscription = bus.Subscribe(
-            $"{Event.WellKnown.Agent.Turn}:{agentId}",
+            Event.WellKnown.Agent.Turn with { Id = agentId },
             EventDeliveryMode.Awaited,
             this);
     }

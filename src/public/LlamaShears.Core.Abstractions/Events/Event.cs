@@ -18,6 +18,8 @@ public static class Event
         public const string Host = "system";
         /// <summary>Events emitted by chat channels.</summary>
         public const string Channel = "channel";
+        /// <summary>Commands the runtime issues to agents (compact, interrupt, …).</summary>
+        public const string Command = "command";
     }
 
     /// <summary>Pre-built <see cref="EventType"/> instances for each well-known event.</summary>
@@ -60,6 +62,14 @@ public static class Event
             public static EventType CompactingFinished { get; } = new EventType(Sources.Agent, "compacting-finished");
             /// <summary>A complete turn has been recorded to the agent's context log.</summary>
             public static EventType Turn { get; } = new EventType(Sources.Agent, "turn");
+        }
+        /// <summary>Command events targeting a specific agent.</summary>
+        public static class Command
+        {
+            /// <summary>Caller is requesting a compaction pass against the agent; payload's <c>Force</c> drives whether the under-budget guard is bypassed.</summary>
+            public static EventType CompactionRequest { get; } = new EventType(Sources.Command, "compaction-request");
+            /// <summary>Caller is requesting that the agent's in-flight turn be interrupted.</summary>
+            public static EventType InterruptAgent { get; } = new EventType(Sources.Command, "interrupt-agent");
         }
         /// <summary>Channel-level events.</summary>
         public static class Channel

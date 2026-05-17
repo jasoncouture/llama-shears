@@ -98,7 +98,7 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
 
         var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = bus.Subscribe<AgentLifecycleMarker>(
-            $"{Event.WellKnown.Agent.Loaded}:{agentId}",
+            Event.WellKnown.Agent.Loaded with { Id = agentId },
             EventDeliveryMode.Awaited,
             (_, _) =>
             {

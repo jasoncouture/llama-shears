@@ -14,6 +14,10 @@ Events emitted by an agent.
 
 Events emitted by chat channels.
 
+### `Command`
+
+Commands the runtime issues to agents (compact, interrupt, …).
+
 ### `Host`
 
 Events emitted by the host process itself.

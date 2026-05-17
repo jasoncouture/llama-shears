@@ -1,11 +1,8 @@
-# LlamaShears.Core.Abstractions.Events.Agent.AgentLifecycleMarker
+# LlamaShears.Core.Abstractions.Events.Agent.AgentInterruptRequest
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Empty payload for the agent lifecycle events
-([Agent](../Event/WellKnown/Agent.md).`Loaded`,
-[Agent](../Event/WellKnown/Agent.md).`Unloaded`,
-[Agent](../Event/WellKnown/Agent.md).`LoadError`).
+Payload for [Command](../Event/WellKnown/Command.md).`InterruptAgent`.
 Carries no data — its presence on the bus, with the agent id on
 [EventType](../EventType.md).`Id`, is the signal.
 

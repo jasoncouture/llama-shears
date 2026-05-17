@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -22,10 +21,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
-    private readonly IEnumerable<IProviderFactory> _providers;
     private readonly IAgentConfigProvider _configs;
     private readonly ILogger<AgentManager> _logger;
-    private readonly IContextStore _contextStore;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
@@ -42,10 +39,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     public AgentManager(
         IEventBus bus,
         IEventPublisher publisher,
-        IEnumerable<IProviderFactory> providers,
         IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
-        IContextStore contextStore,
         IServiceScopeFactory scopeFactory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
@@ -54,10 +49,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         _bus = bus;
         _publisher = publisher;
-        _providers = providers;
         _configs = configs;
         _logger = loggerFactory.CreateLogger<AgentManager>();
-        _contextStore = contextStore;
         _scopeFactory = scopeFactory;
         _paths = paths;
         _seeder = seeder;
@@ -186,7 +179,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         await _publisher.PublishAsync(
             Event.WellKnown.Agent.Loaded with { Id = name },
-            new AgentLifecycleMarker(),
+            AgentLifecycleMarker.Instance,
             cancellationToken);
     }
 
@@ -281,7 +274,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
                     cancellationToken);
                 _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
-                var agent = ActivatorUtilities.CreateInstance<Agent>(scope.ServiceProvider);
+                _ = scope.ServiceProvider.GetRequiredService<CompactionAgentService>();
+                var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
                 await agent.StartAsync(cancellationToken);
 
                 return new AgentSlot(name, agent, config, scope);
@@ -301,10 +295,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
     }
 
-    private static async ValueTask DisposeSlotAsync(AgentSlot slot)
+    private static ValueTask DisposeSlotAsync(AgentSlot slot)
     {
-        await slot.Agent.DisposeAsync();
-        await slot.Scope.DisposeAsync();
+        // Agent is registered scoped, so the scope tracks it and the
+        // scope's disposal cascades to the agent's IAsyncDisposable.
+        // The manager owns the scope, not the agent directly.
+        return slot.Scope.DisposeAsync();
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]

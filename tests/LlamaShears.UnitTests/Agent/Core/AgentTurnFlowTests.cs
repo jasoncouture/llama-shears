@@ -205,8 +205,6 @@ public sealed class AgentTurnFlowTests
         compactor.CompactAsync(
                 Arg.Any<AgentContext>(),
                 Arg.Any<ModelPrompt>(),
-                Arg.Any<ILanguageModel>(),
-                Arg.Any<ModelConfiguration>(),
                 Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
@@ -214,7 +212,6 @@ public sealed class AgentTurnFlowTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
-        var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
@@ -230,8 +227,10 @@ public sealed class AgentTurnFlowTests
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
+            BuildStubSystemPromptProvider(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory,
+            dataContextFactory.Current!,
+            model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(id, agentContext);
@@ -239,14 +238,14 @@ public sealed class AgentTurnFlowTests
             contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
-            systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
+            agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            agentServices: []);
         await agent.StartAsync(CancellationToken.None);
         return agent;
     }

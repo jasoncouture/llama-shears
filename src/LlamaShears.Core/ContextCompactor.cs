@@ -27,45 +27,35 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const string MemoryToolName = "memory_store";
     private const string KickerFileName = "PROMPT.md";
     private const string KickerSubFolder = "compaction";
-    
-    private readonly IAgentContextProvider _agentContextProvider;
+
     private readonly IContextStore _contextStore;
     private readonly IAgentStateTracker _stateTracker;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IEventPublisher _eventPublisher;
-    private readonly ISystemPromptProvider _systemPrompt;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
-    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly ITemplateFileLocator _locator;
     private readonly ITemplateRenderer _templateRenderer;
     private readonly IDataContextScope _dataContextScope;
     private readonly ILogger<ContextCompactor> _logger;
 
-    public ContextCompactor(
-        IAgentContextProvider agentContextProvider,
-        IContextStore contextStore,
+    public ContextCompactor(IContextStore contextStore,
         IAgentStateTracker stateTracker,
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
-        ISystemPromptProvider systemPrompt,
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
-        ICurrentAgentAccessor currentAgent,
         ITemplateFileLocator locator,
         ITemplateRenderer templateRenderer,
         IDataContextScope dataContextScope,
         ILogger<ContextCompactor> logger)
     {
-        _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
         _stateTracker = stateTracker;
         _inferenceRunner = inferenceRunner;
         _eventPublisher = eventPublisher;
-        _systemPrompt = systemPrompt;
         _serverRegistry = serverRegistry;
         _toolDiscovery = toolDiscovery;
-        _currentAgent = currentAgent;
         _locator = locator;
         _templateRenderer = templateRenderer;
         _dataContextScope = dataContextScope;
@@ -75,20 +65,17 @@ public sealed partial class ContextCompactor : IContextCompactor
     public async ValueTask<ModelPrompt> CompactAsync(
         AgentContext agentContext,
         ModelPrompt prompt,
-        ILanguageModel model,
-        ModelConfiguration configuration,
         bool force,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prompt);
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(configuration);
 
         if (prompt.Turns.Count < MinTurnsForCompaction)
         {
             return prompt;
         }
 
+        var configuration = _dataContextScope.GetModelConfiguration();
         if (configuration.ContextLength is not { } window)
         {
             return prompt;
@@ -116,20 +103,14 @@ public sealed partial class ContextCompactor : IContextCompactor
 
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.CompactingStarted with { Id = agentContext.AgentId },
-            new AgentCompactionMarker(),
+            new AgentCompactionRequest(),
             cancellationToken);
         try
         {
-            var agentInfo = new AgentInfo(
-                AgentId: agentContext.AgentId,
-                ModelId: configuration.Id,
-                ContextWindowSize: configuration.ContextLength ?? 0);
-            using var scope = _currentAgent.BeginScope(agentInfo);
             var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
-                model,
                 window,
                 preserveTrailingUser,
                 memoryTools,
@@ -164,7 +145,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.CompactingFinished with { Id = agentContext.AgentId },
-                new AgentCompactionMarker(),
+                new AgentCompactionRequest(),
                 CancellationToken.None);
         }
     }
@@ -218,7 +199,6 @@ public sealed partial class ContextCompactor : IContextCompactor
     private async ValueTask<string> SummarizeAsync(
         string agentId,
         ModelPrompt prompt,
-        ILanguageModel model,
         int window,
         bool preserveTrailingUser,
         ImmutableArray<ToolGroup> tools,
@@ -228,35 +208,22 @@ public sealed partial class ContextCompactor : IContextCompactor
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
         _stateTracker.SetState(channelId: "compactor", eventId: $"{agentId}-compaction");
-        var systemBody = await _systemPrompt.GetAsync(
-            CompactionTemplateFileName,
-            SnapshotScope(),
-            cancellationToken);
-        var historyTurns = new List<ModelTurn>(historyCount + 2);
-        var compactionInserted = false;
+        var historyTurns = new List<ModelTurn>(historyCount + 1);
         for (var i = 0; i < historyCount; i++)
         {
-            var turn = prompt.Turns[i];
-            historyTurns.Add(turn);
-            if (turn.Role == ModelRole.System && !compactionInserted)
-            {
-                historyTurns.Add(new ModelTurn(ModelRole.System, systemBody, turn.Timestamp));
-                compactionInserted = true;
-            }
+            historyTurns.Add(prompt.Turns[i]);
         }
-        if (!compactionInserted)
-        {
-            historyTurns.Insert(0, new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
-        }
-        
-        if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
+        if (historyTurns.Count == 0 || historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
         {
             var kicker = await LoadKickerAsync(cancellationToken);
             historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
         }
 
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
-        var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
+        var options = new PromptOptions(
+            TokenLimit: summaryCap,
+            Tools: tools,
+            SystemPromptTemplate: CompactionTemplateFileName);
         
         var toolCallingTurns = 0;
 
@@ -264,12 +231,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             var summarizationPrompt = new ModelPrompt(historyTurns);
             var outcome = await _inferenceRunner.RunAsync(
-                eventId: $"{agentId}-compaction",
-                model: model,
                 prompt: summarizationPrompt,
                 options: options,
-                emitTurns: false,
-                correlationId: _dataContextScope.GetAgentState().CorrelationId,
                 cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)

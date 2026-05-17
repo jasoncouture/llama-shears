@@ -2,7 +2,8 @@
 
 ## Types
 
-- [AgentCompactionMarker](AgentCompactionMarker.md) — Empty payload for [Agent](../Event/WellKnown/Agent.md).`CompactingStarted` / [Agent](../Event/WellKnown/Agent.md).`CompactingFinished`. Carries no data — its presence on the bus is the signal.
+- [AgentCompactionRequest](AgentCompactionRequest.md) — Payload for [Command](../Event/WellKnown/Command.md).`CompactionRequest` and the start/finish events around a compaction pass. [AgentCompactionRequest](AgentCompactionRequest.md).`Force` tells the compactor to bypass its usual under-budget guard.
+- [AgentInterruptRequest](AgentInterruptRequest.md) — Payload for [Command](../Event/WellKnown/Command.md).`InterruptAgent`. Carries no data — its presence on the bus, with the agent id on [EventType](../EventType.md).`Id`, is the signal.
 - [AgentLifecycleMarker](AgentLifecycleMarker.md) — Empty payload for the agent lifecycle events ([Agent](../Event/WellKnown/Agent.md).`Loaded`, [Agent](../Event/WellKnown/Agent.md).`Unloaded`, [Agent](../Event/WellKnown/Agent.md).`LoadError`). Carries no data — its presence on the bus, with the agent id on [EventType](../EventType.md).`Id`, is the signal.
 - [AgentMessageBase](AgentMessageBase.md) — Common shape for agent-emitted message and thought fragments flowing through the event bus. Concrete subtypes ([AgentMessageFragment](AgentMessageFragment.md), [AgentThoughtFragment](AgentThoughtFragment.md)) add stream-specific metadata.
 - [AgentMessageFragment](AgentMessageFragment.md) — One streaming chunk of agent-visible text emitted as the model produces its response. Subscribers concatenate fragments in arrival order to reconstruct the final assistant message.

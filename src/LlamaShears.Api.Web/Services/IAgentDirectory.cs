@@ -1,3 +1,4 @@
+using System;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Api.Web.Services;
@@ -7,6 +8,13 @@ namespace LlamaShears.Api.Web.Services;
 /// an interface so the Razor library does not need to reference
 /// <c>Agent.Core</c>; the implementation in <c>LlamaShears.Api</c> wraps
 /// the agent manager.
+/// <para>
+/// DO NOT add new methods here. New agent-targeted commands belong on
+/// the event bus (see the <c>command:*</c> event source). The methods
+/// already on this interface that fan out to events are flagged
+/// <see cref="ObsoleteAttribute"/> and will be removed once callers
+/// publish those events directly.
+/// </para>
 /// </summary>
 public interface IAgentDirectory
 {
@@ -37,6 +45,7 @@ public interface IAgentDirectory
     /// acquired for the duration so this serializes naturally with
     /// in-flight turn handling.
     /// </summary>
+    [Obsolete("Publish command:compaction-request:<agentId> with AgentCompactionRequest.Forced instead.", error: false)]
     Task RequestCompactionAsync(string agentId, CancellationToken cancellationToken);
 
     /// <summary>
@@ -45,5 +54,6 @@ public interface IAgentDirectory
     /// thought fragments emitted by the canceled turn are dropped. The
     /// agent stays live and resumes on the next inbound message.
     /// </summary>
+    [Obsolete("Publish command:interrupt-agent:<agentId> with AgentInterruptRequest.Instance instead.", error: false)]
     Task InterruptAsync(string agentId, CancellationToken cancellationToken);
 }

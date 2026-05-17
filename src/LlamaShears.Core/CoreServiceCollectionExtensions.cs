@@ -109,7 +109,7 @@ public static class CoreServiceCollectionExtensions
         services.AddScopedDataProvider<WorkspaceContextDataProvider>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddScoped<IContextCompactor, ContextCompactor>();
-        services.AddHostedService<EagerCompactor>();
+        services.TryAddScoped<CompactionAgentService>();
 
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(modelContextProtocolConfigurationSection);
@@ -126,7 +126,9 @@ public static class CoreServiceCollectionExtensions
 
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
 
-        services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
+        services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
+        services.TryAddScoped<IAgentLock, AgentLock>();
+        services.TryAddScoped<IAgent, Agent>();
         services.TryAddTransient<LoopbackBearerHandler>();
         services.TryAddTransient<ModelContextProtocolRoutingHandler>();
         services.AddHttpClient<IModelContextProtocolClient, ModelContextProtocolClient>()
