@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 
@@ -17,10 +18,14 @@ internal sealed class WorkspaceContextDataProvider : IDataContextItemProvider
     ];
 
     private readonly IDataContextScope _scope;
+    private readonly IFileParserCache<WorkspaceContextDataProvider> _cache;
 
-    public WorkspaceContextDataProvider(IDataContextScope scope)
+    public WorkspaceContextDataProvider(
+        IDataContextScope scope,
+        IFileParserCache<WorkspaceContextDataProvider> cache)
     {
         _scope = scope;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<KeyValuePair<string, object?>>> GetItemsForCurrentContext(
@@ -32,7 +37,7 @@ internal sealed class WorkspaceContextDataProvider : IDataContextItemProvider
         return [new KeyValuePair<string, object?>(WorkspaceContext.DataKey, workspace)];
     }
 
-    private static async ValueTask<ImmutableArray<WorkspaceFile>> ReadWorkspaceFilesAsync(
+    private async ValueTask<ImmutableArray<WorkspaceFile>> ReadWorkspaceFilesAsync(
         string workspacePath,
         CancellationToken cancellationToken)
     {
@@ -41,17 +46,39 @@ internal sealed class WorkspaceContextDataProvider : IDataContextItemProvider
             return [];
         }
 
-        var files = ImmutableArray.CreateBuilder<WorkspaceFile>(_workspaceFileNames.Length);
+        var files = ImmutableArray.CreateBuilder<WorkspaceFile>();
         foreach (var name in _workspaceFileNames)
         {
-            var path = Path.Combine(workspacePath, name);
-            if (!File.Exists(path))
+            var fullPath = Path.Combine(workspacePath, name);
+            var file = await _cache.GetOrParseAsync<WorkspaceFile, string>(
+                fullPath,
+                fullPath,
+                ParseWorkspaceFileAsync,
+                cancellationToken);
+            if (file is not null)
             {
-                continue;
+                files.Add(file);
             }
-            var content = await File.ReadAllTextAsync(path, cancellationToken);
-            files.Add(new WorkspaceFile(name, content));
         }
         return files.ToImmutable();
+    }
+
+    private static async ValueTask<WorkspaceFile?> ParseWorkspaceFileAsync(
+        Stream? stream,
+        string fullPath,
+        CancellationToken cancellationToken)
+    {
+        if (stream is null)
+        {
+            return null;
+        }
+        using var reader = new StreamReader(stream);
+        var content = await reader.ReadToEndAsync(cancellationToken);
+        var directory = Path.GetDirectoryName(fullPath) ?? string.Empty;
+        if (directory.Length > 0 && directory[^1] != Path.DirectorySeparatorChar)
+        {
+            directory += Path.DirectorySeparatorChar;
+        }
+        return new WorkspaceFile(Path.GetFileName(fullPath), directory, content);
     }
 }

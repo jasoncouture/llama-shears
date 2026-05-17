@@ -198,8 +198,8 @@ public sealed class FilesystemSystemPromptProviderTests
         var workspace = new WorkspaceContext(
             "/tmp/work",
             [
-                new WorkspaceFile("BOOTSTRAP.md", "boot-body"),
-                new WorkspaceFile("IDENTITY.md", "ident-body"),
+                new WorkspaceFile("BOOTSTRAP.md", "/tmp/work/", "boot-body"),
+                new WorkspaceFile("IDENTITY.md", "/tmp/work/", "ident-body"),
             ]);
 
         var body = await fixture.Provider.GetAsync(
