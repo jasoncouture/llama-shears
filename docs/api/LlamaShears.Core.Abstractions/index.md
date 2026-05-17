@@ -42,9 +42,11 @@ The package is organised into namespaces by concern; each namespace was previous
 - [AgentToolConfig](LlamaShears/Core/Abstractions/Agent/AgentToolConfig.md)
 - [IAgent](LlamaShears/Core/Abstractions/Agent/IAgent.md)
 - [IAgentConfigProvider](LlamaShears/Core/Abstractions/Agent/IAgentConfigProvider.md)
+- [IAgentLockManager](LlamaShears/Core/Abstractions/Agent/IAgentLockManager.md)
 - [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
 - [IAgentStateTracker](LlamaShears/Core/Abstractions/Agent/IAgentStateTracker.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
+- [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)
 - [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
 

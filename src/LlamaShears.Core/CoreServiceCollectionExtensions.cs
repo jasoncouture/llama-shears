@@ -127,6 +127,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
 
         services.TryAddSingleton<ICurrentAgentAccessor, CurrentAgentAccessor>();
+        services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
         services.TryAddTransient<LoopbackBearerHandler>();
         services.TryAddTransient<ModelContextProtocolRoutingHandler>();
         services.AddHttpClient<IModelContextProtocolClient, ModelContextProtocolClient>()
