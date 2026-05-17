@@ -14,7 +14,8 @@ namespace LlamaShears.Core;
 
 public sealed partial class InferenceRunner : IInferenceRunner
 {
-    private const int ConsecutiveToolCallLimit = 3;
+    private const int ConsecutiveToolCallLimit = 15;
+    private const string NoResponseSentinel = "NO_RESPONSE";
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IEventPublisher _eventPublisher;
@@ -79,6 +80,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         var tools = options?.Tools ?? [];
         var dispatchTasks = new List<Task<ToolCallResult>>();
         var interrupted = false;
+        var textSuppressed = true;
 
         var errorStateCancellationToken = new CancellationTokenSource();
 
@@ -94,6 +96,16 @@ public sealed partial class InferenceRunner : IInferenceRunner
                         break;
                     case IModelTextResponse text:
                         content.Append(text.Content);
+                        if (textSuppressed)
+                        {
+                            var snapshot = content.ToString();
+                            if (snapshot.Length <= NoResponseSentinel.Length
+                                && NoResponseSentinel.StartsWith(snapshot, StringComparison.Ordinal))
+                            {
+                                break;
+                            }
+                            textSuppressed = false;
+                        }
                         await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: ChannelId.Value, Final: false), cancellationToken);
                         break;
                     case IModelToolCallFragment toolFragment:
@@ -149,13 +161,15 @@ public sealed partial class InferenceRunner : IInferenceRunner
                     cancellationToken);
             }
         }
-        if (content.Length > 0)
+        var suppressed = content.ToString() == NoResponseSentinel && toolCalls.Count == 0;
+        var finalContent = suppressed ? string.Empty : content.ToString();
+        if (finalContent.Length > 0)
         {
-            await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: ChannelId.Value, Final: true), cancellationToken);
+            await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(finalContent, ChannelId: ChannelId.Value, Final: true), cancellationToken);
         }
-        if (emitTurns && (content.Length > 0 || toolCalls.Count > 0))
+        if (emitTurns && (finalContent.Length > 0 || toolCalls.Count > 0))
         {
-            var assistantTurn = new ModelTurn(ModelRole.Assistant, content.ToString(), _time.GetLocalNow(), ChannelId: ChannelId.Value)
+            var assistantTurn = new ModelTurn(ModelRole.Assistant, finalContent, _time.GetLocalNow(), ChannelId: ChannelId.Value)
             {
                 ToolCalls = toolCalls.ToImmutable(),
             };
@@ -169,11 +183,12 @@ public sealed partial class InferenceRunner : IInferenceRunner
 
         return new InferenceOutcome(
             thinking.ToString(),
-            content.ToString(),
+            finalContent,
             tokenCount,
             toolCalls.ToImmutable(),
             [.. await Task.WhenAll(dispatchTasks)],
-            Interrupted: interrupted);
+            Interrupted: interrupted,
+            Suppressed: suppressed);
 
         Task<ToolCallResult> EnqueueDispatchAsync(Task predecessor, ToolCall call)
             => predecessor.ContinueWith(async _ =>

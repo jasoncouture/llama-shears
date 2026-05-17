@@ -7,18 +7,10 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// state — is internal and reachable through the services that own
 /// it (config provider, context store, message bus).
 /// </summary>
-public interface IAgent : IDisposable
+public interface IAgent : IAsyncDisposable, IDisposable
 {
     /// <summary>Stable identifier for this agent.</summary>
     string Id { get; }
-
-    /// <summary>
-    /// Timestamp of the most recent turn recorded for this agent —
-    /// i.e. the moment of last activity. <see langword="null"/> when
-    /// the agent's context has no turns yet. Callers compute idle
-    /// duration from this against the current wall clock.
-    /// </summary>
-    DateTimeOffset? LastActivity { get; }
 
     /// <summary>
     /// Acquires the agent's processing gate, blocking the run loop

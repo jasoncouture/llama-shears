@@ -1,7 +1,11 @@
 using System.Collections.Immutable;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -12,11 +16,15 @@ public sealed class ModelContextProtocolClient : IModelContextProtocolClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IMemoryCache _cache;
 
-    public ModelContextProtocolClient(HttpClient httpClient, ILoggerFactory loggerFactory)
+    private record ToolListCacheEntry(ImmutableArray<ToolDescriptor>? Tools = null, ExceptionDispatchInfo? ExceptionDispatchInfo = null);
+
+    public ModelContextProtocolClient(HttpClient httpClient, IMemoryCache cache, ILoggerFactory loggerFactory)
     {
         _httpClient = httpClient;
         _loggerFactory = loggerFactory;
+        _cache = cache;
     }
 
     public async ValueTask<ImmutableArray<ToolDescriptor>> ListToolsAsync(
@@ -24,11 +32,43 @@ public sealed class ModelContextProtocolClient : IModelContextProtocolClient
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverName);
+        var key = $"mcp:{serverName}:tool_list";
+        if (_cache.TryGetValue<ToolListCacheEntry>(key, out var cached) && cached is not null)
+        {
+            if (cached.Tools is not null) return cached.Tools.Value;
+            if (cached.ExceptionDispatchInfo is { } replay)
+            {
+                throw new InvalidOperationException(
+                    $"Cached MCP tool-list failure for server '{serverName}'.",
+                    replay.SourceException);
+            }
+        }
 
-        await using var client = await ConnectAsync(serverName, cancellationToken);
-        var tools = await client.ListToolsAsync(cancellationToken: cancellationToken);
+        try
+        {
+            await using var client = await ConnectAsync(serverName, cancellationToken);
+            var tools = await client.ListToolsAsync(cancellationToken: cancellationToken);
 
-        return [.. tools.Select(MapTool)];
+            var result = tools.Select(MapTool).ToImmutableArray();
+            _cache.Set(key, new ToolListCacheEntry(Tools: result),
+                new MemoryCacheEntryOptions()
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
+                    SlidingExpiration = TimeSpan.FromMinutes(2)
+                });
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            var exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
+            _cache.Set(key, new ToolListCacheEntry(ExceptionDispatchInfo: exceptionDispatchInfo),
+                new MemoryCacheEntryOptions()
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1),
+                    SlidingExpiration = TimeSpan.FromSeconds(15)
+                });
+            throw;
+        }
     }
 
     public async ValueTask<ToolCallResult> CallToolAsync(
