@@ -113,8 +113,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                        ?? throw new InvalidOperationException(
                            $"Agent context provider returned null for running agent '{_dataScope.GetAgentConfig().Id}'.");
         var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
-        var model = bundle.ServiceProvider.GetRequiredService<ILanguageModel>();
-        await compactor.CompactAsync(snapshot, prompt, model, _dataScope.GetModelConfiguration(), force: true, cancellationToken);
+        await compactor.CompactAsync(snapshot, prompt, force: true, cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -125,7 +124,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
 
         _subscription.Dispose();
-        _shutdown.Cancel();
+        await _shutdown.CancelAsync();
         if (_loop is not null)
         {
             try
@@ -262,9 +261,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetAgentConfig().Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{_dataScope.GetAgentConfig().Id}'.");
         var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
-        var model = bundle.ServiceProvider.GetRequiredService<ILanguageModel>();
         prompt = await compactor
-            .CompactAsync(agentContextSnapshot, prompt, model, _dataScope.GetModelConfiguration(), force: false, cancellationToken)
+            .CompactAsync(agentContextSnapshot, prompt, force: false, cancellationToken)
             ;
 
         var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
@@ -278,7 +276,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         while (true)
         {
             outcome = await inferenceRunner.RunAsync(
-                model: model,
                 prompt: prompt,
                 options: new PromptOptions(Tools: tools, InjectEphemeralContext: true, EmitTurns: true),
                 cancellationToken: cancellationToken);

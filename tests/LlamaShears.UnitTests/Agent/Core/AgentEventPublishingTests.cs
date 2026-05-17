@@ -143,6 +143,7 @@ public sealed class AgentEventPublishingTests
             Substitute.For<IPromptContextProvider>(),
             TestAgentConfigs.EmptyMemorySearcher(),
             dataContextFactory.Current!,
+            model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(agentId, ctx);
@@ -189,8 +190,6 @@ public sealed class AgentEventPublishingTests
         compactor.CompactAsync(
                 Arg.Any<AgentContext>(),
                 Arg.Any<ModelPrompt>(),
-                Arg.Any<ILanguageModel>(),
-                Arg.Any<ModelConfiguration>(),
                 Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));

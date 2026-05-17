@@ -11,7 +11,7 @@ themselves.
 
 ## Methods
 
-### `CompactAsync`([AgentContext](AgentContext.md) agentContext, [ModelPrompt](../Provider/ModelPrompt.md) prompt, [ILanguageModel](../Provider/ILanguageModel.md) model, [ModelConfiguration](../Provider/ModelConfiguration.md) configuration, bool force, CancellationToken cancellationToken)
+### `CompactAsync`([AgentContext](AgentContext.md) agentContext, [ModelPrompt](../Provider/ModelPrompt.md) prompt, bool force, CancellationToken cancellationToken)
 
 Returns `prompt` unchanged when no compaction
 is needed (under budget, too few turns, or no context window

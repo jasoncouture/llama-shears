@@ -24,6 +24,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private readonly IPromptContextProvider _promptContext;
     private readonly IMemorySearcher _memorySearcher;
     private readonly IDataContextScope _dataScope;
+    private readonly ILanguageModel _model;
     private readonly ILogger<InferenceRunner> _logger;
 
     public InferenceRunner(
@@ -33,6 +34,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
         IDataContextScope dataScope,
+        ILanguageModel model,
         ILogger<InferenceRunner> logger)
     {
         _eventPublisher = eventPublisher;
@@ -41,16 +43,15 @@ public sealed partial class InferenceRunner : IInferenceRunner
         _promptContext = promptContext;
         _memorySearcher = memorySearcher;
         _dataScope = dataScope;
+        _model = model;
         _logger = logger;
     }
 
     public async Task<InferenceOutcome> RunAsync(
-        ILanguageModel model,
         ModelPrompt prompt,
         PromptOptions? options,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(prompt);
 
         if (prompt.Turns.Count == 0)
@@ -84,7 +85,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
 
         try
         {
-            await foreach (var fragment in model.PromptAsync(prompt, options, cancellationToken).ConfigureAwait(false))
+            await foreach (var fragment in _model.PromptAsync(prompt, options, cancellationToken).ConfigureAwait(false))
             {
                 switch (fragment)
                 {

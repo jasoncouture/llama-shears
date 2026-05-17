@@ -52,9 +52,9 @@ public sealed class InferenceRunnerToolDispatchTests
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
             TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
+            model,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
-            model: model,
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: new PromptOptions(Tools: BuildToolsAdvertisement()),
             cancellationToken: CancellationToken.None);
@@ -89,9 +89,9 @@ public sealed class InferenceRunnerToolDispatchTests
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
             TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
+            model,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
-            model: model,
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: null,
             cancellationToken: CancellationToken.None);

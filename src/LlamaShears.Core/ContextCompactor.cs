@@ -75,20 +75,17 @@ public sealed partial class ContextCompactor : IContextCompactor
     public async ValueTask<ModelPrompt> CompactAsync(
         AgentContext agentContext,
         ModelPrompt prompt,
-        ILanguageModel model,
-        ModelConfiguration configuration,
         bool force,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prompt);
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(configuration);
 
         if (prompt.Turns.Count < MinTurnsForCompaction)
         {
             return prompt;
         }
 
+        var configuration = _dataContextScope.GetModelConfiguration();
         if (configuration.ContextLength is not { } window)
         {
             return prompt;
@@ -129,7 +126,6 @@ public sealed partial class ContextCompactor : IContextCompactor
             var summary = await SummarizeAsync(
                 agentContext.AgentId,
                 prompt,
-                model,
                 window,
                 preserveTrailingUser,
                 memoryTools,
@@ -218,7 +214,6 @@ public sealed partial class ContextCompactor : IContextCompactor
     private async ValueTask<string> SummarizeAsync(
         string agentId,
         ModelPrompt prompt,
-        ILanguageModel model,
         int window,
         bool preserveTrailingUser,
         ImmutableArray<ToolGroup> tools,
@@ -264,7 +259,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             var summarizationPrompt = new ModelPrompt(historyTurns);
             var outcome = await _inferenceRunner.RunAsync(
-                model: model,
                 prompt: summarizationPrompt,
                 options: options,
                 cancellationToken: cancellationToken);

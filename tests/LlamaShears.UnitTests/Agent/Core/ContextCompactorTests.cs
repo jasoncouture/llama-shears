@@ -23,16 +23,16 @@ public sealed class ContextCompactorTests
     public async Task BelowMinTurnsReturnsPromptUnchanged()
     {
         var model = BuildModel();
-        var compactor = BuildCompactor();
+        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 50);
+        var compactor = BuildCompactor(model, config);
         var prompt = new ModelPrompt([
             new ModelTurn(ModelRole.System, "you are a helpful agent", _now),
             new ModelTurn(ModelRole.User, "hi", _now),
             new ModelTurn(ModelRole.Assistant, "hi back", _now),
             new ModelTurn(ModelRole.User, "what's up", _now),
         ]);
-        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 50);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(prompt);
         _ = model.DidNotReceive().PromptAsync(
@@ -43,11 +43,11 @@ public sealed class ContextCompactorTests
     public async Task NoContextLengthReturnsPromptUnchanged()
     {
         var model = BuildModel();
-        var compactor = BuildCompactor();
-        var prompt = LongPromptOver(charsPerTurn: 10_000);
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: null);
+        var compactor = BuildCompactor(model, config);
+        var prompt = LongPromptOver(charsPerTurn: 10_000);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(prompt);
         _ = model.DidNotReceive().PromptAsync(
@@ -58,11 +58,11 @@ public sealed class ContextCompactorTests
     public async Task UnderBudgetReturnsPromptUnchanged()
     {
         var model = BuildModel();
-        var compactor = BuildCompactor();
-        var prompt = ShortPromptWithFiveTurns();
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 100_000, TokenLimit: 100);
+        var compactor = BuildCompactor(model, config);
+        var prompt = ShortPromptWithFiveTurns();
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(prompt);
         _ = model.DidNotReceive().PromptAsync(
@@ -73,11 +73,11 @@ public sealed class ContextCompactorTests
     public async Task OverBudgetCompactsToSystemAssistantSummaryAndPreservedUserTurn()
     {
         var model = BuildModel(summary: "here is the summary");
-        var compactor = BuildCompactor();
-        var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
+        var compactor = BuildCompactor(model, config);
+        var prompt = LongPromptOver(charsPerTurn: 2_000);
 
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         await Assert.That(result).IsNotSameReferenceAs(prompt);
         await Assert.That(result.Turns.Count).IsEqualTo(3);
@@ -93,11 +93,11 @@ public sealed class ContextCompactorTests
     public async Task SummarizationUsesCappedTokenLimit()
     {
         var model = BuildModel(summary: "a summary");
-        var compactor = BuildCompactor();
-        var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 900, TokenLimit: 100);
+        var compactor = BuildCompactor(model, config);
+        var prompt = LongPromptOver(charsPerTurn: 2_000);
 
-        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         _ = model.Received().PromptAsync(
             Arg.Any<ModelPrompt>(),
@@ -109,11 +109,11 @@ public sealed class ContextCompactorTests
     public async Task SummarizationFloorsAtMinTokenLimit()
     {
         var model = BuildModel(summary: "a summary");
-        var compactor = BuildCompactor();
-        var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 600, TokenLimit: 100);
+        var compactor = BuildCompactor(model, config);
+        var prompt = LongPromptOver(charsPerTurn: 2_000);
 
-        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         _ = model.Received().PromptAsync(
             Arg.Any<ModelPrompt>(),
@@ -125,11 +125,11 @@ public sealed class ContextCompactorTests
     public async Task EmptySummaryThrowsCompactionFailed()
     {
         var model = BuildModel(summary: "   ");
-        var compactor = BuildCompactor();
-        var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
+        var compactor = BuildCompactor(model, config);
+        var prompt = LongPromptOver(charsPerTurn: 2_000);
 
-        await Assert.That(async () => await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None))
+        await Assert.That(async () => await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None))
             .Throws<CompactionFailedException>();
     }
 
@@ -145,11 +145,11 @@ public sealed class ContextCompactorTests
                 capturedPrompts.Add(call.Arg<ModelPrompt>());
                 return AsyncEnum<IModelResponseFragment>(new TextFragment("ok"));
             });
-        var compactor = BuildCompactor();
-        var prompt = LongPromptOver(charsPerTurn: 2_000);
         var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
+        var compactor = BuildCompactor(model, config);
+        var prompt = LongPromptOver(charsPerTurn: 2_000);
 
-        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, model, config, force: false, CancellationToken.None);
+        await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
 
         await Assert.That(capturedPrompts.Count).IsEqualTo(1);
         var sent = capturedPrompts[0];
@@ -161,7 +161,7 @@ public sealed class ContextCompactorTests
         await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalUserContent);
     }
 
-    private static ContextCompactor BuildCompactor()
+    private static ContextCompactor BuildCompactor(ILanguageModel model, ModelConfiguration config)
     {
         var provider = Substitute.For<IAgentContextProvider>();
         var store = Substitute.For<IContextStore>();
@@ -170,14 +170,20 @@ public sealed class ContextCompactorTests
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
         var compactorCurrentAgent = new CurrentAgentAccessor();
-        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test"));
+        var agentConfig = new AgentConfig(Model: config, ModelContextProtocolServers: [], Id: "test")
+        {
+            HeartbeatPeriod = TimeSpan.Zero,
+        };
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(agentConfig);
+        var dataScope = dataContextFactory.Current!;
         var runner = new InferenceRunner(
             publisher,
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            dataContextFactory.Current!,
+            dataScope,
+            model,
             NullLogger<InferenceRunner>.Instance);
         var systemPrompt = Substitute.For<ISystemPromptProvider>();
         systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
@@ -194,7 +200,6 @@ public sealed class ContextCompactorTests
         var templateRenderer = Substitute.For<ITemplateRenderer>();
         templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
-        var dataScope = dataContextFactory.Current!;
         var stateTracker = new AgentStateTracker(dataScope);
         return new ContextCompactor(provider, store, stateTracker, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
     }
