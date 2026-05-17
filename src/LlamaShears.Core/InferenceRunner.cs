@@ -48,7 +48,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         ILanguageModel model,
         ModelPrompt prompt,
         PromptOptions? options,
-        bool emitTurns,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -63,6 +62,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         var eventId = state.EventId;
         var correlationId = state.CorrelationId;
         var channelId = prompt.Turns[^1].ChannelId;
+        var emitTurns = options?.EmitTurns ?? false;
 
         if (options is { InjectEphemeralContext: true })
         {

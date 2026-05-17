@@ -280,8 +280,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             outcome = await inferenceRunner.RunAsync(
                 model: model,
                 prompt: prompt,
-                options: new PromptOptions(Tools: tools, InjectEphemeralContext: true),
-                emitTurns: true,
+                options: new PromptOptions(Tools: tools, InjectEphemeralContext: true, EmitTurns: true),
                 cancellationToken: cancellationToken);
             if (outcome.Interrupted)
             {

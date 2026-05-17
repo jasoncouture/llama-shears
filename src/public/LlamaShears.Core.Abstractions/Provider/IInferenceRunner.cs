@@ -14,17 +14,16 @@ public interface IInferenceRunner
     /// <summary>
     /// Runs <paramref name="prompt"/> through <paramref name="model"/>
     /// and publishes message/thought fragment events keyed at the
-    /// ambient agent state's event id. When <paramref name="emitTurns"/>
+    /// ambient agent state's event id. When <see cref="PromptOptions.EmitTurns"/>
     /// is <see langword="true"/>, also publishes a <c>Turn(Thought)</c>
     /// event (if any thinking arrived) and a <c>Turn(Assistant)</c>
     /// event (if any content arrived) — callers like the compactor
-    /// pass <see langword="false"/> when the produced text is consumed
-    /// directly rather than appended to a conversation.
+    /// leave it at <see langword="false"/> when the produced text is
+    /// consumed directly rather than appended to a conversation.
     /// </summary>
     Task<InferenceOutcome> RunAsync(
         ILanguageModel model,
         ModelPrompt prompt,
         PromptOptions? options,
-        bool emitTurns,
         CancellationToken cancellationToken);
 }

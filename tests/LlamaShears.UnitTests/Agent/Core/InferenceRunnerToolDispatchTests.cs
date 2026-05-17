@@ -57,7 +57,6 @@ public sealed class InferenceRunnerToolDispatchTests
             model: model,
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: new PromptOptions(Tools: BuildToolsAdvertisement()),
-            emitTurns: false,
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(3);
@@ -95,7 +94,6 @@ public sealed class InferenceRunnerToolDispatchTests
             model: model,
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: null,
-            emitTurns: false,
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(1);

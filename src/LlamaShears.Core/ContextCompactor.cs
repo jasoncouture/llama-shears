@@ -267,7 +267,6 @@ public sealed partial class ContextCompactor : IContextCompactor
                 model: model,
                 prompt: summarizationPrompt,
                 options: options,
-                emitTurns: false,
                 cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)

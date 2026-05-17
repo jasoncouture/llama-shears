@@ -12,14 +12,14 @@ runner instead of threading them through every call.
 
 ## Methods
 
-### `RunAsync`([ILanguageModel](ILanguageModel.md) model, [ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, bool emitTurns, CancellationToken cancellationToken)
+### `RunAsync`([ILanguageModel](ILanguageModel.md) model, [ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, CancellationToken cancellationToken)
 
 Runs `prompt` through `model`
 and publishes message/thought fragment events keyed at the
-ambient agent state's event id. When `emitTurns`
+ambient agent state's event id. When [PromptOptions](PromptOptions.md).`EmitTurns`
 is `true`, also publishes a `Turn(Thought)`
 event (if any thinking arrived) and a `Turn(Assistant)`
 event (if any content arrived) — callers like the compactor
-pass `false` when the produced text is consumed
-directly rather than appended to a conversation.
+leave it at `false` when the produced text is
+consumed directly rather than appended to a conversation.
 
