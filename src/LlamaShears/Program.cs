@@ -8,32 +8,42 @@ using Microsoft.Extensions.Configuration.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var dataRoot = builder.Configuration["Paths:DataRoot"];
-if (string.IsNullOrWhiteSpace(dataRoot))
-{
-    dataRoot = "~/.llama-shears";
-}
-dataRoot = dataRoot.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-dataRoot = Directory.CreateDirectory(dataRoot).FullName;
+var skipLocalConfig =
+    args.Any(a => string.Equals(a, "--no-local-config", StringComparison.OrdinalIgnoreCase))
+    || string.Equals(
+        Environment.GetEnvironmentVariable("LLAMASHEARS_NO_LOCAL_CONFIG"),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
 
-var overrideSource = new JsonConfigurationSource
+if (!skipLocalConfig)
 {
-    Path = Path.Combine(dataRoot, "appsettings.json"),
-    Optional = true,
-    ReloadOnChange = true,
-};
-overrideSource.ResolveFileProvider();
-
-var sources = builder.Configuration.Sources;
-var insertAt = 0;
-for (var i = 0; i < sources.Count; i++)
-{
-    if (sources[i] is JsonConfigurationSource)
+    var dataRoot = builder.Configuration["Paths:DataRoot"];
+    if (string.IsNullOrWhiteSpace(dataRoot))
     {
-        insertAt = i + 1;
+        dataRoot = "~/.llama-shears";
     }
+    dataRoot = dataRoot.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+    dataRoot = Directory.CreateDirectory(dataRoot).FullName;
+
+    var overrideSource = new JsonConfigurationSource
+    {
+        Path = Path.Combine(dataRoot, "appsettings.json"),
+        Optional = true,
+        ReloadOnChange = true,
+    };
+    overrideSource.ResolveFileProvider();
+
+    var sources = builder.Configuration.Sources;
+    var insertAt = 0;
+    for (var i = 0; i < sources.Count; i++)
+    {
+        if (sources[i] is JsonConfigurationSource)
+        {
+            insertAt = i + 1;
+        }
+    }
+    sources.Insert(insertAt, overrideSource);
 }
-sources.Insert(insertAt, overrideSource);
 
 builder.Services.AddShearsPaths();
 builder.Services.AddHostStartupTask<TemplateSeedingStartupTask>();
@@ -45,6 +55,11 @@ var pluginPaths = Array.Empty<string>();
 
 await builder.Services.LoadPluginsAsync(failureCallback: null, CancellationToken.None, new PathPluginLoader(pluginPaths));
 
+builder.Host.UseDefaultServiceProvider((context, options) =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
 var app = builder.Build();
 
 app.UseResponseCompression();
