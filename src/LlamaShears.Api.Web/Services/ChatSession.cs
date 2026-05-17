@@ -187,27 +187,27 @@ public sealed class ChatSession :
                     }
                 }
                 _messageSubscription = _bus.Subscribe<AgentMessageFragment>(
-                    $"{Event.WellKnown.Agent.Message}:{agentId}",
+                    Event.WellKnown.Agent.Message with { Id = agentId },
                     EventDeliveryMode.Awaited,
                     this);
                 _thoughtSubscription = _bus.Subscribe<AgentThoughtFragment>(
-                    $"{Event.WellKnown.Agent.Thought}:{agentId}",
+                    Event.WellKnown.Agent.Thought with { Id = agentId },
                     EventDeliveryMode.Awaited,
                     this);
                 _toolCallSubscription = _bus.Subscribe<AgentToolCallFragment>(
-                    $"{Event.WellKnown.Agent.ToolCall}:{agentId}",
+                    Event.WellKnown.Agent.ToolCall with { Id = agentId },
                     EventDeliveryMode.Awaited,
                     this);
                 _toolResultSubscription = _bus.Subscribe<AgentToolResultFragment>(
-                    $"{Event.WellKnown.Agent.ToolResult}:{agentId}",
+                    Event.WellKnown.Agent.ToolResult with { Id = agentId },
                     EventDeliveryMode.Awaited,
                     this);
                 _compactingStartedSubscription = _bus.Subscribe<AgentCompactionRequest>(
-                    $"{Event.WellKnown.Agent.CompactingStarted}:{agentId}",
+                    Event.WellKnown.Agent.CompactingStarted with { Id = agentId },
                     EventDeliveryMode.Awaited,
                     this);
                 _compactingFinishedSubscription = _bus.Subscribe<AgentCompactionRequest>(
-                    $"{Event.WellKnown.Agent.CompactingFinished}:{agentId}",
+                    Event.WellKnown.Agent.CompactingFinished with { Id = agentId },
                     EventDeliveryMode.Awaited,
                     this);
             }
