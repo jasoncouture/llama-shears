@@ -3,6 +3,7 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
@@ -31,11 +32,12 @@ public sealed class AgentInterruptTests
     public async Task InterruptOnIdleAgentIsNoOp()
     {
         await using var provider = BuildServices();
+        var publisher = provider.GetRequiredService<IEventPublisher>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
         await using var agent = await BuildAgent("alice", provider, ctx, new ScriptedLanguageModel("immediate"));
 
-        await agent.InterruptAsync(CancellationToken.None);
-        await agent.InterruptAsync(CancellationToken.None);
+        await PublishInterruptAsync(publisher, "alice");
+        await PublishInterruptAsync(publisher, "alice");
     }
 
     [Test]
@@ -52,11 +54,17 @@ public sealed class AgentInterruptTests
 
         await model.WaitForInvocationAsync(TimeSpan.FromSeconds(5));
 
-        await agent.InterruptAsync(CancellationToken.None);
+        await PublishInterruptAsync(publisher, "alice");
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         using var idle = await _lockManager.AcquireLockAsync("alice", timeout.Token);
     }
+
+    private static ValueTask PublishInterruptAsync(IEventPublisher publisher, string agentId)
+        => publisher.PublishAsync(
+            Event.WellKnown.Command.InterruptAgent with { Id = agentId },
+            AgentInterruptRequest.Instance,
+            CancellationToken.None);
 
     private static ValueTask PublishChannelMessageAsync(
         IEventPublisher publisher,

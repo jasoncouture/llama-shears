@@ -2,7 +2,7 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Payload for [Agent](../Event/WellKnown/Agent.md).`CompactionRequested`
+Payload for [Command](../Event/WellKnown/Command.md).`CompactionRequest`
 and the start/finish events around a compaction pass. [AgentCompactionRequest](AgentCompactionRequest.md).`Force`
 tells the compactor to bypass its usual under-budget guard.
 
@@ -28,7 +28,7 @@ Lets the compactor decide whether compaction is needed.
 
 ### `AgentCompactionRequest`(bool Force)
 
-Payload for [Agent](../Event/WellKnown/Agent.md).`CompactionRequested`
+Payload for [Command](../Event/WellKnown/Command.md).`CompactionRequest`
 and the start/finish events around a compaction pass. [AgentCompactionRequest](AgentCompactionRequest.md).`Force`
 tells the compactor to bypass its usual under-budget guard.
 

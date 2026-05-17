@@ -1,7 +1,7 @@
 namespace LlamaShears.Core.Abstractions.Events.Agent;
 
 /// <summary>
-/// Payload for <see cref="Event.WellKnown.Agent.CompactionRequested"/>
+/// Payload for <see cref="Event.WellKnown.Command.CompactionRequest"/>
 /// and the start/finish events around a compaction pass. <see cref="Force"/>
 /// tells the compactor to bypass its usual under-budget guard.
 /// </summary>

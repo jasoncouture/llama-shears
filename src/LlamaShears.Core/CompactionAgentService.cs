@@ -45,7 +45,7 @@ public sealed partial class CompactionAgentService
             EventDeliveryMode.Awaited,
             this);
         _requestedSubscription = bus.Subscribe<AgentCompactionRequest>(
-            Event.WellKnown.Agent.CompactionRequested with { Id = agentId },
+            Event.WellKnown.Command.CompactionRequest with { Id = agentId },
             EventDeliveryMode.Awaited,
             this);
     }

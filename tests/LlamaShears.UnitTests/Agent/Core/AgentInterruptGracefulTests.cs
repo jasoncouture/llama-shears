@@ -43,7 +43,7 @@ public sealed class AgentInterruptGracefulTests
         await PublishChannelMessageAsync(publisher, "alice", "go");
         await model.WaitForFragmentEmittedAsync(TimeSpan.FromSeconds(5));
 
-        await agent.InterruptAsync(CancellationToken.None);
+        await PublishInterruptAsync(publisher, "alice");
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
@@ -69,7 +69,7 @@ public sealed class AgentInterruptGracefulTests
         await PublishChannelMessageAsync(publisher, "alice", "go");
         await dispatcher.WaitForDispatchAsync(TimeSpan.FromSeconds(5));
 
-        await agent.InterruptAsync(CancellationToken.None);
+        await PublishInterruptAsync(publisher, "alice");
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
@@ -179,6 +179,12 @@ public sealed class AgentInterruptGracefulTests
         => publisher.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = TestChannelId },
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
+    private static ValueTask PublishInterruptAsync(IEventPublisher publisher, string agentId)
+        => publisher.PublishAsync(
+            Event.WellKnown.Command.InterruptAgent with { Id = agentId },
+            AgentInterruptRequest.Instance,
             CancellationToken.None);
 
     private async Task<LlamaShears.Core.Agent> BuildAgent(

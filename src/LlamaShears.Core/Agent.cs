@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyncDisposable
+public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IEventHandler<AgentInterruptRequest>, IAsyncDisposable
 {
     private const string DefaultChannel = "default";
     private const int EmptyResponseRetryLimit = 3;
@@ -23,6 +23,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IContextStore _contextStore;
     private readonly TimeProvider _time;
     private readonly IDisposable _subscription;
+    private readonly IDisposable _interruptSubscription;
     private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
     private Task? _loop;
@@ -59,10 +60,15 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _agentLock = agentLock;
         _scopeFactory = scopeFactory;
         _agentServices = [..agentServices];
-        _sessionQueue = sessionFactory.Get(new SessionId(_dataScope.GetAgentConfig().Id, DefaultChannel));
+        var agentId = _dataScope.GetAgentConfig().Id;
+        _sessionQueue = sessionFactory.Get(new SessionId(agentId, DefaultChannel));
         _shutdown = new CancellationTokenSource();
-        _subscription = bus.Subscribe(
+        _subscription = bus.Subscribe<ChannelMessage>(
             $"{Event.WellKnown.Channel.Message}:+",
+            EventDeliveryMode.Awaited,
+            this);
+        _interruptSubscription = bus.Subscribe<AgentInterruptRequest>(
+            Event.WellKnown.Command.InterruptAgent with { Id = agentId },
             EventDeliveryMode.Awaited,
             this);
     }
@@ -98,9 +104,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }, cancellationToken);
     }
 
-    public Task InterruptAsync(CancellationToken cancellationToken)
+    public ValueTask HandleAsync(IEventEnvelope<AgentInterruptRequest> envelope, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         CancellationTokenSource? cancellationTokenSource;
         lock (_interruptLock)
         {
@@ -108,7 +113,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
 
         cancellationTokenSource?.Cancel();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
@@ -119,6 +124,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         }
 
         _subscription.Dispose();
+        _interruptSubscription.Dispose();
         await _shutdown.CancelAsync();
         if (_loop is not null)
         {
