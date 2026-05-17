@@ -194,7 +194,9 @@ public sealed class ContextCompactorTests
         var templateRenderer = Substitute.For<ITemplateRenderer>();
         templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
-        return new ContextCompactor(provider, store, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, dataContextFactory, NullLogger<ContextCompactor>.Instance);
+        var dataScope = dataContextFactory.Current!;
+        var stateTracker = new AgentStateTracker(dataScope);
+        return new ContextCompactor(provider, store, stateTracker, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

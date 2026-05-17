@@ -1,8 +1,10 @@
+using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using NSubstitute;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -30,21 +32,29 @@ internal static class TestAgentConfigs
         return searcher;
     }
 
-    public static IDataContextFactory DataContextFactoryWith(AgentConfig config)
+    public static IModelContextProtocolServerRegistry BuildEmptyServerRegistry()
     {
-        var scope = Substitute.For<IDataContextScope>();
-        scope.TryGetValue(AgentConfig.DataKey, out Arg.Any<AgentConfig?>())
-            .Returns(call =>
-            {
-                call[1] = config;
-                return true;
-            });
-        scope.TryGetValue(ModelConfiguration.DataKey, out Arg.Any<ModelConfiguration?>())
-            .Returns(call =>
-            {
-                call[1] = config.Model;
-                return true;
-            });
+        var registry = Substitute.For<IModelContextProtocolServerRegistry>();
+        registry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
+            .Returns(new Dictionary<string, ModelContextProtocolServerOptions>(StringComparer.OrdinalIgnoreCase));
+        return registry;
+    }
+
+    public static IModelContextProtocolToolDiscovery BuildEmptyToolDiscovery()
+    {
+        var discovery = Substitute.For<IModelContextProtocolToolDiscovery>();
+        discovery.DiscoverAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
+        return discovery;
+    }
+
+    public static IDataContextFactory DataContextFactoryWith(AgentConfig config, AgentState? state = null)
+    {
+        state ??= new AgentState("foo", config.Id, Guid.CreateVersion7());
+        IDataContextScope scope = new FakeDataContextScope(config.Id);
+        scope.SetItem(AgentConfig.DataKey, config);
+        scope.SetItem(ModelConfiguration.DataKey, config.Model);
+        scope.SetItem(AgentState.DataKey, state);
         var factory = Substitute.For<IDataContextFactory>();
         factory.Current.Returns(scope);
         factory.TryJoinContextScope(Arg.Any<string>(), out Arg.Any<IDataContextScope?>())
