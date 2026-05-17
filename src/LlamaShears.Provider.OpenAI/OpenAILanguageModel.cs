@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -405,9 +406,32 @@ public partial class OpenAiLanguageModel : ILanguageModel
 
     private static JsonObject ToOpenAiTool(string source, ToolDescriptor descriptor)
     {
+        // Forward the raw MCP schema verbatim when present — strict
+        // validators (Gemini, structured-output) need fields like
+        // `items` on array properties that get dropped if we
+        // round-trip through ToolParameter. Fall back to a built
+        // schema only when the source advertised none.
+        var parametersNode = descriptor.Schema.ValueKind == JsonValueKind.Undefined
+            ? BuildFallbackSchema(descriptor.Parameters)
+            : JsonNode.Parse(descriptor.Schema.GetRawText());
+
+        return new JsonObject
+        {
+            ["type"] = "function",
+            ["function"] = new JsonObject
+            {
+                ["name"] = $"{source}{ToolNameSeparator}{descriptor.Name}",
+                ["description"] = descriptor.Description,
+                ["parameters"] = parametersNode,
+            },
+        };
+    }
+
+    private static JsonObject BuildFallbackSchema(ImmutableArray<ToolParameter> parameters)
+    {
         var properties = new JsonObject();
         var required = new JsonArray();
-        foreach (var parameter in descriptor.Parameters)
+        foreach (var parameter in parameters)
         {
             properties[parameter.Name] = new JsonObject
             {
@@ -429,17 +453,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
         {
             parametersObject["required"] = required;
         }
-
-        return new JsonObject
-        {
-            ["type"] = "function",
-            ["function"] = new JsonObject
-            {
-                ["name"] = $"{source}{ToolNameSeparator}{descriptor.Name}",
-                ["description"] = descriptor.Description,
-                ["parameters"] = parametersObject,
-            },
-        };
+        return parametersObject;
     }
 
     private static (string Source, string Name) SplitToolName(string flatName)

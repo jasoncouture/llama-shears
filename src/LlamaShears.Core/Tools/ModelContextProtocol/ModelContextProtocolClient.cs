@@ -104,8 +104,17 @@ public sealed class ModelContextProtocolClient : IModelContextProtocolClient
             cancellationToken: cancellationToken);
     }
 
-    private static ToolDescriptor MapTool(McpClientTool tool) =>
-        new(tool.Name, tool.Description ?? string.Empty, ParseSchema(tool.JsonSchema));
+    private static ToolDescriptor MapTool(McpClientTool tool)
+    {
+        // Clone so the JsonElement survives once the MCP client's
+        // backing JsonDocument is disposed below.
+        var schema = tool.JsonSchema.Clone();
+        return new ToolDescriptor(
+            tool.Name,
+            tool.Description ?? string.Empty,
+            ParseSchema(schema),
+            schema);
+    }
 
     private static ImmutableArray<ToolParameter> ParseSchema(JsonElement schema)
     {
