@@ -13,15 +13,17 @@ public sealed class ModelTextFormatter : IModelTextFormatter
             return turn.Content;
         }
         var sb = new StringBuilder();
-        sb.Append("[timestamp]");
+        sb.Append("<message_metadata>\n");
+        sb.Append("  <timestamp>");
         sb.Append(turn.Timestamp.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz"));
-        sb.Append("[/timestamp]\n");
+        sb.Append("</timestamp>\n");
         if (!string.IsNullOrEmpty(turn.ChannelId))
         {
-            sb.Append("[sourceChannel]");
+            sb.Append("  <source_channel>");
             sb.Append(turn.ChannelId);
-            sb.Append("[/sourceChannel]\n");
+            sb.Append("</source_channel>\n");
         }
+        sb.Append("</message_metadata>\n");
         sb.Append(turn.Content);
         return sb.ToString();
     }

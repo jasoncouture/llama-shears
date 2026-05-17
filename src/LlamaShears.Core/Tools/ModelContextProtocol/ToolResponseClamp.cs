@@ -4,8 +4,8 @@ namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
 internal static class ToolResponseClamp
 {
-    private const int MaxLines = 150;
-    private const int MaxChars = 8192 + 1024;
+    private const int MaxLines = 500;
+    private const int MaxChars = 16384 + 1024;
     private const string OverflowMarker = "[Output limits exceeded; the rest of the response was dropped. Re-run with a more targeted command or query.]";
 
     public static string Apply(string raw)
@@ -16,12 +16,12 @@ internal static class ToolResponseClamp
         }
 
         using var reader = new StringReader(raw);
+        // ReSharper disable once UsingStatementResourceInitialization
         using var writer = new StringWriter { NewLine = "\n" };
         var lines = 0;
         var chars = 0;
         var truncated = false;
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
+        while (reader.ReadLine() is { } line)
         {
             if (lines >= MaxLines || chars + line.Length + 1 > MaxChars)
             {
