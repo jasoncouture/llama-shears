@@ -1,4 +1,5 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
@@ -129,6 +130,12 @@ public sealed class AgentEventPublishingTests
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IContextCompactor>(BuildNoOpCompactor());
+        agentServices.AddSingleton<ILanguageModel>(model);
+        agentServices.AddSingleton<IModelContextProtocolServerRegistry>(TestAgentConfigs.BuildEmptyServerRegistry());
+        agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
+        agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
+        agentServices.AddMemoryCache();
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             capturing,
             Substitute.For<IToolCallDispatcher>(),
@@ -138,21 +145,20 @@ public sealed class AgentEventPublishingTests
             dataContextFactory,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
-        using var agent = new LlamaShears.Core.Agent(
-            model: model,
-            agentContext: ctx,
+        var contextStore = new FakeContextStore().With(agentId, ctx);
+        await using var agent = new LlamaShears.Core.Agent(
+            contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: bus,
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            compactor: BuildNoOpCompactor(),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            scope: agentProvider.CreateAsyncScope());
-        agent.Start();
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+        await agent.StartAsync(CancellationToken.None);
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

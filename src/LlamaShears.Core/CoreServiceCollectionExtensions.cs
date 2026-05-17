@@ -84,7 +84,18 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IContextStore, JsonLineContextStore>();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
-        services.TryAddSingleton<IInferenceRunner, InferenceRunner>();
+        services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
+        services.TryAddScoped<IInferenceRunner, InferenceRunner>();
+        services.TryAddScoped<ILanguageModel>(sp =>
+        {
+            var dataScope = sp.GetRequiredService<IDataContextScope>();
+            var modelConfig = dataScope.GetModelConfiguration();
+            var providerFactory = sp.GetServices<IProviderFactory>()
+                .FirstOrDefault(p => string.Equals(p.Name, modelConfig.Id.Provider, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException(
+                    $"No provider factory registered with name '{modelConfig.Id.Provider}'.");
+            return providerFactory.CreateModel(modelConfig);
+        });
         services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
         services.TryAddScoped<IDataContextScope>(sp =>
         {
@@ -97,7 +108,7 @@ public static class CoreServiceCollectionExtensions
         services.AddScopedDataProvider<WallClockDataProvider>();
         services.AddScopedDataProvider<WorkspaceContextDataProvider>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
-        services.TryAddSingleton<IContextCompactor, ContextCompactor>();
+        services.TryAddScoped<IContextCompactor, ContextCompactor>();
         services.AddHostedService<EagerCompactor>();
 
         services.AddOptions<ModelContextProtocolOptions>()

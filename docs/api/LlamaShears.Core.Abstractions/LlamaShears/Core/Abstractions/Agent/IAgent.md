@@ -14,13 +14,6 @@ it (config provider, context store, message bus).
 
 Stable identifier for this agent.
 
-### `LastActivity`
-
-Timestamp of the most recent turn recorded for this agent —
-i.e. the moment of last activity. `null` when
-the agent's context has no turns yet. Callers compute idle
-duration from this against the current wall clock.
-
 ## Methods
 
 ### `InterruptAsync`(CancellationToken cancellationToken)

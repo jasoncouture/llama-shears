@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
@@ -35,7 +36,7 @@ public sealed class AgentInterruptGracefulTests
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var model = new GatedTextStreamModel("partial-content");
-        using var agent = BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", provider, ctx, model);
 
         await PublishChannelMessageAsync(publisher, "alice", "go");
         await model.WaitForFragmentEmittedAsync(TimeSpan.FromSeconds(5));
@@ -62,7 +63,7 @@ public sealed class AgentInterruptGracefulTests
             new ToolCall("test", "noop", "{}", "1"));
         var dispatcher = new HangingDispatcher(publisher);
 
-        using var agent = BuildAgent("alice", provider, ctx, model, dispatcher: dispatcher);
+        await using var agent = await BuildAgent("alice", provider, ctx, model, dispatcher: dispatcher);
 
         await PublishChannelMessageAsync(publisher, "alice", "go");
         await dispatcher.WaitForDispatchAsync(TimeSpan.FromSeconds(5));
@@ -180,7 +181,7 @@ public sealed class AgentInterruptGracefulTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static LlamaShears.Core.Agent BuildAgent(
+    private static async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
@@ -205,6 +206,12 @@ public sealed class AgentInterruptGracefulTests
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IContextCompactor>(compactor);
+        agentServices.AddSingleton<ILanguageModel>(model);
+        agentServices.AddSingleton<IModelContextProtocolServerRegistry>(TestAgentConfigs.BuildEmptyServerRegistry());
+        agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
+        agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
+        agentServices.AddMemoryCache();
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             publisher,
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
@@ -214,21 +221,20 @@ public sealed class AgentInterruptGracefulTests
             dataContextFactory,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
+        var contextStore = new FakeContextStore().With(id, agentContext);
         var agent = new LlamaShears.Core.Agent(
-            model: model,
-            agentContext: agentContext,
+            contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            compactor: compactor,
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: agentProvider.CreateAsyncScope());
-        agent.Start();
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+        await agent.StartAsync(CancellationToken.None);
         return agent;
     }
 

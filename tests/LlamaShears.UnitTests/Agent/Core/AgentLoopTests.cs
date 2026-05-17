@@ -35,7 +35,7 @@ public sealed class AgentLoopTests
         using var captured = new CapturingTurnSubscriber(bus, "alice");
         var model = new ScriptedLanguageModel("hi back");
 
-        using var agent = BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", provider, ctx, model);
 
         await PublishChannelMessageAsync(publisher, "alice", "hello");
 
@@ -57,7 +57,7 @@ public sealed class AgentLoopTests
         using var captured = new CapturingTurnSubscriber(bus, "alice");
         var model = new ScriptedLanguageModel("should not appear");
 
-        using var agent = BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", provider, ctx, model);
 
         await PublishChannelMessageAsync(publisher, "bob", "not for alice");
 
@@ -85,7 +85,7 @@ public sealed class AgentLoopTests
             WorkspacePath = Path.Combine(Path.GetTempPath(), $"memory-search-{Guid.NewGuid():N}"),
         };
 
-        using var agent = BuildAgent("alice", provider, ctx, model, config, memorySearcher);
+        await using var agent = await BuildAgent("alice", provider, ctx, model, config, memorySearcher);
 
         await PublishChannelMessageAsync(publisher, "alice", "hello");
 
@@ -114,7 +114,7 @@ public sealed class AgentLoopTests
         using var captured = new CapturingTurnSubscriber(bus, "alice");
         var model = new ScriptedLanguageModel("ack");
 
-        using var agent = BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", provider, ctx, model);
 
         await publisher.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = TestChannelId },
@@ -138,7 +138,7 @@ public sealed class AgentLoopTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static LlamaShears.Core.Agent BuildAgent(
+    private static async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
@@ -165,6 +165,12 @@ public sealed class AgentLoopTests
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
+        agentServices.AddSingleton<IContextCompactor>(compactor);
+        agentServices.AddSingleton<ILanguageModel>(model);
+        agentServices.AddSingleton<IModelContextProtocolServerRegistry>(TestAgentConfigs.BuildEmptyServerRegistry());
+        agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
+        agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
+        agentServices.AddMemoryCache();
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             publisher,
             Substitute.For<IToolCallDispatcher>(),
@@ -174,21 +180,20 @@ public sealed class AgentLoopTests
             dataContextFactory,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
+        var contextStore = new FakeContextStore().With(id, agentContext);
         var agent = new LlamaShears.Core.Agent(
-            model: model,
-            agentContext: agentContext,
+            contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
             systemPromptProvider: BuildStubSystemPromptProvider(),
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            compactor: compactor,
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scope: agentProvider.CreateAsyncScope());
-        agent.Start();
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+        await agent.StartAsync(CancellationToken.None);
         return agent;
     }
 

@@ -29,7 +29,11 @@ public static class ModelContextProtocolServiceCollectionExtensions
                 options.Rules.Add(new ProtectedFile(".git/**", ProtectionMode.Delete, FileType.Any, "git metadata"));
                 options.Rules.Add(new ProtectedFile("**/.git", ProtectionMode.Delete, FileType.Directory, "nested git metadata"));
                 options.Rules.Add(new ProtectedFile("**/.git/**", ProtectionMode.Delete, FileType.Any, "nested git metadata"));
-                options.Rules.Add(new ProtectedFile("*.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile("IDENTITY.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile("AGENTS.md", ProtectionMode.Delete | ProtectionMode.Write, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile("USER.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile("SOUL.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile("TOOLS.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
                 options.Rules.Add(new ProtectedFile(".gitignore", ProtectionMode.Delete | ProtectionMode.Write, FileType.File, "workspace .gitignore"));
                 options.Rules.Add(new ProtectedFile("TODO.md", ProtectionMode.Read | ProtectionMode.Write | ProtectionMode.Delete, FileType.File, "host-owned TODO list"));
             });

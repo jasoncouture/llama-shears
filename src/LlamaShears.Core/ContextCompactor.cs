@@ -27,9 +27,10 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const string MemoryToolName = "memory_store";
     private const string KickerFileName = "PROMPT.md";
     private const string KickerSubFolder = "compaction";
-
+    
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IContextStore _contextStore;
+    private readonly IAgentStateTracker _stateTracker;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IEventPublisher _eventPublisher;
     private readonly ISystemPromptProvider _systemPrompt;
@@ -38,12 +39,13 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly ICurrentAgentAccessor _currentAgent;
     private readonly ITemplateFileLocator _locator;
     private readonly ITemplateRenderer _templateRenderer;
-    private readonly IDataContextFactory _dataContextFactory;
+    private readonly IDataContextScope _dataContextScope;
     private readonly ILogger<ContextCompactor> _logger;
 
     public ContextCompactor(
         IAgentContextProvider agentContextProvider,
         IContextStore contextStore,
+        IAgentStateTracker stateTracker,
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
         ISystemPromptProvider systemPrompt,
@@ -52,11 +54,12 @@ public sealed partial class ContextCompactor : IContextCompactor
         ICurrentAgentAccessor currentAgent,
         ITemplateFileLocator locator,
         ITemplateRenderer templateRenderer,
-        IDataContextFactory dataContextFactory,
+        IDataContextScope dataContextScope,
         ILogger<ContextCompactor> logger)
     {
         _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
+        _stateTracker = stateTracker;
         _inferenceRunner = inferenceRunner;
         _eventPublisher = eventPublisher;
         _systemPrompt = systemPrompt;
@@ -65,7 +68,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         _currentAgent = currentAgent;
         _locator = locator;
         _templateRenderer = templateRenderer;
-        _dataContextFactory = dataContextFactory;
+        _dataContextScope = dataContextScope;
         _logger = logger;
     }
 
@@ -210,8 +213,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     }
 
     private IReadOnlyDictionary<string, object?> SnapshotScope()
-        => _dataContextFactory.Current?.Snapshot()
-            ?? ImmutableDictionary.Create<string, object?>(StringComparer.OrdinalIgnoreCase);
+        => _dataContextScope.Snapshot();
 
     private async ValueTask<string> SummarizeAsync(
         string agentId,
@@ -225,6 +227,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         var historyCount = preserveTrailingUser
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
+        _stateTracker.SetState(channelId: "compactor", eventId: $"{agentId}-compaction");
         var systemBody = await _systemPrompt.GetAsync(
             CompactionTemplateFileName,
             SnapshotScope(),
@@ -245,6 +248,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             historyTurns.Insert(0, new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
         }
+        
         if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
         {
             var kicker = await LoadKickerAsync(cancellationToken);
@@ -253,7 +257,7 @@ public sealed partial class ContextCompactor : IContextCompactor
 
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
         var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
-        var correlationId = Guid.CreateVersion7();
+        
         var toolCallingTurns = 0;
 
         while (true)
@@ -265,7 +269,7 @@ public sealed partial class ContextCompactor : IContextCompactor
                 prompt: summarizationPrompt,
                 options: options,
                 emitTurns: false,
-                correlationId: correlationId,
+                correlationId: _dataContextScope.GetAgentState().CorrelationId,
                 cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)

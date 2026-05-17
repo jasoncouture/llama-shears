@@ -4,14 +4,22 @@
 // already-highlighted blocks. For streaming bubbles, Blazor replaces
 // the rendered node when the markdown re-renders, so the new block
 // arrives unstamped and gets picked up on the next mutation.
+//
+// hljs is imported directly rather than read off `window`: esbuild
+// bundles highlight.min.js as a CommonJS module, so its top-level
+// `var hljs` lives inside the bundle's wrapper and never lands on
+// `window`. Importing it here resolves through the bundle's module
+// graph and gives us the real export.
+import hljs from "./highlight.min.js";
+
 (function () {
     function highlightWithin(root) {
-        if (!root || !root.querySelectorAll || !window.hljs) {
+        if (!root || !root.querySelectorAll || !hljs) {
             return;
         }
         root.querySelectorAll('pre code:not([data-highlighted="yes"])').forEach(function (el) {
             try {
-                window.hljs.highlightElement(el);
+                hljs.highlightElement(el);
             } catch (e) {
                 // Unknown language or hljs internal error — leave the
                 // block as plain text rather than break the whole page.
