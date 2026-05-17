@@ -23,13 +23,6 @@ noticed; they're responsible for closing those streams on the
 post-interrupt signal. Idempotent — calling when no turn is in
 flight is a no-op.
 
-### `LockAsync`(CancellationToken cancellationToken)
-
-Acquires the agent's processing gate, blocking the run loop
-from starting any new batch until [IAgent](IAgent.md).`UnlockAsync`
-is called. Pairs 1:1 with [IAgent](IAgent.md).`UnlockAsync`; a caller
-that locks must unlock. Backed by a single-permit semaphore.
-
 ### `RequestCompactionAsync`(CancellationToken cancellationToken)
 
 Acquires the agent's processing gate and runs the context
@@ -38,8 +31,4 @@ usual under-budget guard so the call is willing to compact a
 healthy-but-aged context. The compactor's other guards (min
 turn count, missing context length) still apply, so a small
 or unconfigured context is left alone.
-
-### `UnlockAsync`
-
-Releases a permit previously acquired by [IAgent](IAgent.md).`LockAsync`.
 

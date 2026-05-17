@@ -10,19 +10,6 @@ namespace LlamaShears.Core.Abstractions.Agent;
 public interface IAgent : IAsyncDisposable, IDisposable
 {
     /// <summary>
-    /// Acquires the agent's processing gate, blocking the run loop
-    /// from starting any new batch until <see cref="UnlockAsync"/>
-    /// is called. Pairs 1:1 with <see cref="UnlockAsync"/>; a caller
-    /// that locks must unlock. Backed by a single-permit semaphore.
-    /// </summary>
-    Task LockAsync(CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Releases a permit previously acquired by <see cref="LockAsync"/>.
-    /// </summary>
-    ValueTask UnlockAsync();
-
-    /// <summary>
     /// Acquires the agent's processing gate and runs the context
     /// compactor against the agent's current context, bypassing the
     /// usual under-budget guard so the call is willing to compact a

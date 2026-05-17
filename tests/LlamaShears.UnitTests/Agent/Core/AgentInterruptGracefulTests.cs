@@ -28,6 +28,8 @@ public sealed class AgentInterruptGracefulTests
 {
     private const string TestChannelId = "test";
 
+    private readonly AgentLockManager _lockManager = new AgentLockManager();
+
     [Test]
     public async Task InterruptDuringTextStreamPersistsPartialAssistantTurn()
     {
@@ -44,8 +46,7 @@ public sealed class AgentInterruptGracefulTests
         await agent.InterruptAsync(CancellationToken.None);
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await agent.LockAsync(lockTimeout.Token);
-        await agent.UnlockAsync();
+        using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
         await Assert.That(assistantTurns).Count().IsEqualTo(1);
@@ -71,8 +72,7 @@ public sealed class AgentInterruptGracefulTests
         await agent.InterruptAsync(CancellationToken.None);
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await agent.LockAsync(lockTimeout.Token);
-        await agent.UnlockAsync();
+        using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
         await Assert.That(assistantTurns).Count().IsEqualTo(1);
@@ -181,7 +181,7 @@ public sealed class AgentInterruptGracefulTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static async Task<LlamaShears.Core.Agent> BuildAgent(
+    private async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
@@ -232,6 +232,7 @@ public sealed class AgentInterruptGracefulTests
             eventPublisher: publisher,
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
+            agentLock: new AgentLock(_lockManager, dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
         await agent.StartAsync(CancellationToken.None);

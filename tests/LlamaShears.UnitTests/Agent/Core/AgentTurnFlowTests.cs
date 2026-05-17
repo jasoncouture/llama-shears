@@ -245,6 +245,7 @@ public sealed class AgentTurnFlowTests
             eventPublisher: publisher,
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
+            agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
         await agent.StartAsync(CancellationToken.None);

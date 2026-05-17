@@ -25,6 +25,8 @@ public sealed class AgentInterruptTests
 {
     private const string TestChannelId = "test";
 
+    private readonly AgentLockManager _lockManager = new AgentLockManager();
+
     [Test]
     public async Task InterruptOnIdleAgentIsNoOp()
     {
@@ -53,8 +55,7 @@ public sealed class AgentInterruptTests
         await agent.InterruptAsync(CancellationToken.None);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await agent.LockAsync(timeout.Token);
-        await agent.UnlockAsync();
+        using var idle = await _lockManager.AcquireLockAsync("alice", timeout.Token);
     }
 
     private static ValueTask PublishChannelMessageAsync(
@@ -66,7 +67,7 @@ public sealed class AgentInterruptTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static async Task<LlamaShears.Core.Agent> BuildAgent(
+    private async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
         IServiceProvider services,
         IAgentContext agentContext,
@@ -116,6 +117,7 @@ public sealed class AgentInterruptTests
             eventPublisher: publisher,
             currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
+            agentLock: new AgentLock(_lockManager, dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
         await agent.StartAsync(CancellationToken.None);
