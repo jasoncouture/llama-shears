@@ -79,7 +79,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _loop = Task.Run(() => RunLoopAsync(agentContext, _shutdown.Token), cancellationToken);
     }
 
-    public string Id => _dataScope.GetAgentConfig().Id;
+    private string Id => _dataScope.GetAgentConfig().Id;
 
     public Task LockAsync(CancellationToken cancellationToken)
         => _processGate.WaitAsync(cancellationToken);

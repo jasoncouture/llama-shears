@@ -3,16 +3,10 @@
 Assembly: `LlamaShears.Core.Abstractions`
 
 An autonomous component that ingests input turns, drives a model,
-and produces output turns. Identified by [IAgent](IAgent.md).`Id`; the
-rest of its surface — heartbeat cadence, channels, conversation
-state — is internal and reachable through the services that own
-it (config provider, context store, message bus).
-
-## Properties
-
-### `Id`
-
-Stable identifier for this agent.
+and produces output turns. Identity, heartbeat cadence, channels,
+and conversation state are internal and reachable through the
+services that own the agent (config provider, context store,
+message bus).
 
 ## Methods
 
