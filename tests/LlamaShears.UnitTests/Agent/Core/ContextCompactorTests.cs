@@ -134,7 +134,7 @@ public sealed class ContextCompactorTests
     }
 
     [Test]
-    public async Task SummarizationPromptDropsTrailingUserAndAddsCompactionSystemAfterAgentSystem()
+    public async Task SummarizationPromptDropsTrailingUserAndPrependsCompactionSystem()
     {
         var capturedPrompts = new List<ModelPrompt>();
         var model = Substitute.For<ILanguageModel>();
@@ -154,9 +154,7 @@ public sealed class ContextCompactorTests
         await Assert.That(capturedPrompts.Count).IsEqualTo(1);
         var sent = capturedPrompts[0];
         await Assert.That(sent.Turns[0].Role).IsEqualTo(ModelRole.System);
-        await Assert.That(sent.Turns[0].Content).IsEqualTo(prompt.Turns[0].Content);
-        await Assert.That(sent.Turns[1].Role).IsEqualTo(ModelRole.System);
-        await Assert.That(sent.Turns[1].Content).IsEqualTo("compaction-system");
+        await Assert.That(sent.Turns[0].Content).IsEqualTo("compaction-system");
         var originalUserContent = prompt.Turns[^1].Content;
         await Assert.That(sent.Turns).DoesNotContain(t => t.Content == originalUserContent);
     }
@@ -175,18 +173,19 @@ public sealed class ContextCompactorTests
         };
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(agentConfig);
         var dataScope = dataContextFactory.Current!;
+        var systemPrompt = Substitute.For<ISystemPromptProvider>();
+        systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult("compaction-system"));
         var runner = new InferenceRunner(
             publisher,
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
+            systemPrompt,
             Substitute.For<IMemorySearcher>(),
             dataScope,
             model,
             NullLogger<InferenceRunner>.Instance);
-        var systemPrompt = Substitute.For<ISystemPromptProvider>();
-        systemPrompt.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult("compaction-system"));
         var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();
         serverRegistry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
             .Returns(new Dictionary<string, ModelContextProtocolServerOptions>(StringComparer.OrdinalIgnoreCase));
@@ -199,7 +198,7 @@ public sealed class ContextCompactorTests
         templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
         var stateTracker = new AgentStateTracker(dataScope);
-        return new ContextCompactor(provider, store, stateTracker, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
+        return new ContextCompactor(provider, store, stateTracker, runner, publisher, serverRegistry, toolDiscovery, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

@@ -33,7 +33,6 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IAgentStateTracker _stateTracker;
     private readonly IInferenceRunner _inferenceRunner;
     private readonly IEventPublisher _eventPublisher;
-    private readonly ISystemPromptProvider _systemPrompt;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
     private readonly ITemplateFileLocator _locator;
@@ -47,7 +46,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         IAgentStateTracker stateTracker,
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
-        ISystemPromptProvider systemPrompt,
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
         ITemplateFileLocator locator,
@@ -60,7 +58,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         _stateTracker = stateTracker;
         _inferenceRunner = inferenceRunner;
         _eventPublisher = eventPublisher;
-        _systemPrompt = systemPrompt;
         _serverRegistry = serverRegistry;
         _toolDiscovery = toolDiscovery;
         _locator = locator;
@@ -215,35 +212,22 @@ public sealed partial class ContextCompactor : IContextCompactor
             ? prompt.Turns.Count - 1
             : prompt.Turns.Count;
         _stateTracker.SetState(channelId: "compactor", eventId: $"{agentId}-compaction");
-        var systemBody = await _systemPrompt.GetAsync(
-            CompactionTemplateFileName,
-            SnapshotScope(),
-            cancellationToken);
-        var historyTurns = new List<ModelTurn>(historyCount + 2);
-        var compactionInserted = false;
+        var historyTurns = new List<ModelTurn>(historyCount + 1);
         for (var i = 0; i < historyCount; i++)
         {
-            var turn = prompt.Turns[i];
-            historyTurns.Add(turn);
-            if (turn.Role == ModelRole.System && !compactionInserted)
-            {
-                historyTurns.Add(new ModelTurn(ModelRole.System, systemBody, turn.Timestamp));
-                compactionInserted = true;
-            }
+            historyTurns.Add(prompt.Turns[i]);
         }
-        if (!compactionInserted)
-        {
-            historyTurns.Insert(0, new ModelTurn(ModelRole.System, systemBody, prompt.Turns[^1].Timestamp));
-        }
-        
-        if (historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
+        if (historyTurns.Count == 0 || historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
         {
             var kicker = await LoadKickerAsync(cancellationToken);
             historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
         }
 
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
-        var options = new PromptOptions(TokenLimit: summaryCap, Tools: tools);
+        var options = new PromptOptions(
+            TokenLimit: summaryCap,
+            Tools: tools,
+            SystemPromptTemplate: CompactionTemplateFileName);
         
         var toolCallingTurns = 0;
 

@@ -4,6 +4,7 @@ using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +51,7 @@ public sealed class InferenceRunnerToolDispatchTests
             dispatcher,
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
+            Substitute.For<ISystemPromptProvider>(),
             Substitute.For<IMemorySearcher>(),
             TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
             model,
@@ -87,6 +89,7 @@ public sealed class InferenceRunnerToolDispatchTests
             dispatcher,
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
+            Substitute.For<ISystemPromptProvider>(),
             Substitute.For<IMemorySearcher>(),
             TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
             model,
