@@ -5,18 +5,19 @@ Assembly: `LlamaShears.Core.Abstractions`
 Streams a single model prompt, emits per-fragment events, and
 optionally emits the resulting Thought / Assistant turn events.
 Lifts the inference loop out of the context compactor and the
-agent so both can share it; the `eventId` parameter is the
-third segment of the published `EventType` and lets
-observers tell agent traffic apart from compaction traffic.
+agent so both can share it; the event-id and correlation-id used
+for published events are read from the ambient agent state, so
+callers set those once on the data scope before invoking the
+runner instead of threading them through every call.
 
 ## Methods
 
-### `RunAsync`(string eventId, [ILanguageModel](ILanguageModel.md) model, [ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, bool emitTurns, Guid correlationId, CancellationToken cancellationToken)
+### `RunAsync`([ILanguageModel](ILanguageModel.md) model, [ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, bool emitTurns, CancellationToken cancellationToken)
 
 Runs `prompt` through `model`
-and publishes message/thought fragment events keyed at
-`eventId`. When `emitTurns` is
-`true`, also publishes a `Turn(Thought)`
+and publishes message/thought fragment events keyed at the
+ambient agent state's event id. When `emitTurns`
+is `true`, also publishes a `Turn(Thought)`
 event (if any thinking arrived) and a `Turn(Assistant)`
 event (if any content arrived) — callers like the compactor
 pass `false` when the produced text is consumed

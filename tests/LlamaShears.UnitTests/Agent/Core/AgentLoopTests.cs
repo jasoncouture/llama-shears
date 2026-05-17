@@ -177,7 +177,7 @@ public sealed class AgentLoopTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             resolvedMemorySearcher,
-            dataContextFactory,
+            dataContextFactory.Current!,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(id, agentContext);

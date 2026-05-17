@@ -23,7 +23,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private readonly TimeProvider _time;
     private readonly IPromptContextProvider _promptContext;
     private readonly IMemorySearcher _memorySearcher;
-    private readonly IDataContextFactory _dataContextFactory;
+    private readonly IDataContextScope _dataScope;
     private readonly ILogger<InferenceRunner> _logger;
 
     public InferenceRunner(
@@ -32,7 +32,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         TimeProvider time,
         IPromptContextProvider promptContext,
         IMemorySearcher memorySearcher,
-        IDataContextFactory dataContextFactory,
+        IDataContextScope dataScope,
         ILogger<InferenceRunner> logger)
     {
         _eventPublisher = eventPublisher;
@@ -40,20 +40,17 @@ public sealed partial class InferenceRunner : IInferenceRunner
         _time = time;
         _promptContext = promptContext;
         _memorySearcher = memorySearcher;
-        _dataContextFactory = dataContextFactory;
+        _dataScope = dataScope;
         _logger = logger;
     }
 
     public async Task<InferenceOutcome> RunAsync(
-        string eventId,
         ILanguageModel model,
         ModelPrompt prompt,
         PromptOptions? options,
         bool emitTurns,
-        Guid correlationId,
         CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(prompt);
 
@@ -62,9 +59,10 @@ public sealed partial class InferenceRunner : IInferenceRunner
             throw new ArgumentException("Prompt must contain at least one turn.", nameof(prompt));
         }
 
-        CorrelationId.Value = correlationId;
-        EventId.Value = eventId;
-        ChannelId.Value = prompt.Turns[^1].ChannelId;
+        var state = _dataScope.GetAgentState();
+        var eventId = state.EventId;
+        var correlationId = state.CorrelationId;
+        var channelId = prompt.Turns[^1].ChannelId;
 
         if (options is { InjectEphemeralContext: true })
         {
@@ -92,7 +90,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                 {
                     case IModelThoughtResponse thought:
                         thinking.Append(thought.Content);
-                        await PublishModelFragment(ModelRole.Thought, new AgentThoughtFragment(thinking.ToString(), ChannelId: ChannelId.Value, Final: false), cancellationToken);
+                        await PublishModelFragment(ModelRole.Thought, new AgentThoughtFragment(thinking.ToString(), ChannelId: channelId, Final: false), cancellationToken);
                         break;
                     case IModelTextResponse text:
                         content.Append(text.Content);
@@ -106,7 +104,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                             }
                             textSuppressed = false;
                         }
-                        await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: ChannelId.Value, Final: false), cancellationToken);
+                        await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(content.ToString(), ChannelId: channelId, Final: false), cancellationToken);
                         break;
                     case IModelToolCallFragment toolFragment:
                         LogToolCall(toolFragment.Call.Source, toolFragment.Call.Name, toolFragment.Call.CallId, toolFragment.Call.ArgumentsJson);
@@ -148,12 +146,12 @@ public sealed partial class InferenceRunner : IInferenceRunner
 
         if (thinking.Length > 0)
         {
-            await PublishModelFragment(ModelRole.Thought, new AgentThoughtFragment(thinking.ToString(), ChannelId: ChannelId.Value, Final: true), cancellationToken);
+            await PublishModelFragment(ModelRole.Thought, new AgentThoughtFragment(thinking.ToString(), ChannelId: channelId, Final: true), cancellationToken);
             if (emitTurns)
             {
                 // I would refactor this too into a method, just like above.
                 // but 2 instances isn't worth the effort.
-                var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetLocalNow(), ChannelId: ChannelId.Value);
+                var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetLocalNow(), ChannelId: channelId);
                 await _eventPublisher.PublishAsync(
                     Event.WellKnown.Agent.Turn with { Id = eventId },
                     thoughtTurn,
@@ -165,11 +163,11 @@ public sealed partial class InferenceRunner : IInferenceRunner
         var finalContent = suppressed ? string.Empty : content.ToString();
         if (finalContent.Length > 0)
         {
-            await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(finalContent, ChannelId: ChannelId.Value, Final: true), cancellationToken);
+            await PublishModelFragment(ModelRole.Assistant, new AgentMessageFragment(finalContent, ChannelId: channelId, Final: true), cancellationToken);
         }
         if (emitTurns && (finalContent.Length > 0 || toolCalls.Count > 0))
         {
-            var assistantTurn = new ModelTurn(ModelRole.Assistant, finalContent, _time.GetLocalNow(), ChannelId: ChannelId.Value)
+            var assistantTurn = new ModelTurn(ModelRole.Assistant, finalContent, _time.GetLocalNow(), ChannelId: channelId)
             {
                 ToolCalls = toolCalls.ToImmutable(),
             };
@@ -194,7 +192,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
             => predecessor.ContinueWith(async _ =>
             {
                 var result = await _toolDispatcher.DispatchAsync(call, tools, eventId, correlationId, cancellationToken);
-                await PublishCompletedToolCallAsync(result, call, cancellationToken);
+                await PublishCompletedToolCallAsync(channelId, result, call, cancellationToken);
                 return result;
             }, cancellationToken).Unwrap();
 
@@ -210,21 +208,17 @@ public sealed partial class InferenceRunner : IInferenceRunner
                     new AgentToolResultFragment(call.Source, call.Name, result.Content, result.IsError, call.CallId),
                     correlationId,
                     cancellationToken);
-                await PublishCompletedToolCallAsync(result, call, cancellationToken);
+                await PublishCompletedToolCallAsync(channelId, result, call, cancellationToken);
                 return result;
             }, cancellationToken).Unwrap();
     }
 
-    private static AsyncLocal<Guid?> CorrelationId { get; } = new AsyncLocal<Guid?>();
-    private static AsyncLocal<string?> EventId { get; } = new AsyncLocal<string?>();
-    private static AsyncLocal<string?> ChannelId { get; } = new AsyncLocal<string?>();
-
-
-
-    private async Task PublishModelFragment<T>(ModelRole role, T fragment, CancellationToken cancellationToken) where T : class, IAgentMessage
+    private async Task PublishModelFragment<T>(
+        ModelRole role,
+        T fragment,
+        CancellationToken cancellationToken) where T : class, IAgentMessage
     {
-        var correlationId = CorrelationId.Value ?? throw new InvalidOperationException("Correlation ID scope is not set");
-        var eventId = EventId.Value ?? throw new InvalidOperationException("Event ID scope is not set");
+        var state = _dataScope.GetAgentState();
         var typedEventId = role switch
         {
             ModelRole.Thought => Event.WellKnown.Agent.Thought,
@@ -232,30 +226,30 @@ public sealed partial class InferenceRunner : IInferenceRunner
             ModelRole.Tool => Event.WellKnown.Agent.ToolCall,
             _ => throw new ArgumentException("Unknown model role", nameof(role))
         } with
-        { Id = eventId };
+        { Id = state.EventId };
         await _eventPublisher.PublishAsync(
             typedEventId,
             fragment,
-            correlationId,
+            state.CorrelationId,
             cancellationToken);
     }
 
     private async ValueTask PublishCompletedToolCallAsync(
+        string? channelId,
         ToolCallResult result,
         ToolCall toolCall,
         CancellationToken cancellationToken)
     {
-        var correlationId = CorrelationId.Value ?? throw new InvalidOperationException("Correlation ID scope is not set");
-        var eventId = EventId.Value ?? throw new InvalidOperationException("Event ID scope is not set");
-        var toolTurn = new ModelTurn(ModelRole.Tool, result.Content, _time.GetLocalNow(), ChannelId: ChannelId.Value)
+        var state = _dataScope.GetAgentState();
+        var toolTurn = new ModelTurn(ModelRole.Tool, result.Content, _time.GetLocalNow(), ChannelId: channelId)
         {
             ToolCall = toolCall,
             IsError = result.IsError,
         };
         await _eventPublisher.PublishAsync(
-            Event.WellKnown.Agent.Turn with { Id = eventId },
+            Event.WellKnown.Agent.Turn with { Id = state.EventId },
             toolTurn,
-            correlationId,
+            state.CorrelationId,
             cancellationToken);
     }
 
@@ -266,7 +260,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
             return prompt;
         }
 
-        var config = _dataContextFactory.Current?.TryGetAgentConfig();
+        var config = _dataScope.TryGetAgentConfig();
         if (config is null)
         {
             return prompt;
@@ -274,9 +268,8 @@ public sealed partial class InferenceRunner : IInferenceRunner
 
         var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
 
-        var scope = _dataContextFactory.Current!;
-        scope.SetItem("memories", memories);
-        var body = await _promptContext.GetAsync(config.PromptContext, scope.Snapshot(), cancellationToken);
+        _dataScope.SetItem("memories", memories);
+        var body = await _promptContext.GetAsync(config.PromptContext, _dataScope.Snapshot(), cancellationToken);
         if (string.IsNullOrWhiteSpace(body))
         {
             return prompt;

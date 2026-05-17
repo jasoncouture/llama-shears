@@ -51,15 +51,13 @@ public sealed class InferenceRunnerToolDispatchTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")),
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
-            eventId: "alpha",
             model: model,
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: new PromptOptions(Tools: BuildToolsAdvertisement()),
             emitTurns: false,
-            correlationId: Guid.CreateVersion7(),
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(3);
@@ -91,15 +89,13 @@ public sealed class InferenceRunnerToolDispatchTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<IMemorySearcher>(),
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")),
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
-            eventId: "alpha",
             model: model,
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: null,
             emitTurns: false,
-            correlationId: Guid.CreateVersion7(),
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(1);

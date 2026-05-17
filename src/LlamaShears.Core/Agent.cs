@@ -278,12 +278,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         while (true)
         {
             outcome = await inferenceRunner.RunAsync(
-                eventId: _dataScope.GetAgentConfig().Id,
                 model: model,
                 prompt: prompt,
                 options: new PromptOptions(Tools: tools, InjectEphemeralContext: true),
                 emitTurns: true,
-                correlationId: correlationId,
                 cancellationToken: cancellationToken);
             if (outcome.Interrupted)
             {

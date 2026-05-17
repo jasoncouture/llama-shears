@@ -231,7 +231,7 @@ public sealed class AgentTurnFlowTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory,
+            dataContextFactory.Current!,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(id, agentContext);

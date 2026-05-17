@@ -142,7 +142,7 @@ public sealed class AgentEventPublishingTests
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
             TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory,
+            dataContextFactory.Current!,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(agentId, ctx);

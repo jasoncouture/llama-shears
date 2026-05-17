@@ -264,12 +264,10 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             var summarizationPrompt = new ModelPrompt(historyTurns);
             var outcome = await _inferenceRunner.RunAsync(
-                eventId: $"{agentId}-compaction",
                 model: model,
                 prompt: summarizationPrompt,
                 options: options,
                 emitTurns: false,
-                correlationId: _dataContextScope.GetAgentState().CorrelationId,
                 cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)
