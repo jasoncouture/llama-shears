@@ -156,7 +156,8 @@ public sealed class AgentEventPublishingTests
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            agentServices: []);
         await agent.StartAsync(CancellationToken.None);
 
         await capturing.PublishAsync(

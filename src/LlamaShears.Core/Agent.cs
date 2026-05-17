@@ -5,6 +5,7 @@ using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -32,6 +33,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private readonly IDataContextScope _dataScope;
     private readonly IAgentLock _agentLock;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ImmutableArray<IAgentService> _agentServices;
     private int _disposed;
 
 
@@ -45,7 +47,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         IDataContextScope dataScope,
         IAgentLock agentLock,
         ISessionFactory sessionFactory,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IEnumerable<IAgentService> agentServices)
     {
         _logger = logger;
         _contextStore = contextStore;
@@ -55,6 +58,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _dataScope = dataScope;
         _agentLock = agentLock;
         _scopeFactory = scopeFactory;
+        _agentServices = [..agentServices];
         _sessionQueue = sessionFactory.Get(new SessionId(_dataScope.GetAgentConfig().Id, DefaultChannel));
         _shutdown = new CancellationTokenSource();
         _subscription = bus.Subscribe(
@@ -74,7 +78,23 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _loop = Task.Run(async () =>
         {
             var shutdownToken = _shutdown.Token;
-            await RunIterationsAsync(agentContext, shutdownToken);
+            foreach (var agentService in _agentServices)
+            {
+                await agentService.StartAsync(cancellationToken);
+            }
+
+            try
+            {
+                await RunIterationsAsync(agentContext, shutdownToken);
+            }
+            finally
+            {
+                foreach (var agentService in _agentServices)
+                {
+                    using var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5), _time);
+                    await agentService.StopAsync(timeoutTokenSource.Token);
+                }
+            }
         }, cancellationToken);
     }
 
@@ -89,22 +109,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         cancellationTokenSource?.Cancel();
         return Task.CompletedTask;
-    }
-
-    public async Task RequestCompactionAsync(CancellationToken cancellationToken)
-    {
-        using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
-        await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
-        await bundle.ServiceScope.ApplyScopeDataAsync(cancellationToken);
-
-        var agentContext = await _contextStore.OpenAsync(_dataScope.GetAgentConfig().Id, cancellationToken);
-        var prompt = new ModelPrompt([.. agentContext.Turns]);
-        var snapshot = await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetAgentConfig().Id, cancellationToken)
-                           .ConfigureAwait(false)
-                       ?? throw new InvalidOperationException(
-                           $"Agent context provider returned null for running agent '{_dataScope.GetAgentConfig().Id}'.");
-        var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
-        await compactor.CompactAsync(snapshot, prompt, force: true, cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -160,14 +164,27 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     {
         var agentId = _dataScope.GetAgentConfig().Id;
         using var loggingScope = _logger.BeginScope("{AgentId}", agentId);
+        var isIdle = true; // We intentionally don't send the first idle event. Since we aren't "idle", we are "started".
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
+                if (!_sessionQueue.HasQueuedMessages() && !isIdle)
+                {
+                    await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Idle with { Id = agentId }, AgentLifecycleMarker.Instance,
+                        cancellationToken);
+                    isIdle = true;
+                }
                 var batch = await _sessionQueue.DequeueBatchAsync(cancellationToken);
                 if (batch.IsDefaultOrEmpty)
                 {
                     return;
+                }
+
+                if (isIdle)
+                {
+                    await _eventPublisher.PublishAsync(Event.WellKnown.Agent.Busy with { Id = agentId }, AgentLifecycleMarker.Instance,
+                        cancellationToken);
                 }
 
                 var correlationId = Guid.CreateVersion7();

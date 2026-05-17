@@ -54,6 +54,8 @@ public static class Event
             public static EventType ToolCall { get; } = new EventType(Sources.Agent, "tool-call");
             /// <summary>A tool call has produced a result.</summary>
             public static EventType ToolResult { get; } = new EventType(Sources.Agent, "tool-result");
+            /// <summary>Caller is requesting an immediate, forced compaction pass for the agent.</summary>
+            public static EventType CompactionRequested { get; } = new EventType(Sources.Agent, "compaction-requested");
             /// <summary>Context compaction has started.</summary>
             public static EventType CompactingStarted { get; } = new EventType(Sources.Agent, "compacting-started");
             /// <summary>Context compaction has finished.</summary>

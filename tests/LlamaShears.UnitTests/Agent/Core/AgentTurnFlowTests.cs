@@ -244,7 +244,8 @@ public sealed class AgentTurnFlowTests
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            agentServices: []);
         await agent.StartAsync(CancellationToken.None);
         return agent;
     }

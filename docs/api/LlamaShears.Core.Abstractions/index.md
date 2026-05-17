@@ -139,7 +139,7 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Events.Agent
 
-- [AgentCompactionMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionMarker.md)
+- [AgentCompactionRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionRequest.md)
 - [AgentLifecycleMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentLifecycleMarker.md)
 - [AgentMessageBase](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageBase.md)
 - [AgentMessageFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageFragment.md)

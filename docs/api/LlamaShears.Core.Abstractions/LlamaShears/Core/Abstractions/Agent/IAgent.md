@@ -23,15 +23,6 @@ noticed; they're responsible for closing those streams on the
 post-interrupt signal. Idempotent — calling when no turn is in
 flight is a no-op.
 
-### `RequestCompactionAsync`(CancellationToken cancellationToken)
-
-Acquires the agent's processing gate and runs the context
-compactor against the agent's current context, bypassing the
-usual under-budget guard so the call is willing to compact a
-healthy-but-aged context. The compactor's other guards (min
-turn count, missing context length) still apply, so a small
-or unconfigured context is left alone.
-
 ### `StartAsync`(CancellationToken cancellationToken)
 
 Starts the agent's run loop. Idempotent at construction time —

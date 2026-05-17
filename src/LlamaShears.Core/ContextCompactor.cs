@@ -103,7 +103,7 @@ public sealed partial class ContextCompactor : IContextCompactor
 
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.CompactingStarted with { Id = agentContext.AgentId },
-            new AgentCompactionMarker(),
+            new AgentCompactionRequest(),
             cancellationToken);
         try
         {
@@ -145,7 +145,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         {
             await _eventPublisher.PublishAsync(
                 Event.WellKnown.Agent.CompactingFinished with { Id = agentContext.AgentId },
-                new AgentCompactionMarker(),
+                new AgentCompactionRequest(),
                 CancellationToken.None);
         }
     }

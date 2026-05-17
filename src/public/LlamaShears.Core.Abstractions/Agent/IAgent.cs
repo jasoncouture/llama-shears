@@ -18,16 +18,6 @@ public interface IAgent
     Task StartAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Acquires the agent's processing gate and runs the context
-    /// compactor against the agent's current context, bypassing the
-    /// usual under-budget guard so the call is willing to compact a
-    /// healthy-but-aged context. The compactor's other guards (min
-    /// turn count, missing context length) still apply, so a small
-    /// or unconfigured context is left alone.
-    /// </summary>
-    Task RequestCompactionAsync(CancellationToken cancellationToken);
-
-    /// <summary>
     /// Cancels the in-flight turn (model inference, eager tool dispatch)
     /// without affecting the agent's lifetime. The agent's persisted
     /// context up to the interrupt is preserved; partial assistant text

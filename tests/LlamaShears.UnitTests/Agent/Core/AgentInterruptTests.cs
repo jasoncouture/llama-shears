@@ -116,7 +116,8 @@ public sealed class AgentInterruptTests
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(_lockManager, dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>());
+            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            agentServices: []);
         await agent.StartAsync(CancellationToken.None);
         return agent;
     }

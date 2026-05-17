@@ -109,7 +109,7 @@ public static class CoreServiceCollectionExtensions
         services.AddScopedDataProvider<WorkspaceContextDataProvider>();
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddScoped<IContextCompactor, ContextCompactor>();
-        services.AddHostedService<EagerCompactor>();
+        services.TryAddScoped<CompactionAgentService>();
 
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(modelContextProtocolConfigurationSection);

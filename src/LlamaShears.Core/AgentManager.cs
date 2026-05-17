@@ -179,7 +179,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
         await _publisher.PublishAsync(
             Event.WellKnown.Agent.Loaded with { Id = name },
-            new AgentLifecycleMarker(),
+            AgentLifecycleMarker.Instance,
             cancellationToken);
     }
 
@@ -274,6 +274,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
                     cancellationToken);
                 _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
+                _ = scope.ServiceProvider.GetRequiredService<CompactionAgentService>();
                 var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
                 await agent.StartAsync(cancellationToken);
 

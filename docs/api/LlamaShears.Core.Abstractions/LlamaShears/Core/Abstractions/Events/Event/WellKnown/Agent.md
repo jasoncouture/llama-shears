@@ -18,6 +18,10 @@ Context compaction has finished.
 
 Context compaction has started.
 
+### `CompactionRequested`
+
+Caller is requesting an immediate, forced compaction pass for the agent.
+
 ### `Idle`
 
 Agent has finished processing and is idle again.
