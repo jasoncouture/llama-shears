@@ -45,6 +45,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentLock](LlamaShears/Core/Abstractions/Agent/IAgentLock.md)
 - [IAgentLockManager](LlamaShears/Core/Abstractions/Agent/IAgentLockManager.md)
 - [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
+- [IAgentService](LlamaShears/Core/Abstractions/Agent/IAgentService.md)
 - [IAgentStateTracker](LlamaShears/Core/Abstractions/Agent/IAgentStateTracker.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
 - [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)

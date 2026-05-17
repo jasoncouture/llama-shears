@@ -27,8 +27,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const string MemoryToolName = "memory_store";
     private const string KickerFileName = "PROMPT.md";
     private const string KickerSubFolder = "compaction";
-    
-    private readonly IAgentContextProvider _agentContextProvider;
+
     private readonly IContextStore _contextStore;
     private readonly IAgentStateTracker _stateTracker;
     private readonly IInferenceRunner _inferenceRunner;
@@ -40,9 +39,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IDataContextScope _dataContextScope;
     private readonly ILogger<ContextCompactor> _logger;
 
-    public ContextCompactor(
-        IAgentContextProvider agentContextProvider,
-        IContextStore contextStore,
+    public ContextCompactor(IContextStore contextStore,
         IAgentStateTracker stateTracker,
         IInferenceRunner inferenceRunner,
         IEventPublisher eventPublisher,
@@ -53,7 +50,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         IDataContextScope dataContextScope,
         ILogger<ContextCompactor> logger)
     {
-        _agentContextProvider = agentContextProvider;
         _contextStore = contextStore;
         _stateTracker = stateTracker;
         _inferenceRunner = inferenceRunner;

@@ -198,7 +198,7 @@ public sealed class ContextCompactorTests
         templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
         var stateTracker = new AgentStateTracker(dataScope);
-        return new ContextCompactor(provider, store, stateTracker, runner, publisher, serverRegistry, toolDiscovery, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
+        return new ContextCompactor(store, stateTracker, runner, publisher, serverRegistry, toolDiscovery, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)
