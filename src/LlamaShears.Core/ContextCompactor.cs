@@ -36,7 +36,6 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly ISystemPromptProvider _systemPrompt;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
-    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly ITemplateFileLocator _locator;
     private readonly ITemplateRenderer _templateRenderer;
     private readonly IDataContextScope _dataContextScope;
@@ -51,7 +50,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         ISystemPromptProvider systemPrompt,
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
-        ICurrentAgentAccessor currentAgent,
         ITemplateFileLocator locator,
         ITemplateRenderer templateRenderer,
         IDataContextScope dataContextScope,
@@ -65,7 +63,6 @@ public sealed partial class ContextCompactor : IContextCompactor
         _systemPrompt = systemPrompt;
         _serverRegistry = serverRegistry;
         _toolDiscovery = toolDiscovery;
-        _currentAgent = currentAgent;
         _locator = locator;
         _templateRenderer = templateRenderer;
         _dataContextScope = dataContextScope;
@@ -117,11 +114,6 @@ public sealed partial class ContextCompactor : IContextCompactor
             cancellationToken);
         try
         {
-            var agentInfo = new AgentInfo(
-                AgentId: agentContext.AgentId,
-                ModelId: configuration.Id,
-                ContextWindowSize: configuration.ContextLength ?? 0);
-            using var scope = _currentAgent.BeginScope(agentInfo);
             var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken);
             var summary = await SummarizeAsync(
                 agentContext.AgentId,

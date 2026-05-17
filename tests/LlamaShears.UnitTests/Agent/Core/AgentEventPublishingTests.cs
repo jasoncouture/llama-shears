@@ -124,8 +124,6 @@ public sealed class AgentEventPublishingTests
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
 
         using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
-
-        var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
@@ -155,7 +153,6 @@ public sealed class AgentEventPublishingTests
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             agentContextProvider: BuildContextProvider(agentId),
             eventPublisher: capturing,
-            currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),

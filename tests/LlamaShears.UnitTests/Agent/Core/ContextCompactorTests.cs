@@ -169,7 +169,6 @@ public sealed class ContextCompactorTests
         store.OpenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventPublisher>();
-        var compactorCurrentAgent = new CurrentAgentAccessor();
         var agentConfig = new AgentConfig(Model: config, ModelContextProtocolServers: [], Id: "test")
         {
             HeartbeatPeriod = TimeSpan.Zero,
@@ -194,14 +193,13 @@ public sealed class ContextCompactorTests
         var toolDiscovery = Substitute.For<IModelContextProtocolToolDiscovery>();
         toolDiscovery.DiscoverAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult(ImmutableArray<ToolGroup>.Empty));
-        var currentAgent = compactorCurrentAgent;
         var locator = Substitute.For<ITemplateFileLocator>();
         locator.Locate(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>()).Returns("/tmp/llamashears-test/PROMPT.md");
         var templateRenderer = Substitute.For<ITemplateRenderer>();
         templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
         var stateTracker = new AgentStateTracker(dataScope);
-        return new ContextCompactor(provider, store, stateTracker, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, currentAgent, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
+        return new ContextCompactor(provider, store, stateTracker, runner, publisher, systemPrompt, serverRegistry, toolDiscovery, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

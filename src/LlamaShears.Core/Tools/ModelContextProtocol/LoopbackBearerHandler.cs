@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
+using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -10,20 +12,20 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
 {
     private readonly IInternalModelContextProtocolServer _internalServer;
     private readonly IAgentTokenStore _tokenStore;
-    private readonly ICurrentAgentAccessor _currentAgent;
+    private readonly IDataContextFactory _dataContextFactory;
     private readonly IHostApplicationLifetime _appLifetime;
     private readonly ILogger<LoopbackBearerHandler> _logger;
 
     public LoopbackBearerHandler(
         IInternalModelContextProtocolServer internalServer,
         IAgentTokenStore tokenStore,
-        ICurrentAgentAccessor currentAgent,
+        IDataContextFactory dataContextFactory,
         IHostApplicationLifetime appLifetime,
         ILogger<LoopbackBearerHandler> logger)
     {
         _internalServer = internalServer;
         _tokenStore = tokenStore;
-        _currentAgent = currentAgent;
+        _dataContextFactory = dataContextFactory;
         _appLifetime = appLifetime;
         _logger = logger;
     }
@@ -42,9 +44,15 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
                     RequestMessage = request,
                 });
             }
-            var agent = _currentAgent.Current
+            var scope = _dataContextFactory.Current
                 ?? throw new InvalidOperationException(
-                    "Outbound MCP request targets the internal listener but no agent is on the current call's ICurrentAgentAccessor scope; the caller must establish a scope before issuing tool calls.");
+                    "Outbound MCP request targets the internal listener but no agent data scope is ambient on the current call; the caller must enter an agent scope before issuing tool calls.");
+            var config = scope.GetAgentConfig();
+            var model = scope.GetModelConfiguration();
+            var agent = new AgentInfo(
+                AgentId: config.Id,
+                ModelId: model.Id,
+                ContextWindowSize: model.ContextLength ?? 0);
             var token = _tokenStore.Issue(agent);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             LogInjectedBearer(agent.AgentId, request.RequestUri!);

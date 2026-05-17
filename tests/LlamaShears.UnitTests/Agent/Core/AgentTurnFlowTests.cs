@@ -212,7 +212,6 @@ public sealed class AgentTurnFlowTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
-        var currentAgent = new CurrentAgentAccessor();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
@@ -242,7 +241,6 @@ public sealed class AgentTurnFlowTests
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),

@@ -31,7 +31,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     private CancellationTokenSource? _activeTurnCancellationTokenSource;
     private readonly IEventPublisher _eventPublisher;
     private readonly IAgentContextProvider _agentContextProvider;
-    private readonly ICurrentAgentAccessor _currentAgent;
     private readonly IDataContextScope _dataScope;
     private readonly IAgentLock _agentLock;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -46,7 +45,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         TimeProvider timeProvider,
         IAgentContextProvider agentContextProvider,
         IEventPublisher eventPublisher,
-        ICurrentAgentAccessor currentAgent,
         IDataContextScope dataScope,
         IAgentLock agentLock,
         ISessionFactory sessionFactory,
@@ -58,7 +56,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _systemPrompt = systemPromptProvider;
         _time = timeProvider;
         _agentContextProvider = agentContextProvider;
-        _currentAgent = currentAgent;
         _dataScope = dataScope;
         _agentLock = agentLock;
         _scopeFactory = scopeFactory;
@@ -248,12 +245,6 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         var data = _dataScope.Snapshot();
         var systemBody = await _systemPrompt.GetAsync(systemPromptFile, data, cancellationToken);
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
-
-        var agentInfo = new AgentInfo(
-            AgentId: _dataScope.GetAgentConfig().Id,
-            ModelId: _dataScope.GetModelConfiguration().Id,
-            ContextWindowSize: _dataScope.GetModelConfiguration().ContextLength ?? 0);
-        using var agentScope = _currentAgent.BeginScope(agentInfo);
 
         var turns = agentContext.Turns;
         var prompt = new ModelPrompt([systemTurn, .. turns]);

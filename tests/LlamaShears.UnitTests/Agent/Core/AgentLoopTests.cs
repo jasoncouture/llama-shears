@@ -157,7 +157,6 @@ public sealed class AgentLoopTests
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventPublisher>();
-        var currentAgent = new CurrentAgentAccessor();
         var resolvedMemorySearcher = memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher();
         var resolvedConfig = config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
@@ -188,7 +187,6 @@ public sealed class AgentLoopTests
             timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
             agentContextProvider: contextProvider,
             eventPublisher: publisher,
-            currentAgent: currentAgent,
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
