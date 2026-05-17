@@ -281,7 +281,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
                 await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
                     cancellationToken);
                 _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
-                var agent = ActivatorUtilities.CreateInstance<Agent>(scope.ServiceProvider);
+                var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
                 await agent.StartAsync(cancellationToken);
 
                 return new AgentSlot(name, agent, config, scope);
@@ -301,10 +301,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
     }
 
-    private static async ValueTask DisposeSlotAsync(AgentSlot slot)
+    private static ValueTask DisposeSlotAsync(AgentSlot slot)
     {
-        await slot.Agent.DisposeAsync();
-        await slot.Scope.DisposeAsync();
+        // Agent is registered scoped, so the scope tracks it and the
+        // scope's disposal cascades to the agent's IAsyncDisposable.
+        // The manager owns the scope, not the agent directly.
+        return slot.Scope.DisposeAsync();
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]

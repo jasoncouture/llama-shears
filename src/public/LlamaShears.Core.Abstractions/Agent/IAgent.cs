@@ -7,8 +7,16 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// services that own the agent (config provider, context store,
 /// message bus).
 /// </summary>
-public interface IAgent : IAsyncDisposable, IDisposable
+public interface IAgent
 {
+    /// <summary>
+    /// Starts the agent's run loop. Idempotent at construction time —
+    /// invoking it twice on the same instance throws. The owner (the
+    /// agent manager) calls this once after the agent's scope is built;
+    /// shutdown happens through scope disposal.
+    /// </summary>
+    Task StartAsync(CancellationToken cancellationToken);
+
     /// <summary>
     /// Acquires the agent's processing gate and runs the context
     /// compactor against the agent's current context, bypassing the

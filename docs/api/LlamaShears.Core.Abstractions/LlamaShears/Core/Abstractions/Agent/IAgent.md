@@ -32,3 +32,10 @@ healthy-but-aged context. The compactor's other guards (min
 turn count, missing context length) still apply, so a small
 or unconfigured context is left alone.
 
+### `StartAsync`(CancellationToken cancellationToken)
+
+Starts the agent's run loop. Idempotent at construction time —
+invoking it twice on the same instance throws. The owner (the
+agent manager) calls this once after the agent's scope is built;
+shutdown happens through scope disposal.
+
