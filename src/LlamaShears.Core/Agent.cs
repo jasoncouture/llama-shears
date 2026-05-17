@@ -60,7 +60,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         _currentAgent = currentAgent;
         _dataScope = dataScope;
         _scopeFactory = scopeFactory;
-        _sessionQueue = sessionFactory.Get(new SessionId(Id, DefaultChannel));
+        _sessionQueue = sessionFactory.Get(new SessionId(_dataScope.GetAgentConfig().Id, DefaultChannel));
         _shutdown = new CancellationTokenSource();
         _subscription = bus.Subscribe(
             $"{Event.WellKnown.Channel.Message}:+",
@@ -72,14 +72,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
     {
         if (_loop is not null)
         {
-            throw new InvalidOperationException($"Agent '{Id}' has already been started.");
+            throw new InvalidOperationException($"Agent '{_dataScope.GetAgentConfig().Id}' has already been started.");
         }
 
-        var agentContext = await _contextStore.OpenAsync(Id, cancellationToken);
+        var agentContext = await _contextStore.OpenAsync(_dataScope.GetAgentConfig().Id, cancellationToken);
         _loop = Task.Run(() => RunLoopAsync(agentContext, _shutdown.Token), cancellationToken);
     }
-
-    private string Id => _dataScope.GetAgentConfig().Id;
 
     public Task LockAsync(CancellationToken cancellationToken)
         => _processGate.WaitAsync(cancellationToken);
@@ -111,7 +109,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
             await bundle.ServiceScope.ApplyScopeDataAsync(cancellationToken);
 
-            var agentContext = await _contextStore.OpenAsync(Id, cancellationToken);
+            var agentContext = await _contextStore.OpenAsync(_dataScope.GetAgentConfig().Id, cancellationToken);
             var turns = agentContext.Turns;
             var systemPromptFile = _dataScope.GetAgentConfig().SystemPrompt;
             var data = _dataScope.Snapshot();
@@ -119,10 +117,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 ;
             var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
             var prompt = new ModelPrompt([systemTurn, .. turns]);
-            var snapshot = await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken)
+            var snapshot = await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetAgentConfig().Id, cancellationToken)
                                .ConfigureAwait(false)
                            ?? throw new InvalidOperationException(
-                               $"Agent context provider returned null for running agent '{Id}'.");
+                               $"Agent context provider returned null for running agent '{_dataScope.GetAgentConfig().Id}'.");
             var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
             var model = bundle.ServiceProvider.GetRequiredService<ILanguageModel>();
             await compactor.CompactAsync(snapshot, prompt, model, _dataScope.GetModelConfiguration(), force: true, cancellationToken);
@@ -167,7 +165,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(data.AgentId) && !string.Equals(data.AgentId, Id, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(data.AgentId) && !string.Equals(data.AgentId, _dataScope.GetAgentConfig().Id, StringComparison.Ordinal))
         {
             return;
         }
@@ -185,7 +183,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
     private async Task RunLoopAsync(IAgentContext agentContext, CancellationToken cancellationToken)
     {
-        using var loggingScope = _logger.BeginScope("{AgentId}", Id);
+        using var loggingScope = _logger.BeginScope("{AgentId}", _dataScope.GetAgentConfig().Id);
         await RunIterationsAsync(agentContext, cancellationToken);
     }
 
@@ -219,7 +217,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
                 catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested &&
                                                          !cancellationToken.IsCancellationRequested)
                 {
-                    LogTurnInterrupted(Id, correlationId);
+                    LogTurnInterrupted(_dataScope.GetAgentConfig().Id, correlationId);
                 }
                 finally
                 {
@@ -233,12 +231,12 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                LogAgentStopping(Id);
+                LogAgentStopping(_dataScope.GetAgentConfig().Id);
                 return;
             }
             catch (Exception ex)
             {
-                LogProcessOnceFailed(Id, ex);
+                LogProcessOnceFailed(_dataScope.GetAgentConfig().Id, ex);
             }
         }
     }
@@ -258,7 +256,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         foreach (var turn in batch)
         {
             await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = Id },
+                Event.WellKnown.Agent.Turn with { Id = _dataScope.GetAgentConfig().Id },
                 turn,
                 correlationId,
                 outerCancellationToken);
@@ -270,7 +268,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
         var agentInfo = new AgentInfo(
-            AgentId: Id,
+            AgentId: _dataScope.GetAgentConfig().Id,
             ModelId: _dataScope.GetModelConfiguration().Id,
             ContextWindowSize: _dataScope.GetModelConfiguration().ContextLength ?? 0);
         using var agentScope = _currentAgent.BeginScope(agentInfo);
@@ -278,8 +276,8 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         var turns = agentContext.Turns;
         var prompt = new ModelPrompt([systemTurn, .. turns]);
         var agentContextSnapshot =
-            await _agentContextProvider.CreateAgentContextAsync(Id, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{Id}'.");
+            await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetAgentConfig().Id, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{_dataScope.GetAgentConfig().Id}'.");
         var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
         var model = bundle.ServiceProvider.GetRequiredService<ILanguageModel>();
         prompt = await compactor
@@ -297,7 +295,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
         while (true)
         {
             outcome = await inferenceRunner.RunAsync(
-                eventId: Id,
+                eventId: _dataScope.GetAgentConfig().Id,
                 model: model,
                 prompt: prompt,
                 options: new PromptOptions(Tools: tools, InjectEphemeralContext: true),
@@ -319,10 +317,10 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
             emptyAttempt++;
             if (emptyAttempt > EmptyResponseRetryLimit)
             {
-                LogEmptyResponseGaveUp(Id, emptyAttempt);
+                LogEmptyResponseGaveUp(_dataScope.GetAgentConfig().Id, emptyAttempt);
                 break;
             }
-            LogEmptyResponseRetrying(Id, emptyAttempt);
+            LogEmptyResponseRetrying(_dataScope.GetAgentConfig().Id, emptyAttempt);
             prompt = prompt with
             {
                 Turns =
@@ -347,7 +345,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IAsyn
 
         if (outcome.Interrupted)
         {
-            LogTurnInterrupted(Id, correlationId);
+            LogTurnInterrupted(_dataScope.GetAgentConfig().Id, correlationId);
             return;
         }
 
