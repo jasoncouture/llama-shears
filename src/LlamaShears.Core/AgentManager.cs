@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -22,10 +21,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
-    private readonly IEnumerable<IProviderFactory> _providers;
     private readonly IAgentConfigProvider _configs;
     private readonly ILogger<AgentManager> _logger;
-    private readonly IContextStore _contextStore;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
@@ -42,10 +39,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     public AgentManager(
         IEventBus bus,
         IEventPublisher publisher,
-        IEnumerable<IProviderFactory> providers,
         IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
-        IContextStore contextStore,
         IServiceScopeFactory scopeFactory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
@@ -54,10 +49,8 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
     {
         _bus = bus;
         _publisher = publisher;
-        _providers = providers;
         _configs = configs;
         _logger = loggerFactory.CreateLogger<AgentManager>();
-        _contextStore = contextStore;
         _scopeFactory = scopeFactory;
         _paths = paths;
         _seeder = seeder;
