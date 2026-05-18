@@ -23,7 +23,14 @@ public sealed class GrepToolTests
             maxMatches: 200,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("src/a.txt:2:6: beta needle gamma");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.MatchCount).IsEqualTo(1);
+        await Assert.That(result.Matches.Length).IsEqualTo(1);
+        var hit = result.Matches[0];
+        await Assert.That(hit.Path).IsEqualTo("src/a.txt");
+        await Assert.That(hit.Line).IsEqualTo(2);
+        await Assert.That(hit.Column).IsEqualTo(6);
+        await Assert.That(hit.Text).IsEqualTo("beta needle gamma");
     }
 
     [Test]
@@ -40,11 +47,17 @@ public sealed class GrepToolTests
             maxMatches: 200,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("a.txt:1:1: Hello World");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.MatchCount).IsEqualTo(1);
+        var hit = result.Matches[0];
+        await Assert.That(hit.Path).IsEqualTo("a.txt");
+        await Assert.That(hit.Line).IsEqualTo(1);
+        await Assert.That(hit.Column).IsEqualTo(1);
+        await Assert.That(hit.Text).IsEqualTo("Hello World");
     }
 
     [Test]
-    public async Task ReportsNoMatchesWhenNothingMatches()
+    public async Task ReportsZeroMatchesWhenNothingMatches()
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "nothing\n");
@@ -57,7 +70,9 @@ public sealed class GrepToolTests
             maxMatches: 200,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("No matches");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.MatchCount).IsEqualTo(0);
+        await Assert.That(result.Matches.IsEmpty).IsTrue();
     }
 
     [Test]
@@ -75,7 +90,8 @@ public sealed class GrepToolTests
             maxMatches: 200,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("a.cs");
-        await Assert.That(result).DoesNotContain("b.txt");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.MatchCount).IsEqualTo(1);
+        await Assert.That(result.Matches[0].Path).IsEqualTo("a.cs");
     }
 }

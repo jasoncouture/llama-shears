@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,8 +33,8 @@ public sealed partial class GrepTool
     }
 
     [McpServerTool(Name = "file_grep")]
-    [Description("Searches the agent's workspace for a regex across files matching a path glob. Returns one line per match in the form 'relative/path:line:column: matched-line'. Output is capped; a truncation marker is appended when the result exceeds the cap.")]
-    public async Task<string> Grep(
+    [Description("Searches the agent's workspace for a regex across files matching a path glob. Returns a JSON object with the glob, files-scanned and match counts, a truncation flag with the applied cap, and an array of matches (each carries workspace-relative path, 1-based line and column, and the full matched line). On failure the error field is populated and matches is empty.")]
+    public async Task<GrepResult> Grep(
         [Description(".NET regex pattern to match against each line.")] string pattern,
         [Description("Path glob (Microsoft.Extensions.FileSystemGlobbing syntax, e.g. '**/*.cs') anchored at the workspace root. Defaults to '**/*'.")] string pathGlob = "**/*",
         [Description("If true, match case-insensitively. Defaults to false.")] bool caseInsensitive = false,
@@ -42,7 +43,7 @@ public sealed partial class GrepTool
     {
         if (string.IsNullOrEmpty(pattern))
         {
-            return "pattern is required.";
+            return Failure(pathGlob, DefaultMaxMatches, "pattern is required.");
         }
         if (string.IsNullOrWhiteSpace(pathGlob))
         {
@@ -62,13 +63,13 @@ public sealed partial class GrepTool
         }
         catch (ArgumentException ex)
         {
-            return $"Invalid regex: {ex.Message}";
+            return Failure(pathGlob, cap, $"Invalid regex: {ex.Message}");
         }
 
         var workspace = await _workspace.GetAsync(cancellationToken);
         if (!Directory.Exists(workspace.Root))
         {
-            return $"Workspace not found: {workspace.Root}";
+            return Failure(pathGlob, cap, $"Workspace not found: {workspace.Root}");
         }
 
         var matcher = new Matcher(StringComparison.Ordinal);
@@ -76,18 +77,24 @@ public sealed partial class GrepTool
         var matchResult = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(workspace.Root)));
         if (!matchResult.HasMatches)
         {
-            return $"No files match glob '{pathGlob}'.";
+            LogGrep(workspace.AgentId, pathGlob, files: 0, matches: 0, truncated: false);
+            return new GrepResult(
+                PathGlob: pathGlob,
+                FilesScanned: 0,
+                MatchCount: 0,
+                Truncated: false,
+                Cap: cap,
+                Matches: []);
         }
 
-        var output = new StringBuilder();
-        var matchCount = 0;
+        var matches = ImmutableArray.CreateBuilder<GrepMatch>();
         var truncated = false;
         var filesScanned = 0;
 
         foreach (var hit in matchResult.Files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (matchCount >= cap)
+            if (matches.Count >= cap)
             {
                 truncated = true;
                 break;
@@ -120,49 +127,49 @@ public sealed partial class GrepTool
             filesScanned++;
             try
             {
-                var fileMatches = await ScanFileAsync(fullPath, hit.Path, regex, output, cap - matchCount, cancellationToken);
-                matchCount += fileMatches;
+                await ScanFileAsync(fullPath, hit.Path, regex, matches, cap, cancellationToken);
             }
             catch (RegexMatchTimeoutException)
             {
-                output.Append('\n');
-                output.Append($"[{hit.Path}: regex timeout — skipped]");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                output.Append('\n');
-                output.Append($"[{hit.Path}: {ex.Message}]");
+                _ = ex;
             }
 
-            if (matchCount >= cap)
+            if (matches.Count >= cap)
             {
                 truncated = true;
                 break;
             }
         }
 
-        if (matchCount == 0)
-        {
-            LogGrep(workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
-            return $"No matches found for pattern in glob '{pathGlob}'.";
-        }
-
-        if (truncated)
-        {
-            output.Append('\n');
-            output.Append($"[... truncated; exceeded {cap}-match cap. Re-call with a tighter glob/pattern or a higher max_matches (max {HardMaxMatches}).]");
-        }
-
-        LogGrep(workspace.AgentId, pathGlob, filesScanned, matchCount, truncated);
-        return output.ToString().TrimStart('\n');
+        LogGrep(workspace.AgentId, pathGlob, filesScanned, matches.Count, truncated);
+        return new GrepResult(
+            PathGlob: pathGlob,
+            FilesScanned: filesScanned,
+            MatchCount: matches.Count,
+            Truncated: truncated,
+            Cap: cap,
+            Matches: matches.ToImmutable());
     }
 
-    private static async Task<int> ScanFileAsync(
+    private static GrepResult Failure(string pathGlob, int cap, string error)
+        => new(
+            PathGlob: pathGlob,
+            FilesScanned: 0,
+            MatchCount: 0,
+            Truncated: false,
+            Cap: cap,
+            Matches: [],
+            Error: error);
+
+    private static async Task ScanFileAsync(
         string fullPath,
         string relativePath,
         Regex regex,
-        StringBuilder output,
-        int remaining,
+        ImmutableArray<GrepMatch>.Builder matches,
+        int cap,
         CancellationToken cancellationToken)
     {
         await using var stream = new FileStream(
@@ -175,20 +182,21 @@ public sealed partial class GrepTool
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
         var lineNumber = 0;
-        var emitted = 0;
         while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
         {
             lineNumber++;
             var match = regex.Match(line);
             while (match.Success)
             {
-                if (emitted >= remaining)
+                if (matches.Count >= cap)
                 {
-                    return emitted;
+                    return;
                 }
-                output.Append('\n');
-                output.Append($"{relativePath}:{lineNumber}:{match.Index + 1}: {line}");
-                emitted++;
+                matches.Add(new GrepMatch(
+                    Path: relativePath,
+                    Line: lineNumber,
+                    Column: match.Index + 1,
+                    Text: line));
                 if (match.Length == 0)
                 {
                     break;
@@ -196,7 +204,6 @@ public sealed partial class GrepTool
                 match = match.NextMatch();
             }
         }
-        return emitted;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' grep glob '{Glob}' scanned {Files} files, {Matches} matches (truncated={Truncated}).")]
