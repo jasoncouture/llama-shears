@@ -38,7 +38,7 @@ internal sealed class AgentDirectory : IAgentDirectory
     public async Task RequestCompactionAsync(string agentId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        if (_manager.Get(agentId) is null)
+        if (!_manager.Contains(agentId))
         {
             throw new InvalidOperationException($"Agent '{agentId}' is not loaded.");
         }
@@ -51,7 +51,7 @@ internal sealed class AgentDirectory : IAgentDirectory
     public async Task InterruptAsync(string agentId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        if (_manager.Get(agentId) is null)
+        if (!_manager.Contains(agentId))
         {
             throw new InvalidOperationException($"Agent '{agentId}' is not loaded.");
         }

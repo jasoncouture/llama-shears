@@ -71,14 +71,6 @@ public sealed partial class AgentManager
         return _loaded.ContainsKey(agentId);
     }
 
-    public IAgent? Get(string agentId)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        return _loaded.TryGetValue(agentId, out var slot)
-            ? slot.Scope.ServiceProvider.GetRequiredService<IAgent>()
-            : null;
-    }
-
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
         => Task.Delay(Timeout.Infinite, stoppingToken);
 

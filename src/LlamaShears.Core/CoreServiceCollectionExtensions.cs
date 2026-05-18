@@ -157,7 +157,6 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<AgentManager>();
         services.TryAddSingleton<IAgentManager>(sp => sp.GetRequiredService<AgentManager>());
-        services.AddHostedService(sp => sp.GetRequiredService<AgentManager>());
         services.AddHostedService<AgentConfigSupervisor>();
 
         return services;

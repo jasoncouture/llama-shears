@@ -22,8 +22,3 @@ ordinal-ignore-case order.
 Returns `true` if an agent with the given id
 is currently loaded.
 
-### `Get`(string agentId)
-
-Returns the loaded agent with the given id, or `null`
-if none is loaded under that id.
-
