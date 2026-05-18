@@ -190,7 +190,7 @@ public sealed class JsonLineContextStoreTests
                 Turn(ModelRole.User, $"#{unixMillis}", DateTimeOffset.UnixEpoch),
                 CancellationToken.None);
             await fixture.Store.ClearAsync(AgentId, archive: true, CancellationToken.None);
-            return new ArchiveId(AgentId, unixMillis);
+            return new ArchiveId(AgentId, Guid.Empty, unixMillis);
         }
 
         var keep = await ArchiveAt(1000);
@@ -256,9 +256,9 @@ public sealed class JsonLineContextStoreTests
 
         public FakeTimeProvider TimeProvider { get; }
 
-        public JsonLineContextStore Store { get; }
+        public IContextStore Store { get; }
 
-        public JsonLineContextStore NewStore() => new JsonLineContextStore(Paths, TimeProvider);
+        public IContextStore NewStore() => new JsonLineContextStore(Paths, TimeProvider);
 
         public string AgentFolder(string agentId) =>
             Paths.GetPath(PathKind.Context, agentId, ensureExists: true);

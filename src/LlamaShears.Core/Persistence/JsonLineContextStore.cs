@@ -16,8 +16,8 @@ public sealed class JsonLineContextStore : IContextStore
 
     private readonly IShearsPaths _paths;
     private readonly TimeProvider _time;
-    private readonly ConcurrentDictionary<string, AgentContext> _contexts =
-        new ConcurrentDictionary<string, AgentContext>(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<SessionKey, AgentContext> _contexts =
+        new ConcurrentDictionary<SessionKey, AgentContext>();
 
     public JsonLineContextStore(IShearsPaths paths, TimeProvider time)
     {
@@ -28,16 +28,17 @@ public sealed class JsonLineContextStore : IContextStore
         _time = time;
     }
 
-    public async Task<IAgentContext> OpenAsync(string agentId, CancellationToken cancellationToken)
+    public async Task<IAgentContext> OpenAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        if (_contexts.TryGetValue(agentId, out var existing))
+        var key = new SessionKey(agentId, sessionId);
+        if (_contexts.TryGetValue(key, out var existing))
         {
             return existing;
         }
 
-        var folder = _paths.GetPath(PathKind.Context, agentId, ensureExists: true);
+        var folder = ResolveFolder(agentId, sessionId, ensureExists: true);
         var currentPath = Path.Combine(folder, CurrentFileName);
 
         var seed = new List<IContextEntry>();
@@ -46,14 +47,14 @@ public sealed class JsonLineContextStore : IContextStore
             seed.Add(entry);
         }
 
-        var fresh = new AgentContext(agentId, currentPath, seed, _jsonOptions);
-        return _contexts.GetOrAdd(agentId, fresh);
+        var fresh = new AgentContext(agentId, sessionId, currentPath, seed, _jsonOptions);
+        return _contexts.GetOrAdd(key, fresh);
     }
 
-    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var folder = _paths.GetPath(PathKind.Context, agentId);
+        var folder = ResolveFolder(agentId, sessionId, ensureExists: false);
         var currentPath = Path.Combine(folder, CurrentFileName);
         return ReadJsonLinesAsync(currentPath, cancellationToken);
     }
@@ -61,7 +62,7 @@ public sealed class JsonLineContextStore : IContextStore
     public IAsyncEnumerable<IContextEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(archiveId.AgentId);
-        var folder = _paths.GetPath(PathKind.Context, archiveId.AgentId);
+        var folder = ResolveFolder(archiveId.AgentId, archiveId.SessionId, ensureExists: false);
         var archivePath = Path.Combine(folder, $"{archiveId.UnixMillis}.json");
         return ReadJsonLinesAsync(archivePath, cancellationToken);
     }
@@ -78,16 +79,17 @@ public sealed class JsonLineContextStore : IContextStore
             .Select(Path.GetFileName)
             .Where(name => !string.IsNullOrEmpty(name))
             .Select(name => name!)
+            .Where(name => !IsSessionGuidFolderName(name))
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
         return Task.FromResult<IReadOnlyList<string>>(agents);
     }
 
-    public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var folder = _paths.GetPath(PathKind.Context, agentId);
+        var folder = ResolveFolder(agentId, sessionId, ensureExists: false);
         if (!Directory.Exists(folder))
         {
             return Task.FromResult<IReadOnlyList<ArchiveId>>([]);
@@ -104,18 +106,18 @@ public sealed class JsonLineContextStore : IContextStore
 
             if (long.TryParse(name, out var unixMillis))
             {
-                archives.Add(new ArchiveId(agentId, unixMillis));
+                archives.Add(new ArchiveId(agentId, sessionId, unixMillis));
             }
         }
         archives.Sort((a, b) => a.UnixMillis.CompareTo(b.UnixMillis));
         return Task.FromResult<IReadOnlyList<ArchiveId>>(archives);
     }
 
-    public Task ClearAsync(string agentId, bool archive, CancellationToken cancellationToken)
+    public Task ClearAsync(string agentId, Guid sessionId, bool archive, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
-        var folder = _paths.GetPath(PathKind.Context, agentId, ensureExists: true);
+        var folder = ResolveFolder(agentId, sessionId, ensureExists: true);
         var currentPath = Path.Combine(folder, CurrentFileName);
 
         if (File.Exists(currentPath))
@@ -131,7 +133,7 @@ public sealed class JsonLineContextStore : IContextStore
             }
         }
 
-        if (_contexts.TryGetValue(agentId, out var context))
+        if (_contexts.TryGetValue(new SessionKey(agentId, sessionId), out var context))
         {
             context.ClearInMemory();
         }
@@ -143,7 +145,7 @@ public sealed class JsonLineContextStore : IContextStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(archiveId.AgentId);
 
-        var folder = _paths.GetPath(PathKind.Context, archiveId.AgentId);
+        var folder = ResolveFolder(archiveId.AgentId, archiveId.SessionId, ensureExists: false);
         var archivePath = Path.Combine(folder, $"{archiveId.UnixMillis}.json");
         if (File.Exists(archivePath))
         {
@@ -151,6 +153,19 @@ public sealed class JsonLineContextStore : IContextStore
         }
         return Task.CompletedTask;
     }
+
+    private string ResolveFolder(string agentId, Guid sessionId, bool ensureExists)
+    {
+        if (sessionId == Guid.Empty)
+        {
+            return _paths.GetPath(PathKind.Context, agentId, ensureExists: ensureExists);
+        }
+        var subpath = Path.Combine(agentId, sessionId.ToString("n"));
+        return _paths.GetPath(PathKind.Context, subpath, ensureExists: ensureExists);
+    }
+
+    private static bool IsSessionGuidFolderName(string name)
+        => name.Length == 32 && Guid.TryParseExact(name, "N", out _);
 
     private static async IAsyncEnumerable<IContextEntry> ReadJsonLinesAsync(
         string path,
@@ -193,4 +208,6 @@ public sealed class JsonLineContextStore : IContextStore
             }
         }
     }
+
+    private readonly record struct SessionKey(string AgentId, Guid SessionId);
 }
