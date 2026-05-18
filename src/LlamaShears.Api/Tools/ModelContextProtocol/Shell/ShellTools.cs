@@ -10,6 +10,7 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Shell;
 [McpServerToolType]
 public sealed partial class ShellTools
 {
+    private const string ShellPath = "/bin/bash";
     private static readonly TimeSpan _timeout = TimeSpan.FromMinutes(5);
     private const int TailLineCount = 50;
 
@@ -22,23 +23,12 @@ public sealed partial class ShellTools
         _logger = logger;
     }
 
-    [McpServerTool(Name = "shell_sh")]
-    [Description("Runs a shell command via /bin/sh -c. Defaults to the agent's workspace as the working directory; pass workingDirectory to override (relative paths resolve against the workspace, absolute paths are honored as-is). Returns a JSON object with exitCode, timedOut, elapsedMilliseconds, totalLines, truncated, and the combined stdout+stderr in output. Output beyond the shared response budget is truncated to a head+tail snippet at line boundaries. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
-    public Task<ShellRunResult> RunShellAsync(
-        [Description("Shell command to execute. Passed verbatim to /bin/sh -c.")] string command,
+    [McpServerTool(Name = "shell_run")]
+    [Description("Runs a command via /bin/bash -c. Defaults to the agent's workspace as the working directory; pass workingDirectory to override (relative paths resolve against the workspace, absolute paths are honored as-is). Returns a JSON object with exitCode, timedOut, elapsedMilliseconds, totalLines, truncated, and the combined stdout+stderr in output. Output beyond the shared response budget is truncated to a head+tail snippet at line boundaries. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
+    public async Task<ShellRunResult> RunAsync(
+        [Description("Command to execute. Passed verbatim to /bin/bash -c.")] string command,
         [Description("Working directory for the command. Null or empty defaults to the agent's workspace. Relative paths resolve against the workspace; absolute paths are used as-is.")] string? workingDirectory = null,
         CancellationToken cancellationToken = default)
-        => RunAsync("/bin/sh", command, workingDirectory, cancellationToken);
-
-    [McpServerTool(Name = "shell_bash")]
-    [Description("Runs a bash command via /bin/bash -c. Defaults to the agent's workspace as the working directory; pass workingDirectory to override (relative paths resolve against the workspace, absolute paths are honored as-is). Returns a JSON object with exitCode, timedOut, elapsedMilliseconds, totalLines, truncated, and the combined stdout+stderr in output. Output beyond the shared response budget is truncated to a head+tail snippet at line boundaries. Hard 5-minute timeout; on timeout the entire process tree is killed and whatever has been buffered is returned. stdin is closed immediately so interactive commands fail fast. No allow/deny list, no sandbox.")]
-    public Task<ShellRunResult> RunBashAsync(
-        [Description("Bash command to execute. Passed verbatim to /bin/bash -c.")] string command,
-        [Description("Working directory for the command. Null or empty defaults to the agent's workspace. Relative paths resolve against the workspace; absolute paths are used as-is.")] string? workingDirectory = null,
-        CancellationToken cancellationToken = default)
-        => RunAsync("/bin/bash", command, workingDirectory, cancellationToken);
-
-    private async Task<ShellRunResult> RunAsync(string shellPath, string command, string? workingDirectory, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(command))
         {
@@ -58,11 +48,11 @@ public sealed partial class ShellTools
             : Path.IsPathRooted(workingDirectory)
                 ? workingDirectory
                 : Path.GetFullPath(Path.Combine(workspace.Root, workingDirectory));
-        LogStarting(workspace.AgentId, shellPath, command);
+        LogStarting(workspace.AgentId, command);
 
         var startInfo = new ProcessStartInfo
         {
-            FileName = shellPath,
+            FileName = ShellPath,
             WorkingDirectory = resolvedCwd,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -117,7 +107,7 @@ public sealed partial class ShellTools
         var raw = buffer.ToString();
         var (body, truncated, totalLines) = ApplyBudget(raw);
 
-        LogFinished(workspace.AgentId, shellPath, command, exitCode, timedOut, raw.Length, truncated);
+        LogFinished(workspace.AgentId, command, exitCode, timedOut, raw.Length, truncated);
         return new ShellRunResult(
             ExitCode: exitCode,
             TimedOut: timedOut,
@@ -199,9 +189,9 @@ public sealed partial class ShellTools
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' running {Shell}: {Command}")]
-    private partial void LogStarting(string? agentId, string shell, string command);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' running shell: {Command}")]
+    private partial void LogStarting(string? agentId, string command);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' {Shell} finished (exit={ExitCode}, timedOut={TimedOut}, bytes={Bytes}, truncated={Truncated}): {Command}")]
-    private partial void LogFinished(string? agentId, string shell, string command, int exitCode, bool timedOut, long bytes, bool truncated);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' shell finished (exit={ExitCode}, timedOut={TimedOut}, bytes={Bytes}, truncated={Truncated}): {Command}")]
+    private partial void LogFinished(string? agentId, string command, int exitCode, bool timedOut, long bytes, bool truncated);
 }
