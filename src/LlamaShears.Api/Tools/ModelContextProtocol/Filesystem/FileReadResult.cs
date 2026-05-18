@@ -10,4 +10,6 @@ public sealed record FileReadResult(
     bool EndOfFile,
     int? NextStartLine,
     string Content,
+    DateTimeOffset? CreatedAt = null,
+    DateTimeOffset? ModifiedAt = null,
     string? Error = null) : IToolResponse;

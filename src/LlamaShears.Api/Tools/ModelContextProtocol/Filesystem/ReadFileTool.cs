@@ -9,8 +9,6 @@ namespace LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 [McpServerToolType]
 public sealed partial class ReadFileTool
 {
-    private const long MaxFileBytes = 512 * 1024;
-
     private readonly IAgentWorkspaceLocator _workspace;
     private readonly IPathExpander _pathExpander;
     private readonly IFileProtectionPolicy _protection;
@@ -29,7 +27,7 @@ public sealed partial class ReadFileTool
     }
 
     [McpServerTool(Name = "file_read")]
-    [Description("Reads a file from the host filesystem starting at startLine. Returns a JSON object with the line range read, the content, an endOfFile flag, and (when more lines remain) a nextStartLine the caller should use to resume. Caps a single call to the shared response budget (~8 KiB / 100 lines); refuses files larger than 512 KiB outright. On failure, the error field is populated and content is empty.")]
+    [Description("Reads a file from the host filesystem starting at startLine. Returns a JSON object with the line range read, the content, the file's createdAt/modifiedAt timestamps (local time), an endOfFile flag, and (when more lines remain) a nextStartLine the caller should use to resume. A single call is capped by the shared response budget; re-call with the reported nextStartLine to continue until endOfFile is true. On failure, the error field is populated and content is empty.")]
     public async Task<FileReadResult> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
@@ -58,13 +56,6 @@ public sealed partial class ReadFileTool
             return Failure(path, startLine, $"File not found: {path}");
         }
 
-        var fileInfo = new FileInfo(resolved);
-        if (fileInfo.Length > MaxFileBytes)
-        {
-            LogTooLarge(workspace.AgentId, resolved, fileInfo.Length);
-            return Failure(path, startLine, $"File is too large: {fileInfo.Length} bytes; the hard cap is {MaxFileBytes} bytes.");
-        }
-
         var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
         var protection = _protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Read);
         if (protection is not null)
@@ -72,11 +63,15 @@ public sealed partial class ReadFileTool
             return Failure(path, startLine, ProtectionRefusal.Format(path, ProtectionMode.Read, protection));
         }
 
+        var fileInfo = new FileInfo(resolved);
+        var createdAt = new DateTimeOffset(fileInfo.CreationTime);
+        var modifiedAt = new DateTimeOffset(fileInfo.LastWriteTime);
+
         try
         {
             var result = await ReadRangeAsync(resolved, startLine, cancellationToken);
             LogRead(workspace.AgentId, resolved, result.Content.Length, result.Truncated);
-            return BuildResponse(path, startLine, result);
+            return BuildResponse(path, startLine, result, createdAt, modifiedAt);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -85,7 +80,12 @@ public sealed partial class ReadFileTool
         }
     }
 
-    private static FileReadResult BuildResponse(string path, int requestedStartLine, ReadResult result)
+    private static FileReadResult BuildResponse(
+        string path,
+        int requestedStartLine,
+        ReadResult result,
+        DateTimeOffset createdAt,
+        DateTimeOffset modifiedAt)
     {
         if (result.LinesReturned == 0)
         {
@@ -96,7 +96,9 @@ public sealed partial class ReadFileTool
                 LinesReturned: 0,
                 EndOfFile: !result.Truncated,
                 NextStartLine: result.Truncated ? requestedStartLine + 1 : null,
-                Content: string.Empty);
+                Content: string.Empty,
+                CreatedAt: createdAt,
+                ModifiedAt: modifiedAt);
         }
 
         var endOfFile = !result.Truncated;
@@ -107,7 +109,9 @@ public sealed partial class ReadFileTool
             LinesReturned: result.LinesReturned,
             EndOfFile: endOfFile,
             NextStartLine: endOfFile ? null : result.LastLine + 1,
-            Content: result.Content);
+            Content: result.Content,
+            CreatedAt: createdAt,
+            ModifiedAt: modifiedAt);
     }
 
     private static FileReadResult Failure(string path, int startLine, string error)
@@ -183,7 +187,4 @@ public sealed partial class ReadFileTool
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Read failed for agent '{AgentId}' path '{Path}': {Message}")]
     private partial void LogReadFailed(string? agentId, string path, string message, Exception ex);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' refused to read oversized file '{Path}' ({Bytes} bytes).")]
-    private partial void LogTooLarge(string? agentId, string path, long bytes);
 }
