@@ -29,8 +29,8 @@ public sealed partial class WriteFileTool
     }
 
     [McpServerTool(Name = "file_write")]
-    [Description("Writes the complete file content to a path within the agent's workspace. By default, refuses if the file already exists; pass overwrite=true to replace it. Writes into the workspace's protected 'system/' subfolder, or any path matched by the workspace file-protection policy (e.g. root '.gitignore'), are refused. Parent directories are created if missing.")]
-    public async Task<string> WriteFile(
+    [Description("Writes the complete file content to a path within the agent's workspace. Returns a JSON object with the path, a written flag, bytesWritten, and whether an existing file was overwritten. By default, refuses if the file already exists; pass overwrite=true to replace it. Writes into the workspace's protected 'system/' subfolder, or any path matched by the workspace file-protection policy, are refused. Parent directories are created if missing. On failure the error field is populated and written=false.")]
+    public async Task<FileWriteResult> WriteFile(
         [Description("Path to write. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,
         [Description("Complete file contents to write. Hard-capped at 1 MiB.")] string content,
         [Description("If true, replace an existing file. Defaults to false (error if the file exists).")] bool overwrite = false,
@@ -40,31 +40,32 @@ public sealed partial class WriteFileTool
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {
-            return resolution.Error;
+            return Failure(path, resolution.Error);
         }
 
         content ??= string.Empty;
         var byteCount = Encoding.UTF8.GetByteCount(content);
         if (byteCount > MaxContentBytes)
         {
-            return $"Refused: content is {byteCount} bytes; the per-write cap is {MaxContentBytes} bytes.";
+            return Failure(path, $"Refused: content is {byteCount} bytes; the per-write cap is {MaxContentBytes} bytes.");
         }
 
         if (Directory.Exists(resolution.FullPath))
         {
-            return $"Refused: '{path}' is an existing directory.";
+            return Failure(path, $"Refused: '{path}' is an existing directory.");
         }
 
         var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
         var protection = _protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Write);
         if (protection is not null)
         {
-            return ProtectionRefusal.Format(path, ProtectionMode.Write, protection);
+            return Failure(path, ProtectionRefusal.Format(path, ProtectionMode.Write, protection));
         }
 
-        if (File.Exists(resolution.FullPath) && !overwrite)
+        var existed = File.Exists(resolution.FullPath);
+        if (existed && !overwrite)
         {
-            return $"Refused: '{path}' already exists. Pass overwrite=true to replace it.";
+            return Failure(path, $"Refused: '{path}' already exists. Pass overwrite=true to replace it.");
         }
 
         try
@@ -75,15 +76,27 @@ public sealed partial class WriteFileTool
                 Directory.CreateDirectory(parent);
             }
             await File.WriteAllTextAsync(resolution.FullPath, content, Encoding.UTF8, cancellationToken);
-            LogWrite(workspace.AgentId, resolution.FullPath, byteCount, overwrite);
-            return $"Wrote {byteCount} bytes to '{path}'.";
+            LogWrite(workspace.AgentId, resolution.FullPath, byteCount, existed);
+            return new FileWriteResult(
+                Path: path,
+                Written: true,
+                BytesWritten: byteCount,
+                Overwritten: existed);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogWriteFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
-            return $"Write failed: {ex.Message}";
+            return Failure(path, $"Write failed: {ex.Message}");
         }
     }
+
+    private static FileWriteResult Failure(string path, string error)
+        => new(
+            Path: path,
+            Written: false,
+            BytesWritten: 0,
+            Overwritten: false,
+            Error: error);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' wrote {Bytes} bytes to '{Path}' (overwrite={Overwrite}).")]
     private partial void LogWrite(string? agentId, string path, int bytes, bool overwrite);
