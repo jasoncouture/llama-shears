@@ -227,17 +227,24 @@ public sealed class AgentInterruptGracefulTests
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(id, agentContext);
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var iterationRunner = new AgentIterationRunner(
+            NullLogger<AgentIterationRunner>.Instance,
+            timeProvider,
+            publisher,
+            dataContextFactory.Current!,
+            agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            contextProvider);
         var agent = new LlamaShears.Core.Agent(
             contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
-            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            agentContextProvider: contextProvider,
+            timeProvider: timeProvider,
             eventPublisher: publisher,
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(_lockManager, dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            iterationRunner: iterationRunner,
             agentServices: []);
         await agent.StartAsync(CancellationToken.None);
         return agent;

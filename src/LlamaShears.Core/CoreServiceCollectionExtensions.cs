@@ -129,6 +129,7 @@ public static class CoreServiceCollectionExtensions
 
         services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
         services.TryAddScoped<IAgentLock, AgentLock>();
+        services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
         services.TryAddScoped<IAgent, Agent>();
         services.TryAddTransient<LoopbackBearerHandler>();
         services.TryAddTransient<ModelContextProtocolRoutingHandler>();

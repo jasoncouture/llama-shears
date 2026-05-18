@@ -146,17 +146,24 @@ public sealed class AgentEventPublishingTests
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(agentId, ctx);
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var iterationRunner = new AgentIterationRunner(
+            NullLogger<AgentIterationRunner>.Instance,
+            timeProvider,
+            capturing,
+            dataContextFactory.Current!,
+            agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            BuildContextProvider(agentId));
         await using var agent = new LlamaShears.Core.Agent(
             contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: bus,
-            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            agentContextProvider: BuildContextProvider(agentId),
+            timeProvider: timeProvider,
             eventPublisher: capturing,
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            iterationRunner: iterationRunner,
             agentServices: []);
         await agent.StartAsync(CancellationToken.None);
 
