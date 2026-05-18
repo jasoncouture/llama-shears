@@ -13,8 +13,8 @@ using Microsoft.Extensions.Logging;
 namespace LlamaShears.Core;
 
 public sealed partial class AgentManager
-    : IAgentManager,
-      IHostedService,
+    : BackgroundService,
+      IAgentManager,
       IEventHandler<AgentLoadRequest>,
       IEventHandler<AgentUnloadRequest>,
       IAsyncDisposable
@@ -79,9 +79,8 @@ public sealed partial class AgentManager
             : null;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    public Task StopAsync(CancellationToken cancellationToken) => DisposeAsync().AsTask();
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        => Task.Delay(Timeout.Infinite, stoppingToken);
 
     public async ValueTask DisposeAsync()
     {
