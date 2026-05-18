@@ -21,6 +21,15 @@ Target agent id when the message is addressed to a specific agent; `null` for br
 
 Non-text payloads (e.g. images) attached to this message.
 
+### `SessionId`
+
+Sender's session id when the message originates from a non-default
+session (e.g. an ephemeral child session replying to its parent agent).
+`null` for default-session senders — user chat, slash
+commands, host-side injections. Receivers ignore this field today;
+it exists as audit/UI metadata and as the seam for future
+session-aware routing.
+
 ### `Text`
 
 User-supplied text.
