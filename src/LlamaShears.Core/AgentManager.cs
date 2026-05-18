@@ -193,7 +193,7 @@ public sealed partial class AgentManager
     {
         if (_loaded.Remove(name, out var oldSlot))
         {
-            await DisposeSlotAsync(oldSlot);
+            await oldSlot.DisposeAsync();
             _dataContextFactory.DeleteContext(name);
         }
 
@@ -213,7 +213,7 @@ public sealed partial class AgentManager
         {
             return false;
         }
-        await DisposeSlotAsync(slot);
+        await slot.DisposeAsync();
         _dataContextFactory.DeleteContext(name);
         LogAgentStopped(slot.Name);
         return true;
@@ -268,8 +268,9 @@ public sealed partial class AgentManager
                 var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
                 await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
                     cancellationToken);
+                // Resolve the language model eagerly so a missing/misconfigured provider surfaces here as an
+                // InvalidOperationException and TryBuildSlotAsync skips the agent — instead of failing mid-turn.
                 _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
-                _ = scope.ServiceProvider.GetRequiredService<CompactionAgentService>();
                 var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
                 await agent.StartAsync(cancellationToken);
 
@@ -287,11 +288,6 @@ public sealed partial class AgentManager
         }
     }
 
-    private static ValueTask DisposeSlotAsync(AgentSlot slot)
-    {
-        return slot.Scope.DisposeAsync();
-    }
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Started agent '{AgentId}'.")]
     private partial void LogAgentStarted(string agentId);
 
@@ -304,5 +300,11 @@ public sealed partial class AgentManager
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private partial void LogBuildFailure(string agentId, string message, Exception ex);
 
-    private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config, AsyncServiceScope Scope);
+    private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config, AsyncServiceScope Scope) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            await Scope.DisposeAsync();
+        }
+    }
 }

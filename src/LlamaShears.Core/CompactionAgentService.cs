@@ -11,7 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace LlamaShears.Core;
 
 public sealed partial class CompactionAgentService
-    : IEventHandler<AgentLifecycleMarker>,
+    : IAgentService,
+      IEventHandler<AgentLifecycleMarker>,
       IEventHandler<AgentCompactionRequest>,
       IDisposable
 {
@@ -49,6 +50,10 @@ public sealed partial class CompactionAgentService
             EventDeliveryMode.Awaited,
             this);
     }
+
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public ValueTask HandleAsync(IEventEnvelope<AgentLifecycleMarker> envelope, CancellationToken cancellationToken)
         => CompactAsync(force: false, cancellationToken);

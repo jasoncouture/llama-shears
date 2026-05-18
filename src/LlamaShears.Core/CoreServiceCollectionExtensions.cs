@@ -111,6 +111,9 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
         services.TryAddScoped<IContextCompactor, ContextCompactor>();
         services.TryAddScoped<CompactionAgentService>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Scoped<IAgentService, CompactionAgentService>(
+                sp => sp.GetRequiredService<CompactionAgentService>()));
 
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(modelContextProtocolConfigurationSection);
