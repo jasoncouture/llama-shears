@@ -1,5 +1,5 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
-using System.Text;
 using LlamaShears.Core.Abstractions.Paths;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -27,8 +27,8 @@ public sealed partial class ListFilesTool
     }
 
     [McpServerTool(Name = "file_list")]
-    [Description("Lists files and directories under the given path on the host filesystem. Directories are listed first (with a trailing slash), then files (with byte size). Output is capped; a truncation marker is appended when the listing exceeds the cap.")]
-    public async Task<string> ListFiles(
+    [Description("Lists files and directories under the given path on the host filesystem. Returns a JSON object with the resolved path, the recursion flag, an array of entries (each carries name, isDirectory, and sizeBytes for files), the entry count, a truncation flag, and the cap applied. Entries are ordered: directories first, then files, both alphabetically.")]
+    public async Task<FileListResult> ListFiles(
         [Description("Path to list. Relative paths resolve against the agent's workspace; absolute paths are honored as-is. Empty (default) lists the agent's workspace root.")] string path = "",
         [Description("If true, recurse into subdirectories. Defaults to false.")] bool recursive = false,
         [Description("Maximum number of entries to return. Defaults to 200; hard-capped at 1000.")] int maxEntries = DefaultMaxEntries,
@@ -54,34 +54,48 @@ public sealed partial class ListFilesTool
 
         if (File.Exists(resolved))
         {
-            return $"Refused: '{displayPath}' is a file. Use read_file instead.";
+            return Failure(displayPath, recursive, cap, $"Refused: '{displayPath}' is a file. Use file_read instead.");
         }
         if (!Directory.Exists(resolved))
         {
-            return $"Directory not found: {displayPath}";
+            return Failure(displayPath, recursive, cap, $"Directory not found: {displayPath}");
         }
 
         try
         {
-            var rendered = Render(resolved, workspace.Root, displayPath, recursive, cap, _protection, out var entryCount, out var truncated);
-            LogList(workspace.AgentId, resolved, entryCount, truncated);
-            return rendered;
+            var entries = Collect(resolved, workspace.Root, recursive, cap, _protection, out var truncated);
+            LogList(workspace.AgentId, resolved, entries.Length, truncated);
+            return new FileListResult(
+                Path: displayPath,
+                Recursive: recursive,
+                Entries: entries,
+                EntryCount: entries.Length,
+                Truncated: truncated,
+                Cap: cap);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogListFailed(workspace.AgentId, resolved, ex.Message, ex);
-            return $"List failed: {ex.Message}";
+            return Failure(displayPath, recursive, cap, $"List failed: {ex.Message}");
         }
     }
 
-    private static string Render(
+    private static FileListResult Failure(string path, bool recursive, int cap, string error)
+        => new(
+            Path: path,
+            Recursive: recursive,
+            Entries: [],
+            EntryCount: 0,
+            Truncated: false,
+            Cap: cap,
+            Error: error);
+
+    private static ImmutableArray<FileListEntry> Collect(
         string root,
         string workspaceRoot,
-        string requestedPath,
         bool recursive,
         int cap,
         IFileProtectionPolicy protection,
-        out int emitted,
         out bool truncated)
     {
         var option = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
@@ -94,37 +108,32 @@ public sealed partial class ListFilesTool
             .Where(p => protection.Match(workspaceRoot, p, FileType.File, ProtectionMode.Read) is null)
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase);
 
-        var builder = new StringBuilder();
-        builder.Append($"Listing '{requestedPath}':");
-
-        emitted = 0;
+        var builder = ImmutableArray.CreateBuilder<FileListEntry>();
         truncated = false;
 
         foreach (var dir in directories)
         {
-            if (emitted >= cap)
+            if (builder.Count >= cap)
             {
                 truncated = true;
                 break;
             }
-            var rel = Path.GetRelativePath(root, dir);
-            builder.Append('\n');
-            builder.Append(rel);
-            builder.Append('/');
-            emitted++;
+            builder.Add(new FileListEntry(
+                Name: Path.GetRelativePath(root, dir),
+                IsDirectory: true,
+                SizeBytes: null));
         }
 
         if (!truncated)
         {
             foreach (var file in files)
             {
-                if (emitted >= cap)
+                if (builder.Count >= cap)
                 {
                     truncated = true;
                     break;
                 }
-                var rel = Path.GetRelativePath(root, file);
-                long size = 0;
+                long? size = null;
                 try
                 {
                     size = new FileInfo(file).Length;
@@ -132,23 +141,14 @@ public sealed partial class ListFilesTool
                 catch (IOException)
                 {
                 }
-                builder.Append('\n');
-                builder.Append($"{rel} ({size} bytes)");
-                emitted++;
+                builder.Add(new FileListEntry(
+                    Name: Path.GetRelativePath(root, file),
+                    IsDirectory: false,
+                    SizeBytes: size));
             }
         }
 
-        if (emitted == 0)
-        {
-            builder.Append("\n(empty)");
-        }
-
-        if (truncated)
-        {
-            builder.Append($"\n[... truncated; exceeded {cap}-entry cap. Re-call with a tighter path or a higher max_entries (max {HardMaxEntries}) to see more.]");
-        }
-
-        return builder.ToString();
+        return builder.ToImmutable();
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' listed {Entries} entries under '{Path}' (truncated={Truncated}).")]
