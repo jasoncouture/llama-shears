@@ -31,8 +31,8 @@ public sealed partial class RegexReplaceFileTool
     }
 
     [McpServerTool(Name = "file_regex_replace")]
-    [Description("Edits a file in place by applying a .NET regex replacement. Returns the number of replacements made. Files in the protected 'system/' subfolder, or any path matched by the workspace file-protection policy (e.g. root '.gitignore'), cannot be edited. Hard-capped to files <= 4 MiB.")]
-    public async Task<string> RegexReplaceFile(
+    [Description("Edits a file in place by applying a .NET regex replacement. Returns a JSON object with the path, an edited flag, and replacement count. edited is true only when at least one match was replaced and the file was rewritten; a zero-match call returns edited=false with no error. Files in the protected 'system/' subfolder or matching the workspace file-protection policy cannot be edited. Hard-capped to files <= 4 MiB.")]
+    public async Task<FileRegexReplaceResult> RegexReplaceFile(
         [Description("Path to edit. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,
         [Description(".NET regex pattern to match.")] string pattern,
         [Description("Replacement string. Supports the standard .NET replacement tokens ($1, ${name}, $$, etc.).")] string replacement,
@@ -43,7 +43,7 @@ public sealed partial class RegexReplaceFileTool
     {
         if (string.IsNullOrEmpty(pattern))
         {
-            return "pattern is required.";
+            return Failure(path, "pattern is required.");
         }
         replacement ??= string.Empty;
 
@@ -51,29 +51,29 @@ public sealed partial class RegexReplaceFileTool
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {
-            return resolution.Error;
+            return Failure(path, resolution.Error);
         }
 
         if (Directory.Exists(resolution.FullPath))
         {
-            return $"Refused: '{path}' is a directory.";
+            return Failure(path, $"Refused: '{path}' is a directory.");
         }
         if (!File.Exists(resolution.FullPath))
         {
-            return $"File not found: {path}";
+            return Failure(path, $"File not found: {path}");
         }
 
         var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
         var protection = _protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Write);
         if (protection is not null)
         {
-            return ProtectionRefusal.Format(path, ProtectionMode.Write, protection);
+            return Failure(path, ProtectionRefusal.Format(path, ProtectionMode.Write, protection));
         }
 
         var info = new FileInfo(resolution.FullPath);
         if (info.Length > MaxFileBytes)
         {
-            return $"Refused: file is {info.Length} bytes; the regex-replace cap is {MaxFileBytes} bytes.";
+            return Failure(path, $"Refused: file is {info.Length} bytes; the regex-replace cap is {MaxFileBytes} bytes.");
         }
 
         Regex regex;
@@ -92,7 +92,7 @@ public sealed partial class RegexReplaceFileTool
         }
         catch (ArgumentException ex)
         {
-            return $"Invalid regex: {ex.Message}";
+            return Failure(path, $"Invalid regex: {ex.Message}");
         }
 
         try
@@ -111,25 +111,32 @@ public sealed partial class RegexReplaceFileTool
             }
             catch (RegexMatchTimeoutException ex)
             {
-                return $"Regex timed out after {ex.MatchTimeout.TotalSeconds:N0}s; tighten the pattern.";
+                return Failure(path, $"Regex timed out after {ex.MatchTimeout.TotalSeconds:N0}s; tighten the pattern.");
             }
 
             if (count == 0)
             {
                 LogReplace(workspace.AgentId, resolution.FullPath, count);
-                return $"No matches in '{path}'.";
+                return new FileRegexReplaceResult(Path: path, Edited: false, Replacements: 0);
             }
 
             await File.WriteAllTextAsync(resolution.FullPath, updated, Encoding.UTF8, cancellationToken);
             LogReplace(workspace.AgentId, resolution.FullPath, count);
-            return $"Replaced {count} match(es) in '{path}'.";
+            return new FileRegexReplaceResult(Path: path, Edited: true, Replacements: count);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogReplaceFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
-            return $"Replace failed: {ex.Message}";
+            return Failure(path, $"Replace failed: {ex.Message}");
         }
     }
+
+    private static FileRegexReplaceResult Failure(string path, string error)
+        => new(
+            Path: path,
+            Edited: false,
+            Replacements: 0,
+            Error: error);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' applied regex replace to '{Path}' ({Count} matches).")]
     private partial void LogReplace(string? agentId, string path, int count);
