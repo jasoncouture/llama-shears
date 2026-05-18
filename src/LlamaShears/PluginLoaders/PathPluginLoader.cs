@@ -37,7 +37,7 @@ public sealed class PathPluginLoader : IPluginLocator<IPlugin>
         {
             var name = Path.GetDirectoryName(path);
             name = Path.GetFileName(name ?? path);
-            yield return new PluginInformation(name, path, true);
+            yield return new PluginInformation(name, path);
         }
     }
 }

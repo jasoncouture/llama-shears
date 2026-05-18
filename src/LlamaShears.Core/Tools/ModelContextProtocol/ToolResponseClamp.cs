@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace LlamaShears.Core.Tools.ModelContextProtocol;
 
 internal static class ToolResponseClamp

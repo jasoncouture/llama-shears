@@ -21,7 +21,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentInterruptGracefulTests
@@ -209,9 +208,9 @@ public sealed class AgentInterruptGracefulTests
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
-        agentServices.AddSingleton<IContextCompactor>(compactor);
-        agentServices.AddSingleton<ILanguageModel>(model);
-        agentServices.AddSingleton<IModelContextProtocolServerRegistry>(TestAgentConfigs.BuildEmptyServerRegistry());
+        agentServices.AddSingleton(compactor);
+        agentServices.AddSingleton(model);
+        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
         agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
         agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
         agentServices.AddMemoryCache();

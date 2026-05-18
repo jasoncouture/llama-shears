@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Caching;
@@ -119,7 +120,7 @@ public sealed class AgentConfigProviderTests
         await Assert.That(result).IsTypeOf<SaveAgentConfigResult.Ok>();
         var ok = (SaveAgentConfigResult.Ok)result;
         await Assert.That(ok.NewHash).IsEqualTo(
-            Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(newContent))));
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(newContent))));
 
         var roundTripped = await fixture.Provider.ReadFileAsync("alpha", CancellationToken.None);
         await Assert.That(roundTripped!.Content).IsEqualTo(newContent);
@@ -201,7 +202,7 @@ public sealed class AgentConfigProviderTests
         public async Task<byte[]> WriteAgentAsync(string id, string body)
         {
             var path = Path.Combine(AgentsDir, $"{id}.json");
-            var bytes = System.Text.Encoding.UTF8.GetBytes(body);
+            var bytes = Encoding.UTF8.GetBytes(body);
             await File.WriteAllBytesAsync(path, bytes);
             File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
             return bytes;

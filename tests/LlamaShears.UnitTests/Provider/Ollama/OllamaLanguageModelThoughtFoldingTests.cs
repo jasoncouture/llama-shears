@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Provider;
 using LlamaShears.Provider.Ollama;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.ObjectPool;
@@ -117,7 +118,7 @@ public sealed class OllamaLanguageModelThoughtFoldingTests
             new ModelConfiguration(Id: new CompositeIdentity("ollama", "test"), Think: ThinkLevel.None),
             hostOptions,
             pool,
-            new Core.Provider.ModelTextFormatter(),
+            new ModelTextFormatter(),
             NullLogger<OllamaLanguageModel>.Instance);
 
         await foreach (var _ in model.PromptAsync(prompt, new PromptOptions(), CancellationToken.None))

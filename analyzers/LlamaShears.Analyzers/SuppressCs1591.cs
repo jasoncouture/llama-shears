@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using LlamaShears.Analyzers.Diagnostics;
 using Microsoft.CodeAnalysis;
@@ -40,6 +41,6 @@ public sealed class SuppressCs1591 : DiagnosticSuppressor
         {
             return false;
         }
-        return string.Equals(value, "false", System.StringComparison.OrdinalIgnoreCase);
+        return string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
     }
 }

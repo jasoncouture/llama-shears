@@ -84,7 +84,7 @@ public sealed class JsonLineContextStoreTests
         await context.AppendAsync(turn, CancellationToken.None);
 
         await Assert.That(context.Turns).Contains(turn);
-        await Assert.That(context.Entries).Contains((IContextEntry)turn);
+        await Assert.That(context.Entries).Contains(turn);
     }
 
     [Test]

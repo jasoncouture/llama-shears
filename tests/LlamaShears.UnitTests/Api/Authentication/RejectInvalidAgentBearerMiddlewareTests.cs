@@ -1,13 +1,12 @@
-using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Api.Authentication;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Api.Authentication;
 
 public sealed class RejectInvalidAgentBearerMiddlewareTests
@@ -38,7 +37,7 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
     public async Task PassesThroughWhenAValidBearerTokenIsSupplied()
     {
         var (root, store) = BuildPipeline();
-        var token = store.Issue(SampleAgent("alice"));
+        var token = store.Issue(SampleAgent());
 
         var (status, nextCalled) = await RunAsync(root, authHeader: $"Bearer {token}");
 

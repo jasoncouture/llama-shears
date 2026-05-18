@@ -1,14 +1,13 @@
 using System.Security.Claims;
-using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Api.Authentication;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Api.Authentication;
 
 public sealed class AgentBearerAuthenticationTests
@@ -59,7 +58,7 @@ public sealed class AgentBearerAuthenticationTests
     public async Task BearerHeaderWithAValidTokenAuthenticatesWithTheAgentIdentity()
     {
         var (root, store) = BuildPipeline();
-        var token = store.Issue(SampleAgent("alice"));
+        var token = store.Issue(SampleAgent());
 
         var result = await AuthenticateAsync(root, authHeader: $"Bearer {token}");
         var principal = result.Principal!;
@@ -75,7 +74,7 @@ public sealed class AgentBearerAuthenticationTests
     public async Task AValidTokenCanOnlyBeUsedOnce()
     {
         var (root, store) = BuildPipeline();
-        var token = store.Issue(SampleAgent("alice"));
+        var token = store.Issue(SampleAgent());
 
         var first = await AuthenticateAsync(root, authHeader: $"Bearer {token}");
         var second = await AuthenticateAsync(root, authHeader: $"Bearer {token}");

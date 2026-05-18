@@ -1,24 +1,8 @@
-﻿using System.Collections.Immutable;
-using System.Text.RegularExpressions;
-using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Persistence;
-using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Events.Agent;
-using LlamaShears.Core.Abstractions.Paths;
-using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Seeding;
-using LlamaShears.Core.Tools.ModelContextProtocol;
-using LlamaShears.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-
-namespace LlamaShears.Core;
+﻿namespace LlamaShears.Core;
 
 public static class ExecutionState
 {
-    private static ExecutionContext? _cleanSlateContext = null;
+    private static ExecutionContext? _cleanSlateContext;
     public static async ValueTask<ExecutionContext> CreateBlankContextAsync()
     {
         if (_cleanSlateContext is not null) return _cleanSlateContext.CreateCopy();

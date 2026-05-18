@@ -296,7 +296,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         return turns.Select((item, index) => (item, index))
             .Reverse()
             .TakeWhile(i => i.item.Role == ModelRole.User).Select(i => i.index)
-            .Cast<int>()
             .DefaultIfEmpty(0)
             .Last();
     }
@@ -304,7 +303,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
     // returns turns in reverse order, which doesn't matter because this is intended for memory searches, and order does not matter.
     private IEnumerable<string> GetMemorySearchQueries(IEnumerable<ModelTurn> turns)
     {
-        return turns.Reverse().Aggregate(new PromptSearchState(false, false, []), AggregateMemoryMessages, (state) => state.Turns.Select(i => i.Content));
+        return turns.Reverse().Aggregate(new PromptSearchState(false, false, []), AggregateMemoryMessages, state => state.Turns.Select(i => i.Content));
 
         PromptSearchState AggregateMemoryMessages(PromptSearchState state, ModelTurn turn)
         {

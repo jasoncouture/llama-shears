@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
-
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core.Abstractions.Agent;

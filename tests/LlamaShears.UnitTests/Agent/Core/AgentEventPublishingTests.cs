@@ -6,11 +6,11 @@ using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
+using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
-using LlamaShears.Core.Abstractions.SystemPrompt;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Sessions;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -19,7 +19,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentEventPublishingTests
@@ -130,8 +129,8 @@ public sealed class AgentEventPublishingTests
         agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton<IContextCompactor>(BuildNoOpCompactor());
         agentServices.AddSingleton<ILanguageModel>(model);
-        agentServices.AddSingleton<IModelContextProtocolServerRegistry>(TestAgentConfigs.BuildEmptyServerRegistry());
-        agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
+        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
+        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
         agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
         agentServices.AddMemoryCache();
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(

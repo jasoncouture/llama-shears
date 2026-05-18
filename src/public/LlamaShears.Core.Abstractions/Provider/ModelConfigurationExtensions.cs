@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core.Abstractions.Provider;

@@ -1,11 +1,10 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentTokenStoreTests
@@ -38,7 +37,7 @@ public sealed class AgentTokenStoreTests
     public async Task TryGetAgentInformationReturnsTheBoundAgentForAValidToken()
     {
         var store = BuildStore(new FakeTimeProvider());
-        var expected = SampleAgent("alice");
+        var expected = SampleAgent();
 
         var token = store.Issue(expected);
         var ok = store.TryGetAgentInformation(token, out var actual);

@@ -1,12 +1,11 @@
 using System.Security.Claims;
-using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Api.Authentication;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Api.Authentication;
 
 public sealed class DefaultAgentClaimsProjectorTests
@@ -16,7 +15,7 @@ public sealed class DefaultAgentClaimsProjectorTests
     {
         var projector = BuildProjector();
 
-        var principal = projector.Project(SampleAgent("alice"), AgentBearerDefaults.AuthenticationScheme);
+        var principal = projector.Project(SampleAgent(), AgentBearerDefaults.AuthenticationScheme);
 
         await Assert.That(principal.FindFirstValue(ClaimTypes.NameIdentifier)).IsEqualTo("alice");
     }
@@ -26,7 +25,7 @@ public sealed class DefaultAgentClaimsProjectorTests
     {
         var projector = BuildProjector();
 
-        var principal = projector.Project(SampleAgent("alice"), AgentBearerDefaults.AuthenticationScheme);
+        var principal = projector.Project(SampleAgent(), AgentBearerDefaults.AuthenticationScheme);
 
         await Assert.That(principal.Identity!.Name).IsEqualTo("alice");
     }

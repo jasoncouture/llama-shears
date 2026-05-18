@@ -53,7 +53,7 @@ public sealed class InferenceRunnerToolDispatchTests
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<ISystemPromptProvider>(),
             Substitute.For<IMemorySearcher>(),
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero)).Current!,
             model,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
@@ -91,7 +91,7 @@ public sealed class InferenceRunnerToolDispatchTests
             Substitute.For<IPromptContextProvider>(),
             Substitute.For<ISystemPromptProvider>(),
             Substitute.For<IMemorySearcher>(),
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "test")).Current!,
+            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero)).Current!,
             model,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(

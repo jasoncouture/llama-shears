@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Memory;
@@ -12,7 +13,6 @@ using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class ContextCompactorTests
@@ -217,7 +217,7 @@ public sealed class ContextCompactorTests
             Config: agentConfig,
             LanguageModel: new LanguageModelContext(
                 Turns: [.. prompt.Turns],
-                Entries: [.. prompt.Turns.Cast<IContextEntry>()],
+                Entries: [.. prompt.Turns],
                 ContextWindowTokenCount: totalEstimate),
             System: new SystemContext(),
             Tools: new ToolContext([]),

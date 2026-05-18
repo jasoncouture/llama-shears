@@ -1,5 +1,4 @@
 using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Agent;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 

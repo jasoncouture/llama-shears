@@ -70,7 +70,7 @@ public sealed partial class Agent : IAgent, IEventHandler<ChannelMessage>, IEven
     {
         if (_loop is not null)
         {
-            throw new InvalidOperationException($"Agent has already been started.");
+            throw new InvalidOperationException("Agent has already been started.");
         }
 
         var agentContext = await _contextStore.OpenAsync(_dataScope.GetAgentConfig().Id, cancellationToken);

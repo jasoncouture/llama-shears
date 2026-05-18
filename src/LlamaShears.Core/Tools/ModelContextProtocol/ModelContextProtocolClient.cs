@@ -2,8 +2,6 @@ using System.Collections.Immutable;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
-using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -51,7 +49,7 @@ public sealed class ModelContextProtocolClient : IModelContextProtocolClient
 
             var result = tools.Select(MapTool).ToImmutableArray();
             _cache.Set(key, new ToolListCacheEntry(Tools: result),
-                new MemoryCacheEntryOptions()
+                new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
                     SlidingExpiration = TimeSpan.FromMinutes(2)
@@ -62,7 +60,7 @@ public sealed class ModelContextProtocolClient : IModelContextProtocolClient
         {
             var exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
             _cache.Set(key, new ToolListCacheEntry(ExceptionDispatchInfo: exceptionDispatchInfo),
-                new MemoryCacheEntryOptions()
+                new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1),
                     SlidingExpiration = TimeSpan.FromSeconds(15)

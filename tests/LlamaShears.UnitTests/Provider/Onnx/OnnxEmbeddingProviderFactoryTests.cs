@@ -1,9 +1,9 @@
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Provider.Onnx.Embeddings;
 using Microsoft.Extensions.Options;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.Onnx;
 
 public sealed class OnnxEmbeddingProviderFactoryTests

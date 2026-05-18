@@ -1,7 +1,6 @@
 using System.Text.Json;
-using LlamaShears.Core.Abstractions.Provider;
-
 using LlamaShears.Core.Abstractions.Common;
+
 namespace LlamaShears.UnitTests.Serialization;
 
 public sealed class CompositeIdentityJsonConverterTests

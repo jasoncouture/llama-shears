@@ -129,7 +129,7 @@ public static class CoreServiceCollectionExtensions
         services.AddCron();
 
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
-        services.TryAddSingleton<IEphemeralSessionFactory, LlamaShears.Core.Sessions.EphemeralSessionFactory>();
+        services.TryAddSingleton<IEphemeralSessionFactory, EphemeralSessionFactory>();
 
         services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
         services.TryAddScoped<IAgentLock, AgentLock>();

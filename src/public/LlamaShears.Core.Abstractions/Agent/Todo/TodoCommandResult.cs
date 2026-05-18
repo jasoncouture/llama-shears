@@ -24,7 +24,7 @@ public sealed record TodoCommandResult(ImmutableArray<TodoItem> Items, TodoResul
         {
             TodoResultState.Success => "",
             TodoResultState.Corrupt => "WARNING: The todo list was corrupt, and a new empty list has been created",
-            TodoResultState.Refused => $"Refused",
+            TodoResultState.Refused => "Refused",
             _ => throw new InvalidOperationException($"Unknown enum value {State:G} = {State}") // Intent - Show both string and numeric value.
         };
 
