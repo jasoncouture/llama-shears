@@ -10,11 +10,11 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Sessions;
 
-internal sealed partial class EphemeralSession : IEphemeralSession
+public sealed partial class EphemeralSession : IEphemeralSession
 {
     internal const int DefaultMaxIterations = 8;
 
-    private readonly AsyncDataContextServiceScope _scope;
+    private readonly IAsyncDisposable _scope;
     private readonly IAgentContext _agentContext;
     private readonly IAgentIterationRunner _iterationRunner;
     private readonly IEventPublisher _eventPublisher;
@@ -26,7 +26,7 @@ internal sealed partial class EphemeralSession : IEphemeralSession
     private int _disposed;
 
     public EphemeralSession(
-        AsyncDataContextServiceScope scope,
+        IAsyncDisposable scope,
         IAgentContext agentContext,
         IAgentIterationRunner iterationRunner,
         IEventPublisher eventPublisher,
