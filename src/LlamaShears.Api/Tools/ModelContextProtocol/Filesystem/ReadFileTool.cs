@@ -29,15 +29,15 @@ public sealed partial class ReadFileTool
     }
 
     [McpServerTool(Name = "file_read")]
-    [Description("Reads a file from the host filesystem starting at startLine. Returns up to the shared response budget (~8 KiB / 100 lines); the tail of any longer file is truncated with a marker that reports the line range returned and the next startLine to resume from. Refuses files larger than 512 KiB outright.")]
-    public async Task<string> ReadFile(
+    [Description("Reads a file from the host filesystem starting at startLine. Returns a JSON object with the line range read, the content, an endOfFile flag, and (when more lines remain) a nextStartLine the caller should use to resume. Caps a single call to the shared response budget (~8 KiB / 100 lines); refuses files larger than 512 KiB outright. On failure, the error field is populated and content is empty.")]
+    public async Task<FileReadResult> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
-            return "path is required.";
+            return Failure(path ?? string.Empty, startLine, "path is required.");
         }
         if (startLine < 1)
         {
@@ -51,58 +51,75 @@ public sealed partial class ReadFileTool
 
         if (Directory.Exists(resolved))
         {
-            return $"Refused: '{path}' is a directory, not a file.";
+            return Failure(path, startLine, $"Refused: '{path}' is a directory, not a file.");
         }
         if (!File.Exists(resolved))
         {
-            return $"File not found: {path}";
+            return Failure(path, startLine, $"File not found: {path}");
         }
 
         var fileInfo = new FileInfo(resolved);
         if (fileInfo.Length > MaxFileBytes)
         {
             LogTooLarge(workspace.AgentId, resolved, fileInfo.Length);
-            return $"File is too large: {fileInfo.Length} bytes; the hard cap is {MaxFileBytes} bytes.";
+            return Failure(path, startLine, $"File is too large: {fileInfo.Length} bytes; the hard cap is {MaxFileBytes} bytes.");
         }
 
         var fullPath = _pathExpander.ExpandPath(path, workspace.Root);
         var protection = _protection.Match(workspace.Root, fullPath, FileType.File, ProtectionMode.Read);
         if (protection is not null)
         {
-            return ProtectionRefusal.Format(path, ProtectionMode.Read, protection);
+            return Failure(path, startLine, ProtectionRefusal.Format(path, ProtectionMode.Read, protection));
         }
 
         try
         {
             var result = await ReadRangeAsync(resolved, startLine, cancellationToken);
             LogRead(workspace.AgentId, resolved, result.Content.Length, result.Truncated);
-            return FormatResponse(result, startLine);
+            return BuildResponse(path, startLine, result);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogReadFailed(workspace.AgentId, resolved, ex.Message, ex);
-            return $"Read failed: {ex.Message}";
+            return Failure(path, startLine, $"Read failed: {ex.Message}");
         }
     }
 
-    private static string FormatResponse(ReadResult result, int requestedStartLine)
+    private static FileReadResult BuildResponse(string path, int requestedStartLine, ReadResult result)
     {
         if (result.LinesReturned == 0)
         {
-            return result.Truncated
-                ? $"[empty range; response budget reached before any line at startLine={requestedStartLine} fit. Re-call with a higher startLine to continue reading.]"
-                : $"[empty range; file has fewer than {requestedStartLine} lines.]";
+            return new FileReadResult(
+                Path: path,
+                StartLine: requestedStartLine,
+                EndLine: requestedStartLine - 1,
+                LinesReturned: 0,
+                EndOfFile: !result.Truncated,
+                NextStartLine: result.Truncated ? requestedStartLine + 1 : null,
+                Content: string.Empty);
         }
 
-        var firstLine = result.FirstLine;
-        var lastLine = result.LastLine;
-        if (!result.Truncated)
-        {
-            return $"{result.Content}\n[lines {firstLine}-{lastLine}; end of file.]";
-        }
-        var nextStart = lastLine + 1;
-        return $"{result.Content}\n[lines {firstLine}-{lastLine}; truncated, response budget reached. Re-call with startLine={nextStart} to continue reading.]";
+        var endOfFile = !result.Truncated;
+        return new FileReadResult(
+            Path: path,
+            StartLine: result.FirstLine,
+            EndLine: result.LastLine,
+            LinesReturned: result.LinesReturned,
+            EndOfFile: endOfFile,
+            NextStartLine: endOfFile ? null : result.LastLine + 1,
+            Content: result.Content);
     }
+
+    private static FileReadResult Failure(string path, int startLine, string error)
+        => new(
+            Path: path,
+            StartLine: startLine,
+            EndLine: startLine - 1,
+            LinesReturned: 0,
+            EndOfFile: true,
+            NextStartLine: null,
+            Content: string.Empty,
+            Error: error);
 
     private static async Task<ReadResult> ReadRangeAsync(
         string fullPath,
