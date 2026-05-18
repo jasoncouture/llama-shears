@@ -35,15 +35,10 @@ namespace LlamaShears.Core;
 public static class CoreServiceCollectionExtensions
 {
     public const string DefaultSystemTickConfigurationSection = "Frame";
-
     public const string DefaultAgentTokenStoreConfigurationSection = "AgentTokenStore";
-
     public const string DefaultShearsPathsConfigurationSection = "Paths";
-
     public const string DefaultFileParserCacheConfigurationSection = "FileParserCache";
-
     public const string DefaultModelContextProtocolConfigurationSection = "ModelContextProtocol";
-
     public const string DefaultMemoryConfigurationSection = "Memory";
 
     public static IServiceCollection AddCore(
@@ -59,90 +54,21 @@ public static class CoreServiceCollectionExtensions
 
         services.AddMemoryCache();
         services.AddShearsPaths();
-        services.TryAddSingleton(typeof(IShearsCache<>), typeof(ShearsCache<>));
-        services.TryAddSingleton(typeof(IFileParserCache<>), typeof(FileParserCache<>));
-
-        services.AddOptions<FileParserCacheOptions>()
-            .BindConfiguration(fileParserCacheConfigurationSection)
-            .Validate(o => o.TimeToLive > TimeSpan.Zero, "FileParserCache:TimeToLive must be strictly positive.")
-            .ValidateOnStart();
-
-        services.AddOptions<SystemTickOptions>()
-            .BindConfiguration(systemTickConfigurationSection);
-
-        services.AddHostedService<SystemTickService>();
-
-        services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IUriMerger, UriMerger>();
-        services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
-        services.TryAddSingleton<ITemplateRenderer, TemplateRenderer>();
-        services.TryAddSingleton<ITemplateFileLocator, TemplateFileLocator>();
-        services.AddOptions<FilesystemSystemPromptOptions>();
-        services.TryAddSingleton<ISystemPromptProvider, FilesystemSystemPromptProvider>();
-        services.AddOptions<FilesystemPromptContextOptions>();
-        services.TryAddSingleton<IPromptContextProvider, FilesystemPromptContextProvider>();
-        services.TryAddSingleton<IContextStore, JsonLineContextStore>();
-        services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
-        services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
-        services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
-        services.TryAddScoped<IInferenceRunner, InferenceRunner>();
-        services.TryAddScoped<ILanguageModel>(sp =>
-        {
-            var dataScope = sp.GetRequiredService<IDataContextScope>();
-            var modelConfig = dataScope.GetModelConfiguration();
-            var providerFactory = sp.GetServices<IProviderFactory>()
-                .FirstOrDefault(p => string.Equals(p.Name, modelConfig.Id.Provider, StringComparison.OrdinalIgnoreCase))
-                ?? throw new InvalidOperationException(
-                    $"No provider factory registered with name '{modelConfig.Id.Provider}'.");
-            return providerFactory.CreateModel(modelConfig);
-        });
-        services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
-        services.TryAddScoped<IDataContextScope>(sp =>
-        {
-            var scope = sp.GetRequiredService<IDataContextFactory>().Current ??
-                        throw new InvalidOperationException("No ambient data scope is available");
-            return scope;
-        });
-        services.TryAddScoped<ITodoStorage, TodoStorage>();
-        services.AddSingletonDataProvider<HostDataProvider>();
-        services.AddScopedDataProvider<TodoListDataProvider>();
-        services.AddScopedDataProvider<WallClockDataProvider>();
-        services.AddScopedDataProvider<WorkspaceContextDataProvider>();
-        services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
-        services.TryAddScoped<IContextCompactor, ContextCompactor>();
-        services.TryAddScoped<CompactionAgentService>();
-        services.TryAddEnumerable(
-            ServiceDescriptor.Scoped<IAgentService, CompactionAgentService>(
-                sp => sp.GetRequiredService<CompactionAgentService>()));
-
-        services.AddOptions<ModelContextProtocolOptions>()
-            .BindConfiguration(modelContextProtocolConfigurationSection);
-
-        services.AddOptions<MemoryServiceOptions>()
-            .BindConfiguration(DefaultMemoryConfigurationSection);
-        services.TryAddSingleton<SqliteMemoryService>();
-        services.TryAddSingleton<IMemoryStore>(sp => sp.GetRequiredService<SqliteMemoryService>());
-        services.TryAddSingleton<IMemorySearcher>(sp => sp.GetRequiredService<SqliteMemoryService>());
-        services.TryAddSingleton<IMemoryIndexer>(sp => sp.GetRequiredService<SqliteMemoryService>());
-        services.AddHostedService<MemoryIndexerBackgroundService>();
-
+        services.AddCommonServices();
+        services.AddCaching(fileParserCacheConfigurationSection);
+        services.AddSystemTick(systemTickConfigurationSection);
+        services.AddTemplating();
+        services.AddPromptProviders();
+        services.AddContextStore();
+        services.AddDataContext();
+        services.AddInference();
+        services.AddTodo();
+        services.AddCompaction();
+        services.AddMemoryStore();
         services.AddCron();
-
-        services.TryAddSingleton<ISessionFactory, SessionFactory>();
-        services.TryAddSingleton<IEphemeralSessionFactory, EphemeralSessionFactory>();
-
-        services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
-        services.TryAddScoped<IAgentLock, AgentLock>();
-        services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
-        services.TryAddScoped<IAgent, Agent>();
-        services.TryAddTransient<LoopbackBearerHandler>();
-        services.TryAddTransient<ModelContextProtocolRoutingHandler>();
-        services.AddHttpClient<IModelContextProtocolClient, ModelContextProtocolClient>()
-            .AddHttpMessageHandler<ModelContextProtocolRoutingHandler>()
-            .AddHttpMessageHandler<LoopbackBearerHandler>();
-        services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
-        services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
-        services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();
+        services.AddSessions();
+        services.AddAgentRuntime();
+        services.AddModelContextProtocolPlumbing(modelContextProtocolConfigurationSection);
 
         return services;
     }
@@ -153,10 +79,11 @@ public static class CoreServiceCollectionExtensions
 
         services.AddHostStartupTaskRunner();
         services.AddShearsPaths();
-        services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
+        services.AddCommonServices();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
         services.TryAddSingleton<AgentManager>();
         services.TryAddSingleton<IAgentManager>(sp => sp.GetRequiredService<AgentManager>());
+        services.AddHostedService(sp => sp.GetRequiredService<AgentManager>());
         services.AddHostedService<AgentConfigSupervisor>();
 
         return services;
@@ -192,6 +119,152 @@ public static class CoreServiceCollectionExtensions
             .BindConfiguration(configurationSection);
         services.TryAddSingleton<IShearsPaths, ShearsPaths>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddAgentService<T>(this IServiceCollection services)
+        where T : class, IAgentService
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IAgentService, T>());
+        return services;
+    }
+
+    private static IServiceCollection AddCommonServices(this IServiceCollection services)
+    {
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IUriMerger, UriMerger>();
+        services.TryAddSingleton<IDirectorySeeder, DirectorySeeder>();
+        return services;
+    }
+
+    private static IServiceCollection AddCaching(this IServiceCollection services, string section)
+    {
+        services.TryAddSingleton(typeof(IShearsCache<>), typeof(ShearsCache<>));
+        services.TryAddSingleton(typeof(IFileParserCache<>), typeof(FileParserCache<>));
+        services.AddOptions<FileParserCacheOptions>()
+            .BindConfiguration(section)
+            .Validate(o => o.TimeToLive > TimeSpan.Zero, "FileParserCache:TimeToLive must be strictly positive.")
+            .ValidateOnStart();
+        return services;
+    }
+
+    private static IServiceCollection AddSystemTick(this IServiceCollection services, string section)
+    {
+        services.AddOptions<SystemTickOptions>()
+            .BindConfiguration(section);
+        services.AddHostedService<SystemTickService>();
+        return services;
+    }
+
+    private static IServiceCollection AddTemplating(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ITemplateRenderer, TemplateRenderer>();
+        services.TryAddSingleton<ITemplateFileLocator, TemplateFileLocator>();
+        return services;
+    }
+
+    private static IServiceCollection AddPromptProviders(this IServiceCollection services)
+    {
+        services.AddOptions<FilesystemSystemPromptOptions>();
+        services.TryAddSingleton<ISystemPromptProvider, FilesystemSystemPromptProvider>();
+        services.AddOptions<FilesystemPromptContextOptions>();
+        services.TryAddSingleton<IPromptContextProvider, FilesystemPromptContextProvider>();
+        return services;
+    }
+
+    private static IServiceCollection AddContextStore(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IContextStore, JsonLineContextStore>();
+        services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
+        services.TryAddSingleton<IAgentContextProvider, AgentContextProvider>();
+        return services;
+    }
+
+    private static IServiceCollection AddDataContext(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
+        services.TryAddScoped<IDataContextScope>(sp =>
+            sp.GetRequiredService<IDataContextFactory>().Current
+                ?? throw new InvalidOperationException("No ambient data scope is available"));
+        services.AddSingletonDataProvider<HostDataProvider>();
+        services.AddScopedDataProvider<TodoListDataProvider>();
+        services.AddScopedDataProvider<WallClockDataProvider>();
+        services.AddScopedDataProvider<WorkspaceContextDataProvider>();
+        return services;
+    }
+
+    private static IServiceCollection AddInference(this IServiceCollection services)
+    {
+        services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
+        services.TryAddScoped<IInferenceRunner, InferenceRunner>();
+        services.TryAddScoped<ILanguageModel>(sp =>
+        {
+            var dataScope = sp.GetRequiredService<IDataContextScope>();
+            var modelConfig = dataScope.GetModelConfiguration();
+            var providerFactory = sp.GetServices<IProviderFactory>()
+                .FirstOrDefault(p => string.Equals(p.Name, modelConfig.Id.Provider, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException(
+                    $"No provider factory registered with name '{modelConfig.Id.Provider}'.");
+            return providerFactory.CreateModel(modelConfig);
+        });
+        services.TryAddSingleton<IModelTextFormatter, ModelTextFormatter>();
+        return services;
+    }
+
+    private static IServiceCollection AddTodo(this IServiceCollection services)
+    {
+        services.TryAddScoped<ITodoStorage, TodoStorage>();
+        return services;
+    }
+
+    private static IServiceCollection AddCompaction(this IServiceCollection services)
+    {
+        services.TryAddScoped<IContextCompactor, ContextCompactor>();
+        services.AddAgentService<CompactionAgentService>();
+        return services;
+    }
+
+    private static IServiceCollection AddMemoryStore(this IServiceCollection services)
+    {
+        services.AddOptions<MemoryServiceOptions>()
+            .BindConfiguration(DefaultMemoryConfigurationSection);
+        services.TryAddSingleton<SqliteMemoryService>();
+        services.TryAddTransient<IMemoryStore>(sp => sp.GetRequiredService<SqliteMemoryService>());
+        services.TryAddTransient<IMemorySearcher>(sp => sp.GetRequiredService<SqliteMemoryService>());
+        services.TryAddTransient<IMemoryIndexer>(sp => sp.GetRequiredService<SqliteMemoryService>());
+        services.AddHostedService<MemoryIndexerBackgroundService>();
+        return services;
+    }
+
+    private static IServiceCollection AddSessions(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ISessionFactory, SessionFactory>();
+        services.TryAddSingleton<IEphemeralSessionFactory, EphemeralSessionFactory>();
+        return services;
+    }
+
+    private static IServiceCollection AddAgentRuntime(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
+        services.TryAddScoped<IAgentLock, AgentLock>();
+        services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
+        services.TryAddScoped<IAgent, Agent>();
+        return services;
+    }
+
+    private static IServiceCollection AddModelContextProtocolPlumbing(this IServiceCollection services, string section)
+    {
+        services.AddOptions<ModelContextProtocolOptions>()
+            .BindConfiguration(section);
+        services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
+        services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
+        services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();
+        services.TryAddTransient<LoopbackBearerHandler>();
+        services.TryAddTransient<ModelContextProtocolRoutingHandler>();
+        services.AddHttpClient<IModelContextProtocolClient, ModelContextProtocolClient>()
+            .AddHttpMessageHandler<ModelContextProtocolRoutingHandler>()
+            .AddHttpMessageHandler<LoopbackBearerHandler>();
         return services;
     }
 }

@@ -21,9 +21,5 @@ Parameter key for the asymmetric query prefix.
 
 ### `GetDocumentPrefix`([ModelConfiguration](ModelConfiguration.md) configuration)
 
-Returns the configured document prefix, or `null` when absent or non-string.
-
 ### `GetQueryPrefix`([ModelConfiguration](ModelConfiguration.md) configuration)
-
-Returns the configured query prefix, or `null` when absent or non-string.
 
