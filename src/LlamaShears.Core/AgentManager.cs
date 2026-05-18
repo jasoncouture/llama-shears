@@ -74,7 +74,9 @@ public sealed partial class AgentManager
     public IAgent? Get(string agentId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        return _loaded.TryGetValue(agentId, out var slot) ? slot.Agent : null;
+        return _loaded.TryGetValue(agentId, out var slot)
+            ? slot.Scope.ServiceProvider.GetRequiredService<IAgent>()
+            : null;
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -120,7 +122,7 @@ public sealed partial class AgentManager
         {
             if (_loaded.TryGetValue(name, out var existing))
             {
-                if (string.Equals(existing.Config.Hash, config.Hash, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(existing.ConfigHash, config.Hash, StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }
@@ -274,7 +276,7 @@ public sealed partial class AgentManager
                 var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
                 await agent.StartAsync(cancellationToken);
 
-                return new AgentSlot(name, agent, config, scope);
+                return new AgentSlot(name, config.Hash, scope);
             }
             catch
             {
@@ -300,7 +302,7 @@ public sealed partial class AgentManager
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private partial void LogBuildFailure(string agentId, string message, Exception ex);
 
-    private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config, AsyncServiceScope Scope) : IAsyncDisposable
+    private sealed record AgentSlot(string Name, string ConfigHash, AsyncServiceScope Scope) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
