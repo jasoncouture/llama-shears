@@ -240,6 +240,38 @@ public sealed class JsonLineContextStoreTests
         await Assert.That(agents).IsEquivalentTo(["alice", "bob"]);
     }
 
+    [Test]
+    public async Task ListAgentsAsyncSkipsTopLevelSessionGuidFolders()
+    {
+        using var fixture = new Fixture();
+        await fixture.Store.OpenAsync("alice", CancellationToken.None);
+        var rogueGuid = Guid.NewGuid();
+        Directory.CreateDirectory(Path.Combine(
+            fixture.Paths.GetPath(PathKind.Context, ensureExists: true),
+            rogueGuid.ToString("n")));
+
+        var agents = await fixture.Store.ListAgentsAsync(CancellationToken.None);
+
+        await Assert.That(agents).IsEquivalentTo(["alice"]);
+    }
+
+    [Test]
+    public async Task NonDefaultSessionPersistsUnderGuidSubfolderAndDoesNotAppearAsAgent()
+    {
+        using var fixture = new Fixture();
+        var sessionId = Guid.NewGuid();
+        var context = await fixture.Store.OpenAsync("alice", sessionId, CancellationToken.None);
+        await context.AppendAsync(Turn(ModelRole.User, "hello", DateTimeOffset.UnixEpoch), CancellationToken.None);
+
+        var sessionFolder = Path.Combine(fixture.AgentFolder("alice"), sessionId.ToString("n"));
+        await Assert.That(Directory.Exists(sessionFolder)).IsTrue();
+        await Assert.That(File.Exists(Path.Combine(sessionFolder, "current.json"))).IsTrue();
+
+        var agents = await fixture.Store.ListAgentsAsync(CancellationToken.None);
+        await Assert.That(agents).Contains("alice");
+        await Assert.That(agents).DoesNotContain(sessionId.ToString("n"));
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly string _root;
