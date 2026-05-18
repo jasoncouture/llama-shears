@@ -15,7 +15,9 @@ public sealed class AppendFileToolTests
 
         var result = await tool.AppendFile("log.txt", "second\n", CancellationToken.None);
 
-        await Assert.That(result).Contains("Appended");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Appended).IsTrue();
+        await Assert.That(result.BytesAppended).IsEqualTo(7);
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("log.txt"))).IsEqualTo("first\nsecond\n");
     }
 
@@ -27,7 +29,9 @@ public sealed class AppendFileToolTests
 
         var result = await tool.AppendFile("nested/log.txt", "hello", CancellationToken.None);
 
-        await Assert.That(result).Contains("Appended");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Appended).IsTrue();
+        await Assert.That(result.BytesAppended).IsEqualTo(5);
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("nested", "log.txt"))).IsEqualTo("hello");
     }
 
@@ -39,6 +43,7 @@ public sealed class AppendFileToolTests
 
         var result = await tool.AppendFile("system/notes.md", "hi", CancellationToken.None);
 
-        await Assert.That(result).Contains("'system/'");
+        await Assert.That(result.Appended).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("'system/'");
     }
 }
