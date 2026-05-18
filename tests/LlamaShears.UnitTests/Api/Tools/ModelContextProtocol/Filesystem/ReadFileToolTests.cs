@@ -22,7 +22,6 @@ public sealed class ReadFileToolTests
         await Assert.That(result.EndLine).IsEqualTo(3);
         await Assert.That(result.LinesReturned).IsEqualTo(3);
         await Assert.That(result.EndOfFile).IsTrue();
-        await Assert.That(result.NextStartLine).IsNull();
         await Assert.That(result.CreatedAt).IsNotNull();
         await Assert.That(result.ModifiedAt).IsNotNull();
         await Assert.That(result.ModifiedAt!.Value).IsGreaterThanOrEqualTo(before);
@@ -42,11 +41,10 @@ public sealed class ReadFileToolTests
         await Assert.That(result.StartLine).IsEqualTo(3);
         await Assert.That(result.EndLine).IsEqualTo(5);
         await Assert.That(result.EndOfFile).IsTrue();
-        await Assert.That(result.NextStartLine).IsNull();
     }
 
     [Test]
-    public async Task LargeFileTruncatesAndExposesNextStartLine()
+    public async Task LargeFileTruncatesAndReportsContinuableRange()
     {
         using var temp = TempWorkspace.Create();
         const int totalLines = 5000;
@@ -60,14 +58,13 @@ public sealed class ReadFileToolTests
         await Assert.That(first.Error).IsNull();
         await Assert.That(first.StartLine).IsEqualTo(1);
         await Assert.That(first.EndOfFile).IsFalse();
-        await Assert.That(first.NextStartLine).IsNotNull();
         await Assert.That(first.LinesReturned).IsGreaterThan(0);
-        await Assert.That(first.NextStartLine!.Value).IsEqualTo(first.EndLine + 1);
+        await Assert.That(first.EndLine).IsGreaterThanOrEqualTo(first.StartLine);
         await Assert.That(first.Content).StartsWith("L00001");
     }
 
     [Test]
-    public async Task ResumeFromReportedNextStartLineEventuallyReachesEndOfFile()
+    public async Task ResumeWithEndLinePlusOneEventuallyReachesEndOfFile()
     {
         using var temp = TempWorkspace.Create();
         const int totalLines = 5000;
@@ -85,13 +82,12 @@ public sealed class ReadFileToolTests
             await Assert.That(result.Error).IsNull();
             await Assert.That(result.StartLine).IsEqualTo(next);
             await Assert.That(result.LinesReturned).IsGreaterThan(0);
-            next = result.NextStartLine ?? result.EndLine + 1;
+            next = result.EndLine + 1;
             iterations++;
             await Assert.That(iterations).IsLessThanOrEqualTo(totalLines);
         } while (!result.EndOfFile);
 
         await Assert.That(result.EndLine).IsEqualTo(totalLines);
-        await Assert.That(result.NextStartLine).IsNull();
     }
 
     [Test]
@@ -107,7 +103,6 @@ public sealed class ReadFileToolTests
         await Assert.That(result.LinesReturned).IsEqualTo(0);
         await Assert.That(result.Content).IsEqualTo(string.Empty);
         await Assert.That(result.EndOfFile).IsTrue();
-        await Assert.That(result.NextStartLine).IsNull();
     }
 
     [Test]

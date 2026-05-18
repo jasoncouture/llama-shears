@@ -27,7 +27,7 @@ public sealed partial class ReadFileTool
     }
 
     [McpServerTool(Name = "file_read")]
-    [Description("Reads a file from the host filesystem starting at startLine. Returns a JSON object with the line range read, the content, the file's createdAt/modifiedAt timestamps (local time), an endOfFile flag, and (when more lines remain) a nextStartLine the caller should use to resume. A single call is capped by the shared response budget; re-call with the reported nextStartLine to continue until endOfFile is true. On failure, the error field is populated and content is empty.")]
+    [Description("Reads a file from the host filesystem starting at startLine. Returns a JSON object with the line range read, the content, the file's createdAt/modifiedAt timestamps (local time), and an endOfFile flag. A single call is capped by the shared response budget; when endOfFile is false, re-call with startLine = endLine + 1 to continue. On failure, the error field is populated and content is empty.")]
     public async Task<FileReadResult> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,
         [Description("First line to return, 1-indexed. Defaults to 1 (start of file).")] int startLine = 1,
@@ -95,20 +95,17 @@ public sealed partial class ReadFileTool
                 EndLine: requestedStartLine - 1,
                 LinesReturned: 0,
                 EndOfFile: !result.Truncated,
-                NextStartLine: result.Truncated ? requestedStartLine + 1 : null,
                 Content: string.Empty,
                 CreatedAt: createdAt,
                 ModifiedAt: modifiedAt);
         }
 
-        var endOfFile = !result.Truncated;
         return new FileReadResult(
             Path: path,
             StartLine: result.FirstLine,
             EndLine: result.LastLine,
             LinesReturned: result.LinesReturned,
-            EndOfFile: endOfFile,
-            NextStartLine: endOfFile ? null : result.LastLine + 1,
+            EndOfFile: !result.Truncated,
             Content: result.Content,
             CreatedAt: createdAt,
             ModifiedAt: modifiedAt);
@@ -121,7 +118,6 @@ public sealed partial class ReadFileTool
             EndLine: startLine - 1,
             LinesReturned: 0,
             EndOfFile: true,
-            NextStartLine: null,
             Content: string.Empty,
             Error: error);
 

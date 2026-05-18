@@ -8,7 +8,6 @@ public sealed record FileReadResult(
     int EndLine,
     int LinesReturned,
     bool EndOfFile,
-    int? NextStartLine,
     string Content,
     DateTimeOffset? CreatedAt = null,
     DateTimeOffset? ModifiedAt = null,
