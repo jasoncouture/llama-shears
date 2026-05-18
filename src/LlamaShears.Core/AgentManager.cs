@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using System.Text.RegularExpressions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
@@ -8,54 +6,60 @@ using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Seeding;
 using LlamaShears.Core.Tools.ModelContextProtocol;
-using LlamaShears.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEventHandler<SystemTick>, IAsyncDisposable
+public sealed partial class AgentManager
+    : IAgentManager,
+      IHostedService,
+      IEventHandler<AgentLoadRequest>,
+      IEventHandler<AgentUnloadRequest>,
+      IAsyncDisposable
 {
     private const string WorkspaceTemplateSubpath = "workspace";
 
-    private readonly IEventBus _bus;
     private readonly IEventPublisher _publisher;
-    private readonly IAgentConfigProvider _configs;
     private readonly ILogger<AgentManager> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
-    private readonly IHostApplicationLifetime _appLifetime;
 
     private readonly Dictionary<string, AgentSlot> _loaded =
         new Dictionary<string, AgentSlot>(StringComparer.OrdinalIgnoreCase);
 
-    private IDisposable? _subscription;
-    private CancellationTokenRegistration _appStartedRegistration;
-    private int _reconciling;
+    private readonly SemaphoreSlim _mutex = new SemaphoreSlim(1, 1);
+    private readonly IDisposable _loadSubscription;
+    private readonly IDisposable _unloadSubscription;
     private readonly IDataContextFactory _dataContextFactory;
+    private int _disposed;
 
     public AgentManager(
         IEventBus bus,
         IEventPublisher publisher,
-        IAgentConfigProvider configs,
         ILoggerFactory loggerFactory,
         IServiceScopeFactory scopeFactory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
-        IDataContextFactory dataContextFactory,
-        IHostApplicationLifetime appLifetime)
+        IDataContextFactory dataContextFactory)
     {
-        _bus = bus;
         _publisher = publisher;
-        _configs = configs;
         _logger = loggerFactory.CreateLogger<AgentManager>();
         _scopeFactory = scopeFactory;
         _paths = paths;
         _seeder = seeder;
         _dataContextFactory = dataContextFactory;
-        _appLifetime = appLifetime;
+
+        _loadSubscription = bus.Subscribe<AgentLoadRequest>(
+            $"{Event.WellKnown.Command.AgentLoad}:+",
+            EventDeliveryMode.Awaited,
+            this);
+        _unloadSubscription = bus.Subscribe<AgentUnloadRequest>(
+            $"{Event.WellKnown.Command.AgentUnload}:+",
+            EventDeliveryMode.Awaited,
+            this);
     }
 
     public IReadOnlyList<string> AgentIds
@@ -73,94 +77,87 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         return _loaded.TryGetValue(agentId, out var slot) ? slot.Agent : null;
     }
 
-    public ValueTask StartAsync(CancellationToken cancellationToken)
-    {
-        _appStartedRegistration = _appLifetime.ApplicationStarted.Register(OnApplicationStarted);
-        return ValueTask.CompletedTask;
-    }
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private void OnApplicationStarted()
-    {
-        _subscription = _bus.Subscribe(
-            Event.WellKnown.Host.Tick,
-            EventDeliveryMode.FireAndForget,
-            this);
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await ReconcileIfIdleAsync(_appLifetime.ApplicationStopping);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                LogInitialReconcileFailure(ex);
-            }
-        });
-    }
+    public Task StopAsync(CancellationToken cancellationToken) => DisposeAsync().AsTask();
 
     public async ValueTask DisposeAsync()
     {
-        _appStartedRegistration.Dispose();
-        _subscription?.Dispose();
-        _subscription = null;
-
-        foreach (var name in _loaded.Keys.ToArray())
-        {
-            await StopAsync(name);
-        }
-    }
-
-    public ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
-        => ReconcileIfIdleAsync(cancellationToken);
-
-    private async ValueTask ReconcileIfIdleAsync(CancellationToken cancellationToken)
-    {
-        if (Interlocked.CompareExchange(ref _reconciling, 1, 0) != 0)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
+        _loadSubscription.Dispose();
+        _unloadSubscription.Dispose();
+
+        await _mutex.WaitAsync();
         try
         {
-            await ReconcileAsync(cancellationToken);
+            foreach (var name in _loaded.Keys.ToArray())
+            {
+                await StopAgentAsync(name);
+            }
         }
         finally
         {
-            Interlocked.Exchange(ref _reconciling, 0);
+            _mutex.Release();
         }
+        _mutex.Dispose();
     }
 
-    private async Task ReconcileAsync(CancellationToken cancellationToken)
+    public async ValueTask HandleAsync(IEventEnvelope<AgentLoadRequest> envelope, CancellationToken cancellationToken)
     {
-        var present = new Dictionary<string, AgentConfig>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in _configs.ListAgentIds())
+        var name = envelope.Type.Id;
+        if (string.IsNullOrWhiteSpace(name) || envelope.Data is null)
         {
-            var config = await _configs.GetConfigAsync(name, cancellationToken);
-            if (config is not null)
-            {
-                present[name] = config;
-            }
+            return;
         }
+        var config = envelope.Data.Config;
 
-        foreach (var (name, config) in present)
+        await _mutex.WaitAsync(cancellationToken);
+        try
         {
-            if (!_loaded.TryGetValue(name, out var slot))
+            if (_loaded.TryGetValue(name, out var existing))
+            {
+                if (string.Equals(existing.Config.Hash, config.Hash, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+                await ReloadAsync(name, config, cancellationToken);
+            }
+            else
             {
                 await StartAsync(name, config, cancellationToken);
             }
-            else if (!string.Equals(slot.Config.Hash, config.Hash, StringComparison.OrdinalIgnoreCase))
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
+    public async ValueTask HandleAsync(IEventEnvelope<AgentUnloadRequest> envelope, CancellationToken cancellationToken)
+    {
+        var name = envelope.Type.Id;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+        await _mutex.WaitAsync(cancellationToken);
+        try
+        {
+            if (await StopAgentAsync(name))
             {
-                await ReloadAsync(name, config, cancellationToken);
+                await _publisher.PublishAsync(
+                    Event.WellKnown.Agent.Unloaded with { Id = name },
+                    AgentLifecycleMarker.Instance,
+                    cancellationToken);
             }
         }
-
-        foreach (var name in _loaded.Keys.Where(k => !present.ContainsKey(k)).ToArray())
+        finally
         {
-            await StopAsync(name);
+            _mutex.Release();
         }
     }
 
@@ -183,10 +180,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             cancellationToken);
     }
 
-    private Task<AgentSlot?> ReloadBuildAsync(string name, AgentConfig config,
-        CancellationToken cancellationToken)
-        => TryBuildSlotAsync(name, config, cancellationToken);
-
     private void SeedAgentWorkspace(AgentConfig config)
     {
         var source = _paths.GetPath(PathKind.Templates, WorkspaceTemplateSubpath);
@@ -204,7 +197,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             _dataContextFactory.DeleteContext(name);
         }
 
-        var newSlot = await ReloadBuildAsync(name, config, cancellationToken);
+        var newSlot = await TryBuildSlotAsync(name, config, cancellationToken);
         if (newSlot is null)
         {
             return;
@@ -214,14 +207,16 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         LogAgentReloaded(name);
     }
 
-    private async Task StopAsync(string name)
+    private async Task<bool> StopAgentAsync(string name)
     {
-        if (_loaded.Remove(name, out var slot))
+        if (!_loaded.Remove(name, out var slot))
         {
-            await DisposeSlotAsync(slot);
-            _dataContextFactory.DeleteContext(name);
-            LogAgentStopped(slot.Name);
+            return false;
         }
+        await DisposeSlotAsync(slot);
+        _dataContextFactory.DeleteContext(name);
+        LogAgentStopped(slot.Name);
+        return true;
     }
 
     private async Task<AgentSlot?> TryBuildSlotAsync(
@@ -258,7 +253,7 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
             // And we now look like we are a fresh process or thread!
 
             var modelConfig = config.Model;
-            
+
             var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
                 {
                     { AgentConfig.DataKey, config },
@@ -288,18 +283,12 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
         }
         finally
         {
-            // We don't need to worry about cleaning up after ourselves, the data context lives within the execution
-            // context as an async local, once all are gone, the weak reference gets GC'd and it gets cleaned up.
-            // We're going back to our caller, with the state they called us in.
             ExecutionContext.Restore(previousContext!);
         }
     }
 
     private static ValueTask DisposeSlotAsync(AgentSlot slot)
     {
-        // Agent is registered scoped, so the scope tracks it and the
-        // scope's disposal cascades to the agent's IAsyncDisposable.
-        // The manager owns the scope, not the agent directly.
         return slot.Scope.DisposeAsync();
     }
 
@@ -314,9 +303,6 @@ public sealed partial class AgentManager : IAgentManager, IHostStartupTask, IEve
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private partial void LogBuildFailure(string agentId, string message, Exception ex);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Initial agent reconcile failed.")]
-    private partial void LogInitialReconcileFailure(Exception ex);
 
     private sealed record AgentSlot(string Name, IAgent Agent, AgentConfig Config, AsyncServiceScope Scope);
 }

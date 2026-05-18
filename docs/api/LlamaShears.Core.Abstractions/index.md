@@ -151,11 +151,13 @@ The package is organised into namespaces by concern; each namespace was previous
 - [AgentCompactionRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionRequest.md)
 - [AgentInterruptRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentInterruptRequest.md)
 - [AgentLifecycleMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentLifecycleMarker.md)
+- [AgentLoadRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentLoadRequest.md)
 - [AgentMessageBase](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageBase.md)
 - [AgentMessageFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageFragment.md)
 - [AgentThoughtFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentThoughtFragment.md)
 - [AgentToolCallFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentToolCallFragment.md)
 - [AgentToolResultFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentToolResultFragment.md)
+- [AgentUnloadRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentUnloadRequest.md)
 - [IAgentMessage](LlamaShears/Core/Abstractions/Events/Agent/IAgentMessage.md)
 
 ## LlamaShears.Core.Abstractions.Events.Channel
