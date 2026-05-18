@@ -9,21 +9,20 @@ listing, and clearing operations.
 
 ## Remarks
 
-Methods take a `sessionId` dimension; the default session is
-identified by Guid.`Empty` and resolves to the agent's
-root storage layout (backward-compatible). Non-default sessions
-persist under a per-session subfolder. The store does not auto-load
-or otherwise lifecycle-manage non-default sessions — they exist
-only when something explicitly opens them.
+Methods take a nullable `sessionId` dimension; the default
+session is identified by `null` and resolves to the
+agent's root storage layout (backward-compatible). Non-default
+sessions persist under a per-session subfolder. The store does not
+auto-load or otherwise lifecycle-manage non-default sessions — they
+exist only when something explicitly opens them.
 
 ## Methods
 
 ### `ClearAsync`(string agentId, bool archive, CancellationToken cancellationToken)
 
-Convenience overload that targets the agent's default session
-(Guid.`Empty`).
+Convenience overload that targets the agent's default session.
 
-### `ClearAsync`(string agentId, Guid sessionId, bool archive, CancellationToken cancellationToken)
+### `ClearAsync`(string agentId, Nullable<Guid> sessionId, bool archive, CancellationToken cancellationToken)
 
 Clears the session's stored context. With
 `archive`=true, renames `current.json` to
@@ -42,7 +41,7 @@ Returns the ids of every agent that has any persisted state in
 this store, in stable lexicographic order. GUID-named subfolders
 (non-default session storage) are not surfaced as agents.
 
-### `ListArchivesAsync`(string agentId, Guid sessionId, CancellationToken cancellationToken)
+### `ListArchivesAsync`(string agentId, Nullable<Guid> sessionId, CancellationToken cancellationToken)
 
 Returns every archive id stored for
 (`agentId`, `sessionId`)
@@ -51,10 +50,9 @@ non-archived context is not included.
 
 ### `ListArchivesAsync`(string agentId, CancellationToken cancellationToken)
 
-Convenience overload that targets the agent's default session
-(Guid.`Empty`).
+Convenience overload that targets the agent's default session.
 
-### `OpenAsync`(string agentId, Guid sessionId, CancellationToken cancellationToken)
+### `OpenAsync`(string agentId, Nullable<Guid> sessionId, CancellationToken cancellationToken)
 
 Opens the live, mutable context for
 (`agentId`, `sessionId`),
@@ -64,15 +62,14 @@ store.
 
 ### `OpenAsync`(string agentId, CancellationToken cancellationToken)
 
-Convenience overload that targets the agent's default session
-(Guid.`Empty`).
+Convenience overload that targets the agent's default session.
 
 ### `ReadArchiveAsync`([ArchiveId](ArchiveId.md) archiveId, CancellationToken cancellationToken)
 
 Streams the persisted entries from a specific archived context
 file identified by `archiveId`.
 
-### `ReadCurrentAsync`(string agentId, Guid sessionId, CancellationToken cancellationToken)
+### `ReadCurrentAsync`(string agentId, Nullable<Guid> sessionId, CancellationToken cancellationToken)
 
 Streams the persisted entries from the session's current (active)
 context file in arrival order. Does not affect any open
@@ -80,6 +77,5 @@ context file in arrival order. Does not affect any open
 
 ### `ReadCurrentAsync`(string agentId, CancellationToken cancellationToken)
 
-Convenience overload that targets the agent's default session
-(Guid.`Empty`).
+Convenience overload that targets the agent's default session.
 

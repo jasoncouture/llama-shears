@@ -97,7 +97,7 @@ public sealed class AgentContextProviderTests
         public Dictionary<string, IAgentContext> Contexts { get; } =
             new Dictionary<string, IAgentContext>(StringComparer.Ordinal);
 
-        public Task<IAgentContext> OpenAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
+        public Task<IAgentContext> OpenAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
         {
             if (!Contexts.TryGetValue(agentId, out var context))
             {
@@ -107,7 +107,7 @@ public sealed class AgentContextProviderTests
             return Task.FromResult(context);
         }
 
-        public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid sessionId, CancellationToken cancellationToken) =>
+        public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public IAsyncEnumerable<IContextEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken) =>
@@ -116,10 +116,10 @@ public sealed class AgentContextProviderTests
         public Task<IReadOnlyList<string>> ListAgentsAsync(CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid sessionId, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task ClearAsync(string agentId, Guid sessionId, bool archive, CancellationToken cancellationToken) =>
+        public Task ClearAsync(string agentId, Guid? sessionId, bool archive, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public Task DeleteAsync(ArchiveId archiveId, CancellationToken cancellationToken) =>

@@ -20,7 +20,7 @@ non-turn entry types — in arrival order.
 
 ### `SessionId`
 
-Session id this context belongs to; Guid.`Empty` for the
+Session id this context belongs to; `null` for the
 agent's default (main) session. Non-default sessions persist under
 a per-session subfolder rather than the agent root.
 

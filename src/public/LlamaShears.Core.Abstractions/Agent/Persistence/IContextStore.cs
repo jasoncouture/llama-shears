@@ -9,12 +9,12 @@ namespace LlamaShears.Core.Abstractions.Agent.Persistence;
 /// listing, and clearing operations.
 /// </summary>
 /// <remarks>
-/// Methods take a <c>sessionId</c> dimension; the default session is
-/// identified by <see cref="Guid.Empty"/> and resolves to the agent's
-/// root storage layout (backward-compatible). Non-default sessions
-/// persist under a per-session subfolder. The store does not auto-load
-/// or otherwise lifecycle-manage non-default sessions — they exist
-/// only when something explicitly opens them.
+/// Methods take a nullable <c>sessionId</c> dimension; the default
+/// session is identified by <see langword="null"/> and resolves to the
+/// agent's root storage layout (backward-compatible). Non-default
+/// sessions persist under a per-session subfolder. The store does not
+/// auto-load or otherwise lifecycle-manage non-default sessions — they
+/// exist only when something explicitly opens them.
 /// </remarks>
 public interface IContextStore
 {
@@ -25,28 +25,26 @@ public interface IContextStore
     /// the same pair return the same instance for the lifetime of the
     /// store.
     /// </summary>
-    Task<IAgentContext> OpenAsync(string agentId, Guid sessionId, CancellationToken cancellationToken);
+    Task<IAgentContext> OpenAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Convenience overload that targets the agent's default session
-    /// (<see cref="Guid.Empty"/>).
+    /// Convenience overload that targets the agent's default session.
     /// </summary>
     Task<IAgentContext> OpenAsync(string agentId, CancellationToken cancellationToken)
-        => OpenAsync(agentId, Guid.Empty, cancellationToken);
+        => OpenAsync(agentId, null, cancellationToken);
 
     /// <summary>
     /// Streams the persisted entries from the session's current (active)
     /// context file in arrival order. Does not affect any open
     /// <see cref="IAgentContext"/>.
     /// </summary>
-    IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid sessionId, CancellationToken cancellationToken);
+    IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Convenience overload that targets the agent's default session
-    /// (<see cref="Guid.Empty"/>).
+    /// Convenience overload that targets the agent's default session.
     /// </summary>
     IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, CancellationToken cancellationToken)
-        => ReadCurrentAsync(agentId, Guid.Empty, cancellationToken);
+        => ReadCurrentAsync(agentId, null, cancellationToken);
 
     /// <summary>
     /// Streams the persisted entries from a specific archived context
@@ -67,14 +65,13 @@ public interface IContextStore
     /// in chronological order (oldest first). The session's current,
     /// non-archived context is not included.
     /// </summary>
-    Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid sessionId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Convenience overload that targets the agent's default session
-    /// (<see cref="Guid.Empty"/>).
+    /// Convenience overload that targets the agent's default session.
     /// </summary>
     Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, CancellationToken cancellationToken)
-        => ListArchivesAsync(agentId, Guid.Empty, cancellationToken);
+        => ListArchivesAsync(agentId, null, cancellationToken);
 
     /// <summary>
     /// Clears the session's stored context. With
@@ -83,14 +80,13 @@ public interface IContextStore
     /// <c>current.json</c>. The agent or session folder is never removed
     /// by the framework — that is the user's or a plugin's job.
     /// </summary>
-    Task ClearAsync(string agentId, Guid sessionId, bool archive, CancellationToken cancellationToken);
+    Task ClearAsync(string agentId, Guid? sessionId, bool archive, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Convenience overload that targets the agent's default session
-    /// (<see cref="Guid.Empty"/>).
+    /// Convenience overload that targets the agent's default session.
     /// </summary>
     Task ClearAsync(string agentId, bool archive, CancellationToken cancellationToken)
-        => ClearAsync(agentId, Guid.Empty, archive, cancellationToken);
+        => ClearAsync(agentId, null, archive, cancellationToken);
 
     /// <summary>
     /// Deletes a single archive file identified by <paramref name="archiveId"/>.

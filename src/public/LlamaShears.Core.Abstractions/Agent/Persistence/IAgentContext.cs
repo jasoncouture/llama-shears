@@ -14,11 +14,11 @@ public interface IAgentContext
     string AgentId { get; }
 
     /// <summary>
-    /// Session id this context belongs to; <see cref="Guid.Empty"/> for the
+    /// Session id this context belongs to; <see langword="null"/> for the
     /// agent's default (main) session. Non-default sessions persist under
     /// a per-session subfolder rather than the agent root.
     /// </summary>
-    Guid SessionId => Guid.Empty;
+    Guid? SessionId => null;
 
     /// <summary>
     /// Snapshot of the conversation as <see cref="ModelTurn"/> values,

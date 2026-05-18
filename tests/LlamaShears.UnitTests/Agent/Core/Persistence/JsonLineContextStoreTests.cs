@@ -190,7 +190,7 @@ public sealed class JsonLineContextStoreTests
                 Turn(ModelRole.User, $"#{unixMillis}", DateTimeOffset.UnixEpoch),
                 CancellationToken.None);
             await fixture.Store.ClearAsync(AgentId, archive: true, CancellationToken.None);
-            return new ArchiveId(AgentId, Guid.Empty, unixMillis);
+            return new ArchiveId(AgentId, null, unixMillis);
         }
 
         var keep = await ArchiveAt(1000);

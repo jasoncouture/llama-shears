@@ -28,7 +28,7 @@ public sealed class JsonLineContextStore : IContextStore
         _time = time;
     }
 
-    public async Task<IAgentContext> OpenAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
+    public async Task<IAgentContext> OpenAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
@@ -51,7 +51,7 @@ public sealed class JsonLineContextStore : IContextStore
         return _contexts.GetOrAdd(key, fresh);
     }
 
-    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         var folder = ResolveFolder(agentId, sessionId, ensureExists: false);
@@ -85,7 +85,7 @@ public sealed class JsonLineContextStore : IContextStore
         return Task.FromResult<IReadOnlyList<string>>(agents);
     }
 
-    public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid sessionId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
@@ -113,7 +113,7 @@ public sealed class JsonLineContextStore : IContextStore
         return Task.FromResult<IReadOnlyList<ArchiveId>>(archives);
     }
 
-    public Task ClearAsync(string agentId, Guid sessionId, bool archive, CancellationToken cancellationToken)
+    public Task ClearAsync(string agentId, Guid? sessionId, bool archive, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
 
@@ -154,13 +154,13 @@ public sealed class JsonLineContextStore : IContextStore
         return Task.CompletedTask;
     }
 
-    private string ResolveFolder(string agentId, Guid sessionId, bool ensureExists)
+    private string ResolveFolder(string agentId, Guid? sessionId, bool ensureExists)
     {
-        if (sessionId == Guid.Empty)
+        if (sessionId is null)
         {
             return _paths.GetPath(PathKind.Context, agentId, ensureExists: ensureExists);
         }
-        var subpath = Path.Combine(agentId, sessionId.ToString("n"));
+        var subpath = Path.Combine(agentId, sessionId.Value.ToString("n"));
         return _paths.GetPath(PathKind.Context, subpath, ensureExists: ensureExists);
     }
 
@@ -209,5 +209,5 @@ public sealed class JsonLineContextStore : IContextStore
         }
     }
 
-    private readonly record struct SessionKey(string AgentId, Guid SessionId);
+    private readonly record struct SessionKey(string AgentId, Guid? SessionId);
 }
