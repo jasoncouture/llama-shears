@@ -49,8 +49,9 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
     {
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         await bundle.ServiceScope.ApplyScopeDataAsync(turnCancellationToken);
+        var sessionId = batch[^1].SessionId;
         bundle.ServiceProvider.GetRequiredService<IAgentStateTracker>()
-            .SetState(batch[^1].ChannelId ?? DefaultChannel, correlationId: correlationId);
+            .SetState(batch[^1].ChannelId ?? DefaultChannel, correlationId: correlationId, sessionId: sessionId);
         var agentId = _dataScope.GetAgentConfig().Id;
 
         foreach (var turn in batch)
@@ -149,6 +150,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             {
                 ToolCall = outcome.ToolCalls[i],
                 IsError = outcome.ToolResults[i].IsError,
+                SessionId = sessionId,
             });
         }
         return new IterationOutcome(Interrupted: false, ToolResultTurns: toolTurns.ToImmutable());

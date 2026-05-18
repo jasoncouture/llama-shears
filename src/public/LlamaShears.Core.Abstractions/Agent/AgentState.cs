@@ -16,4 +16,13 @@ public sealed record AgentState(
 {
     /// <summary>Key used to stash the active <see cref="AgentState"/> in the data-context scope.</summary>
     public const string DataKey = "agent_state";
+
+    /// <summary>
+    /// Session id for the work in progress; <see langword="null"/> on
+    /// the agent's default (main) session. Non-default sessions
+    /// (ephemeral or any future durable secondary session) set this so
+    /// turns and tool results land under the right per-session persistence
+    /// path.
+    /// </summary>
+    public Guid? SessionId { get; init; }
 }

@@ -46,6 +46,13 @@ True when this turn represents a failed tool call or framework-level error.
 
 Who/what authored this turn.
 
+### `SessionId`
+
+Session id this turn belongs to; `null` = the
+agent's default (main) session. Non-default sessions carry their
+own id here so context persisters and audit subscribers can route
+the turn to the right session without consulting external state.
+
 ### `Timestamp`
 
 When the turn was recorded.
