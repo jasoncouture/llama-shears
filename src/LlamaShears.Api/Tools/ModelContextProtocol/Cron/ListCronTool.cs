@@ -1,5 +1,5 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
-using System.Text;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Core.Cron;
 using ModelContextProtocol.Server;
@@ -19,34 +19,28 @@ public sealed class ListCronTool
     }
 
     [McpServerTool(Name = "cron_list")]
-    [Description("Returns the calling agent's cron jobs — id, name, expression, enabled flag, last/next fire timestamps, and prompt prefix. Other agents' jobs are not visible.")]
-    public async Task<string> ListCron(CancellationToken cancellationToken = default)
+    [Description("Returns the calling agent's cron jobs as a JSON object: jobCount plus an array of jobs (id, name, cronExpression, prompt, enabled, lastFiredAt, nextFireAt). Other agents' jobs are not visible.")]
+    public async Task<CronListResult> ListCron(CancellationToken cancellationToken = default)
     {
         var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
-            return "Refused: cron_list requires an authenticated agent on the request.";
+            return new CronListResult(JobCount: 0, Jobs: [], Error: "Refused: cron_list requires an authenticated agent on the request.");
         }
 
         var jobs = await _scheduler.ListByAgentAsync(workspace.AgentId, cancellationToken);
-        if (jobs.Count == 0)
-        {
-            return "No scheduled cron jobs.";
-        }
-
-        var builder = new StringBuilder();
-        builder.Append($"{jobs.Count} cron job(s):");
+        var builder = ImmutableArray.CreateBuilder<CronJobSummary>();
         foreach (var job in jobs)
         {
-            builder.Append('\n');
-            builder.Append($"{job.Id:D}  enabled={job.Enabled}  expr='{job.CronExpression}'  next={Format(job.NextFireAt)}  last={Format(job.LastFiredAt)}  name='{job.Name}'  prompt='{Truncate(job.Prompt, 80)}'");
+            builder.Add(new CronJobSummary(
+                Id: job.Id,
+                Name: job.Name,
+                CronExpression: job.CronExpression,
+                Prompt: job.Prompt,
+                Enabled: job.Enabled,
+                LastFiredAt: job.LastFiredAt,
+                NextFireAt: job.NextFireAt));
         }
-        return builder.ToString();
+        return new CronListResult(JobCount: builder.Count, Jobs: builder.ToImmutable());
     }
-
-    private static string Format(DateTimeOffset? when) =>
-        when is null ? "n/a" : when.Value.ToString("u");
-
-    private static string Truncate(string value, int max) =>
-        value.Length <= max ? value : string.Concat(value.AsSpan(0, max - 1), "…");
 }

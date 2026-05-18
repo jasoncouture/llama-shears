@@ -21,8 +21,8 @@ public sealed partial class EditCronTool
     }
 
     [McpServerTool(Name = "cron_edit")]
-    [Description("Edits a cron job belonging to the calling agent. Any unspecified field is left unchanged. Mutating the cron expression revalidates and recomputes the next fire time. Returns the updated job summary.")]
-    public async Task<string> EditCron(
+    [Description("Edits a cron job belonging to the calling agent. Any unspecified field is left unchanged. Mutating the cron expression revalidates and recomputes the next fire time. Returns a JSON object with the parsed jobId, an edited flag, and the updated job summary on success.")]
+    public async Task<CronEditResult> EditCron(
         [Description("Cron job id (GUID, format-D).")] string id,
         [Description("New human-readable name. Leave null to keep current.")] string? name = null,
         [Description("New 5-field cron expression. Leave null to keep current.")] string? cronExpression = null,
@@ -33,30 +33,39 @@ public sealed partial class EditCronTool
         var workspace = await _workspace.GetAsync(cancellationToken);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
-            return "Refused: cron_edit requires an authenticated agent on the request.";
+            return new CronEditResult(JobId: null, Edited: false, Job: null, Error: "Refused: cron_edit requires an authenticated agent on the request.");
         }
         if (!Guid.TryParse(id, out var jobId))
         {
-            return $"Refused: '{id}' is not a valid GUID.";
+            return new CronEditResult(JobId: null, Edited: false, Job: null, Error: $"Refused: '{id}' is not a valid GUID.");
         }
 
         var edit = new CronJobEdit(name, cronExpression, prompt, enabled);
         try
         {
             var updated = await _scheduler.EditAsync(workspace.AgentId, jobId, edit, cancellationToken);
-            return updated is null
-                ? $"No cron job {jobId:D} owned by this agent."
-                : $"Edited cron job {updated.Id:D}; enabled={updated.Enabled}; expr='{updated.CronExpression}'; next {Format(updated.NextFireAt)}.";
+            if (updated is null)
+            {
+                return new CronEditResult(JobId: jobId, Edited: false, Job: null, Error: $"No cron job {jobId:D} owned by this agent.");
+            }
+            return new CronEditResult(
+                JobId: jobId,
+                Edited: true,
+                Job: new CronJobSummary(
+                    Id: updated.Id,
+                    Name: updated.Name,
+                    CronExpression: updated.CronExpression,
+                    Prompt: updated.Prompt,
+                    Enabled: updated.Enabled,
+                    LastFiredAt: updated.LastFiredAt,
+                    NextFireAt: updated.NextFireAt));
         }
         catch (ArgumentException ex)
         {
             LogEditFailed(workspace.AgentId, jobId, ex.Message, ex);
-            return $"Refused: {ex.Message}";
+            return new CronEditResult(JobId: jobId, Edited: false, Job: null, Error: $"Refused: {ex.Message}");
         }
     }
-
-    private static string Format(DateTimeOffset? when) =>
-        when is null ? "n/a" : when.Value.ToString("u");
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "cron_edit failed for agent '{AgentId}', job '{JobId}': {Message}")]
     private partial void LogEditFailed(string agentId, Guid jobId, string message, Exception ex);
