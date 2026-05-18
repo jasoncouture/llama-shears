@@ -14,7 +14,10 @@ public sealed class WriteFileToolTests
 
         var result = await tool.WriteFile("notes/scratch.txt", "hello", overwrite: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Wrote");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Written).IsTrue();
+        await Assert.That(result.BytesWritten).IsEqualTo(5);
+        await Assert.That(result.Overwritten).IsFalse();
         await Assert.That(File.Exists(temp.PathOf("notes", "scratch.txt"))).IsTrue();
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("notes", "scratch.txt"))).IsEqualTo("hello");
     }
@@ -28,7 +31,8 @@ public sealed class WriteFileToolTests
 
         var result = await tool.WriteFile("a.txt", "new", overwrite: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("already exists");
+        await Assert.That(result.Written).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("already exists");
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("a.txt"))).IsEqualTo("original");
     }
 
@@ -41,7 +45,9 @@ public sealed class WriteFileToolTests
 
         var result = await tool.WriteFile("a.txt", "new", overwrite: true, CancellationToken.None);
 
-        await Assert.That(result).Contains("Wrote");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Written).IsTrue();
+        await Assert.That(result.Overwritten).IsTrue();
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("a.txt"))).IsEqualTo("new");
     }
 
@@ -53,7 +59,8 @@ public sealed class WriteFileToolTests
 
         var result = await tool.WriteFile("system/anything.md", "x", overwrite: true, CancellationToken.None);
 
-        await Assert.That(result).Contains("'system/'");
+        await Assert.That(result.Written).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("'system/'");
         await Assert.That(File.Exists(temp.PathOf("system", "anything.md"))).IsFalse();
     }
 
@@ -65,6 +72,7 @@ public sealed class WriteFileToolTests
 
         var result = await tool.WriteFile("../escape.txt", "x", overwrite: true, CancellationToken.None);
 
-        await Assert.That(result).Contains("outside the agent workspace");
+        await Assert.That(result.Written).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("outside the agent workspace");
     }
 }

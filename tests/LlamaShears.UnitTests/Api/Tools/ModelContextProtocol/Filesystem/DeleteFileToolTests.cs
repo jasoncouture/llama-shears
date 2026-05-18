@@ -15,7 +15,9 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("a.txt", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Deleted file");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Deleted).IsTrue();
+        await Assert.That(result.WasDirectory).IsFalse();
         await Assert.That(File.Exists(temp.PathOf("a.txt"))).IsFalse();
     }
 
@@ -28,7 +30,9 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("empty", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Deleted directory");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Deleted).IsTrue();
+        await Assert.That(result.WasDirectory).IsTrue();
         await Assert.That(Directory.Exists(temp.PathOf("empty"))).IsFalse();
     }
 
@@ -42,7 +46,9 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("d", recursive: true, CancellationToken.None);
 
-        await Assert.That(result).Contains("Deleted directory");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Deleted).IsTrue();
+        await Assert.That(result.WasDirectory).IsTrue();
         await Assert.That(Directory.Exists(temp.PathOf("d"))).IsFalse();
     }
 
@@ -56,7 +62,8 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("system/x.md", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("'system/'");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("'system/'");
         await Assert.That(File.Exists(temp.PathOf("system", "x.md"))).IsTrue();
     }
 
@@ -70,7 +77,8 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile(".git", recursive: true, CancellationToken.None);
 
-        await Assert.That(result).Contains("Refused");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("Refused");
         await Assert.That(Directory.Exists(temp.PathOf(".git"))).IsTrue();
     }
 
@@ -84,7 +92,8 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile(".git/HEAD", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Refused");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("Refused");
         await Assert.That(File.Exists(temp.PathOf(".git", "HEAD"))).IsTrue();
     }
 
@@ -98,7 +107,8 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("submodule/.git/HEAD", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Refused");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("Refused");
         await Assert.That(File.Exists(temp.PathOf("submodule", ".git", "HEAD"))).IsTrue();
     }
 
@@ -111,7 +121,8 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("README.md", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Refused");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("Refused");
         await Assert.That(File.Exists(temp.PathOf("README.md"))).IsTrue();
     }
 
@@ -125,7 +136,9 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("docs/notes.md", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Deleted file");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Deleted).IsTrue();
+        await Assert.That(result.WasDirectory).IsFalse();
         await Assert.That(File.Exists(temp.PathOf("docs", "notes.md"))).IsFalse();
     }
 
@@ -138,7 +151,8 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile(".gitignore", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("Refused");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("Refused");
         await Assert.That(File.Exists(temp.PathOf(".gitignore"))).IsTrue();
     }
 
@@ -150,6 +164,7 @@ public sealed class DeleteFileToolTests
 
         var result = await tool.DeleteFile("nope.txt", recursive: false, CancellationToken.None);
 
-        await Assert.That(result).Contains("not found");
+        await Assert.That(result.Deleted).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("not found");
     }
 }

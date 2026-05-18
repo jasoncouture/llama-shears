@@ -22,7 +22,9 @@ public sealed class RegexReplaceFileToolTests
             maxReplacements: 0,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("Replaced 2");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Edited).IsTrue();
+        await Assert.That(result.Replacements).IsEqualTo(2);
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("a.txt"))).IsEqualTo("baz bar baz");
     }
 
@@ -42,12 +44,14 @@ public sealed class RegexReplaceFileToolTests
             maxReplacements: 1,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("Replaced 1");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Edited).IsTrue();
+        await Assert.That(result.Replacements).IsEqualTo(1);
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("a.txt"))).IsEqualTo("X foo foo");
     }
 
     [Test]
-    public async Task ReportsNoMatchesWhenPatternDoesNotMatch()
+    public async Task ReportsZeroReplacementsWhenPatternDoesNotMatch()
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "hello");
@@ -62,7 +66,9 @@ public sealed class RegexReplaceFileToolTests
             maxReplacements: 0,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("No matches");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.Edited).IsFalse();
+        await Assert.That(result.Replacements).IsEqualTo(0);
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("a.txt"))).IsEqualTo("hello");
     }
 
@@ -83,7 +89,8 @@ public sealed class RegexReplaceFileToolTests
             maxReplacements: 0,
             CancellationToken.None);
 
-        await Assert.That(result).Contains("'system/'");
+        await Assert.That(result.Edited).IsFalse();
+        await Assert.That(result.Error).IsNotNull().And.Contains("'system/'");
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("system", "x.md"))).IsEqualTo("foo");
     }
 }

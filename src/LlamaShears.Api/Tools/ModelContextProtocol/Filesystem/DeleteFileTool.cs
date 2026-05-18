@@ -26,8 +26,8 @@ public sealed partial class DeleteFileTool
     }
 
     [McpServerTool(Name = "file_delete")]
-    [Description("Deletes a file or directory inside the agent's workspace. Directories require recursive=true. Deletes inside the protected 'system/' subfolder, or any path matched by the workspace file-protection policy (e.g. '.git', root '*.md', '.gitignore'), are refused.")]
-    public async Task<string> DeleteFile(
+    [Description("Deletes a file or directory inside the agent's workspace. Returns a JSON object with the path, a deleted flag, and a wasDirectory flag. Directories require recursive=true. Deletes inside the protected 'system/' subfolder, or any path matched by the workspace file-protection policy, are refused. On failure the error field is populated and deleted=false.")]
+    public async Task<FileDeleteResult> DeleteFile(
         [Description("Path to delete. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,
         [Description("If true, allow deleting a non-empty directory recursively. Defaults to false.")] bool recursive = false,
         CancellationToken cancellationToken = default)
@@ -36,19 +36,19 @@ public sealed partial class DeleteFileTool
         var resolution = WorkspacePathResolver.ResolveForWrite(workspace, path);
         if (!resolution.IsSuccess)
         {
-            return resolution.Error;
+            return Failure(path, wasDirectory: false, resolution.Error);
         }
 
         if (string.Equals(resolution.FullPath, workspace.Root, StringComparison.Ordinal))
         {
-            return "Refused: deleting the workspace root is not permitted.";
+            return Failure(path, wasDirectory: true, "Refused: deleting the workspace root is not permitted.");
         }
 
         var isDir = Directory.Exists(resolution.FullPath);
         var isFile = File.Exists(resolution.FullPath);
         if (!isDir && !isFile)
         {
-            return $"Path not found: {path}";
+            return Failure(path, wasDirectory: false, $"Path not found: {path}");
         }
 
         var actualType = isDir ? FileType.Directory : FileType.File;
@@ -56,7 +56,7 @@ public sealed partial class DeleteFileTool
         var protection = _protection.Match(workspace.Root, fullPath, actualType, ProtectionMode.Delete);
         if (protection is not null)
         {
-            return ProtectionRefusal.Format(path, ProtectionMode.Delete, protection);
+            return Failure(path, wasDirectory: isDir, ProtectionRefusal.Format(path, ProtectionMode.Delete, protection));
         }
 
         try
@@ -65,18 +65,25 @@ public sealed partial class DeleteFileTool
             {
                 Directory.Delete(resolution.FullPath, recursive);
                 LogDelete(workspace.AgentId, resolution.FullPath, isDirectory: true);
-                return $"Deleted directory '{path}'.";
+                return new FileDeleteResult(Path: path, Deleted: true, WasDirectory: true);
             }
             File.Delete(resolution.FullPath);
             LogDelete(workspace.AgentId, resolution.FullPath, isDirectory: false);
-            return $"Deleted file '{path}'.";
+            return new FileDeleteResult(Path: path, Deleted: true, WasDirectory: false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogDeleteFailed(workspace.AgentId, resolution.FullPath, ex.Message, ex);
-            return $"Delete failed: {ex.Message}";
+            return Failure(path, wasDirectory: isDir, $"Delete failed: {ex.Message}");
         }
     }
+
+    private static FileDeleteResult Failure(string path, bool wasDirectory, string error)
+        => new(
+            Path: path,
+            Deleted: false,
+            WasDirectory: wasDirectory,
+            Error: error);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' deleted '{Path}' (directory={IsDirectory}).")]
     private partial void LogDelete(string? agentId, string path, bool isDirectory);

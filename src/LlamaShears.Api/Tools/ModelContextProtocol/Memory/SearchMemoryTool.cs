@@ -1,5 +1,5 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
-using System.Text;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Core.Abstractions.Memory;
 using Microsoft.Extensions.Logging;
@@ -26,61 +26,59 @@ public sealed partial class SearchMemoryTool
     }
 
     [McpServerTool(Name = "memory_search")]
-    [Description("Vector-searches the agent's memory index and returns the top matching file paths (workspace-relative) with similarity scores and first-line summaries. Read full bodies on demand with file_read. Returns an empty list when nothing crosses min_score.")]
-    public async Task<string> SearchMemory(
+    [Description("Vector-searches the agent's memory index and returns the top matching memories as a JSON object: echoes the query/minScore/limit, plus a hitCount and an array of hits (workspace-relative path, cosine similarity score, first-line summary). Read full bodies on demand with file_read. The hits array is empty when nothing crosses minScore.")]
+    public async Task<MemorySearchResultPayload> SearchMemory(
         [Description("Free-text query. Embedded with the agent's configured embedding model and compared by cosine similarity.")] string query,
         [Description("Maximum number of hits to return. Defaults to 10; hard-capped at 100.")] int limit = DefaultLimit,
         [Description("Minimum cosine similarity (0.0 - 1.0). Hits below this score are dropped. Defaults to 0.30 — relevant matches typically land 0.40-0.60 with task-prefixed asymmetric encoders, noise stays under 0.10, so 0.30 sits safely in the gap. Don't raise above ~0.55 unless you want very tight matches only.")] double minScore = DefaultMinScore,
         CancellationToken cancellationToken = default)
     {
         var workspace = await _workspace.GetAsync(cancellationToken);
+        var cap = Math.Clamp(limit, 1, HardMaxLimit);
+        var floor = Math.Clamp(minScore, 0.0, 1.0);
         if (string.IsNullOrEmpty(workspace.AgentId))
         {
-            return "Refused: search_memory requires an authenticated agent on the request.";
+            return Failure(query ?? string.Empty, floor, cap, "Refused: search_memory requires an authenticated agent on the request.");
         }
         if (string.IsNullOrWhiteSpace(query))
         {
-            return "Refused: query is required.";
+            return Failure(query ?? string.Empty, floor, cap, "Refused: query is required.");
         }
-
-        var cap = Math.Clamp(limit, 1, HardMaxLimit);
-        var floor = Math.Clamp(minScore, 0.0, 1.0);
 
         try
         {
             var hits = await _searcher.SearchAsync(workspace.AgentId, query, cap, floor, cancellationToken);
             LogSearched(workspace.AgentId, query, hits.Count);
-            return Render(query, hits, floor, cap);
+            var payload = ImmutableArray.CreateBuilder<MemorySearchHit>();
+            foreach (var hit in hits)
+            {
+                payload.Add(new MemorySearchHit(
+                    RelativePath: hit.RelativePath,
+                    Score: hit.Score,
+                    Summary: hit.Summary ?? string.Empty));
+            }
+            return new MemorySearchResultPayload(
+                Query: query,
+                MinScore: floor,
+                Limit: cap,
+                HitCount: payload.Count,
+                Hits: payload.ToImmutable());
         }
         catch (InvalidOperationException ex)
         {
             LogSearchFailed(workspace.AgentId, ex.Message, ex);
-            return $"Refused: {ex.Message}";
+            return Failure(query, floor, cap, $"Refused: {ex.Message}");
         }
     }
 
-    private static string Render(string query, IReadOnlyList<MemorySearchResult> hits, double minScore, int limit)
-    {
-        if (hits.Count == 0)
-        {
-            return $"No memories matched '{query}' at min_score={minScore:F2} (limit={limit}).";
-        }
-
-        var builder = new StringBuilder();
-        var matchSuffix = hits.Count == 1 ? string.Empty : "es";
-        builder.Append($"{hits.Count} match{matchSuffix} for '{query}' (min_score={minScore:F2}, limit={limit}):");
-        foreach (var hit in hits)
-        {
-            builder.Append('\n');
-            builder.Append($"{hit.Score:F4}  {hit.RelativePath}");
-            if (!string.IsNullOrEmpty(hit.Summary))
-            {
-                builder.Append("  — ");
-                builder.Append(hit.Summary);
-            }
-        }
-        return builder.ToString();
-    }
+    private static MemorySearchResultPayload Failure(string query, double minScore, int limit, string error)
+        => new(
+            Query: query,
+            MinScore: minScore,
+            Limit: limit,
+            HitCount: 0,
+            Hits: [],
+            Error: error);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' searched memory: '{Query}' → {Hits} hits.")]
     private partial void LogSearched(string agentId, string query, int hits);
