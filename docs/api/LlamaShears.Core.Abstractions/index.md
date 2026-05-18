@@ -68,6 +68,11 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Agent.Sessions
 
+- [EphemeralRunResult](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralRunResult.md)
+- [EphemeralSessionReference](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralSessionReference.md)
+- [EphemeralSessionRequest](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralSessionRequest.md)
+- [IEphemeralSession](LlamaShears/Core/Abstractions/Agent/Sessions/IEphemeralSession.md)
+- [IEphemeralSessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/IEphemeralSessionFactory.md)
 - [ISessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionFactory.md)
 - [ISessionQueue](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionQueue.md)
 - [SessionId](LlamaShears/Core/Abstractions/Agent/Sessions/SessionId.md)
