@@ -1,13 +1,14 @@
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Provider;
 using LlamaShears.Provider.OpenAI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.OpenAI;
 
 public sealed class OpenAiLanguageModelTests
@@ -359,7 +360,7 @@ public sealed class OpenAiLanguageModelTests
             httpClientFactory,
             optionsMonitor,
             new ModelConfiguration(Id: new CompositeIdentity("openai", "test-model")),
-            new Core.Provider.ModelTextFormatter(),
+            new ModelTextFormatter(),
             NullLogger<OpenAiLanguageModel>.Instance);
     }
 

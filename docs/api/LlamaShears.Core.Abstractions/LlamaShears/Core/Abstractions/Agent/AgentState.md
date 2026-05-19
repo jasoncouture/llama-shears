@@ -33,6 +33,14 @@ Correlation id shared by every fragment/event emitted during this turn.
 
 The well-known event id stamped on outgoing fragments for this turn.
 
+### `SessionId`
+
+Session id for the work in progress; `null` on
+the agent's default (main) session. Non-default sessions
+(ephemeral or any future durable secondary session) set this so
+turns and tool results land under the right per-session persistence
+path.
+
 ## Methods
 
 ### `AgentState`(string ChannelId, string EventId, Guid CorrelationId)

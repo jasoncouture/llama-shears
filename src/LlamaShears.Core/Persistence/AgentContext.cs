@@ -14,6 +14,7 @@ internal sealed class AgentContext : IAgentContext
 
     public AgentContext(
         string agentId,
+        Guid? sessionId,
         string currentPath,
         IEnumerable<IContextEntry> seed,
         JsonSerializerOptions jsonOptions)
@@ -24,12 +25,15 @@ internal sealed class AgentContext : IAgentContext
         ArgumentNullException.ThrowIfNull(jsonOptions);
 
         AgentId = agentId;
+        SessionId = sessionId;
         _currentPath = currentPath;
         _entries = [.. seed];
         _jsonOptions = jsonOptions;
     }
 
     public string AgentId { get; }
+
+    public Guid? SessionId { get; }
 
     public IReadOnlyList<ModelTurn> Turns
     {

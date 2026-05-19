@@ -2,7 +2,6 @@ using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Provider;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Serialization;
 
 public sealed class AgentConfigSerializationTests

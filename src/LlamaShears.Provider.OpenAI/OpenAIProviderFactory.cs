@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Provider.OpenAI;
 
-public sealed partial class OpenAiProviderFactory : IProviderFactory
+public sealed class OpenAiProviderFactory : IProviderFactory
 {
     public const string ProviderName = "openai";
 

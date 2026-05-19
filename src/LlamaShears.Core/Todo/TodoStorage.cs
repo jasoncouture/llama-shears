@@ -5,7 +5,6 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Todo;
 using LlamaShears.Core.Abstractions.Caching;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Todo;
@@ -343,7 +342,7 @@ internal sealed partial class TodoStorage : ITodoStorage
         var stringBuilder = new StringBuilder();
         foreach (var item in items)
         {
-            stringBuilder.Append(item.ToString()).Append('\n');
+            stringBuilder.Append(item).Append('\n');
         }
         return stringBuilder.ToString();
     }

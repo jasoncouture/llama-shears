@@ -14,7 +14,9 @@ public interface IAgentStateTracker
     /// <see cref="AgentConfig.Id"/> is used so the common agent-turn
     /// path doesn't need to repeat it. When <paramref name="correlationId"/>
     /// is <see langword="null"/>, a new <c>Guid.CreateVersion7</c> is
-    /// minted.
+    /// minted. <paramref name="sessionId"/> tags the state with the
+    /// session the work belongs to; <see langword="null"/> = the agent's
+    /// default (main) session.
     /// </summary>
-    void SetState(string channelId, string? eventId = null, Guid? correlationId = null);
+    void SetState(string channelId, string? eventId = null, Guid? correlationId = null, Guid? sessionId = null);
 }

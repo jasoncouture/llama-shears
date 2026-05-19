@@ -34,7 +34,6 @@ public sealed partial class CronExecutor : IEventHandler<SystemTick>, IDisposabl
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return;
         }
         catch (Exception ex)
         {

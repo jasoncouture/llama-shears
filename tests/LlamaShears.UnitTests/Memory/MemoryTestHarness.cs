@@ -1,12 +1,13 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Memory;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Memory;
 
 internal sealed class MemoryTestHarness : IDisposable
@@ -76,7 +77,7 @@ internal sealed class MemoryTestHarness : IDisposable
     {
         try
         {
-            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            SqliteConnection.ClearAllPools();
             if (Directory.Exists(Root))
             {
                 Directory.Delete(Root, recursive: true);

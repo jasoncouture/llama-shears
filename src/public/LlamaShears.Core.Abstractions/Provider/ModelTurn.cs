@@ -36,4 +36,12 @@ public record ModelTurn(
 
     /// <summary>Non-text payloads attached to this turn (images, etc.).</summary>
     public ImmutableArray<Attachment> Attachments { get; init; } = [];
+
+    /// <summary>
+    /// Session id this turn belongs to; <see langword="null"/> = the
+    /// agent's default (main) session. Non-default sessions carry their
+    /// own id here so context persisters and audit subscribers can route
+    /// the turn to the right session without consulting external state.
+    /// </summary>
+    public Guid? SessionId { get; init; }
 }

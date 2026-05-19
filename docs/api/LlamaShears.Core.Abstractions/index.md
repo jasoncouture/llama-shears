@@ -42,6 +42,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [AgentToolConfig](LlamaShears/Core/Abstractions/Agent/AgentToolConfig.md)
 - [IAgent](LlamaShears/Core/Abstractions/Agent/IAgent.md)
 - [IAgentConfigProvider](LlamaShears/Core/Abstractions/Agent/IAgentConfigProvider.md)
+- [IAgentIterationRunner](LlamaShears/Core/Abstractions/Agent/IAgentIterationRunner.md)
 - [IAgentLock](LlamaShears/Core/Abstractions/Agent/IAgentLock.md)
 - [IAgentLockManager](LlamaShears/Core/Abstractions/Agent/IAgentLockManager.md)
 - [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
@@ -49,8 +50,21 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentStateTracker](LlamaShears/Core/Abstractions/Agent/IAgentStateTracker.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
 - [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)
+- [IterationOutcome](LlamaShears/Core/Abstractions/Agent/IterationOutcome.md)
 - [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
+
+## LlamaShears.Core.Abstractions.Agent.AgentConfigExtensions
+
+- [<G>$1E5D4A79A014BD10CBE0F98F7F208BE1](LlamaShears/Core/Abstractions/Agent/AgentConfigExtensions/<G>$1E5D4A79A014BD10CBE0F98F7F208BE1.md)
+
+## LlamaShears.Core.Abstractions.Agent.AgentConfigExtensions.<G>$1E5D4A79A014BD10CBE0F98F7F208BE1
+
+- [<M>$4CE8FFD1231E591D45179C9C504A5A71](LlamaShears/Core/Abstractions/Agent/AgentConfigExtensions/<G>$1E5D4A79A014BD10CBE0F98F7F208BE1/<M>$4CE8FFD1231E591D45179C9C504A5A71.md)
+
+## LlamaShears.Core.Abstractions.Agent.AgentStateExtensions
+
+- [<G>$1E5D4A79A014BD10CBE0F98F7F208BE1](LlamaShears/Core/Abstractions/Agent/AgentStateExtensions/<G>$1E5D4A79A014BD10CBE0F98F7F208BE1.md)
 
 ## LlamaShears.Core.Abstractions.Agent.Persistence
 
@@ -66,6 +80,12 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Agent.Sessions
 
+- [EphemeralRunResult](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralRunResult.md)
+- [EphemeralSessionContext](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralSessionContext.md)
+- [EphemeralSessionReference](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralSessionReference.md)
+- [EphemeralSessionRequest](LlamaShears/Core/Abstractions/Agent/Sessions/EphemeralSessionRequest.md)
+- [IEphemeralSession](LlamaShears/Core/Abstractions/Agent/Sessions/IEphemeralSession.md)
+- [IEphemeralSessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/IEphemeralSessionFactory.md)
 - [ISessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionFactory.md)
 - [ISessionQueue](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionQueue.md)
 - [SessionId](LlamaShears/Core/Abstractions/Agent/Sessions/SessionId.md)
@@ -143,11 +163,13 @@ The package is organised into namespaces by concern; each namespace was previous
 - [AgentCompactionRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionRequest.md)
 - [AgentInterruptRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentInterruptRequest.md)
 - [AgentLifecycleMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentLifecycleMarker.md)
+- [AgentLoadRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentLoadRequest.md)
 - [AgentMessageBase](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageBase.md)
 - [AgentMessageFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageFragment.md)
 - [AgentThoughtFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentThoughtFragment.md)
 - [AgentToolCallFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentToolCallFragment.md)
 - [AgentToolResultFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentToolResultFragment.md)
+- [AgentUnloadRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentUnloadRequest.md)
 - [IAgentMessage](LlamaShears/Core/Abstractions/Events/Agent/IAgentMessage.md)
 
 ## LlamaShears.Core.Abstractions.Events.Channel
@@ -224,6 +246,18 @@ The package is organised into namespaces by concern; each namespace was previous
 - [ToolDescriptor](LlamaShears/Core/Abstractions/Provider/ToolDescriptor.md)
 - [ToolGroup](LlamaShears/Core/Abstractions/Provider/ToolGroup.md)
 - [ToolParameter](LlamaShears/Core/Abstractions/Provider/ToolParameter.md)
+
+## LlamaShears.Core.Abstractions.Provider.EmbeddingModelConfigurationExtensions
+
+- [<G>$DE5C531DB009878C78653085F6B97138](LlamaShears/Core/Abstractions/Provider/EmbeddingModelConfigurationExtensions/<G>$DE5C531DB009878C78653085F6B97138.md)
+
+## LlamaShears.Core.Abstractions.Provider.ModelConfigurationExtensions
+
+- [<G>$1E5D4A79A014BD10CBE0F98F7F208BE1](LlamaShears/Core/Abstractions/Provider/ModelConfigurationExtensions/<G>$1E5D4A79A014BD10CBE0F98F7F208BE1.md)
+
+## LlamaShears.Core.Abstractions.Provider.ModelConfigurationExtensions.<G>$1E5D4A79A014BD10CBE0F98F7F208BE1
+
+- [<M>$4CE8FFD1231E591D45179C9C504A5A71](LlamaShears/Core/Abstractions/Provider/ModelConfigurationExtensions/<G>$1E5D4A79A014BD10CBE0F98F7F208BE1/<M>$4CE8FFD1231E591D45179C9C504A5A71.md)
 
 ## LlamaShears.Core.Abstractions.SystemPrompt
 

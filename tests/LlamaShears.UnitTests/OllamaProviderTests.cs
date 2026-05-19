@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Provider;
 using LlamaShears.Provider.Ollama;
@@ -5,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests;
 
 public class OllamaProviderTests

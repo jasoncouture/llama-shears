@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ public partial class OpenAiLanguageModel : ILanguageModel
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
     private readonly IHttpClientFactory _httpClientFactory;

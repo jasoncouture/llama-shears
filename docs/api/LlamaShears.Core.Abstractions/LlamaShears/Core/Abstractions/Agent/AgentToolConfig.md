@@ -4,9 +4,3 @@ Assembly: `LlamaShears.Core.Abstractions`
 
 Per-agent tool-loop guardrails.
 
-## Methods
-
-### `AgentToolConfig`
-
-Per-agent tool-loop guardrails.
-

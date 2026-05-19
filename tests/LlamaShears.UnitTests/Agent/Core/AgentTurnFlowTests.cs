@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
@@ -6,11 +7,11 @@ using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
+using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
-using LlamaShears.Core.Abstractions.SystemPrompt;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Sessions;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -19,7 +20,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Agent.Core;
 
 public sealed class AgentTurnFlowTests
@@ -158,7 +158,7 @@ public sealed class AgentTurnFlowTests
         public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
             ModelPrompt prompt,
             PromptOptions? options,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var stage = Interlocked.Increment(ref _invocations);
             var fragments = stage == 1 ? _stageOne : _stageTwo;
@@ -216,9 +216,9 @@ public sealed class AgentTurnFlowTests
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
-        agentServices.AddSingleton<IContextCompactor>(compactor);
-        agentServices.AddSingleton<ILanguageModel>(model);
-        agentServices.AddSingleton<IModelContextProtocolServerRegistry>(TestAgentConfigs.BuildEmptyServerRegistry());
+        agentServices.AddSingleton(compactor);
+        agentServices.AddSingleton(model);
+        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
         agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
         agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
         agentServices.AddMemoryCache();
@@ -234,17 +234,24 @@ public sealed class AgentTurnFlowTests
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
         var contextStore = new FakeContextStore().With(id, agentContext);
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var iterationRunner = new AgentIterationRunner(
+            NullLogger<AgentIterationRunner>.Instance,
+            timeProvider,
+            publisher,
+            dataContextFactory.Current!,
+            agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            contextProvider);
         var agent = new LlamaShears.Core.Agent(
             contextStore: contextStore,
             logger: NullLogger<LlamaShears.Core.Agent>.Instance,
             bus: services.GetRequiredService<IEventBus>(),
-            timeProvider: new FakeTimeProvider(DateTimeOffset.UnixEpoch),
-            agentContextProvider: contextProvider,
+            timeProvider: timeProvider,
             eventPublisher: publisher,
             dataScope: dataContextFactory.Current!,
             agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            scopeFactory: agentProvider.GetRequiredService<IServiceScopeFactory>(),
+            iterationRunner: iterationRunner,
             agentServices: []);
         await agent.StartAsync(CancellationToken.None);
         return agent;

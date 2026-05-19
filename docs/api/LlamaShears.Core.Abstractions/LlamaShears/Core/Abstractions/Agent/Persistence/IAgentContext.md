@@ -2,7 +2,7 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Live, mutable view of one agent's persisted conversation log.
+Live, mutable view of one agent session's persisted conversation log.
 Backed by an [IContextStore](IContextStore.md); appending appends both
 in-memory and to durable storage. Snapshots of [IAgentContext](IAgentContext.md).`Turns`
 and [IAgentContext](IAgentContext.md).`Entries` are stable at the moment of access.
@@ -17,6 +17,12 @@ Identifier of the agent whose log this represents.
 
 Snapshot of every persisted entry — turns and any future
 non-turn entry types — in arrival order.
+
+### `SessionId`
+
+Session id this context belongs to; `null` for the
+agent's default (main) session. Non-default sessions persist under
+a per-session subfolder rather than the agent root.
 
 ### `TokenCount`
 
@@ -50,6 +56,6 @@ rely on the entry being visible from [IAgentContext](IAgentContext.md).`Entries`
 ### `Cleared`
 
 Raised when the context is cleared in-memory (typically following
-[IContextStore](IContextStore.md).`ClearAsync`). Subscribers should treat
-previously-observed entries as discarded.
+[IContextStore](IContextStore.md).`ClearAsync`).
+Subscribers should treat previously-observed entries as discarded.
 

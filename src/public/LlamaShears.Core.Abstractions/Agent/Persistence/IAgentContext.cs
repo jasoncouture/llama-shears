@@ -3,7 +3,7 @@ using LlamaShears.Core.Abstractions.Provider;
 namespace LlamaShears.Core.Abstractions.Agent.Persistence;
 
 /// <summary>
-/// Live, mutable view of one agent's persisted conversation log.
+/// Live, mutable view of one agent session's persisted conversation log.
 /// Backed by an <see cref="IContextStore"/>; appending appends both
 /// in-memory and to durable storage. Snapshots of <see cref="Turns"/>
 /// and <see cref="Entries"/> are stable at the moment of access.
@@ -12,6 +12,13 @@ public interface IAgentContext
 {
     /// <summary>Identifier of the agent whose log this represents.</summary>
     string AgentId { get; }
+
+    /// <summary>
+    /// Session id this context belongs to; <see langword="null"/> for the
+    /// agent's default (main) session. Non-default sessions persist under
+    /// a per-session subfolder rather than the agent root.
+    /// </summary>
+    Guid? SessionId => null;
 
     /// <summary>
     /// Snapshot of the conversation as <see cref="ModelTurn"/> values,
@@ -42,8 +49,8 @@ public interface IAgentContext
 
     /// <summary>
     /// Raised when the context is cleared in-memory (typically following
-    /// <see cref="IContextStore.ClearAsync"/>). Subscribers should treat
-    /// previously-observed entries as discarded.
+    /// <see cref="IContextStore.ClearAsync(string, bool, CancellationToken)"/>).
+    /// Subscribers should treat previously-observed entries as discarded.
     /// </summary>
     event EventHandler? Cleared;
 

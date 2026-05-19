@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,11 +10,11 @@ namespace LlamaShears.DocsBuild;
 
 internal sealed class AccessibilityFilter
 {
-    private readonly HashSet<string> _exposedTypes = new HashSet<string>(System.StringComparer.Ordinal);
+    private readonly HashSet<string> _exposedTypes = new HashSet<string>(StringComparer.Ordinal);
     private readonly Dictionary<string, HashSet<string>> _exposedMembers =
-        new Dictionary<string, HashSet<string>>(System.StringComparer.Ordinal);
+        new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
     private readonly Dictionary<string, string[]> _parameterNames =
-        new Dictionary<string, string[]>(System.StringComparer.Ordinal);
+        new Dictionary<string, string[]>(StringComparer.Ordinal);
 
     public static AccessibilityFilter Build(string assemblyPath)
     {
@@ -41,7 +42,7 @@ internal sealed class AccessibilityFilter
             }
 
             filter._exposedTypes.Add(fqn);
-            var memberNames = new HashSet<string>(System.StringComparer.Ordinal);
+            var memberNames = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var methodHandle in typeDef.GetMethods())
             {

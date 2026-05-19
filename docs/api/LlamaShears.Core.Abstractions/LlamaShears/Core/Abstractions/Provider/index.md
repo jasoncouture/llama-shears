@@ -1,5 +1,10 @@
 # LlamaShears.Core.Abstractions.Provider
 
+## Namespaces
+
+- [LlamaShears.Core.Abstractions.Provider.EmbeddingModelConfigurationExtensions](EmbeddingModelConfigurationExtensions/index.md)
+- [LlamaShears.Core.Abstractions.Provider.ModelConfigurationExtensions](ModelConfigurationExtensions/index.md)
+
 ## Types
 
 - [AgentProviderOptions](AgentProviderOptions.md) — Helpers for layering an agent's per-model JSON options blob on top of host-level defaults. Used by providers that expose a strongly-typed options record for their host config and a free-form `Options` JSON blob in agent config.

@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Provider;
 using LlamaShears.Provider.Ollama;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.ObjectPool;
@@ -8,7 +10,6 @@ using NSubstitute;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 
-using LlamaShears.Core.Abstractions.Common;
 namespace LlamaShears.UnitTests.Provider.Ollama;
 
 public sealed class OllamaLanguageModelToolFlatteningTests
@@ -99,7 +100,7 @@ public sealed class OllamaLanguageModelToolFlatteningTests
             new ModelConfiguration(Id: new CompositeIdentity("ollama", "test"), Think: ThinkLevel.None),
             hostOptions,
             pool,
-            new Core.Provider.ModelTextFormatter(),
+            new ModelTextFormatter(),
             NullLogger<OllamaLanguageModel>.Instance);
 
         var prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]);

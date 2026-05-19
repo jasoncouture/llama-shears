@@ -70,6 +70,10 @@ public static class Event
             public static EventType CompactionRequest { get; } = new EventType(Sources.Command, "compaction-request");
             /// <summary>Caller is requesting that the agent's in-flight turn be interrupted.</summary>
             public static EventType InterruptAgent { get; } = new EventType(Sources.Command, "interrupt-agent");
+            /// <summary>Config supervisor is asking the agent manager to load or replace an agent. Payload carries the resolved <see cref="LlamaShears.Core.Abstractions.Agent.AgentConfig"/>.</summary>
+            public static EventType AgentLoad { get; } = new EventType(Sources.Command, "agent-load");
+            /// <summary>Config supervisor is asking the agent manager to unload an agent. Payload is the empty marker.</summary>
+            public static EventType AgentUnload { get; } = new EventType(Sources.Command, "agent-unload");
         }
         /// <summary>Channel-level events.</summary>
         public static class Channel

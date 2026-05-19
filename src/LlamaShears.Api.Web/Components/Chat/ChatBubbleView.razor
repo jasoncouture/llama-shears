@@ -1,5 +1,5 @@
+@using System.Globalization
 @using LlamaShears.Core.Abstractions.Content
-
 @if (Bubble.Kind == ChatBubbleKind.ToolInFlight)
 {
     <article class="bubble bubble-tool-inflight bubble-pulse">
@@ -118,7 +118,7 @@ else
         ? AgentName
         : Bubble.Kind.ToString();
 
-    private string FullTimestamp => Bubble.At.ToLocalTime().ToString("F", System.Globalization.CultureInfo.CurrentCulture);
+    private string FullTimestamp => Bubble.At.ToLocalTime().ToString("F", CultureInfo.CurrentCulture);
 
     private string ThoughtSummary
     {
