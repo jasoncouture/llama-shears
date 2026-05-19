@@ -164,7 +164,7 @@ public sealed class AgentEventPublishingTests
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             iterationRunner: iterationRunner,
             agentServices: []);
-        await agent.StartAsync(CancellationToken.None);
+        _ = agent.RunAsync();
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = "test" },

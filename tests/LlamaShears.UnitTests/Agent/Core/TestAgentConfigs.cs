@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Memory;
@@ -55,6 +56,7 @@ internal static class TestAgentConfigs
         scope.SetItem(AgentConfig.DataKey, config);
         scope.SetItem(ModelConfiguration.DataKey, config.Model);
         scope.SetItem(AgentState.DataKey, state);
+        scope.SetItem(SessionId.DataKey, new SessionId(config.Id, SessionId.DefaultSessionName));
         var factory = Substitute.For<IDataContextFactory>();
         factory.Current.Returns(scope);
         factory.TryJoinContextScope(Arg.Any<string>(), out Arg.Any<IDataContextScope?>())
