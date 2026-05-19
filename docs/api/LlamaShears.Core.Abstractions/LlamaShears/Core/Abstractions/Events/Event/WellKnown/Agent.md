@@ -34,6 +34,22 @@ An agent has been loaded into the host.
 
 Streaming user-visible message fragment.
 
+### `Started`
+
+Agent boot is complete — scope and data context are ready, agent loop has started.
+
+### `Starting`
+
+Agent boot is beginning — scope and data context are being built but the agent loop has not yet started.
+
+### `Stopped`
+
+Agent shutdown is complete — scope disposed, data context deleted.
+
+### `Stopping`
+
+Agent shutdown is beginning — children are being disposed before the agent's own scope tears down.
+
 ### `Thought`
 
 Streaming hidden-thought fragment.
