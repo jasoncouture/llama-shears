@@ -12,7 +12,17 @@ e.g. `telegram:123456`, round-trip cleanly).
 ## Parameters
 
 - `AgentId` — Agent the session belongs to.
-- `DefaultChannel` — Channel the session is bound to. May contain `:` — everything after the first `:` in the canonical form is treated as part of this value.
+- `Name` — Channel the session is bound to. May contain `:` — everything after the first `:` in the canonical form is treated as part of this value.
+
+## Fields
+
+### `DataKey`
+
+Well-known key under which a [SessionId](SessionId.md) is stashed on an agent's data scope.
+
+### `DefaultSessionName`
+
+Name used for the default (main) session of an agent.
 
 ## Properties
 
@@ -20,13 +30,21 @@ e.g. `telegram:123456`, round-trip cleanly).
 
 Agent the session belongs to.
 
-### `DefaultChannel`
+### `Id`
+
+Unique identifier for this session instance. Auto-generated as a v7 GUID when not supplied.
+
+### `IsDefault`
+
+`true` when this session id names the default (main) session — i.e. [SessionId](SessionId.md).`Name` equals [SessionId](SessionId.md).`DefaultSessionName`.
+
+### `Name`
 
 Channel the session is bound to. May contain `:` — everything after the first `:` in the canonical form is treated as part of this value.
 
 ## Methods
 
-### `SessionId`(string AgentId, string DefaultChannel)
+### `SessionId`(string AgentId, string Name)
 
 Identifier for a session: `agentId:defaultChannel` in canonical
 string form. Mirrors `EventType`'s shape — first segment is the
@@ -38,7 +56,7 @@ e.g. `telegram:123456`, round-trip cleanly).
 #### Parameters
 
 - `AgentId` — Agent the session belongs to.
-- `DefaultChannel` — Channel the session is bound to. May contain `:` — everything after the first `:` in the canonical form is treated as part of this value.
+- `Name` — Channel the session is bound to. May contain `:` — everything after the first `:` in the canonical form is treated as part of this value.
 
 ### `ToString`
 
