@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace LlamaShears.Core.Paths;
 
-public sealed class ShearsPaths : IShearsPaths
+public sealed class ApplicationPathProvider : IApplicationPathProvider
 {
     private const string DefaultDataRootName = ".llama-shears";
     private const string DefaultWorkspaceFolderName = "workspace";
@@ -14,7 +14,7 @@ public sealed class ShearsPaths : IShearsPaths
 
     private readonly ConcurrentDictionary<PathKind, string> _roots;
 
-    public ShearsPaths(IOptions<ShearsPathsOptions> options)
+    public ApplicationPathProvider(IOptions<ShearsPathsOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);
         var values = options.Value;
