@@ -240,13 +240,13 @@ public static class CoreServiceCollectionExtensions
     private static IServiceCollection AddSessions(this IServiceCollection services)
     {
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
-        services.TryAddSingleton<IEphemeralSessionFactory, EphemeralSessionFactory>();
         return services;
     }
 
     private static IServiceCollection AddAgentRuntime(this IServiceCollection services)
     {
         services.TryAddSingleton<IAgentLockManager, AgentLockManager>();
+        services.TryAddSingleton<IAgentFactory, AgentFactory>();
         services.TryAddScoped<IAgentLock, AgentLock>();
         services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
         services.TryAddScoped<IAgent, Agent>();
