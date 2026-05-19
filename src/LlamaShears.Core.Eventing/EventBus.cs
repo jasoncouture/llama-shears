@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Eventing;
 
-internal sealed partial class EventBus : IEventBus, IEventPublisher
+internal sealed partial class EventBus : IEventBus
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger _logger;

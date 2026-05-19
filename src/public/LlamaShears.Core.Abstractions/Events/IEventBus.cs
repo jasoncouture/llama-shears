@@ -42,4 +42,11 @@ public interface IEventBus
         EventDeliveryMode mode,
         IEventHandler<T> handler)
         where T : class;
+    
+    /// <summary>
+    /// Publishes an event of the given <paramref name="eventType"/> carrying
+    /// <paramref name="data"/>.
+    /// </summary>
+    ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken)
+        where T : class;
 }
