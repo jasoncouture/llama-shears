@@ -69,13 +69,13 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Publishes a system tick so the <see cref="AgentManager"/> rescans
-    /// the seeded agents directory immediately. The production tick
-    /// service runs on a 30-second interval, which is too slow for tests.
+    /// Publishes a system tick so the config supervisor rescans the seeded
+    /// agents directory immediately. The production tick service runs on a
+    /// 30-second interval, which is too slow for tests.
     /// </summary>
     public async Task TickAsync(CancellationToken cancellationToken = default)
     {
-        var publisher = Services.GetRequiredService<IEventPublisher>();
+        var publisher = Services.GetRequiredService<IEventBus>();
         await publisher.PublishAsync(
             Event.WellKnown.Host.Tick,
             new SystemTick(DateTimeOffset.UtcNow),
@@ -83,45 +83,83 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Publishes a tick and waits for the agent's <c>Agent.Loaded</c>
-    /// signal. The subscription is installed before the tick fires, and
-    /// a post-subscription <see cref="IAgentManager.Contains"/> check
-    /// covers the case where the agent had already loaded before this
-    /// call (e.g. a prior <see cref="TickAsync"/>) so the loaded signal
-    /// is in the past.
+    /// Subscribes to the agent's <c>Agent.Started</c> signal synchronously and returns a Task
+    /// that completes when the signal arrives (or the timeout elapses). Callers may invoke
+    /// this before seeding the agent file so the subscription is in place no matter how soon
+    /// the supervisor reconciles. The returned Task drives ticks internally until the signal
+    /// is received.
     /// </summary>
-    public async Task WaitForAgentAsync(string agentId, TimeSpan? timeout = null)
+    public async ValueTask WaitForAgentAsync(string agentId, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var manager = Services.GetRequiredService<IAgentManager>();
         var bus = Services.GetRequiredService<IEventBus>();
 
-        var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var subscription = bus.Subscribe<AgentLifecycleMarker>(
-            Event.WellKnown.Agent.Loaded with { Id = agentId },
+        if (AgentAlreadyStarted(agentId))
+        {
+            return;
+        }
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var subscription = bus.Subscribe<AgentLifecycleEvent>(
+            Event.WellKnown.Agent.Started with { Id = agentId },
             EventDeliveryMode.Awaited,
             (_, _) =>
             {
-                loaded.TrySetResult();
+                started.TrySetResult();
                 return ValueTask.CompletedTask;
             });
 
-        if (manager.Contains(agentId))
+        if (AgentAlreadyStarted(agentId))
         {
             return;
         }
 
-        await TickAsync();
+        await WaitForStartedAsync(agentId, timeout ?? TimeSpan.FromSeconds(5), started, subscription);
+    }
 
-        using var cts = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(5));
+    private bool AgentAlreadyStarted(string agentId)
+    {
+        var repository = Services.GetRequiredService<IAgentInstanceRepository>();
+        return repository.GetAllAgents().Any(h =>
+            h.SessionPath.IsRootSession
+            && h.Started
+            && string.Equals(h.SessionPath.Current.AgentId, agentId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task WaitForStartedAsync(string agentId, TimeSpan timeout, TaskCompletionSource started, IDisposable subscription)
+    {
+        using var _ = subscription;
+        using var cts = new CancellationTokenSource(timeout);
+        var pollTask = PollTicksAsync(started.Task, cts.Token);
         try
         {
-            await loaded.Task.WaitAsync(cts.Token);
+            await started.Task.WaitAsync(cts.Token);
         }
         catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
         {
-            throw new TimeoutException(
-                $"Agent '{agentId}' did not appear in AgentManager within the timeout.", ex);
+            throw new TimeoutException($"Agent '{agentId}' did not start within the timeout.", ex);
+        }
+        finally
+        {
+            try { await pollTask; }
+            catch { /* poll task exits on cancellation or signal */ }
+        }
+    }
+
+    private async Task PollTicksAsync(Task started, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested && !started.IsCompleted)
+        {
+            try
+            {
+                await TickAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) { return; }
+            if (started.IsCompleted) return;
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
+            }
+            catch (OperationCanceledException) { return; }
         }
     }
 
