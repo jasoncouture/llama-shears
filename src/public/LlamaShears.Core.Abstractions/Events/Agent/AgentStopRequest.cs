@@ -3,9 +3,8 @@ using LlamaShears.Core.Abstractions.Agent.Sessions;
 namespace LlamaShears.Core.Abstractions.Events.Agent;
 
 /// <summary>
-/// Payload for <see cref="Event.WellKnown.Command.AgentStop"/>. The target session
-/// shuts itself down — cancels its loop, awaits drain, publishes its own
-/// <c>agent:stopped</c> lifecycle event.
+/// Payload for <see cref="Event.WellKnown.Command.AgentStop"/>. Targets a specific session that
+/// the host is about to tear down; carries a non-null <see cref="SessionId"/>.
 /// </summary>
-/// <param name="SessionId">The specific agent boot to shut down. Subscribers match this against their own <see cref="SessionId"/> and ignore otherwise. If SessionId is null, it's a broadcast stop command</param>
-public sealed record AgentStopRequest(SessionId? SessionId);
+/// <param name="SessionId">Session id whose teardown is being requested.</param>
+public sealed record AgentStopRequest(SessionId SessionId);

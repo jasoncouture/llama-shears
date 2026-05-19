@@ -1,7 +1,7 @@
 namespace LlamaShears.Core.Abstractions.Events;
 
 /// <summary>
-/// Convenience extensions over <see cref="IEventPublisher"/> that
+/// Convenience extensions over <see cref="IEventBus"/> that
 /// generate a fresh UUIDv7 correlation id when the caller is starting
 /// a new event chain.
 /// </summary>
@@ -11,7 +11,7 @@ public static class EventPublisherExtensions
     /// Publishes <paramref name="data"/> with a freshly generated
     /// correlation id (UUIDv7).
     /// </summary>
-    public static async ValueTask PublishAsync<T>(this IEventPublisher publisher,
+    public static async ValueTask PublishAsync<T>(this IEventBus publisher,
         EventType eventType,
         T? data,
         CancellationToken cancellationToken)
@@ -24,7 +24,7 @@ public static class EventPublisherExtensions
     /// Publishes a payload-less event of <paramref name="eventType"/>
     /// with a freshly generated correlation id (UUIDv7).
     /// </summary>
-    public static async ValueTask PublishAsync<T>(this IEventPublisher publisher,
+    public static async ValueTask PublishAsync<T>(this IEventBus publisher,
         EventType eventType,
         CancellationToken cancellationToken)
         where T : class

@@ -12,12 +12,12 @@ public sealed partial class AgentConfigProvider : IAgentConfigProvider
 {
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-    private readonly IShearsPaths _paths;
+    private readonly IApplicationPathProvider _paths;
     private readonly IFileParserCache<AgentConfigProvider> _cache;
     private readonly ILogger<AgentConfigProvider> _logger;
 
     public AgentConfigProvider(
-        IShearsPaths paths,
+        IApplicationPathProvider paths,
         IFileParserCache<AgentConfigProvider> cache,
         ILogger<AgentConfigProvider> logger)
     {

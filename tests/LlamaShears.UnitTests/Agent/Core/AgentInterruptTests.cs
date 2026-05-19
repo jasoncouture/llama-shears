@@ -31,7 +31,7 @@ public sealed class AgentInterruptTests
     public async Task InterruptOnIdleAgentIsNoOp()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
         await using var agent = await BuildAgent("alice", provider, ctx, new ScriptedLanguageModel("immediate"));
 
@@ -43,7 +43,7 @@ public sealed class AgentInterruptTests
     public async Task InterruptCancelsInFlightTurnAndAgentRemainsLive()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
         var model = new HangingLanguageModel();
 
@@ -59,14 +59,14 @@ public sealed class AgentInterruptTests
         using var idle = await _lockManager.AcquireLockAsync("alice", timeout.Token);
     }
 
-    private static ValueTask PublishInterruptAsync(IEventPublisher publisher, string agentId)
+    private static ValueTask PublishInterruptAsync(IEventBus publisher, string agentId)
         => publisher.PublishAsync(
             Event.WellKnown.Command.InterruptAgent with { Id = agentId },
             AgentInterruptRequest.Instance,
             CancellationToken.None);
 
     private static ValueTask PublishChannelMessageAsync(
-        IEventPublisher publisher,
+        IEventBus publisher,
         string agentId,
         string text)
         => publisher.PublishAsync(
@@ -90,7 +90,7 @@ public sealed class AgentInterruptTests
         var contextProvider = Substitute.For<IAgentContextProvider>();
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
-        var publisher = services.GetRequiredService<IEventPublisher>();
+        var publisher = services.GetRequiredService<IEventBus>();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();

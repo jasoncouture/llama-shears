@@ -30,7 +30,7 @@ public sealed class AgentTurnFlowTests
     public async Task TwoChannelMessagesFromSameChannelProduceTwoSeparateUserTurnsInContext()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -54,7 +54,7 @@ public sealed class AgentTurnFlowTests
     public async Task ChannelMessageProducesUserTurnWithChannelIdFromEnvelopeType()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -74,7 +74,7 @@ public sealed class AgentTurnFlowTests
     public async Task UserMessageArrivingDuringToolDispatchAppendsAfterToolTurns()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -115,11 +115,11 @@ public sealed class AgentTurnFlowTests
 
     private sealed class InlinePublishingDispatcher : IToolCallDispatcher
     {
-        private readonly IEventPublisher _publisher;
+        private readonly IEventBus _publisher;
         private readonly string _agentId;
         private readonly string _text;
 
-        public InlinePublishingDispatcher(IEventPublisher publisher, string agentId, string text)
+        public InlinePublishingDispatcher(IEventBus publisher, string agentId, string text)
         {
             _publisher = publisher;
             _agentId = agentId;
@@ -186,7 +186,7 @@ public sealed class AgentTurnFlowTests
     }
 
     private static ValueTask PublishChannelMessageAsync(
-        IEventPublisher publisher,
+        IEventBus publisher,
         string agentId,
         string text)
         => publisher.PublishAsync(
@@ -211,7 +211,7 @@ public sealed class AgentTurnFlowTests
         var contextProvider = Substitute.For<IAgentContextProvider>();
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
-        var publisher = services.GetRequiredService<IEventPublisher>();
+        var publisher = services.GetRequiredService<IEventBus>();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();

@@ -172,19 +172,11 @@ public sealed class CronSchedulerTests
 
     private static FakeTimeProvider NewTime(DateTimeOffset start) => new FakeTimeProvider(start);
 
-    private static ICronScheduler NewScheduler(TempRoot fixture, FakeTimeProvider? time = null, IAgentManager? agents = null)
+    private static ICronScheduler NewScheduler(TempRoot fixture, FakeTimeProvider? time = null)
     {
-        IShearsPaths paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        IApplicationPathProvider paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
         ICronStore store = new JsonCronStore(paths, NullLogger<JsonCronStore>.Instance);
-        var agentManager = agents ?? AlwaysLoadedAgentManager();
-        return new CronScheduler(store, agentManager, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
-    }
-
-    private static IAgentManager AlwaysLoadedAgentManager()
-    {
-        var manager = Substitute.For<IAgentManager>();
-        manager.Contains(Arg.Any<string>()).Returns(true);
-        return manager;
+        return new CronScheduler(store, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
     }
 
     private sealed class TempRoot : IDisposable

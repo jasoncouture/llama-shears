@@ -10,12 +10,12 @@ public class SystemTickService : BackgroundService
 {
     private static readonly TimeSpan _tickInterval = TimeSpan.FromSeconds(30);
 
-    private readonly IEventPublisher _publisher;
+    private readonly IEventBus _publisher;
     private readonly IOptionsMonitor<SystemTickOptions> _options;
     private readonly ILogger<SystemTickService> _logger;
 
     public SystemTickService(
-        IEventPublisher publisher,
+        IEventBus publisher,
         IOptionsMonitor<SystemTickOptions> options,
         ILogger<SystemTickService> logger)
     {

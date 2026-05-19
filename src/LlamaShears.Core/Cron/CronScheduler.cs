@@ -7,14 +7,12 @@ namespace LlamaShears.Core.Cron;
 public sealed partial class CronScheduler : ICronScheduler
 {
     private readonly ICronStore _store;
-    private readonly IAgentManager _agents;
     private readonly TimeProvider _time;
     private readonly ILogger<CronScheduler> _logger;
 
-    public CronScheduler(ICronStore store, IAgentManager agents, TimeProvider time, ILogger<CronScheduler> logger)
+    public CronScheduler(ICronStore store, TimeProvider time, ILogger<CronScheduler> logger)
     {
         _store = store;
-        _agents = agents;
         _time = time;
         _logger = logger;
     }
@@ -157,11 +155,6 @@ public sealed partial class CronScheduler : ICronScheduler
             {
                 continue;
             }
-            if (!_agents.Contains(job.AgentId))
-            {
-                LogSkippedMissingAgent(job.Id, job.AgentId);
-                continue;
-            }
 
             try
             {
@@ -218,9 +211,6 @@ public sealed partial class CronScheduler : ICronScheduler
 
     [LoggerMessage(Level = LogLevel.Information, Message = "[cron stub] Job '{JobId}' for agent '{AgentId}' (manual={Manual}) would fire with a prompt of length {PromptLength}.")]
     private partial void LogStubFire(Guid jobId, string agentId, bool manual, int promptLength);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Cron job '{JobId}' due but agent '{AgentId}' is not currently loaded; skipping.")]
-    private partial void LogSkippedMissingAgent(Guid jobId, string agentId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron job '{JobId}' for agent '{AgentId}' failed to fire on this tick; remaining jobs continue.")]
     private partial void LogFireFailed(Guid jobId, string agentId, Exception ex);

@@ -1,6 +1,9 @@
 @page "/agents"
+@using LlamaShears.Core
 @using LlamaShears.Core.Abstractions.Agent
+@using LlamaShears.Core.Abstractions.Agent.Sessions
 @inject IAgentConfigProvider Configs
+@inject IAgentInstanceRepository Repository
 
 <PageTitle>Agents — LlamaShears</PageTitle>
 
@@ -18,7 +21,30 @@
             @foreach (var id in _ids)
             {
                 <li>
-                    <a class="agent-list-link" href="/agents/@Uri.EscapeDataString(id)/edit">@id</a>
+                    <div class="agent-list-row">
+                        <a class="agent-list-link" href="/agents/@Uri.EscapeDataString(id)/edit">@id</a>
+                        @{
+                            var sessions = SessionsFor(id);
+                            var defaultSession = DefaultSession(sessions);
+                        }
+                        @if (sessions.Count == 0)
+                        {
+                            <span class="agent-list-sessions agent-list-sessions-empty">no live sessions</span>
+                        }
+                        else
+                        {
+                            <ul class="agent-list-sessions">
+                                @foreach (var handle in sessions)
+                                {
+                                    var session = handle.SessionPath.Current;
+                                    var isDefault = ReferenceEquals(handle, defaultSession);
+                                    <li class="agent-list-session @(isDefault ? "agent-list-session-default" : null)">
+                                        <span>@session.Name</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
                 </li>
             }
         </ul>
@@ -31,5 +57,25 @@
     protected override void OnInitialized()
     {
         _ids = Configs.ListAgentIds();
+    }
+
+    private IReadOnlyList<AgentHandle> SessionsFor(string agentId)
+    {
+        return [.. Repository.GetAllAgents()
+            .Where(h => string.Equals(h.SessionPath.Current.AgentId, agentId, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(h => h.SessionPath.IsRootSession)
+            .ThenBy(h => h.SessionPath.Current.Name, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private static AgentHandle? DefaultSession(IReadOnlyList<AgentHandle> sessions)
+    {
+        foreach (var handle in sessions)
+        {
+            if (handle.SessionPath.IsRootSession && handle.SessionPath.Current.IsDefault)
+            {
+                return handle;
+            }
+        }
+        return null;
     }
 }

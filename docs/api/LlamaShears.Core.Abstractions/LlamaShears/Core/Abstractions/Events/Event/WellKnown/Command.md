@@ -10,9 +10,17 @@ Command events targeting a specific agent.
 
 Config supervisor is asking the agent manager to load or replace an agent. Payload carries the resolved [AgentConfig](../../../Agent/AgentConfig.md).
 
-### `AgentStop`
+### `AgentShutdown`
 
 Caller is asking a specific agent boot to shut itself down. Payload carries the target `SessionId`.
+
+### `AgentStart`
+
+Caller is asking the host to register and start a freshly built [AgentHandle](../../../../AgentHandle.md). Payload carries the cold handle.
+
+### `AgentStop`
+
+Caller is asking the host to stop a specific session. Payload carries the non-null target `SessionId`.
 
 ### `AgentUnload`
 

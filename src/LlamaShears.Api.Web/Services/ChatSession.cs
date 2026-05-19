@@ -18,7 +18,7 @@ public sealed class ChatSession :
     IEventHandler<AgentCompactionRequest>
 {
     private readonly IEventBus _bus;
-    private readonly IEventPublisher _publisher;
+    private readonly IEventBus _publisher;
     private readonly IAgentDirectory _directory;
     private readonly ISlashCommandRegistry _slashCommands;
     private readonly IDataContextFactory _dataContextFactory;
@@ -40,7 +40,7 @@ public sealed class ChatSession :
 
     public ChatSession(
         IEventBus bus,
-        IEventPublisher publisher,
+        IEventBus publisher,
         IAgentDirectory directory,
         ISlashCommandRegistry slashCommands,
         IDataContextFactory dataContextFactory)

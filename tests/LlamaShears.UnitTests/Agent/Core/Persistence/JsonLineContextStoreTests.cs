@@ -279,12 +279,12 @@ public sealed class JsonLineContextStoreTests
         public Fixture()
         {
             _root = Path.Combine(Path.GetTempPath(), $"llamashears-store-{Guid.NewGuid():N}");
-            Paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = _root }));
+            Paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = _root }));
             TimeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
             Store = new JsonLineContextStore(Paths, TimeProvider);
         }
 
-        public IShearsPaths Paths { get; }
+        public IApplicationPathProvider Paths { get; }
 
         public FakeTimeProvider TimeProvider { get; }
 

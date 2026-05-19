@@ -90,3 +90,5 @@ turn sees one consistent configuration end-to-end.
 - `Embedding` — Embedding model selection used for memory search; `null` disables memory features.
 - `ModelContextProtocolServers` — Set of MCP server names this agent is allowed to call; `null` grants no MCP access.
 
+### `GetData`
+

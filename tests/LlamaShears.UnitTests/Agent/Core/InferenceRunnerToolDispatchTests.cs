@@ -19,7 +19,7 @@ public sealed class InferenceRunnerToolDispatchTests
     public async Task DispatcherFiresAsToolFragmentsArriveAndOutcomeCarriesResultsInOrder()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
 
         var calls = new[]
         {
@@ -75,7 +75,7 @@ public sealed class InferenceRunnerToolDispatchTests
     public async Task OptionsWithoutToolsStillDispatchesAndDispatcherRejects()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var dispatcher = Substitute.For<IToolCallDispatcher>();
         dispatcher
             .DispatchAsync(Arg.Any<ToolCall>(), Arg.Any<ImmutableArray<ToolGroup>>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())

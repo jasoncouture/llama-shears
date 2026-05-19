@@ -12,12 +12,12 @@ public sealed class FilesystemPromptContextProvider : IPromptContextProvider
     private const string WorkspaceContextSubpath = "workspace/system/context";
     private const string DefaultBundledSubpath = "content/templates/workspace/system/context";
 
-    private readonly IShearsPaths _paths;
+    private readonly IApplicationPathProvider _paths;
     private readonly ITemplateRenderer _renderer;
     private readonly string _bundledRoot;
 
     public FilesystemPromptContextProvider(
-        IShearsPaths paths,
+        IApplicationPathProvider paths,
         ITemplateRenderer renderer,
         IOptions<FilesystemPromptContextOptions> options)
     {

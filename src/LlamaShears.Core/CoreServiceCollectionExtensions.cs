@@ -81,11 +81,10 @@ public static class CoreServiceCollectionExtensions
         services.AddShearsPaths();
         services.AddCommonServices();
         services.TryAddSingleton<IAgentConfigProvider, AgentConfigProvider>();
-        services.TryAddSingleton<AgentManager>();
-        services.TryAddSingleton<IAgentManager>(sp => sp.GetRequiredService<AgentManager>());
-        services.AddHostedService(sp => sp.GetRequiredService<AgentManager>());
+        services.TryAddSingleton<IAgentInstanceRepository, AgentInstanceRepository>();
+        services.AddHostedService<AgentHost>();
+        services.AddHostedService<AgentLifecycleService>();
         services.AddHostedService<AgentConfigSupervisor>();
-
         return services;
     }
 
@@ -117,7 +116,7 @@ public static class CoreServiceCollectionExtensions
 
         services.AddOptions<ShearsPathsOptions>()
             .BindConfiguration(configurationSection);
-        services.TryAddSingleton<IShearsPaths, ShearsPaths>();
+        services.TryAddSingleton<IApplicationPathProvider, ApplicationPathProvider>();
 
         return services;
     }

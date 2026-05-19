@@ -16,10 +16,6 @@ e.g. `telegram:123456`, round-trip cleanly).
 
 ## Fields
 
-### `DataKey`
-
-Well-known key under which a [SessionId](SessionId.md) is stashed on an agent's data scope.
-
 ### `DefaultSessionName`
 
 Name used for the default (main) session of an agent.

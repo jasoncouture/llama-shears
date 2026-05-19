@@ -131,7 +131,7 @@ public sealed class EventFilterTests
         services.AddLogging();
         services.AddEventingFramework();
         var provider = services.BuildServiceProvider();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         bus.Subscribe(
             pattern: null,
@@ -155,7 +155,7 @@ public sealed class EventFilterTests
         services.AddLogging();
         services.AddEventingFramework();
         var provider = services.BuildServiceProvider();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         bus.Subscribe(
             pattern: null,
@@ -192,7 +192,7 @@ public sealed class EventFilterTests
         GC.KeepAlive(bus);
     }
 
-    private static (IEventPublisher publisher, IEventBus bus, RecordingHandler recorder) BuildHarness(params IEventFilter[] filters)
+    private static (IEventBus publisher, IEventBus bus, RecordingHandler recorder) BuildHarness(params IEventFilter[] filters)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -202,7 +202,7 @@ public sealed class EventFilterTests
             services.AddSingleton(filter);
         }
         var provider = services.BuildServiceProvider();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var recorder = new RecordingHandler();
         bus.Subscribe(pattern: null, EventDeliveryMode.FireAndForget, recorder.AsFireAndForget());

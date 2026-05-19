@@ -1,4 +1,4 @@
-# LlamaShears.Core.Abstractions.Paths.IShearsPaths
+# LlamaShears.Core.Abstractions.Paths.IApplicationPathProvider
 
 Assembly: `LlamaShears.Core.Abstractions`
 

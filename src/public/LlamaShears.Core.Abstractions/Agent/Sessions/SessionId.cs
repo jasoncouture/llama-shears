@@ -37,6 +37,7 @@ public sealed partial record SessionId(string AgentId, string Name)
         {
             throw new ArgumentException($"Invalid session id: {value}", nameof(value));
         }
+
         return typed;
     }
 
@@ -69,9 +70,6 @@ public sealed partial record SessionId(string AgentId, string Name)
 
     /// <inheritdoc/>
     public override string ToString() => $"{AgentId}:{Id}:{Name}";
-
-    /// <summary>Well-known key under which a <see cref="SessionId"/> is stashed on an agent's data scope.</summary>
-    public const string DataKey = "session";
 
     /// <summary>Name used for the default (main) session of an agent.</summary>
     public const string DefaultSessionName = "default";

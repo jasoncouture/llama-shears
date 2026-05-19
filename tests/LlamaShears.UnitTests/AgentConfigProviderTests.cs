@@ -182,7 +182,7 @@ public sealed class AgentConfigProviderTests
             {
                 DataRoot = Path.Combine(_root, "data"),
             });
-            IShearsPaths paths = new ShearsPaths(pathsOptions);
+            IApplicationPathProvider paths = new ApplicationPathProvider(pathsOptions);
             Directory.CreateDirectory(paths.GetPath(PathKind.Agents));
 
             _memory = new MemoryCache(new MemoryCacheOptions());

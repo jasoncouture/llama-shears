@@ -60,3 +60,5 @@ to providers verbatim.
 - `TokenLimit` — Maximum response tokens; `0` = unbounded.
 - `Parameters` — Free-form provider-specific overrides. Captures every JSON property that does not match a known field; providers consume entries (e.g. Ollama reads `keepAlive`).
 
+### `GetData`
+

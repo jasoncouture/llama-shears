@@ -2,7 +2,7 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Publish-side gate consulted once per [IEventPublisher](IEventPublisher.md).`PublishAsync``1`
+Publish-side gate consulted once per [IEventBus](IEventBus.md).`PublishAsync``1`
 call. Each registered filter inspects the envelope and returns the set of
 delivery legs it wants suppressed; the bus ORs every filter's mask together
 and skips any leg present in the combined mask. The default posture is

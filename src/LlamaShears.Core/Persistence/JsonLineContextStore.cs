@@ -14,12 +14,12 @@ public sealed class JsonLineContextStore : IContextStore
 
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-    private readonly IShearsPaths _paths;
+    private readonly IApplicationPathProvider _paths;
     private readonly TimeProvider _time;
     private readonly ConcurrentDictionary<SessionKey, AgentContext> _contexts =
         new ConcurrentDictionary<SessionKey, AgentContext>();
 
-    public JsonLineContextStore(IShearsPaths paths, TimeProvider time)
+    public JsonLineContextStore(IApplicationPathProvider paths, TimeProvider time)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(time);

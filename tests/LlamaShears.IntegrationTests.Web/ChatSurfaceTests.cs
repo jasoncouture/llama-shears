@@ -1,6 +1,8 @@
 using System.Net;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.IntegrationTests.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.IntegrationTests.Web;
 
@@ -115,18 +117,13 @@ public sealed class ChatSurfaceTests
     public async Task RealOllamaProviderIsNotResolvableUnderTest()
     {
         await using var factory = new IsolatedAppFactory();
-        factory.SeedAgent("ollama-only", """
-            { "model": { "id": "OLLAMA/dummy" } }
-            """);
+        using var _ = factory.CreateClient();
 
-        using var client = factory.CreateClient();
-        await factory.TickAsync();
+        var providers = factory.Services.GetServices<IProviderFactory>().ToList();
 
-        using var response = await client.GetAsync("/chat", CancellationToken.None);
-        var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
-
-        await Assert.That(html).DoesNotContain("ollama-only");
-        await Assert.That(html).Contains("No agents loaded yet");
+        await Assert.That(providers.Count).IsEqualTo(1);
+        await Assert.That(providers[0]).IsSameReferenceAs(factory.ProviderFactory);
+        await Assert.That(providers.Any(p => string.Equals(p.Name, "OLLAMA", StringComparison.OrdinalIgnoreCase))).IsFalse();
     }
 
     [Test]

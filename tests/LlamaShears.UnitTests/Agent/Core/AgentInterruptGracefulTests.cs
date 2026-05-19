@@ -33,7 +33,7 @@ public sealed class AgentInterruptGracefulTests
     public async Task InterruptDuringTextStreamPersistsPartialAssistantTurn()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var model = new GatedTextStreamModel("partial-content");
@@ -56,7 +56,7 @@ public sealed class AgentInterruptGracefulTests
     public async Task InterruptDuringToolDispatchPairsToolCallWithErrorResult()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
         var model = new GatedToolCallModel(
@@ -133,15 +133,14 @@ public sealed class AgentInterruptGracefulTests
     {
         private readonly TaskCompletionSource _dispatched =
             new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly IEventPublisher _publisher;
+        private readonly IEventBus _publisher;
 
-        public HangingDispatcher(IEventPublisher publisher)
+        public HangingDispatcher(IEventBus publisher)
         {
             _publisher = publisher;
         }
 
         public Task WaitForDispatchAsync(TimeSpan timeout) => _dispatched.Task.WaitAsync(timeout);
-
         public async ValueTask<ToolCallResult> DispatchAsync(
             ToolCall call,
             ImmutableArray<ToolGroup> tools,
@@ -172,7 +171,7 @@ public sealed class AgentInterruptGracefulTests
     private sealed record ToolCallFragmentImpl(ToolCall Call) : IModelToolCallFragment;
 
     private static ValueTask PublishChannelMessageAsync(
-        IEventPublisher publisher,
+        IEventBus publisher,
         string agentId,
         string text)
         => publisher.PublishAsync(
@@ -180,7 +179,7 @@ public sealed class AgentInterruptGracefulTests
             new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private static ValueTask PublishInterruptAsync(IEventPublisher publisher, string agentId)
+    private static ValueTask PublishInterruptAsync(IEventBus publisher, string agentId)
         => publisher.PublishAsync(
             Event.WellKnown.Command.InterruptAgent with { Id = agentId },
             AgentInterruptRequest.Instance,
@@ -203,7 +202,7 @@ public sealed class AgentInterruptGracefulTests
         var contextProvider = Substitute.For<IAgentContextProvider>();
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
-        var publisher = services.GetRequiredService<IEventPublisher>();
+        var publisher = services.GetRequiredService<IEventBus>();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
         var agentServices = new ServiceCollection();

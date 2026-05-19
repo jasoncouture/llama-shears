@@ -31,7 +31,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IContextStore _contextStore;
     private readonly IAgentStateTracker _stateTracker;
     private readonly IInferenceRunner _inferenceRunner;
-    private readonly IEventPublisher _eventPublisher;
+    private readonly IEventBus _eventPublisher;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
     private readonly ITemplateFileLocator _locator;
@@ -42,7 +42,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     public ContextCompactor(IContextStore contextStore,
         IAgentStateTracker stateTracker,
         IInferenceRunner inferenceRunner,
-        IEventPublisher eventPublisher,
+        IEventBus eventPublisher,
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
         ITemplateFileLocator locator,

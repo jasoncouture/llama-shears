@@ -4,12 +4,12 @@ using Microsoft.Extensions.Options;
 
 namespace LlamaShears.UnitTests.Hosting;
 
-public sealed class ShearsPathsTests
+public sealed class ApplicationPathProviderTests
 {
     [Test]
     public async Task DataRootDefaultsToDottedDirectoryUnderTheUserProfile()
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions()));
 
         var dataRoot = paths.GetPath(PathKind.Data);
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -25,7 +25,7 @@ public sealed class ShearsPathsTests
     [Arguments(PathKind.Context, "context")]
     public async Task SubrootDefaultsUnderDataRoot(PathKind kind, string folderName)
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions()));
 
         var subroot = paths.GetPath(kind);
 
@@ -37,7 +37,7 @@ public sealed class ShearsPathsTests
     public async Task ConfiguredDataRootOverridesDefaultAndDescendantsAnchorUnderIt()
     {
         using var fixture = new TempRoot();
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
 
         await Assert.That(paths.GetPath(PathKind.Data)).IsEqualTo(fixture.Path);
         await Assert.That(Path.GetDirectoryName(paths.GetPath(PathKind.Workspace))).IsEqualTo(fixture.Path);
@@ -52,7 +52,7 @@ public sealed class ShearsPathsTests
         using var data = new TempRoot();
         using var workspace = new TempRoot();
 
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions
         {
             DataRoot = data.Path,
             WorkspaceRoot = workspace.Path,
@@ -65,7 +65,7 @@ public sealed class ShearsPathsTests
     [Test]
     public async Task GetPathCombinesRootWithSubpath()
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions()));
 
         var combined = paths.GetPath(PathKind.Templates, "spec/v1");
 
@@ -78,7 +78,7 @@ public sealed class ShearsPathsTests
     [Arguments("   ")]
     public async Task GetPathTreatsBlankSubpathAsRoot(string? subpath)
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions()));
 
         await Assert.That(paths.GetPath(PathKind.Agents, subpath)).IsEqualTo(paths.GetPath(PathKind.Agents));
     }
@@ -86,7 +86,7 @@ public sealed class ShearsPathsTests
     [Test]
     public async Task GetPathDoesNotCreateTheSubpathDirectory()
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions()));
         var subpath = $"unit-test-{Guid.NewGuid():N}";
 
         var path = paths.GetPath(PathKind.Workspace, subpath);
@@ -98,7 +98,7 @@ public sealed class ShearsPathsTests
     public async Task GetPathWithEnsureExistsCreatesTheSubpathDirectory()
     {
         using var fixture = new TempRoot();
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
         var subpath = $"unit-test-{Guid.NewGuid():N}";
 
         var path = paths.GetPath(PathKind.Workspace, subpath, ensureExists: true);
@@ -119,7 +119,7 @@ public sealed class ShearsPathsTests
     [Test]
     public async Task GetPathThrowsForUnknownKind()
     {
-        var paths = new ShearsPaths(Options.Create(new ShearsPathsOptions()));
+        var paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions()));
 
         await Assert.That(() => paths.GetPath((PathKind)999))
             .Throws<ArgumentOutOfRangeException>();

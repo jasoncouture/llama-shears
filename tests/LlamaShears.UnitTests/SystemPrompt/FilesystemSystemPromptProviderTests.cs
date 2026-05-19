@@ -250,7 +250,7 @@ public sealed class FilesystemSystemPromptProviderTests
                 DataRoot = Path.Combine(_root, "data"),
                 TemplatesRoot = Path.Combine(_root, "templates"),
             });
-            IShearsPaths paths = new ShearsPaths(pathsOptions);
+            IApplicationPathProvider paths = new ApplicationPathProvider(pathsOptions);
 
             _memory = new MemoryCache(new MemoryCacheOptions());
             IShearsCache<TemplateRenderer> shears = new ShearsCache<TemplateRenderer>(_memory);

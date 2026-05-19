@@ -2,29 +2,27 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Payload for [Command](../Event/WellKnown/Command.md).`AgentStop`. The target session
-shuts itself down — cancels its loop, awaits drain, publishes its own
-`agent:stopped` lifecycle event.
+Payload for [Command](../Event/WellKnown/Command.md).`AgentStop`. Targets a specific session that
+the host is about to tear down; carries a non-null [AgentStopRequest](AgentStopRequest.md).`SessionId`.
 
 ## Parameters
 
-- `SessionId` — The specific agent boot to shut down. Subscribers match this against their own [AgentStopRequest](AgentStopRequest.md).`SessionId` and ignore otherwise. If SessionId is null, it's a broadcast stop command
+- `SessionId` — Session id whose teardown is being requested.
 
 ## Properties
 
 ### `SessionId`
 
-The specific agent boot to shut down. Subscribers match this against their own [AgentStopRequest](AgentStopRequest.md).`SessionId` and ignore otherwise. If SessionId is null, it's a broadcast stop command
+Session id whose teardown is being requested.
 
 ## Methods
 
 ### `AgentStopRequest`([SessionId](../../Agent/Sessions/SessionId.md) SessionId)
 
-Payload for [Command](../Event/WellKnown/Command.md).`AgentStop`. The target session
-shuts itself down — cancels its loop, awaits drain, publishes its own
-`agent:stopped` lifecycle event.
+Payload for [Command](../Event/WellKnown/Command.md).`AgentStop`. Targets a specific session that
+the host is about to tear down; carries a non-null [AgentStopRequest](AgentStopRequest.md).`SessionId`.
 
 #### Parameters
 
-- `SessionId` — The specific agent boot to shut down. Subscribers match this against their own [AgentStopRequest](AgentStopRequest.md).`SessionId` and ignore otherwise. If SessionId is null, it's a broadcast stop command
+- `SessionId` — Session id whose teardown is being requested.
 

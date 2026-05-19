@@ -15,7 +15,7 @@ public sealed partial class Agent :
     IAgent,
     IEventHandler<ChannelMessage>,
     IEventHandler<AgentInterruptRequest>,
-    IEventHandler<AgentStopRequest>,
+    IEventHandler<AgentShutdownRequest>,
     IAsyncDisposable
 {
     private readonly ILogger _logger;
@@ -29,7 +29,7 @@ public sealed partial class Agent :
     private readonly CancellationTokenSource _shutdown;
     private readonly Lock _interruptLock = new Lock();
     private CancellationTokenSource? _activeTurnCancellationTokenSource;
-    private readonly IEventPublisher _eventPublisher;
+    private readonly IEventBus _eventPublisher;
     private readonly IDataContextScope _dataScope;
     private readonly IAgentLock _agentLock;
     private readonly IAgentIterationRunner _iterationRunner;
@@ -44,7 +44,7 @@ public sealed partial class Agent :
         ILogger<Agent> logger,
         IEventBus bus,
         TimeProvider timeProvider,
-        IEventPublisher eventPublisher,
+        IEventBus eventPublisher,
         IDataContextScope dataScope,
         IAgentLock agentLock,
         ISessionFactory sessionFactory,
@@ -60,7 +60,7 @@ public sealed partial class Agent :
         _iterationRunner = iterationRunner;
         _agentServices = [.. agentServices];
         var agentId = _dataScope.GetAgentConfig().Id;
-        var sessionId = _dataScope.GetSessionId();
+        var sessionId = _dataScope.GetCurrentSessionId();
         _sessionQueue = sessionFactory.Get(sessionId);
         _shutdown = new CancellationTokenSource();
         _subscription = bus.Subscribe<ChannelMessage>(
@@ -71,13 +71,13 @@ public sealed partial class Agent :
             Event.WellKnown.Command.InterruptAgent with { Id = agentId },
             EventDeliveryMode.Awaited,
             this);
-        _directStopSubscription = bus.Subscribe<AgentStopRequest>(
-            $"{Event.WellKnown.Command.AgentStop}:{sessionId}",
+        _directStopSubscription = bus.Subscribe<AgentShutdownRequest>(
+            $"{Event.WellKnown.Command.AgentShutdown}:{sessionId}",
             EventDeliveryMode.Awaited,
             this);
 
-        _broadcastStopSubscription = bus.Subscribe<AgentStopRequest>(
-            $"{Event.WellKnown.Command.AgentStop}",
+        _broadcastStopSubscription = bus.Subscribe<AgentShutdownRequest>(
+            $"{Event.WellKnown.Command.AgentShutdown}",
             EventDeliveryMode.Awaited,
             this);
     }
@@ -85,8 +85,8 @@ public sealed partial class Agent :
     private async Task PublishLifecycleEventAsync(EventType type, CancellationToken cancellationToken)
     {
         var agentConfig = _dataScope.GetAgentConfig();
-        var sessionId = _dataScope.GetSessionId();
-        var eventInformation = new AgentEventInformation(agentConfig, sessionId);
+        var sessionId = _dataScope.GetCurrentSessionId();
+        var eventInformation = new AgentLifecycleEvent(agentConfig, sessionId);
         type = type with { Id = agentConfig.Id };
         await _eventPublisher.PublishAsync(type, eventInformation, cancellationToken);
     }
@@ -146,12 +146,12 @@ public sealed partial class Agent :
         return ValueTask.CompletedTask;
     }
 
-    public async ValueTask HandleAsync(IEventEnvelope<AgentStopRequest> envelope, CancellationToken cancellationToken)
+    public async ValueTask HandleAsync(IEventEnvelope<AgentShutdownRequest> envelope, CancellationToken cancellationToken)
     {
         if (_shutdown.IsCancellationRequested) return;
         if (envelope.Data?.SessionId is not null)
         {
-            var ownSessionId = _dataScope.GetSessionId();
+            var ownSessionId = _dataScope.GetCurrentSessionId();
             if (envelope.Data.SessionId != ownSessionId)
             {
                 return;
