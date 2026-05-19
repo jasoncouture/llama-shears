@@ -8,36 +8,33 @@ namespace LlamaShears.Core.Abstractions.Common;
 /// </summary>
 public static class DataContextServiceCollectionExtensions
 {
-    extension(IServiceCollection services)
+    /// <summary>
+    /// Registers <typeparamref name="TProvider"/> as a singleton
+    /// <see cref="IDataContextItemProvider"/> under
+    /// <see cref="DataContextConstants.SingletonKey"/>. The data-context
+    /// factory pulls these at its own construction time, so they may
+    /// only depend on other singletons.
+    /// </summary>
+    public static IServiceCollection AddSingletonDataProvider<TProvider>(this IServiceCollection services)
+        where TProvider : class, IDataContextItemProvider
     {
-        /// <summary>
-        /// Registers <typeparamref name="TProvider"/> as a singleton
-        /// <see cref="IDataContextItemProvider"/> under
-        /// <see cref="DataContextConstants.SingletonKey"/>. The data-context
-        /// factory pulls these at its own construction time, so they may
-        /// only depend on other singletons.
-        /// </summary>
-        public IServiceCollection AddSingletonDataProvider<TProvider>()
-            where TProvider : class, IDataContextItemProvider
-        {
-            ArgumentNullException.ThrowIfNull(services);
-            services.TryAddEnumerable(ServiceDescriptor.KeyedSingleton<IDataContextItemProvider, TProvider>(DataContextConstants.SingletonKey));
-            return services;
-        }
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(ServiceDescriptor.KeyedSingleton<IDataContextItemProvider, TProvider>(DataContextConstants.SingletonKey));
+        return services;
+    }
 
-        /// <summary>
-        /// Registers <typeparamref name="TProvider"/> as a scoped
-        /// <see cref="IDataContextItemProvider"/>. Scoped providers are
-        /// resolved from the call-site's scope on each context start, so
-        /// they may depend on scoped, transient, or singleton services.
-        /// </summary>
-        public IServiceCollection AddScopedDataProvider<TProvider>()
-            where TProvider : class, IDataContextItemProvider
-        {
-            ArgumentNullException.ThrowIfNull(services);
-            services.TryAddEnumerable(ServiceDescriptor.Scoped<IDataContextItemProvider, TProvider>());
-            return services;
-        }
+    /// <summary>
+    /// Registers <typeparamref name="TProvider"/> as a scoped
+    /// <see cref="IDataContextItemProvider"/>. Scoped providers are
+    /// resolved from the call-site's scope on each context start, so
+    /// they may depend on scoped, transient, or singleton services.
+    /// </summary>
+    public static IServiceCollection AddScopedDataProvider<TProvider>(this IServiceCollection services)
+        where TProvider : class, IDataContextItemProvider
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IDataContextItemProvider, TProvider>());
+        return services;
     }
 
     /// <summary>

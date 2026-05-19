@@ -16,16 +16,13 @@ public static class EmbeddingModelConfigurationExtensions
     /// <summary>Parameter key for the asymmetric document prefix.</summary>
     public const string DocumentPrefixKey = "documentPrefix";
 
-    extension(ModelConfiguration configuration)
-    {
-        /// <summary>Returns the configured query prefix, or <see langword="null"/> when absent or non-string.</summary>
-        public string? GetQueryPrefix()
-            => GetStringParameter(configuration, QueryPrefixKey);
+    /// <summary>Returns the configured query prefix, or <see langword="null"/> when absent or non-string.</summary>
+    public static string? GetQueryPrefix(this ModelConfiguration configuration)
+        => GetStringParameter(configuration, QueryPrefixKey);
 
-        /// <summary>Returns the configured document prefix, or <see langword="null"/> when absent or non-string.</summary>
-        public string? GetDocumentPrefix()
-            => GetStringParameter(configuration, DocumentPrefixKey);
-    }
+    /// <summary>Returns the configured document prefix, or <see langword="null"/> when absent or non-string.</summary>
+    public static string? GetDocumentPrefix(this ModelConfiguration configuration)
+        => GetStringParameter(configuration, DocumentPrefixKey);
 
     private static string? GetStringParameter(ModelConfiguration configuration, string key)
     {

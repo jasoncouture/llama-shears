@@ -1,9 +1,5 @@
 # LlamaShears.Core.Abstractions.Agent.Sessions
 
-## Namespaces
-
-- [LlamaShears.Core.Abstractions.Agent.Sessions.SessionExtensions](SessionExtensions/index.md)
-
 ## Types
 
 - [ISessionFactory](ISessionFactory.md) — Per-agent registry of live sessions. Backed by a concurrent dictionary keyed by [SessionId](SessionId.md); sessions are created on first [ISessionFactory](ISessionFactory.md).`Get` via `ActivatorUtilities` and reused on subsequent requests.
