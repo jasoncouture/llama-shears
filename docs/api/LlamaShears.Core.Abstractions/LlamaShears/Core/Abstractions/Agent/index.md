@@ -2,8 +2,6 @@
 
 ## Namespaces
 
-- [LlamaShears.Core.Abstractions.Agent.AgentConfigExtensions](AgentConfigExtensions/index.md)
-- [LlamaShears.Core.Abstractions.Agent.AgentStateExtensions](AgentStateExtensions/index.md)
 - [LlamaShears.Core.Abstractions.Agent.Persistence](Persistence/index.md)
 - [LlamaShears.Core.Abstractions.Agent.SaveAgentConfigResult](SaveAgentConfigResult/index.md)
 - [LlamaShears.Core.Abstractions.Agent.Sessions](Sessions/index.md)
