@@ -1,11 +1,10 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Paths;
-using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Seeding;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -22,12 +21,12 @@ public sealed partial class AgentManager
 
     private readonly IEventPublisher _publisher;
     private readonly ILogger<AgentManager> _logger;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IAgentFactory _factory;
     private readonly IShearsPaths _paths;
     private readonly IDirectorySeeder _seeder;
 
-    private readonly Dictionary<string, AgentSlot> _loaded =
-        new Dictionary<string, AgentSlot>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AgentHandle> _loaded =
+        new Dictionary<string, AgentHandle>(StringComparer.OrdinalIgnoreCase);
 
     private readonly SemaphoreSlim _mutex = new SemaphoreSlim(1, 1);
     private readonly IDisposable _loadSubscription;
@@ -39,18 +38,17 @@ public sealed partial class AgentManager
         IEventBus bus,
         IEventPublisher publisher,
         ILoggerFactory loggerFactory,
-        IServiceScopeFactory scopeFactory,
+        IAgentFactory factory,
         IShearsPaths paths,
         IDirectorySeeder seeder,
         IDataContextFactory dataContextFactory)
     {
         _publisher = publisher;
         _logger = loggerFactory.CreateLogger<AgentManager>();
-        _scopeFactory = scopeFactory;
+        _factory = factory;
         _paths = paths;
         _seeder = seeder;
         _dataContextFactory = dataContextFactory;
-
         _loadSubscription = bus.Subscribe<AgentLoadRequest>(
             $"{Event.WellKnown.Command.AgentLoad}:+",
             EventDeliveryMode.Awaited,
@@ -70,8 +68,62 @@ public sealed partial class AgentManager
         return _loaded.ContainsKey(agentId);
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
-        => Task.Delay(Timeout.Infinite, stoppingToken);
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await Task.Yield();
+        var completionSource = new TaskCompletionSource();
+        using var cancellationSubscription = stoppingToken.Register(static taskCompletionSource => ((TaskCompletionSource)taskCompletionSource!).TrySetResult(), completionSource);
+        await completionSource.Task;
+        using var shutdownTimeoutCancellationTokenSource = new CancellationTokenSource();
+        shutdownTimeoutCancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+        var tasks = new List<Task>();
+        var handles = new List<AgentHandle>();
+
+        foreach (var agentKey in _loaded.Keys.ToArray())
+        {
+            AgentHandle? handle;
+            await _mutex.WaitAsync();
+            try
+            {
+                if (!_loaded.TryGetValue(agentKey, out handle)) continue;
+                if (!_loaded.Remove(agentKey)) continue;
+            }
+            finally
+            {
+                _mutex.Release();
+            }
+            handles.Add(handle);
+            tasks.Add(PublishStopMessageAsync(handle.Id, shutdownTimeoutCancellationTokenSource.Token)
+                .ContinueWith(static async (t, state) =>
+                {
+                    try
+                    {
+                        await t;
+                    }
+                    catch
+                    {
+                        // Ignored, we're shutting down, don't care.
+                    }
+                    var localHandle = (AgentHandle)state!;
+                    try { 
+                    await localHandle.DisposeAsync();
+                    } catch
+                    {
+                        // See previous comment.
+                    }
+                }, handle)
+            );
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task PublishStopMessageAsync(SessionId id, CancellationToken cancellationToken)
+    {
+        var stopRequest = new AgentStopRequest(id);
+        var eventType = Event.WellKnown.Command.AgentStop with { Id = id };
+        await _publisher.PublishAsync(eventType, stopRequest, cancellationToken);
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -157,13 +209,13 @@ public sealed partial class AgentManager
     {
         SeedAgentWorkspace(config);
 
-        var slot = await TryBuildSlotAsync(name, config, cancellationToken);
-        if (slot is null)
+        var handle = await TryStartAgentAsync(config, cancellationToken);
+        if (handle is null)
         {
             return;
         }
 
-        _loaded[name] = slot;
+        _loaded[name] = handle;
         LogAgentStarted(name);
 
         await _publisher.PublishAsync(
@@ -183,100 +235,45 @@ public sealed partial class AgentManager
 
     private async Task ReloadAsync(string name, AgentConfig config, CancellationToken cancellationToken)
     {
-        if (_loaded.Remove(name, out var oldSlot))
+        if (_loaded.Remove(name, out var oldHandle))
         {
-            await oldSlot.DisposeAsync();
+            await oldHandle.DisposeAsync();
             _dataContextFactory.DeleteContext(name);
         }
 
-        var newSlot = await TryBuildSlotAsync(name, config, cancellationToken);
-        if (newSlot is null)
+        var newHandle = await TryStartAgentAsync(config, cancellationToken);
+        if (newHandle is null)
         {
             return;
         }
 
-        _loaded[name] = newSlot;
+        _loaded[name] = newHandle;
         LogAgentReloaded(name);
     }
 
     private async Task<bool> StopAgentAsync(string name)
     {
-        if (!_loaded.Remove(name, out var slot))
+        if (!_loaded.Remove(name, out var handle))
         {
             return false;
         }
-        await slot.DisposeAsync();
+        await handle.DisposeAsync();
         _dataContextFactory.DeleteContext(name);
-        LogAgentStopped(slot.Name);
+        LogAgentStopped(handle.Id.Name);
         return true;
     }
-
-    private async Task<AgentSlot?> TryBuildSlotAsync(
-        string name,
-        AgentConfig config,
-        CancellationToken cancellationToken)
+    private const string DefaultSessionName = "default";
+    private async Task<AgentHandle?> TryStartAgentAsync(AgentConfig config, CancellationToken cancellationToken)
     {
         try
         {
-            return await BuildSlotAsync(name, config, cancellationToken);
+            var sessionId = new SessionId(config.Id, DefaultSessionName);
+            return await _factory.StartAgentAsync(config, sessionId, cancellationToken);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
-            LogBuildFailure(name, ex.Message, ex);
+            LogBuildFailure(config.Id, ex.Message, ex);
             return null;
-        }
-    }
-
-    private async Task<AgentSlot> BuildSlotAsync(
-        string name,
-        AgentConfig config,
-        CancellationToken cancellationToken)
-    {
-        var previousContext = ExecutionContext.Capture();
-        try
-        {
-            var uiCulture = Thread.CurrentThread.CurrentUICulture;
-            var culture = Thread.CurrentThread.CurrentCulture;
-            var blankExecutionContext = await ExecutionState.CreateBlankContextAsync();
-
-            ExecutionContext.Restore(blankExecutionContext);
-            Thread.CurrentThread.CurrentCulture = culture;
-            Thread.CurrentThread.CurrentUICulture = uiCulture;
-            // And we now look like we are a fresh process or thread!
-
-            var modelConfig = config.Model;
-
-            var agentGlobalDataContext = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
-                {
-                    { AgentConfig.DataKey, config },
-                    { ModelConfiguration.DataKey, modelConfig },
-                };
-
-            var scope = _scopeFactory.CreateAsyncScope();
-            try
-            {
-                var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
-                dataContextFactory.CreateContext(config.Id);
-                var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
-                await dataContextFactory.InitializeAsync(config.Id, dataProviders, agentGlobalDataContext,
-                    cancellationToken);
-                // Resolve the language model eagerly so a missing/misconfigured provider surfaces here as an
-                // InvalidOperationException and TryBuildSlotAsync skips the agent — instead of failing mid-turn.
-                _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
-                var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
-                await agent.StartAsync(cancellationToken);
-
-                return new AgentSlot(name, config.Hash, scope);
-            }
-            catch
-            {
-                await scope.DisposeAsync();
-                throw;
-            }
-        }
-        finally
-        {
-            ExecutionContext.Restore(previousContext!);
         }
     }
 
@@ -291,12 +288,4 @@ public sealed partial class AgentManager
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping agent '{AgentId}': {Message}")]
     private partial void LogBuildFailure(string agentId, string message, Exception ex);
-
-    private sealed record AgentSlot(string Name, string ConfigHash, AsyncServiceScope Scope) : IAsyncDisposable
-    {
-        public async ValueTask DisposeAsync()
-        {
-            await Scope.DisposeAsync();
-        }
-    }
 }

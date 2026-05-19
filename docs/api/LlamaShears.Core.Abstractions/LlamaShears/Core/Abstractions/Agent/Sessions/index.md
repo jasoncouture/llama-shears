@@ -1,14 +1,13 @@
 # LlamaShears.Core.Abstractions.Agent.Sessions
 
+## Namespaces
+
+- [LlamaShears.Core.Abstractions.Agent.Sessions.SessionExtensions](SessionExtensions/index.md)
+
 ## Types
 
-- [EphemeralRunResult](EphemeralRunResult.md) — Outcome of an ephemeral session's `RunAsync` call.
-- [EphemeralSessionContext](EphemeralSessionContext.md) — Live state for an ephemeral session, stashed in the session's data context scope under [EphemeralSessionContext](EphemeralSessionContext.md).`DataKey`. The session's `session_reply` tool reads [EphemeralSessionContext](EphemeralSessionContext.md).`Parent` / [EphemeralSessionContext](EphemeralSessionContext.md).`ChannelId` / [EphemeralSessionContext](EphemeralSessionContext.md).`SessionId` to publish back to the parent and flips [EphemeralSessionContext](EphemeralSessionContext.md).`ReplySent` so the owning session knows the fallback path is not needed.
-- [EphemeralSessionReference](EphemeralSessionReference.md) — Stable handle naming a target session — the ([EphemeralSessionReference](EphemeralSessionReference.md).`AgentId`, [EphemeralSessionReference](EphemeralSessionReference.md).`SessionId`) pair used by an ephemeral child session to address its parent (e.g. for routing the reply published via `session_reply`).
-- [EphemeralSessionRequest](EphemeralSessionRequest.md) — Caller-supplied configuration for an ephemeral session: which system prompt template to render, any extra data the template needs, an optional iteration cap, and an optional channel id for tagging events and replies.
-- [IEphemeralSession](IEphemeralSession.md) — Caller-owned handle to a live ephemeral session. Wraps a private agent-style loop driven by the same iteration runner the main agent uses, persists turns under `<agentId>/<sessionGuid>/current.json`, and emits a reply back to the parent session (via the event bus) on completion. Owned by the caller — disposing tears down the session's scope but leaves the on-disk transcript intact.
-- [IEphemeralSessionFactory](IEphemeralSessionFactory.md) — Creates ephemeral sessions for a loaded agent. The new session gets a fresh Guid id, its own service scope, its own data context overlay (so prompt-template parameters and the parent reference don't leak back to the main agent), and an empty transcript — no parent turns are inherited.
 - [ISessionFactory](ISessionFactory.md) — Per-agent registry of live sessions. Backed by a concurrent dictionary keyed by [SessionId](SessionId.md); sessions are created on first [ISessionFactory](ISessionFactory.md).`Get` via `ActivatorUtilities` and reused on subsequent requests.
 - [ISessionQueue](ISessionQueue.md) — Per-session inbound queue for turns the model still needs to see. Carries two kinds of inputs — user messages arriving from channels, and tool-result turns produced by dispatched tool calls — and returns them to the run loop in the order strict providers require: any pending tool turns first, followed by an optional same-channel user batch.
+- [SessionExtensions](SessionExtensions.md) — Convenience accessors for pulling the active [SessionId](SessionId.md) off an [IDataContextScope](../../Common/IDataContextScope.md) without callers having to remember the well-known key.
 - [SessionId](SessionId.md) — Identifier for a session: `agentId:defaultChannel` in canonical string form. Mirrors `EventType`'s shape — first segment is the agent id, second segment is the default channel for the session, and any further `:`-separated suffixes are absorbed into the channel part as opaque content (so channel ids that themselves carry colons, e.g. `telegram:123456`, round-trip cleanly).
 

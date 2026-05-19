@@ -10,10 +10,7 @@ message bus).
 
 ## Methods
 
-### `StartAsync`(CancellationToken cancellationToken)
+### `RunAsync`
 
-Starts the agent's run loop. Idempotent at construction time —
-invoking it twice on the same instance throws. The owner (the
-agent manager) calls this once after the agent's scope is built;
-shutdown happens through scope disposal.
+Run the main agent loop
 

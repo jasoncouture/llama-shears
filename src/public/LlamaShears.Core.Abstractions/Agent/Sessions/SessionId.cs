@@ -12,9 +12,12 @@ namespace LlamaShears.Core.Abstractions.Agent.Sessions;
 /// e.g. <c>telegram:123456</c>, round-trip cleanly).
 /// </summary>
 /// <param name="AgentId">Agent the session belongs to.</param>
-/// <param name="DefaultChannel">Channel the session is bound to. May contain <c>:</c> — everything after the first <c>:</c> in the canonical form is treated as part of this value.</param>
-public sealed partial record SessionId(string AgentId, string DefaultChannel)
+/// <param name="Name">Channel the session is bound to. May contain <c>:</c> — everything after the first <c>:</c> in the canonical form is treated as part of this value.</param>
+public sealed partial record SessionId(string AgentId, string Name)
 {
+    /// <summary>Unique identifier for this session instance. Auto-generated as a v7 GUID when not supplied.</summary>
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+
     [GeneratedRegex("^[a-z0-9_-]+:[a-z0-9_.:-]+$")]
     private static partial Regex GetValidationRegex();
 
@@ -51,12 +54,28 @@ public sealed partial record SessionId(string AgentId, string DefaultChannel)
         if (!GetValidationRegex().IsMatch(sessionId)) return false;
         var firstColon = sessionId.IndexOf(':');
         if (firstColon <= 0 || firstColon >= sessionId.Length - 1) return false;
+        var secondColon = sessionId.IndexOf(':', firstColon + 1);
+        if (secondColon <= firstColon + 1 || secondColon >= sessionId.Length - 1) return false;
+        if (!Guid.TryParse(sessionId.AsSpan(firstColon + 1, secondColon - firstColon - 1), out var parsedId))
+            return false;
         typed = new SessionId(
             AgentId: sessionId[..firstColon],
-            DefaultChannel: sessionId[(firstColon + 1)..]);
+            Name: sessionId[(secondColon + 1)..])
+        {
+            Id = parsedId,
+        };
         return true;
     }
 
     /// <inheritdoc/>
-    public override string ToString() => $"{AgentId}:{DefaultChannel}";
+    public override string ToString() => $"{AgentId}:{Id}:{Name}";
+
+    /// <summary>Well-known key under which a <see cref="SessionId"/> is stashed on an agent's data scope.</summary>
+    public const string DataKey = "session";
+
+    /// <summary>Name used for the default (main) session of an agent.</summary>
+    public const string DefaultSessionName = "default";
+
+    /// <summary><see langword="true"/> when this session id names the default (main) session — i.e. <see cref="Name"/> equals <see cref="DefaultSessionName"/>.</summary>
+    public bool IsDefault => Name == DefaultSessionName;
 }

@@ -1,7 +1,6 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
-using LlamaShears.Api.Tools.ModelContextProtocol.Session;
 using LlamaShears.Api.Tools.ModelContextProtocol.Shell;
 using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 using LlamaShears.Core.Abstractions.Paths;
@@ -58,8 +57,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<EditCronTool>()
             .WithTools<TriggerCronTool>()
             .WithTools<TodoTools>()
-            .WithTools<ShellTools>()
-            .WithTools<SessionReplyTool>();
+            .WithTools<ShellTools>();
 
         return services;
     }

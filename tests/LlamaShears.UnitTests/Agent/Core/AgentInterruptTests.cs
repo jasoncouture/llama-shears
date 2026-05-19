@@ -132,7 +132,7 @@ public sealed class AgentInterruptTests
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             iterationRunner: iterationRunner,
             agentServices: []);
-        await agent.StartAsync(CancellationToken.None);
+        _ = agent.RunAsync();
         return agent;
     }
 

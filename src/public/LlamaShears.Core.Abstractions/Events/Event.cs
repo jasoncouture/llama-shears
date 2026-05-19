@@ -62,6 +62,14 @@ public static class Event
             public static EventType CompactingFinished { get; } = new EventType(Sources.Agent, "compacting-finished");
             /// <summary>A complete turn has been recorded to the agent's context log.</summary>
             public static EventType Turn { get; } = new EventType(Sources.Agent, "turn");
+            /// <summary>Agent boot is beginning — scope and data context are being built but the agent loop has not yet started.</summary>
+            public static EventType Starting {get;} = new EventType(Sources.Agent, "starting");
+            /// <summary>Agent boot is complete — scope and data context are ready, agent loop has started.</summary>
+            public static EventType Started {get;} = new EventType(Sources.Agent, "started");
+            /// <summary>Agent shutdown is beginning — children are being disposed before the agent's own scope tears down.</summary>
+            public static EventType Stopping {get;} = new EventType(Sources.Agent, "stopping");
+            /// <summary>Agent shutdown is complete — scope disposed, data context deleted.</summary>
+            public static EventType Stopped {get;} = new EventType(Sources.Agent, "stopped");
         }
         /// <summary>Command events targeting a specific agent.</summary>
         public static class Command
@@ -74,6 +82,8 @@ public static class Event
             public static EventType AgentLoad { get; } = new EventType(Sources.Command, "agent-load");
             /// <summary>Config supervisor is asking the agent manager to unload an agent. Payload is the empty marker.</summary>
             public static EventType AgentUnload { get; } = new EventType(Sources.Command, "agent-unload");
+            /// <summary>Caller is asking a specific agent boot to shut itself down. Payload carries the target <c>SessionId</c>.</summary>
+            public static EventType AgentStop { get; } = new EventType(Sources.Command, "agent-stop");
         }
         /// <summary>Channel-level events.</summary>
         public static class Channel
