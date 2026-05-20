@@ -20,7 +20,7 @@ public sealed class ClearCommand : ISlashCommand
 
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
-        await _directory.ClearAsync(context.AgentId, archive: false, cancellationToken);
+        await _directory.ClearAsync(context.Session, archive: false, cancellationToken);
         return SlashCommandResult.ContextWasChanged;
     }
 }

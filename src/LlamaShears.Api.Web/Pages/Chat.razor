@@ -1,6 +1,8 @@
 @page "/chat/{AgentId?}"
+@using LlamaShears.Core
 @inject IChatSession Session
 @inject IAgentDirectory Directory
+@inject IAgentInstanceRepository Repository
 @inject NavigationManager Nav
 
 <PageTitle>LlamaShears</PageTitle>
@@ -23,13 +25,13 @@
         {
             return;
         }
-        if (Directory.ListAgentIds().Contains(AgentId))
+        if (!Directory.ListAgentIds().Contains(AgentId)
+            || !Repository.TryGetDefaultSession(AgentId, out var sessionId)
+            || !Repository.TryGetAgent(sessionId, out var handle))
         {
-            await Session.SelectAgentAsync(AgentId, CancellationToken.None);
+            Nav.NavigateTo("/chat");
+            return;
         }
-        else
-        {
-            Nav.NavigateTo("/chat", replace: true);
-        }
+        await Session.SelectSessionAsync(handle.SessionPath.Current, CancellationToken.None);
     }
 }

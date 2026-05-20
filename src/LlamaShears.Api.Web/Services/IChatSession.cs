@@ -1,18 +1,22 @@
 using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Content;
 
 namespace LlamaShears.Api.Web.Services;
 
 /// <summary>
-/// Per-circuit view of the active chat: which agent is selected,
+/// Per-circuit view of the active chat: which session is selected,
 /// what bubbles have arrived, and the user's display preferences
 /// for thoughts and streaming output. Components react to
 /// <see cref="Changed"/> rather than polling.
 /// </summary>
 public interface IChatSession : IDisposable
 {
-    /// <summary>Currently selected agent's id, or null if none.</summary>
-    string? SelectedAgentId { get; }
+    /// <summary>Currently selected session, or null if none.</summary>
+    SessionId? SelectedSession { get; }
+
+    /// <summary>Currently selected session's agent id, or null if none.</summary>
+    string? SelectedAgentId => SelectedSession?.AgentId;
 
     /// <summary>Snapshot of the displayed conversation bubbles.</summary>
     IReadOnlyList<ChatBubble> Bubbles { get; }
@@ -38,10 +42,10 @@ public interface IChatSession : IDisposable
     bool ShowTools { get; set; }
 
     /// <summary>
-    /// True while the selected agent is summarizing its context.
+    /// True while the selected session is summarizing its context.
     /// Drives a busy indicator in the message list; resets when the
     /// compactor finishes (success or fault). Cleared when the
-    /// selected agent changes.
+    /// selected session changes.
     /// </summary>
     bool IsCompacting { get; }
 
@@ -51,22 +55,22 @@ public interface IChatSession : IDisposable
     event Action? Changed;
 
     /// <summary>
-    /// Switches the active agent (or clears it when null/empty),
+    /// Switches the active session (or clears it when null),
     /// loading and replaying any persisted history.
     /// </summary>
-    Task SelectAgentAsync(string? agentId, CancellationToken cancellationToken);
+    Task SelectSessionAsync(SessionId? session, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Sends user input to the selected agent. Recognized slash
+    /// Sends user input to the selected session. Recognized slash
     /// commands (e.g. <c>/clear</c>, <c>/archive</c>) execute against
-    /// the agent's stored context instead of being delivered as a
+    /// the session's stored context instead of being delivered as a
     /// turn.
     /// </summary>
     Task SendAsync(string content, CancellationToken cancellationToken);
 
     /// <summary>
     /// Sends user input plus attachments (images today; future kinds
-    /// land alongside) to the selected agent. Empty
+    /// land alongside) to the selected session. Empty
     /// <paramref name="attachments"/> behaves identically to the
     /// text-only overload.
     /// </summary>
