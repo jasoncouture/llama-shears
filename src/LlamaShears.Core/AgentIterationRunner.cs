@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -54,10 +55,11 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             .SetState(batch[^1].ChannelId ?? DefaultChannel, correlationId: correlationId, sessionId: sessionId);
         var agentId = _dataScope.GetAgentConfig().Id;
 
+        var currentSession = _dataScope.GetCurrentSessionId();
         foreach (var turn in batch)
         {
             await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = agentId },
+                Event.WellKnown.Agent.Turn with { Id = currentSession },
                 turn,
                 correlationId,
                 outerCancellationToken);
@@ -65,7 +67,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
 
         var prompt = new ModelPrompt([.. context.Turns]);
         var agentContextSnapshot =
-            await _agentContextProvider.CreateAgentContextAsync(agentId, turnCancellationToken).ConfigureAwait(false)
+            await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetCurrentSessionId(), turnCancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{agentId}'.");
         var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
         var serverRegistry = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolServerRegistry>();
