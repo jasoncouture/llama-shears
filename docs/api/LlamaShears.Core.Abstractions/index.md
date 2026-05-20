@@ -30,6 +30,15 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ---
 
+## LlamaShears.Core
+
+- [AgentHandle](LlamaShears/Core/AgentHandle.md)
+- [AgentSessionPath](LlamaShears/Core/AgentSessionPath.md)
+- [CombinedDisposable](LlamaShears/Core/CombinedDisposable.md)
+- [DisposableList](LlamaShears/Core/DisposableList.md)
+- [IAgentFactory](LlamaShears/Core/IAgentFactory.md)
+- [IAgentInstanceRepository](LlamaShears/Core/IAgentInstanceRepository.md)
+
 ## LlamaShears.Core.Abstractions.Agent
 
 - [AgentConfig](LlamaShears/Core/Abstractions/Agent/AgentConfig.md)
@@ -45,7 +54,6 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentIterationRunner](LlamaShears/Core/Abstractions/Agent/IAgentIterationRunner.md)
 - [IAgentLock](LlamaShears/Core/Abstractions/Agent/IAgentLock.md)
 - [IAgentLockManager](LlamaShears/Core/Abstractions/Agent/IAgentLockManager.md)
-- [IAgentManager](LlamaShears/Core/Abstractions/Agent/IAgentManager.md)
 - [IAgentService](LlamaShears/Core/Abstractions/Agent/IAgentService.md)
 - [IAgentStateTracker](LlamaShears/Core/Abstractions/Agent/IAgentStateTracker.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
@@ -68,10 +76,13 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Agent.Sessions
 
+- [IAgentData](LlamaShears/Core/Abstractions/Agent/Sessions/IAgentData.md)
 - [ISessionFactory](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionFactory.md)
 - [ISessionQueue](LlamaShears/Core/Abstractions/Agent/Sessions/ISessionQueue.md)
+- [SessionDataExtensions](LlamaShears/Core/Abstractions/Agent/Sessions/SessionDataExtensions.md)
 - [SessionExtensions](LlamaShears/Core/Abstractions/Agent/Sessions/SessionExtensions.md)
 - [SessionId](LlamaShears/Core/Abstractions/Agent/Sessions/SessionId.md)
+- [SessionPath](LlamaShears/Core/Abstractions/Agent/Sessions/SessionPath.md)
 
 ## LlamaShears.Core.Abstractions.Agent.Todo
 
@@ -139,22 +150,25 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IEventEnvelope<T>](LlamaShears/Core/Abstractions/Events/IEventEnvelope-1.md)
 - [IEventFilter](LlamaShears/Core/Abstractions/Events/IEventFilter.md)
 - [IEventHandler<T>](LlamaShears/Core/Abstractions/Events/IEventHandler-1.md)
-- [IEventPublisher](LlamaShears/Core/Abstractions/Events/IEventPublisher.md)
 
 ## LlamaShears.Core.Abstractions.Events.Agent
 
 - [AgentCompactionRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentCompactionRequest.md)
-- [AgentEventInformation](LlamaShears/Core/Abstractions/Events/Agent/AgentEventInformation.md)
+- [AgentDeath](LlamaShears/Core/Abstractions/Events/Agent/AgentDeath.md)
 - [AgentInterruptRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentInterruptRequest.md)
+- [AgentLifecycleEvent](LlamaShears/Core/Abstractions/Events/Agent/AgentLifecycleEvent.md)
 - [AgentLifecycleMarker](LlamaShears/Core/Abstractions/Events/Agent/AgentLifecycleMarker.md)
 - [AgentLoadRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentLoadRequest.md)
 - [AgentMessageBase](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageBase.md)
 - [AgentMessageFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentMessageFragment.md)
+- [AgentShutdownRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentShutdownRequest.md)
+- [AgentStartRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentStartRequest.md)
 - [AgentStopRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentStopRequest.md)
 - [AgentThoughtFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentThoughtFragment.md)
 - [AgentToolCallFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentToolCallFragment.md)
 - [AgentToolResultFragment](LlamaShears/Core/Abstractions/Events/Agent/AgentToolResultFragment.md)
 - [AgentUnloadRequest](LlamaShears/Core/Abstractions/Events/Agent/AgentUnloadRequest.md)
+- [ConfigurationChangedNotification](LlamaShears/Core/Abstractions/Events/Agent/ConfigurationChangedNotification.md)
 - [IAgentMessage](LlamaShears/Core/Abstractions/Events/Agent/IAgentMessage.md)
 
 ## LlamaShears.Core.Abstractions.Events.Channel
@@ -172,6 +186,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [Channel](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Channel.md)
 - [Command](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Command.md)
 - [Host](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Host.md)
+- [Lifecycle](LlamaShears/Core/Abstractions/Events/Event/WellKnown/Lifecycle.md)
 
 ## LlamaShears.Core.Abstractions.Memory
 
@@ -185,9 +200,9 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions.Paths
 
 - [FileType](LlamaShears/Core/Abstractions/Paths/FileType.md)
+- [IApplicationPathProvider](LlamaShears/Core/Abstractions/Paths/IApplicationPathProvider.md)
 - [IFileProtectionPolicy](LlamaShears/Core/Abstractions/Paths/IFileProtectionPolicy.md)
 - [IPathExpander](LlamaShears/Core/Abstractions/Paths/IPathExpander.md)
-- [IShearsPaths](LlamaShears/Core/Abstractions/Paths/IShearsPaths.md)
 - [PathKind](LlamaShears/Core/Abstractions/Paths/PathKind.md)
 - [ProtectedFile](LlamaShears/Core/Abstractions/Paths/ProtectedFile.md)
 - [ProtectionMode](LlamaShears/Core/Abstractions/Paths/ProtectionMode.md)

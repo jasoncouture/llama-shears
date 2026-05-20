@@ -1,5 +1,8 @@
 @implements IDisposable
+@using LlamaShears.Core
+@using LlamaShears.Core.Abstractions.Agent.Sessions
 @inject IAgentDirectory Directory
+@inject IAgentInstanceRepository Repository
 @inject IChatSession Session
 @inject NavigationManager Nav
 @inject IJSRuntime Js
@@ -13,6 +16,19 @@
         @foreach (var id in _agentIds)
         {
             <option value="@id">@id</option>
+        }
+    </select>
+    <select id="session-select" value="@_selectedSessionGuid">
+        @if (_sessions.Count == 0)
+        {
+            <option value="">— no sessions —</option>
+        }
+        else
+        {
+            @foreach (var session in _sessions)
+            {
+                <option value="@session.Id">@session</option>
+            }
         }
     </select>
     @if (_agentIds.Count == 0)
@@ -62,6 +78,8 @@
 
 @code {
     private IReadOnlyList<string> _agentIds = [];
+    private IReadOnlyList<SessionId> _sessions = [];
+    private Guid? _selectedSessionGuid;
     private string? _loadedPrefsAgentId;
 
     protected override void OnInitialized()
@@ -100,6 +118,32 @@
     private void Refresh()
     {
         _agentIds = Directory.ListAgentIds();
+        RefreshSessions();
+    }
+
+    private void RefreshSessions()
+    {
+        if (Session.SelectedAgentId is not { } agentId)
+        {
+            _sessions = [];
+            _selectedSessionGuid = null;
+            return;
+        }
+        var matches = new List<SessionId>();
+        SessionId? defaultSession = null;
+        foreach (var handle in Repository.GetAllAgents())
+        {
+            if (!handle.SessionPath.IsRootSession) continue;
+            var current = handle.SessionPath.Current;
+            if (!string.Equals(current.AgentId, agentId, StringComparison.OrdinalIgnoreCase)) continue;
+            matches.Add(current);
+            if (current.IsDefault)
+            {
+                defaultSession = current;
+            }
+        }
+        _sessions = matches;
+        _selectedSessionGuid = defaultSession?.Id ?? matches.FirstOrDefault()?.Id;
     }
 
     private async Task ToggleThoughts()
@@ -134,6 +178,7 @@
         var id = e.Value as string;
         var normalized = string.IsNullOrWhiteSpace(id) ? null : id;
         await Session.SelectAgentAsync(normalized, CancellationToken.None);
+        RefreshSessions();
         Nav.NavigateTo(normalized is null ? "/chat" : $"/chat/{Uri.EscapeDataString(normalized)}", replace: true);
     }
 

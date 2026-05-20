@@ -22,3 +22,7 @@ Commands the runtime issues to agents (compact, interrupt, …).
 
 Events emitted by the host process itself.
 
+### `Lifecycle`
+
+Agent lifecycle transitions (birth, death, update).
+

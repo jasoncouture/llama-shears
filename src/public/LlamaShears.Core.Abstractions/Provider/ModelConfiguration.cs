@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core.Abstractions.Provider;
@@ -23,8 +24,14 @@ public record ModelConfiguration(
     int? ContextLength = null,
     int TokenLimit = 0,
     ImmutableDictionary<string, JsonElement>? Parameters = null
-)
+) : IAgentData
 {
     /// <summary>Key used to stash the active <see cref="ModelConfiguration"/> in the per-turn data context scope.</summary>
     public const string DataKey = "model_configuration";
+
+    /// <inheritdoc />
+    public IEnumerable<KeyValuePair<string, object?>> GetData()
+    {
+        yield return new KeyValuePair<string, object?>(DataKey, this);
+    }
 }

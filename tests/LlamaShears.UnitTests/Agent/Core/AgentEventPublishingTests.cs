@@ -118,7 +118,7 @@ public sealed class AgentEventPublishingTests
         ScriptedLanguageModel model)
     {
         await using var provider = BuildServices();
-        var capturing = new CapturingEventPublisher(provider.GetRequiredService<IEventPublisher>());
+        var capturing = new CapturingEventPublisher(provider.GetRequiredService<IEventBus>());
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
 
@@ -222,13 +222,13 @@ public sealed class AgentEventPublishingTests
     /// agent:turn events would be swallowed and the agent's own context
     /// growth check would never trigger model invocation.
     /// </summary>
-    private sealed class CapturingEventPublisher : IEventPublisher
+    private sealed class CapturingEventPublisher : IEventBus
     {
-        private readonly IEventPublisher _inner;
+        private readonly IEventBus _inner;
         private readonly List<CapturedEvent> _captured = [];
         private readonly Lock _gate = new Lock();
 
-        public CapturingEventPublisher(IEventPublisher inner)
+        public CapturingEventPublisher(IEventBus inner)
         {
             _inner = inner;
         }
@@ -242,6 +242,11 @@ public sealed class AgentEventPublishingTests
                     return [.. _captured];
                 }
             }
+        }
+
+        public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler) where T : class
+        {
+            return _inner.Subscribe(pattern, mode, handler);
         }
 
         public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken)

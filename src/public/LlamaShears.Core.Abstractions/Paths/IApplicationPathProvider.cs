@@ -5,7 +5,7 @@ namespace LlamaShears.Core.Abstractions.Paths;
 /// (<see cref="PathKind"/>). Implementations decide where each root
 /// lives and whether to create directories on demand.
 /// </summary>
-public interface IShearsPaths
+public interface IApplicationPathProvider
 {
     /// <summary>
     /// Returns the absolute path for <paramref name="kind"/>, optionally

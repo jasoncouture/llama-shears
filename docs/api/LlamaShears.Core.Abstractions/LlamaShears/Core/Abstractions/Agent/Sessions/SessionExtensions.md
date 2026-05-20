@@ -2,28 +2,36 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Convenience accessors for pulling the active [SessionId](SessionId.md) off
+Convenience accessors for pulling the active [SessionPath](SessionPath.md) off
 an [IDataContextScope](../../Common/IDataContextScope.md) without callers having to remember the
 well-known key.
 
 ## Methods
 
-### `GetSessionId`([IDataContextScope](../../Common/IDataContextScope.md) scope)
+### `GetCurrentSessionId`([IDataContextScope](../../Common/IDataContextScope.md) scope)
 
-Returns the [SessionId](SessionId.md) attached to the given scope under
-[SessionId](SessionId.md).`DataKey`. Throws when the scope is
-`null` or has no session stashed.
+Returns the [SessionPath](SessionPath.md).`Current` session id for the scope.
 
-#### Parameters
+### `GetParentSessionId`([IDataContextScope](../../Common/IDataContextScope.md) scope)
 
-- `scope` — Data-context scope to inspect.
+Returns the [SessionPath](SessionPath.md).`Parent` session id for the scope.
 
-### `TryGetSessionId`([IDataContextScope](../../Common/IDataContextScope.md) scope)
+### `GetRootSessionId`([IDataContextScope](../../Common/IDataContextScope.md) scope)
 
-Returns the [SessionId](SessionId.md) attached to the given scope under
-[SessionId](SessionId.md).`DataKey`, or `null` if none is set.
+Returns the [SessionPath](SessionPath.md).`Root` session id for the scope.
 
-#### Parameters
+### `GetSessionPath`([IDataContextScope](../../Common/IDataContextScope.md) scope)
 
-- `scope` — Data-context scope to inspect.
+Returns the [SessionPath](SessionPath.md) stashed on `scope`. Throws when the
+scope is `null` or has no path set.
+
+### `IsRootSession`([IDataContextScope](../../Common/IDataContextScope.md) scope)
+
+`true` when the scope's session path is a root session (no parent above it).
+
+### `TryGetSessionPath`([IDataContextScope](../../Common/IDataContextScope.md) scope)
+
+Returns the [SessionPath](SessionPath.md) stashed on `scope` under
+[SessionPath](SessionPath.md).`DataKey`, or `null` when the scope is
+`null` or has no path set.
 

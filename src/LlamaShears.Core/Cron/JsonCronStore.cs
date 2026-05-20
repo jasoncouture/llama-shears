@@ -15,12 +15,12 @@ public sealed partial class JsonCronStore : ICronStore
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private readonly IShearsPaths _paths;
+    private readonly IApplicationPathProvider _paths;
     private readonly ILogger<JsonCronStore> _logger;
     private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
     private Dictionary<Guid, CronJob>? _cache;
 
-    public JsonCronStore(IShearsPaths paths, ILogger<JsonCronStore> logger)
+    public JsonCronStore(IApplicationPathProvider paths, ILogger<JsonCronStore> logger)
     {
         _paths = paths;
         _logger = logger;

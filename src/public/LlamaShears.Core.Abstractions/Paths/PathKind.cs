@@ -2,7 +2,7 @@ namespace LlamaShears.Core.Abstractions.Paths;
 
 /// <summary>
 /// Well-known categories of host state whose on-disk root is
-/// resolved by <see cref="IShearsPaths"/>. Implementations decide
+/// resolved by <see cref="IApplicationPathProvider"/>. Implementations decide
 /// where each root lives and whether to create directories on demand.
 /// </summary>
 public enum PathKind

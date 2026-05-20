@@ -19,7 +19,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private const string NoResponseSentinel = "NO_RESPONSE";
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
-    private readonly IEventPublisher _eventPublisher;
+    private readonly IEventBus _eventPublisher;
     private readonly IToolCallDispatcher _toolDispatcher;
     private readonly TimeProvider _time;
     private readonly IPromptContextProvider _promptContext;
@@ -30,7 +30,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private readonly ILogger<InferenceRunner> _logger;
 
     public InferenceRunner(
-        IEventPublisher eventPublisher,
+        IEventBus eventPublisher,
         IToolCallDispatcher toolDispatcher,
         TimeProvider time,
         IPromptContextProvider promptContext,

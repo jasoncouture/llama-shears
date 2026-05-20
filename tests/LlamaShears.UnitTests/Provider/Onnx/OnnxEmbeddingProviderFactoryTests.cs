@@ -183,7 +183,7 @@ public sealed class OnnxEmbeddingProviderFactoryTests
         public IDisposable? OnChange(Action<T, string?> listener) => null;
     }
 
-    private sealed class ThrowingPaths : IShearsPaths
+    private sealed class ThrowingPaths : IApplicationPathProvider
     {
         public string GetPath(PathKind kind, string? subpath = null, bool ensureExists = false)
             => throw new InvalidOperationException("IShearsPaths.GetPath should not be reached when ModelsRoot is explicitly set.");

@@ -19,7 +19,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
 
     private readonly ILogger<AgentIterationRunner> _logger;
     private readonly TimeProvider _time;
-    private readonly IEventPublisher _eventPublisher;
+    private readonly IEventBus _eventPublisher;
     private readonly IDataContextScope _dataScope;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IAgentContextProvider _agentContextProvider;
@@ -27,7 +27,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
     public AgentIterationRunner(
         ILogger<AgentIterationRunner> logger,
         TimeProvider time,
-        IEventPublisher eventPublisher,
+        IEventBus eventPublisher,
         IDataContextScope dataScope,
         IServiceScopeFactory scopeFactory,
         IAgentContextProvider agentContextProvider)

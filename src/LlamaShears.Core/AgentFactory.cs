@@ -9,62 +9,99 @@ namespace LlamaShears.Core;
 internal sealed class AgentFactory : IAgentFactory
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IDataContextFactory _dataContextFactory;
 
-    public AgentFactory(IServiceScopeFactory scopeFactory)
+    public AgentFactory(IServiceScopeFactory scopeFactory, IDataContextFactory dataContextFactory)
     {
         _scopeFactory = scopeFactory;
+        _dataContextFactory = dataContextFactory;
     }
 
-    public async Task<AgentHandle> StartAgentAsync(
-        AgentConfig config,
-        SessionId session,
-        IEnumerable<KeyValuePair<string, object?>> data,
-        CancellationToken cancellationToken)
+    public async ValueTask<AgentHandle> CreateAgentAsync(AgentConfig config, SessionId session,
+        IEnumerable<KeyValuePair<string, object?>> data, CancellationToken cancellationToken)
+    {
+        var sessionPath = _dataContextFactory.Current.GetSessionPath().CreateChildSession(session);
+        return await CreateAgentAsync(config, sessionPath, data, cancellationToken);
+    }
+
+    public async ValueTask<AgentHandle> CreateAgentAsync(AgentConfig config, SessionPath sessionPath,
+        IEnumerable<KeyValuePair<string, object?>> data, CancellationToken cancellationToken)
     {
         var previousContext = ExecutionContext.Capture();
+        var agentExecutionContext = await CreateAgentExecutionContext();
+        ExecutionContext.Restore(agentExecutionContext);
         try
         {
-            var uiCulture = Thread.CurrentThread.CurrentUICulture;
-            var culture = Thread.CurrentThread.CurrentCulture;
-            var blankExecutionContext = await ExecutionState.CreateBlankContextAsync();
-
-            ExecutionContext.Restore(blankExecutionContext);
-            Thread.CurrentThread.CurrentCulture = culture;
-            Thread.CurrentThread.CurrentUICulture = uiCulture;
-
-            var globals = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pair in data)
-            {
-                globals[pair.Key] = pair.Value;
-            }
-            
-            // These are authoratative, not to be overwriten by the caller.
-            globals[AgentConfig.DataKey] = config;
-            globals[ModelConfiguration.DataKey] = config.Model;
-            globals[SessionId.DataKey] = session;
-
-            var scope = _scopeFactory.CreateAsyncScope();
-            try
-            {
-                var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
-                dataContextFactory.CreateContext(config.Id);
-                var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
-                await dataContextFactory.InitializeAsync(config.Id, dataProviders, globals, cancellationToken);
-                _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
-                var agent = scope.ServiceProvider.GetRequiredService<IAgent>();
-                var runTask = agent.RunAsync();
-
-                return new AgentHandle(session, runTask, config.Hash, scope);
-            }
-            catch
-            {
-                await scope.DisposeAsync();
-                throw;
-            }
+            var globals = CreateAgentDataContextGlobals(config, sessionPath, data);
+            var (scope, agentContext) = await CreateAgentServiceScope(config, globals, cancellationToken);
+            // Must re-capture the execution context
+            return new AgentHandle(sessionPath, config.Hash, scope, agentContext);
         }
         finally
         {
             ExecutionContext.Restore(previousContext!);
+        }
+    }
+
+    private async ValueTask<(AsyncServiceScope, ExecutionContext)> CreateAgentServiceScope(
+        AgentConfig config,
+        Dictionary<string, object?> globals,
+        CancellationToken cancellationToken)
+    {
+        var scope = _scopeFactory.CreateAsyncScope();
+        try
+        {
+            var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
+            dataContextFactory.CreateContext(config.Id);
+            var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
+            await dataContextFactory.InitializeAsync(config.Id, dataProviders, globals, cancellationToken);
+            // Resolve critical services now, so we fail fast.
+            _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
+            _ = scope.ServiceProvider.GetRequiredService<IAgent>();
+            // Because we transitioned to async, the parent scope may not pick up what we've just done.
+            return (scope, ExecutionContext.Capture()!);
+        }
+        catch
+        {
+            await scope.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static Dictionary<string, object?> CreateAgentDataContextGlobals(AgentConfig config,
+        SessionPath sessionPath, IEnumerable<KeyValuePair<string, object?>> data)
+    {
+        var globals = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in data)
+        {
+            globals[pair.Key] = pair.Value;
+        }
+
+        // These are authoratative, not to be overwriten by the caller.
+        config.ApplyTo(globals);
+        config.Model.ApplyTo(globals);
+        sessionPath.ApplyTo(globals);
+        return globals;
+    }
+
+    private async ValueTask<ExecutionContext> CreateAgentExecutionContext()
+    {
+        var callerContext = ExecutionContext.Capture()!;
+        var uiCulture = Thread.CurrentThread.CurrentUICulture;
+        var culture = Thread.CurrentThread.CurrentCulture;
+        var agentExecutionContext = await ExecutionState.CreateBlankContextAsync();
+        // Switch to the fresh execution context, and copy the culture info from the parent
+        ExecutionContext.Restore(agentExecutionContext);
+        try
+        {
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = uiCulture;
+            var capturedContext = ExecutionContext.Capture()!;
+            return capturedContext;
+        }
+        finally
+        {
+            ExecutionContext.Restore(callerContext);
         }
     }
 }

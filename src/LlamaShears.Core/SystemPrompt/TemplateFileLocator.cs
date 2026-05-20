@@ -9,10 +9,10 @@ public sealed class TemplateFileLocator : ITemplateFileLocator
     private const string TemplatesWorkspaceSystemSubpath = "workspace/system";
     private const string BundledSubpath = "content/templates/workspace/system";
 
-    private readonly IShearsPaths _paths;
+    private readonly IApplicationPathProvider _paths;
     private readonly string _bundledRoot;
 
-    public TemplateFileLocator(IShearsPaths paths)
+    public TemplateFileLocator(IApplicationPathProvider paths)
     {
         _paths = paths;
         _bundledRoot = Path.Combine(AppContext.BaseDirectory, BundledSubpath);

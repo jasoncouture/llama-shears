@@ -11,7 +11,7 @@ public static class EventingServiceCollectionExtensions
     {
         services.TryAddSingleton<EventBus>();
         services.ForwardService<IEventBus, EventBus>();
-        services.ForwardService<IEventPublisher, EventBus>();
+        services.ForwardService<IEventBus, EventBus>();
         services.TryAddSingleton<IPatternMatcher, PatternMatcher>();
         services.AddMessagePipe(o =>
         {

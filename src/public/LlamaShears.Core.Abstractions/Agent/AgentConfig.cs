@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core.Abstractions.Agent;
@@ -26,7 +27,7 @@ public sealed record AgentConfig(
     string? SystemPrompt = null,
     string? PromptContext = null,
     ModelConfiguration? Embedding = null,
-    [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null)
+    [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null) : IAgentData
 {
     /// <summary>How often the host injects a heartbeat turn into an idle agent. Defaults to 30 minutes.</summary>
     public TimeSpan HeartbeatPeriod { get; init; } = TimeSpan.FromMinutes(30);
@@ -36,4 +37,10 @@ public sealed record AgentConfig(
     public AgentMemoryConfig Memory { get; init; } = new AgentMemoryConfig();
     /// <summary>Key used to stash the active <see cref="AgentConfig"/> in the per-turn data context scope.</summary>
     public const string DataKey = "agent_configuration";
+
+    /// <inheritdoc />
+    public IEnumerable<KeyValuePair<string, object?>> GetData()
+    {
+        yield return new KeyValuePair<string, object?>(DataKey, this);
+    }
 }

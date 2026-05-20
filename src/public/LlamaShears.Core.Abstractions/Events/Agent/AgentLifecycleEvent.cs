@@ -9,4 +9,4 @@ namespace LlamaShears.Core.Abstractions.Events.Agent;
 /// </summary>
 /// <param name="Config">Config the agent was started with.</param>
 /// <param name="SessionId">Session id of the boot — distinguishes the default (main) session from sub-sessions of the same agent.</param>
-public sealed record AgentEventInformation(AgentConfig Config, SessionId SessionId);
+public sealed record AgentLifecycleEvent(AgentConfig Config, SessionId SessionId);

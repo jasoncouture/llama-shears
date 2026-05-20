@@ -12,13 +12,13 @@ public sealed class OnnxEmbeddingProviderFactory : IEmbeddingProviderFactory, ID
     public const string ProviderName = "onnx";
 
     private readonly IOptionsMonitor<OnnxEmbeddingsProviderOptions> _options;
-    private readonly IShearsPaths _paths;
+    private readonly IApplicationPathProvider _paths;
     private readonly ConcurrentDictionary<string, OnnxEmbeddingModel> _models =
         new ConcurrentDictionary<string, OnnxEmbeddingModel>(StringComparer.Ordinal);
 
     public OnnxEmbeddingProviderFactory(
         IOptionsMonitor<OnnxEmbeddingsProviderOptions> options,
-        IShearsPaths paths)
+        IApplicationPathProvider paths)
     {
         _options = options;
         _paths = paths;

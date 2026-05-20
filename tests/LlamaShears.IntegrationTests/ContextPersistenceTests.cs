@@ -10,6 +10,22 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.IntegrationTests;
 
+public class EventBusCapture : IEventBus
+{
+    public EventBusCapture(IEventBus eventBus)
+    {
+        
+    }
+    public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken) where T : class
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler) where T : class
+    {
+        throw new NotImplementedException();
+    }
+}
 public sealed class ContextPersistenceTests
 {
     private const string AgentId = "alpha";
@@ -19,12 +35,13 @@ public sealed class ContextPersistenceTests
     public async Task UserMessageIsPersistedToCurrentJsonAfterTheAgentResponds()
     {
         await using var factory = new IsolatedAppFactory();
-        factory.SeedAgent(AgentId, """
-            { "model": { "id": "TEST/dummy" } }
-            """);
-        using var client = factory.CreateClient();
-        await factory.WaitForAgentAsync(AgentId);
 
+        using var client = factory.CreateClient();
+        var waitForAgentTask = factory.WaitForAgentAsync(AgentId);
+        factory.SeedAgent(AgentId, """
+                                   { "model": { "id": "TEST/dummy" } }
+                                   """);
+        await waitForAgentTask;
         await SendUserMessageAndWaitForReplyAsync(factory, "hello");
 
         var contextPath = ContextPathFor(factory, AgentId);
@@ -150,7 +167,7 @@ public sealed class ContextPersistenceTests
         IsolatedAppFactory factory,
         string content)
     {
-        var publisher = factory.Services.GetRequiredService<IEventPublisher>();
+        var publisher = factory.Services.GetRequiredService<IEventBus>();
         var contextStore = factory.Services.GetRequiredService<IContextStore>();
         var context = await contextStore.OpenAsync(AgentId, CancellationToken.None);
 
@@ -188,7 +205,7 @@ public sealed class ContextPersistenceTests
 
     private static string ContextPathFor(IsolatedAppFactory factory, string agentId)
     {
-        var paths = factory.Services.GetRequiredService<IShearsPaths>();
+        var paths = factory.Services.GetRequiredService<IApplicationPathProvider>();
         var folder = paths.GetPath(PathKind.Context, agentId);
         return Path.Combine(folder, "current.json");
     }

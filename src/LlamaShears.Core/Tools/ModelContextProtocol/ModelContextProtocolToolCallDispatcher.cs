@@ -12,12 +12,12 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IModelContextProtocolClient _client;
-    private readonly IEventPublisher _eventPublisher;
+    private readonly IEventBus _eventPublisher;
     private readonly ILogger<ModelContextProtocolToolCallDispatcher> _logger;
 
     public ModelContextProtocolToolCallDispatcher(
         IModelContextProtocolClient client,
-        IEventPublisher eventPublisher,
+        IEventBus eventPublisher,
         ILogger<ModelContextProtocolToolCallDispatcher> logger)
     {
         _client = client;

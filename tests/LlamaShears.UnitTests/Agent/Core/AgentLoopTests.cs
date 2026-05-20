@@ -27,7 +27,7 @@ public sealed class AgentLoopTests
     public async Task ChannelMessageDrivesAResponseIntoContextAndOutputs()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -49,7 +49,7 @@ public sealed class AgentLoopTests
     public async Task ChannelMessageTargetedAtAnotherAgentIsIgnored()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -68,7 +68,7 @@ public sealed class AgentLoopTests
     public async Task UserMessageInvokesMemorySearcherOnceAndStillProducesTurn()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -106,7 +106,7 @@ public sealed class AgentLoopTests
     public async Task BroadcastChannelMessageWithNullAgentIdReachesEveryAgent()
     {
         await using var provider = BuildServices();
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
 
@@ -129,7 +129,7 @@ public sealed class AgentLoopTests
     private const string TestChannelId = "test";
 
     private static ValueTask PublishChannelMessageAsync(
-        IEventPublisher publisher,
+        IEventBus publisher,
         string agentId,
         string text)
         => publisher.PublishAsync(
@@ -155,7 +155,7 @@ public sealed class AgentLoopTests
         var contextProvider = Substitute.For<IAgentContextProvider>();
         contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
-        var publisher = services.GetRequiredService<IEventPublisher>();
+        var publisher = services.GetRequiredService<IEventBus>();
         var resolvedMemorySearcher = memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher();
         var resolvedConfig = config ?? TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
         var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);

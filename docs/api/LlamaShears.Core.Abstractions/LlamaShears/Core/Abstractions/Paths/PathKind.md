@@ -3,7 +3,7 @@
 Assembly: `LlamaShears.Core.Abstractions`
 
 Well-known categories of host state whose on-disk root is
-resolved by [IShearsPaths](IShearsPaths.md). Implementations decide
+resolved by [IApplicationPathProvider](IApplicationPathProvider.md). Implementations decide
 where each root lives and whether to create directories on demand.
 
 ## Fields

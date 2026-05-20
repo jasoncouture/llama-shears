@@ -73,7 +73,7 @@ public sealed class JsonCronStoreTests
     public async Task LoadHandlesGarbageJsonByStartingEmpty()
     {
         using var fixture = new TempRoot();
-        var dataRoot = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
+        var dataRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
             .GetPath(PathKind.Data, ensureExists: true);
         await File.WriteAllTextAsync(Path.Combine(dataRoot, "cron.json"), "{ this is not json");
 
@@ -87,7 +87,7 @@ public sealed class JsonCronStoreTests
     public async Task LoadDedupesDuplicateIdsLastWriteWins()
     {
         using var fixture = new TempRoot();
-        var dataRoot = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
+        var dataRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
             .GetPath(PathKind.Data, ensureExists: true);
         var sharedId = Guid.NewGuid();
         var earlier = NewJob("agent-a", "earlier", "0 0 * * *", "earlier-prompt") with { Id = sharedId };
@@ -106,7 +106,7 @@ public sealed class JsonCronStoreTests
 
     private static ICronStore NewStore(TempRoot fixture)
     {
-        IShearsPaths paths = new ShearsPaths(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
+        IApplicationPathProvider paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
         return new JsonCronStore(paths, NullLogger<JsonCronStore>.Instance);
     }
 

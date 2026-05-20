@@ -20,6 +20,8 @@ public static class Event
         public const string Channel = "channel";
         /// <summary>Commands the runtime issues to agents (compact, interrupt, …).</summary>
         public const string Command = "command";
+        /// <summary>Agent lifecycle transitions (birth, death, update).</summary>
+        public const string Lifecycle = "lifecycle";
     }
 
     /// <summary>Pre-built <see cref="EventType"/> instances for each well-known event.</summary>
@@ -70,6 +72,19 @@ public static class Event
             public static EventType Stopping {get;} = new EventType(Sources.Agent, "stopping");
             /// <summary>Agent shutdown is complete — scope disposed, data context deleted.</summary>
             public static EventType Stopped {get;} = new EventType(Sources.Agent, "stopped");
+
+        }
+        /// <summary>Agent lifecycle events keyed on the agent id.</summary>
+        public static class Lifecycle
+        {
+            /// <summary>A new agent config has appeared and a root agent should be spawned. Payload is the <see cref="LlamaShears.Core.Abstractions.Agent.AgentConfig"/>.</summary>
+            public static EventType Birth { get; } = new EventType(Sources.Lifecycle, "birth");
+
+            /// <summary>An agent config has been removed and its tree should be torn down. Payload is the <see cref="LlamaShears.Core.Abstractions.Events.Agent.AgentDeath"/> singleton.</summary>
+            public static EventType Death { get; } = new EventType(Sources.Lifecycle, "death");
+
+            /// <summary>An existing agent's config has been mutated. Payload contract is owned elsewhere.</summary>
+            public static EventType Update { get; } = new EventType(Sources.Lifecycle, "update");
         }
         /// <summary>Command events targeting a specific agent.</summary>
         public static class Command
@@ -83,6 +98,10 @@ public static class Event
             /// <summary>Config supervisor is asking the agent manager to unload an agent. Payload is the empty marker.</summary>
             public static EventType AgentUnload { get; } = new EventType(Sources.Command, "agent-unload");
             /// <summary>Caller is asking a specific agent boot to shut itself down. Payload carries the target <c>SessionId</c>.</summary>
+            public static EventType AgentShutdown { get; } = new EventType(Sources.Command, "agent-shutdown");
+            /// <summary>Caller is asking the host to register and start a freshly built <see cref="LlamaShears.Core.AgentHandle"/>. Payload carries the cold handle.</summary>
+            public static EventType AgentStart { get; } = new EventType(Sources.Command, "agent-start");
+            /// <summary>Caller is asking the host to stop a specific session. Payload carries the non-null target <c>SessionId</c>.</summary>
             public static EventType AgentStop { get; } = new EventType(Sources.Command, "agent-stop");
         }
         /// <summary>Channel-level events.</summary>

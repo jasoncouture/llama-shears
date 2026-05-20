@@ -2,7 +2,7 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Convenience extensions over [IEventPublisher](IEventPublisher.md) that
+Convenience extensions over [IEventBus](IEventBus.md) that
 generate a fresh UUIDv7 correlation id when the caller is starting
 a new event chain.
 
