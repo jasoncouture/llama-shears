@@ -3,29 +3,21 @@
 Assembly: `LlamaShears.Core.Abstractions`
 
 Identifies a single archived (rotated-out) context file. The tuple
-([ArchiveId](ArchiveId.md).`AgentId`, [ArchiveId](ArchiveId.md).`SessionId`, [ArchiveId](ArchiveId.md).`UnixMillis`)
-uniquely names `<AgentId>/<UnixMillis>.json` (default
-session, when [ArchiveId](ArchiveId.md).`SessionId` is `null`) or
-`<AgentId>/<sessionGuid>/<UnixMillis>.json`
+([ArchiveId](ArchiveId.md).`Session`, [ArchiveId](ArchiveId.md).`UnixMillis`) uniquely names
+`<agentId>/<UnixMillis>.json` (default session) or
+`<agentId>/<sessionName>/<UnixMillis>.json`
 (non-default session) in the context store.
 
 ## Parameters
 
-- `AgentId` — Agent the archive belongs to.
-- `SessionId` — Session the archive belongs to; `null` = the agent's
-default (main) session and resolves to the agent root layout.
+- `Session` — Session the archive belongs to.
 - `UnixMillis` — Archive timestamp, milliseconds since the Unix epoch.
 
 ## Properties
 
-### `AgentId`
+### `Session`
 
-Agent the archive belongs to.
-
-### `SessionId`
-
-Session the archive belongs to; `null` = the agent's
-default (main) session and resolves to the agent root layout.
+Session the archive belongs to.
 
 ### `UnixMillis`
 
@@ -33,19 +25,16 @@ Archive timestamp, milliseconds since the Unix epoch.
 
 ## Methods
 
-### `ArchiveId`(string AgentId, Nullable<Guid> SessionId, long UnixMillis)
+### `ArchiveId`([SessionId](../Sessions/SessionId.md) Session, long UnixMillis)
 
 Identifies a single archived (rotated-out) context file. The tuple
-([ArchiveId](ArchiveId.md).`AgentId`, [ArchiveId](ArchiveId.md).`SessionId`, [ArchiveId](ArchiveId.md).`UnixMillis`)
-uniquely names `<AgentId>/<UnixMillis>.json` (default
-session, when [ArchiveId](ArchiveId.md).`SessionId` is `null`) or
-`<AgentId>/<sessionGuid>/<UnixMillis>.json`
+([ArchiveId](ArchiveId.md).`Session`, [ArchiveId](ArchiveId.md).`UnixMillis`) uniquely names
+`<agentId>/<UnixMillis>.json` (default session) or
+`<agentId>/<sessionName>/<UnixMillis>.json`
 (non-default session) in the context store.
 
 #### Parameters
 
-- `AgentId` — Agent the archive belongs to.
-- `SessionId` — Session the archive belongs to; `null` = the agent's
-default (main) session and resolves to the agent root layout.
+- `Session` — Session the archive belongs to.
 - `UnixMillis` — Archive timestamp, milliseconds since the Unix epoch.
 

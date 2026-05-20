@@ -49,17 +49,23 @@ internal static class TestAgentConfigs
         return discovery;
     }
 
+    public static SessionId DefaultSessionFor(AgentConfig config)
+        => new SessionId(config.Id, SessionId.DefaultSessionName);
+
     public static IDataContextFactory DataContextFactoryWith(AgentConfig config, AgentState? state = null)
+        => DataContextFactoryWith(config, DefaultSessionFor(config), state);
+
+    public static IDataContextFactory DataContextFactoryWith(AgentConfig config, SessionId session, AgentState? state = null)
     {
         state ??= new AgentState("foo", config.Id, Guid.CreateVersion7());
-        IDataContextScope scope = new FakeDataContextScope(config.Id);
+        IDataContextScope scope = new FakeDataContextScope(session);
         scope.SetItem(AgentConfig.DataKey, config);
         scope.SetItem(ModelConfiguration.DataKey, config.Model);
         scope.SetItem(AgentState.DataKey, state);
-        scope.SetItem(SessionPath.DataKey, new SessionPath(new SessionId(config.Id, SessionId.DefaultSessionName)));
+        scope.SetItem(SessionPath.DataKey, new SessionPath(session));
         var factory = Substitute.For<IDataContextFactory>();
         factory.Current.Returns(scope);
-        factory.TryJoinContextScope(Arg.Any<string>(), out Arg.Any<IDataContextScope?>())
+        factory.TryJoinContextScope(Arg.Any<SessionId>(), out Arg.Any<IDataContextScope?>())
             .Returns(call =>
             {
                 call[1] = scope;

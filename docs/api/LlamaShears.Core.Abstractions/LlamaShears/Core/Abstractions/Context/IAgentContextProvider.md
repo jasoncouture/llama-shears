@@ -6,13 +6,13 @@ Composes [AgentContext](AgentContext.md) snapshots on demand from the
 host's authoritative sources (config, language model, plugins, etc.).
 Returns `null` when no context can be built — for the
 parameterless overload, when there is no ambient agent; for the
-id-bearing overload, when the agent does not exist.
+session-bearing overload, when the agent does not exist.
 
 ## Methods
 
-### `CreateAgentContextAsync`(string agentId, CancellationToken cancellationToken)
+### `CreateAgentContextAsync`([SessionId](../Agent/Sessions/SessionId.md) session, CancellationToken cancellationToken)
 
-Builds a snapshot for `agentId`. Returns
+Builds a snapshot for `session`. Returns
 `null` when no agent with that id is configured.
 
 ### `CreateAgentContextAsync`(CancellationToken cancellationToken)

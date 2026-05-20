@@ -1,6 +1,8 @@
 using System.Text.Json;
 using LlamaShears.Api.Web.Services;
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Paths;
@@ -10,22 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.IntegrationTests;
 
-public class EventBusCapture : IEventBus
-{
-    public EventBusCapture(IEventBus eventBus)
-    {
-        
-    }
-    public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken) where T : class
-    {
-        throw new NotImplementedException();
-    }
-
-    public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler) where T : class
-    {
-        throw new NotImplementedException();
-    }
-}
 public sealed class ContextPersistenceTests
 {
     private const string AgentId = "alpha";
@@ -68,7 +54,7 @@ public sealed class ContextPersistenceTests
         await SendUserMessageAndWaitForReplyAsync(factory, "remember me");
 
         var directory = factory.Services.GetRequiredService<IAgentDirectory>();
-        var turns = await directory.GetTurnsAsync(AgentId, CancellationToken.None);
+        var turns = await directory.GetTurnsAsync(ResolveSession(factory), CancellationToken.None);
 
         await Assert.That(turns).Contains(t => t.Role == ModelRole.User && t.Content.Contains("remember me"));
         await Assert.That(turns).Contains(t => t.Role == ModelRole.Assistant);
@@ -86,19 +72,19 @@ public sealed class ContextPersistenceTests
         await SendUserMessageAndWaitForReplyAsync(factory, "hello");
 
         await using var scope = factory.Services.CreateAsyncScope();
-        var session = scope.ServiceProvider.GetRequiredService<IChatSession>();
-        await session.SelectAgentAsync(AgentId, CancellationToken.None);
-        await session.SendAsync("/clear", CancellationToken.None);
+        var chat = scope.ServiceProvider.GetRequiredService<IChatSession>();
+        await chat.SelectSessionAsync(ResolveSession(factory), CancellationToken.None);
+        await chat.SendAsync("/clear", CancellationToken.None);
 
         var contextPath = ContextPathFor(factory, AgentId);
         var folder = Path.Combine(factory.DataRoot, "context", AgentId);
 
         await Assert.That(File.Exists(contextPath)).IsFalse();
         await Assert.That(Directory.Exists(folder)).IsTrue();
-        await Assert.That(session.Bubbles.Count).IsEqualTo(0);
+        await Assert.That(chat.Bubbles.Count).IsEqualTo(0);
 
         var store = factory.Services.GetRequiredService<IContextStore>();
-        var liveContext = await store.OpenAsync(AgentId, CancellationToken.None);
+        var liveContext = await store.OpenAsync(ResolveSession(factory), CancellationToken.None);
         await Assert.That(liveContext.Turns.Count).IsEqualTo(0);
     }
 
@@ -114,9 +100,9 @@ public sealed class ContextPersistenceTests
         await SendUserMessageAndWaitForReplyAsync(factory, "hello");
 
         await using var scope = factory.Services.CreateAsyncScope();
-        var session = scope.ServiceProvider.GetRequiredService<IChatSession>();
-        await session.SelectAgentAsync(AgentId, CancellationToken.None);
-        await session.SendAsync("/archive", CancellationToken.None);
+        var chat = scope.ServiceProvider.GetRequiredService<IChatSession>();
+        await chat.SelectSessionAsync(ResolveSession(factory), CancellationToken.None);
+        await chat.SendAsync("/archive", CancellationToken.None);
 
         var folder = Path.Combine(factory.DataRoot, "context", AgentId);
         var contextPath = ContextPathFor(factory, AgentId);
@@ -129,7 +115,7 @@ public sealed class ContextPersistenceTests
             .Where(name => long.TryParse(name, out _))
             .ToList();
         await Assert.That(archives).IsNotEmpty();
-        await Assert.That(session.Bubbles.Count).IsEqualTo(0);
+        await Assert.That(chat.Bubbles.Count).IsEqualTo(0);
     }
 
     [Test]
@@ -144,7 +130,7 @@ public sealed class ContextPersistenceTests
         await SendUserMessageAndWaitForReplyAsync(factory, "hello");
 
         var store = factory.Services.GetRequiredService<IContextStore>();
-        await store.ClearAsync(AgentId, archive: true, CancellationToken.None);
+        await store.ClearAsync(ResolveSession(factory), archive: true, CancellationToken.None);
 
         var folder = Path.Combine(factory.DataRoot, "context", AgentId);
         var contextPath = ContextPathFor(factory, AgentId);
@@ -159,17 +145,29 @@ public sealed class ContextPersistenceTests
             .ToList();
         await Assert.That(archives).IsNotEmpty();
 
-        var liveContext = await store.OpenAsync(AgentId, CancellationToken.None);
+        var liveContext = await store.OpenAsync(ResolveSession(factory), CancellationToken.None);
         await Assert.That(liveContext.Turns.Count).IsEqualTo(0);
+    }
+
+    private static SessionId ResolveSession(IsolatedAppFactory factory)
+    {
+        var repository = factory.Services.GetRequiredService<IAgentInstanceRepository>();
+        if (!repository.TryGetDefaultSession(AgentId, out var sessionId)
+            || !repository.TryGetAgent(sessionId, out var handle))
+        {
+            throw new InvalidOperationException($"No default session registered for agent '{AgentId}'.");
+        }
+        return handle.SessionPath.Current;
     }
 
     private static async Task SendUserMessageAndWaitForReplyAsync(
         IsolatedAppFactory factory,
         string content)
     {
+        var session = ResolveSession(factory);
         var publisher = factory.Services.GetRequiredService<IEventBus>();
         var contextStore = factory.Services.GetRequiredService<IContextStore>();
-        var context = await contextStore.OpenAsync(AgentId, CancellationToken.None);
+        var context = await contextStore.OpenAsync(session, CancellationToken.None);
 
         var done = new TaskCompletionSource<ModelTurn>(TaskCreationOptions.RunContinuationsAsynchronously);
         EventHandler<IContextEntry> handler = (_, entry) =>
@@ -183,8 +181,8 @@ public sealed class ContextPersistenceTests
         try
         {
             await publisher.PublishAsync(
-                Event.WellKnown.Channel.Message with { Id = "test" },
-                new ChannelMessage(content, AgentId, DateTimeOffset.UtcNow),
+                Event.WellKnown.Channel.Message with { Id = session },
+                new ChannelMessage(content, "test", DateTimeOffset.UtcNow),
                 CancellationToken.None);
 
             using var cts = new CancellationTokenSource(_responseTimeout);

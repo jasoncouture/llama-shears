@@ -1,5 +1,6 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,5 +97,6 @@ public sealed class AgentTokenStoreTests
         return services.BuildServiceProvider().GetRequiredService<IAgentTokenStore>();
     }
 
-    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, new CompositeIdentity("ollama", "llama3"), 8192);
+    private static AgentInfo SampleAgent(string id = "alice")
+        => new AgentInfo(new SessionId(id, SessionId.DefaultSessionName), new CompositeIdentity("ollama", "llama3"), 8192);
 }

@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Context;
 using LlamaShears.UnitTests.Agent.Core;
@@ -16,10 +17,11 @@ public sealed class AgentContextProviderTests
         var configProvider = new StubAgentConfigProvider { Configs = { ["alpha"] = config } };
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 4, 30, 12, 0, 0, TimeSpan.Zero));
         var turn = new ModelTurn(ModelRole.User, "hi", time.GetUtcNow());
+        var session = new SessionId("alpha", SessionId.DefaultSessionName);
         var contextStore = new StubContextStore { Contexts = { ["alpha"] = new StubAgentContext("alpha", [turn]) } };
         var provider = new AgentContextProvider(configProvider, contextStore, time);
 
-        var context = await provider.CreateAgentContextAsync("alpha", CancellationToken.None);
+        var context = await provider.CreateAgentContextAsync(session, CancellationToken.None);
 
         await Assert.That(context).IsNotNull();
         await Assert.That(context!.AgentId).IsEqualTo("alpha");
@@ -39,24 +41,11 @@ public sealed class AgentContextProviderTests
         var configProvider = new StubAgentConfigProvider();
         var provider = new AgentContextProvider(configProvider, new StubContextStore(), new FakeTimeProvider());
 
-        var context = await provider.CreateAgentContextAsync("missing", CancellationToken.None);
+        var context = await provider.CreateAgentContextAsync(
+            new SessionId("missing", SessionId.DefaultSessionName),
+            CancellationToken.None);
 
         await Assert.That(context).IsNull();
-    }
-
-    [Test]
-    [Arguments(null)]
-    [Arguments("")]
-    [Arguments("   ")]
-    public async Task CreateAgentContextWithBlankIdThrows(string? agentId)
-    {
-        var provider = new AgentContextProvider(
-            new StubAgentConfigProvider(),
-            new StubContextStore(),
-            new FakeTimeProvider());
-
-        await Assert.That(() => provider.CreateAgentContextAsync(agentId!, CancellationToken.None).AsTask())
-            .Throws<ArgumentException>();
     }
 
     [Test]
@@ -97,17 +86,17 @@ public sealed class AgentContextProviderTests
         public Dictionary<string, IAgentContext> Contexts { get; } =
             new Dictionary<string, IAgentContext>(StringComparer.Ordinal);
 
-        public Task<IAgentContext> OpenAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
+        public Task<IAgentContext> OpenAsync(SessionId session, CancellationToken cancellationToken)
         {
-            if (!Contexts.TryGetValue(agentId, out var context))
+            if (!Contexts.TryGetValue(session.AgentId, out var context))
             {
-                context = new StubAgentContext(agentId, []);
-                Contexts[agentId] = context;
+                context = new StubAgentContext(session.AgentId, []);
+                Contexts[session.AgentId] = context;
             }
             return Task.FromResult(context);
         }
 
-        public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken) =>
+        public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(SessionId session, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public IAsyncEnumerable<IContextEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken) =>
@@ -116,10 +105,10 @@ public sealed class AgentContextProviderTests
         public Task<IReadOnlyList<string>> ListAgentsAsync(CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(SessionId session, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task ClearAsync(string agentId, Guid? sessionId, bool archive, CancellationToken cancellationToken) =>
+        public Task ClearAsync(SessionId session, bool archive, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public Task DeleteAsync(ArchiveId archiveId, CancellationToken cancellationToken) =>

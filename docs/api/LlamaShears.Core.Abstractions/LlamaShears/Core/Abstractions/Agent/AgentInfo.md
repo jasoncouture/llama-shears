@@ -2,13 +2,13 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Lightweight catalog entry describing a known agent: enough metadata to
-render an agent in a list or pick one for routing without loading the
-full [AgentConfig](AgentConfig.md).
+Lightweight catalog entry describing a known agent session: enough
+metadata to render an agent in a list or pick one for routing
+without loading the full [AgentConfig](AgentConfig.md).
 
 ## Parameters
 
-- `AgentId` — Stable identifier of the agent.
+- `Session` — Session this entry identifies.
 - `ModelId` — Globally unique identifier of the language model the agent is wired to.
 - `ContextWindowSize` — Token budget the agent's model exposes for a single turn.
 - `Parameters` — Free-form metadata surfaced by the producer; `null` = none.
@@ -17,7 +17,7 @@ full [AgentConfig](AgentConfig.md).
 
 ### `AgentId`
 
-Stable identifier of the agent.
+Convenience accessor for [SessionId](Sessions/SessionId.md).`AgentId`.
 
 ### `ContextWindowSize`
 
@@ -31,17 +31,21 @@ Globally unique identifier of the language model the agent is wired to.
 
 Free-form metadata surfaced by the producer; `null` = none.
 
+### `Session`
+
+Session this entry identifies.
+
 ## Methods
 
-### `AgentInfo`(string AgentId, [CompositeIdentity](../Common/CompositeIdentity.md) ModelId, int ContextWindowSize, IReadOnlyDictionary<string, object> Parameters)
+### `AgentInfo`([SessionId](Sessions/SessionId.md) Session, [CompositeIdentity](../Common/CompositeIdentity.md) ModelId, int ContextWindowSize, IReadOnlyDictionary<string, object> Parameters)
 
-Lightweight catalog entry describing a known agent: enough metadata to
-render an agent in a list or pick one for routing without loading the
-full [AgentConfig](AgentConfig.md).
+Lightweight catalog entry describing a known agent session: enough
+metadata to render an agent in a list or pick one for routing
+without loading the full [AgentConfig](AgentConfig.md).
 
 #### Parameters
 
-- `AgentId` — Stable identifier of the agent.
+- `Session` — Session this entry identifies.
 - `ModelId` — Globally unique identifier of the language model the agent is wired to.
 - `ContextWindowSize` — Token budget the agent's model exposes for a single turn.
 - `Parameters` — Free-form metadata surfaced by the producer; `null` = none.

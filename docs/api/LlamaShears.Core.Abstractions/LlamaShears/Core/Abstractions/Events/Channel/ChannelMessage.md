@@ -2,52 +2,45 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-One message inbound on a chat channel. Routed onto the event bus so
-the agent loop, UI, and any audit subscribers see the same payload.
+Inbound channel message routed to a specific session. Published on
+[Channel](../Event/WellKnown/Channel.md).`Message` with the channel id in
+the `Id` segment of the event type.
 
 ## Parameters
 
-- `Text` — User-supplied text.
-- `AgentId` — Target agent id when the message is addressed to a specific agent; `null` for broadcast/system messages.
-- `Timestamp` — When the message was received.
+- `Text` — User-supplied body of the message.
+- `ChannelId` — Channel the message originated on (e.g. `webui`, `telegram:123`).
+- `Timestamp` — When the message was produced.
 
 ## Properties
-
-### `AgentId`
-
-Target agent id when the message is addressed to a specific agent; `null` for broadcast/system messages.
 
 ### `Attachments`
 
 Non-text payloads (e.g. images) attached to this message.
 
-### `SessionId`
+### `ChannelId`
 
-Sender's session id when the message originates from a non-default
-session (e.g. an ephemeral child session replying to its parent agent).
-`null` for default-session senders — user chat, slash
-commands, host-side injections. Receivers ignore this field today;
-it exists as audit/UI metadata and as the seam for future
-session-aware routing.
+Channel the message originated on (e.g. `webui`, `telegram:123`).
 
 ### `Text`
 
-User-supplied text.
+User-supplied body of the message.
 
 ### `Timestamp`
 
-When the message was received.
+When the message was produced.
 
 ## Methods
 
-### `ChannelMessage`(string Text, string AgentId, DateTimeOffset Timestamp)
+### `ChannelMessage`(string Text, string ChannelId, DateTimeOffset Timestamp)
 
-One message inbound on a chat channel. Routed onto the event bus so
-the agent loop, UI, and any audit subscribers see the same payload.
+Inbound channel message routed to a specific session. Published on
+[Channel](../Event/WellKnown/Channel.md).`Message` with the channel id in
+the `Id` segment of the event type.
 
 #### Parameters
 
-- `Text` — User-supplied text.
-- `AgentId` — Target agent id when the message is addressed to a specific agent; `null` for broadcast/system messages.
-- `Timestamp` — When the message was received.
+- `Text` — User-supplied body of the message.
+- `ChannelId` — Channel the message originated on (e.g. `webui`, `telegram:123`).
+- `Timestamp` — When the message was produced.
 

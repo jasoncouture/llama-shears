@@ -1,5 +1,6 @@
 using LlamaShears.Api.Authentication;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -72,7 +73,14 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        services.AddSingleton(Substitute.For<IDataContextFactory>());
+        var dataContextFactory = Substitute.For<IDataContextFactory>();
+        dataContextFactory.TryJoinContextScope(Arg.Any<SessionId>(), out Arg.Any<IDataContextScope?>())
+            .Returns(call =>
+            {
+                call[1] = Substitute.For<IDataContextScope>();
+                return true;
+            });
+        services.AddSingleton(dataContextFactory);
         services.AddLogging();
         services.AddAgentBearerAuthentication();
 
@@ -104,5 +112,6 @@ public sealed class RejectInvalidAgentBearerMiddlewareTests
         return (ctx.Response.StatusCode, nextCalled);
     }
 
-    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, new CompositeIdentity("ollama", "llama3"), 8192);
+    private static AgentInfo SampleAgent(string id = "alice")
+        => new AgentInfo(new SessionId(id, SessionId.DefaultSessionName), new CompositeIdentity("ollama", "llama3"), 8192);
 }

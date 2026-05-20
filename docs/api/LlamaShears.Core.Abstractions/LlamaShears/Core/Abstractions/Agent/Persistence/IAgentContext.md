@@ -9,20 +9,10 @@ and [IAgentContext](IAgentContext.md).`Entries` are stable at the moment of acce
 
 ## Properties
 
-### `AgentId`
-
-Identifier of the agent whose log this represents.
-
 ### `Entries`
 
 Snapshot of every persisted entry — turns and any future
 non-turn entry types — in arrival order.
-
-### `SessionId`
-
-Session id this context belongs to; `null` for the
-agent's default (main) session. Non-default sessions persist under
-a per-session subfolder rather than the agent root.
 
 ### `TokenCount`
 

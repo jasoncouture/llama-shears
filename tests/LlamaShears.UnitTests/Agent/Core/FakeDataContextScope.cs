@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -9,12 +10,12 @@ internal sealed class FakeDataContextScope : IDataContextScope
     private readonly ConcurrentDictionary<string, object?> _items =
         new ConcurrentDictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
-    public FakeDataContextScope(string key)
+    public FakeDataContextScope(SessionId key)
     {
         Key = key;
     }
 
-    public string Key { get; }
+    public SessionId Key { get; }
 
     public bool TryGetValue<T>(string key, out T? value) where T : class
     {

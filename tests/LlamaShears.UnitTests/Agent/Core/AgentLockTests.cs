@@ -1,5 +1,6 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -11,7 +12,7 @@ public sealed class AgentLockTests
     {
         var manager = new AgentLockManager();
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice");
-        IDataContextScope scope = new FakeDataContextScope("alice");
+        IDataContextScope scope = new FakeDataContextScope(new SessionId("alice", SessionId.DefaultSessionName));
         scope.SetItem(AgentConfig.DataKey, config);
         var agentLock = new AgentLock(manager, scope);
 
@@ -32,9 +33,9 @@ public sealed class AgentLockTests
     public async Task TwoLocksBoundToDifferentScopesUseIndependentSemaphores()
     {
         var manager = new AgentLockManager();
-        IDataContextScope aliceScope = new FakeDataContextScope("alice");
+        IDataContextScope aliceScope = new FakeDataContextScope(new SessionId("alice", SessionId.DefaultSessionName));
         aliceScope.SetItem(AgentConfig.DataKey, TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice"));
-        IDataContextScope bobScope = new FakeDataContextScope("bob");
+        IDataContextScope bobScope = new FakeDataContextScope(new SessionId("bob", SessionId.DefaultSessionName));
         bobScope.SetItem(AgentConfig.DataKey, TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "bob"));
         var aliceLock = new AgentLock(manager, aliceScope);
         var bobLock = new AgentLock(manager, bobScope);

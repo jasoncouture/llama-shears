@@ -100,6 +100,20 @@ Gets an [AgentHandle](AgentHandle.md) by its id.
 
 `true` if the handle was found, `false` otherwise.
 
+### `TryGetDefaultSession`(string agentId, Guid& id)
+
+Returns the session id of the default (root) session for
+`agentId`, when one exists.
+
+#### Parameters
+
+- `agentId` — Agent whose default session is being looked up.
+- `id` — Session id of the default session on success.
+
+#### Returns
+
+`true` when a default session is registered; `false` otherwise.
+
 ### `TryRemove`(Guid id, [AgentHandle](AgentHandle.md)& handle)
 
 Removes the handle only when it has no descendants. Returns `false` when descendants remain.
