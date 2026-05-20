@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core.DataContext;
@@ -10,14 +11,14 @@ internal sealed class DataContextScope : IDataContextScope
         new Stack<ConcurrentDictionary<string, object?>>();
     private ConcurrentDictionary<string, object?> _current;
 
-    public DataContextScope(string key)
+    public DataContextScope(SessionId key)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(key);
         Key = key;
         _current = new ConcurrentDictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
     }
 
-    public string Key { get; }
+    public SessionId Key { get; }
 
     public IDisposable BeginScope()
     {

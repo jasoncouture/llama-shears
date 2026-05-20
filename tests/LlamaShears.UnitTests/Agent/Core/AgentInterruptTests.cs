@@ -2,6 +2,7 @@ using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -32,11 +33,12 @@ public sealed class AgentInterruptTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventBus>();
-        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
-        await using var agent = await BuildAgent("alice", provider, ctx, new ScriptedLanguageModel("immediate"));
+        var session = new SessionId("alice", SessionId.DefaultSessionName);
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
+        await using var agent = await BuildAgent("alice", session, provider, ctx, new ScriptedLanguageModel("immediate"));
 
-        await PublishInterruptAsync(publisher, "alice");
-        await PublishInterruptAsync(publisher, "alice");
+        await PublishInterruptAsync(publisher, session);
+        await PublishInterruptAsync(publisher, session);
     }
 
     [Test]
@@ -44,38 +46,40 @@ public sealed class AgentInterruptTests
     {
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventBus>();
-        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
+        var session = new SessionId("alice", SessionId.DefaultSessionName);
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
         var model = new HangingLanguageModel();
 
-        await using var agent = await BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", session, provider, ctx, model);
 
-        await PublishChannelMessageAsync(publisher, "alice", "hang here please");
+        await PublishChannelMessageAsync(publisher, session, "hang here please");
 
         await model.WaitForInvocationAsync(TimeSpan.FromSeconds(5));
 
-        await PublishInterruptAsync(publisher, "alice");
+        await PublishInterruptAsync(publisher, session);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         using var idle = await _lockManager.AcquireLockAsync("alice", timeout.Token);
     }
 
-    private static ValueTask PublishInterruptAsync(IEventBus publisher, string agentId)
+    private static ValueTask PublishInterruptAsync(IEventBus publisher, SessionId session)
         => publisher.PublishAsync(
-            Event.WellKnown.Command.InterruptAgent with { Id = agentId },
+            Event.WellKnown.Command.InterruptAgent with { Id = session },
             AgentInterruptRequest.Instance,
             CancellationToken.None);
 
     private static ValueTask PublishChannelMessageAsync(
         IEventBus publisher,
-        string agentId,
+        SessionId session,
         string text)
         => publisher.PublishAsync(
-            Event.WellKnown.Channel.Message with { Id = TestChannelId },
-            new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
+            Event.WellKnown.Channel.Message with { Id = session },
+            new ChannelMessage(text, TestChannelId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
     private async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
+        SessionId session,
         IServiceProvider services,
         IAgentContext agentContext,
         ILanguageModel model)
@@ -88,11 +92,12 @@ public sealed class AgentInterruptTests
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
         var contextProvider = Substitute.For<IAgentContextProvider>();
-        contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        contextProvider.CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventBus>();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
-        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig, session);
+        services.GetRequiredService<IDataContextFactory>().Current = dataContextFactory.Current;
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton(compactor);
@@ -112,7 +117,7 @@ public sealed class AgentInterruptTests
             model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
-        var contextStore = new FakeContextStore().With(id, agentContext);
+        var contextStore = new FakeContextStore().With(session, agentContext);
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
         var iterationRunner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
@@ -150,6 +155,7 @@ public sealed class AgentInterruptTests
         services.AddLogging();
         services.AddEventingFramework();
         services.AddSingleton<IContextStore>(new FakeContextStore());
+        services.AddSingleton(Substitute.For<IDataContextFactory>());
         services.AddEventHandler<AgentTurnContextPersister>();
         services.AddSingleton<ISessionFactory, SessionFactory>();
         var provider = services.BuildServiceProvider();

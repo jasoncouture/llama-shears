@@ -44,11 +44,11 @@ internal sealed partial class EventBus : IEventBus
         _logger.LogTrace("Event publishing complete");
     }
 
-    public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler) where T : class
+    public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler, bool preserveSubscriberExecutionContext = false) where T : class
     {
         using var loggerScope = _logger.BeginScope("{EventTypePattern} {EventDataType} {EventMode} {EventHandlerType}", pattern, typeof(T), mode, handler.GetType());
         _logger.LogDebug("Adding subscription with pattern {EventTypePattern}", pattern);
-        var handlerWrapper = ActivatorUtilities.CreateInstance<EventHandlerWrapper<T>>(_serviceProvider, handler, new EventHandlerWrapperOptions(pattern, mode));
+        var handlerWrapper = ActivatorUtilities.CreateInstance<EventHandlerWrapper<T>>(_serviceProvider, handler, new EventHandlerWrapperOptions(pattern, mode, preserveSubscriberExecutionContext ? ExecutionContext.Capture() : null));
         var asyncSubscriber = _serviceProvider.GetRequiredService<IAsyncSubscriber<IEventEnvelope<T>>>();
         var subscription = asyncSubscriber.Subscribe(handlerWrapper);
         LogSubscribed(handler.GetType(), typeof(T), pattern);

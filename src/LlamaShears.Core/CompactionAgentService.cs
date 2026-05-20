@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -40,15 +41,17 @@ public sealed partial class CompactionAgentService
         _agentContextProvider = agentContextProvider;
         _agentLock = agentLock;
         _logger = logger;
-        var agentId = _dataScope.GetAgentConfig().Id;
+        var sessionId = _dataScope.GetCurrentSessionId();
         _idleSubscription = bus.Subscribe<AgentLifecycleMarker>(
-            Event.WellKnown.Agent.Idle with { Id = agentId },
+            Event.WellKnown.Agent.Idle with { Id = sessionId },
             EventDeliveryMode.Awaited,
-            this);
+            this,
+            preserveSubscriberExecutionContext: true);
         _requestedSubscription = bus.Subscribe<AgentCompactionRequest>(
-            Event.WellKnown.Command.CompactionRequest with { Id = agentId },
+            Event.WellKnown.Command.CompactionRequest with { Id = sessionId },
             EventDeliveryMode.Awaited,
-            this);
+            this, 
+            preserveSubscriberExecutionContext: true);
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -74,9 +77,9 @@ public sealed partial class CompactionAgentService
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         await bundle.ServiceScope.ApplyScopeDataAsync(cancellationToken);
 
-        var agentContext = await _contextStore.OpenAsync(agentId, cancellationToken);
+        var agentContext = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
         var prompt = new ModelPrompt([.. agentContext.Turns]);
-        var snapshot = await _agentContextProvider.CreateAgentContextAsync(agentId, cancellationToken)
+        var snapshot = await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetCurrentSessionId(), cancellationToken)
                            .ConfigureAwait(false)
                        ?? throw new InvalidOperationException(
                            $"Agent context provider returned null for running agent '{agentId}'.");

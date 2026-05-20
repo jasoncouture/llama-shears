@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -164,7 +165,7 @@ public sealed class ContextCompactorTests
         var provider = Substitute.For<IAgentContextProvider>();
         var store = Substitute.For<IContextStore>();
         var liveContext = Substitute.For<IAgentContext>();
-        store.OpenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        store.OpenAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(liveContext));
         var publisher = Substitute.For<IEventBus>();
         var agentConfig = new AgentConfig(Model: config, ModelContextProtocolServers: [], Id: "test")

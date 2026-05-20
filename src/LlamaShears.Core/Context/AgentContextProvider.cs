@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
 
 namespace LlamaShears.Core.Context;
@@ -26,20 +27,20 @@ public sealed class AgentContextProvider : IAgentContextProvider
     public ValueTask<AgentContext?> CreateAgentContextAsync(CancellationToken cancellationToken)
         => throw new NotImplementedException();
 
-    public async ValueTask<AgentContext?> CreateAgentContextAsync(string agentId, CancellationToken cancellationToken)
+    public async ValueTask<AgentContext?> CreateAgentContextAsync(SessionId session, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        ArgumentNullException.ThrowIfNull(session);
 
-        var config = await _configProvider.GetConfigAsync(agentId, cancellationToken);
+        var config = await _configProvider.GetConfigAsync(session.AgentId, cancellationToken);
         if (config is null)
         {
             return null;
         }
 
-        var persisted = await _contextStore.OpenAsync(agentId, cancellationToken);
+        var persisted = await _contextStore.OpenAsync(session, cancellationToken);
 
         return new AgentContext(
-            AgentId: agentId,
+            AgentId: session.AgentId,
             Now: _timeProvider.GetUtcNow(),
             Config: config,
             LanguageModel: new LanguageModelContext(

@@ -1,5 +1,6 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
@@ -100,11 +101,15 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
         }
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = bus.Subscribe<AgentLifecycleEvent>(
-            Event.WellKnown.Agent.Started with { Id = agentId },
+            $"{Event.WellKnown.Agent.Started}:+",
             EventDeliveryMode.Awaited,
-            (_, _) =>
+            (envelope, _) =>
             {
-                started.TrySetResult();
+                if (SessionId.TryParse(envelope.Type.Id ?? string.Empty, out var session)
+                    && string.Equals(session.AgentId, agentId, StringComparison.OrdinalIgnoreCase))
+                {
+                    started.TrySetResult();
+                }
                 return ValueTask.CompletedTask;
             });
 

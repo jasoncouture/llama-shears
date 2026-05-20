@@ -2,6 +2,7 @@ using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -84,7 +85,7 @@ public sealed class AgentEventPublishingTests
     }
 
     [Test]
-    public async Task FragmentEventTypesCarryTheAgentIdInTheirIdSegment()
+    public async Task FragmentEventTypesCarryTheSessionInTheirIdSegment()
     {
         var captured = await RunSingleTurnAsync(
             agentId: "alice",
@@ -96,7 +97,9 @@ public sealed class AgentEventPublishingTests
         var ids = fragmentEvents.Select(c => c.Type.Id).Distinct().ToArray();
 
         await Assert.That(ids).Count().IsEqualTo(1);
-        await Assert.That(ids[0]).IsEqualTo("alice");
+        await Assert.That(SessionId.TryParse(ids[0]!, out var parsed)).IsTrue();
+        await Assert.That(parsed!.AgentId).IsEqualTo("alice");
+        await Assert.That(parsed.IsDefault).IsTrue();
     }
 
     [Test]
@@ -120,11 +123,13 @@ public sealed class AgentEventPublishingTests
         await using var provider = BuildServices();
         var capturing = new CapturingEventPublisher(provider.GetRequiredService<IEventBus>());
         var bus = provider.GetRequiredService<IEventBus>();
-        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(agentId, CancellationToken.None);
+        var session = new SessionId(agentId, SessionId.DefaultSessionName);
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
 
-        using var captureChannel = new CapturingTurnSubscriber(bus, agentId);
+        using var captureChannel = new CapturingTurnSubscriber(bus, session);
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
-        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig, session);
+        provider.GetRequiredService<IDataContextFactory>().Current = dataContextFactory.Current;
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton<IContextCompactor>(BuildNoOpCompactor());
@@ -144,7 +149,7 @@ public sealed class AgentEventPublishingTests
             model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
-        var contextStore = new FakeContextStore().With(agentId, ctx);
+        var contextStore = new FakeContextStore().With(session, ctx);
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
         var iterationRunner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
@@ -167,8 +172,8 @@ public sealed class AgentEventPublishingTests
         _ = agent.RunAsync();
 
         await capturing.PublishAsync(
-            Event.WellKnown.Channel.Message with { Id = "test" },
-            new ChannelMessage("hello", agentId, DateTimeOffset.UtcNow),
+            Event.WellKnown.Channel.Message with { Id = session },
+            new ChannelMessage("hello", "test", DateTimeOffset.UtcNow),
             CancellationToken.None);
         await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
@@ -181,6 +186,7 @@ public sealed class AgentEventPublishingTests
         services.AddLogging();
         services.AddEventingFramework();
         services.AddSingleton<IContextStore>(new FakeContextStore());
+        services.AddSingleton(Substitute.For<IDataContextFactory>());
         services.AddEventHandler<AgentTurnContextPersister>();
         services.AddSingleton<ISessionFactory, SessionFactory>();
         var provider = services.BuildServiceProvider();
@@ -203,7 +209,7 @@ public sealed class AgentEventPublishingTests
     private static IAgentContextProvider BuildContextProvider(string agentId)
     {
         var contextProvider = Substitute.For<IAgentContextProvider>();
-        contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        contextProvider.CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(agentId)));
         return contextProvider;
     }
@@ -244,9 +250,9 @@ public sealed class AgentEventPublishingTests
             }
         }
 
-        public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler) where T : class
+        public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler, bool preserveSubscriberExecutionContext = false) where T : class
         {
-            return _inner.Subscribe(pattern, mode, handler);
+            return _inner.Subscribe(pattern, mode, handler, preserveSubscriberExecutionContext);
         }
 
         public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken)

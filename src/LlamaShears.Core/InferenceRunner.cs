@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -64,6 +65,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         }
 
         var state = _dataScope.GetAgentState();
+        var sessionId = _dataScope.GetCurrentSessionId();
         var eventId = state.EventId;
         var correlationId = state.CorrelationId;
         var channelId = prompt.Turns[^1].ChannelId;
@@ -165,7 +167,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                 // but 2 instances isn't worth the effort.
                 var thoughtTurn = new ModelTurn(ModelRole.Thought, thinking.ToString(), _time.GetLocalNow(), ChannelId: channelId);
                 await _eventPublisher.PublishAsync(
-                    Event.WellKnown.Agent.Turn with { Id = eventId },
+                    Event.WellKnown.Agent.Turn with { Id = sessionId },
                     thoughtTurn,
                     correlationId,
                     cancellationToken);
@@ -184,7 +186,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                 ToolCalls = toolCalls.ToImmutable(),
             };
             await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = eventId },
+                Event.WellKnown.Agent.Turn with { Id = sessionId },
                 assistantTurn,
                 correlationId,
                 cancellationToken);
@@ -203,7 +205,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         Task<ToolCallResult> EnqueueDispatchAsync(Task predecessor, ToolCall call)
             => predecessor.ContinueWith(async _ =>
             {
-                var result = await _toolDispatcher.DispatchAsync(call, tools, eventId, correlationId, cancellationToken);
+                var result = await _toolDispatcher.DispatchAsync(call, tools, sessionId, correlationId, cancellationToken);
                 await PublishCompletedToolCallAsync(channelId, result, call, cancellationToken);
                 return result;
             }, cancellationToken).Unwrap();
@@ -216,7 +218,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                     $"Tool call limit exceeded, concurrent tool calls are limited to {ConsecutiveToolCallLimit}",
                     IsError: true);
                 await _eventPublisher.PublishAsync(
-                    Event.WellKnown.Agent.ToolResult with { Id = eventId },
+                    Event.WellKnown.Agent.ToolResult with { Id = sessionId },
                     new AgentToolResultFragment(call.Source, call.Name, result.Content, result.IsError, call.CallId),
                     correlationId,
                     cancellationToken);
@@ -230,6 +232,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         T fragment,
         CancellationToken cancellationToken) where T : class, IAgentMessage
     {
+        var sessionId = _dataScope.GetCurrentSessionId();
         var state = _dataScope.GetAgentState();
         var typedEventId = role switch
         {
@@ -238,7 +241,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
             ModelRole.Tool => Event.WellKnown.Agent.ToolCall,
             _ => throw new ArgumentException("Unknown model role", nameof(role))
         } with
-        { Id = state.EventId };
+        { Id = sessionId };
         await _eventPublisher.PublishAsync(
             typedEventId,
             fragment,
@@ -252,6 +255,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         ToolCall toolCall,
         CancellationToken cancellationToken)
     {
+        var sessionId = _dataScope.GetCurrentSessionId();
         var state = _dataScope.GetAgentState();
         var toolTurn = new ModelTurn(ModelRole.Tool, result.Content, _time.GetLocalNow(), ChannelId: channelId)
         {
@@ -259,7 +263,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
             IsError = result.IsError,
         };
         await _eventPublisher.PublishAsync(
-            Event.WellKnown.Agent.Turn with { Id = state.EventId },
+            Event.WellKnown.Agent.Turn with { Id = sessionId },
             toolTurn,
             state.CorrelationId,
             cancellationToken);

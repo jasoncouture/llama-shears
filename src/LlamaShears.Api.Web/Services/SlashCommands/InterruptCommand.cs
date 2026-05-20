@@ -20,7 +20,7 @@ public sealed class InterruptCommand : ISlashCommand
 
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
-        await _directory.InterruptAsync(context.AgentId, cancellationToken);
+        await _directory.InterruptAsync(context.Session, cancellationToken);
         return SlashCommandResult.StreamingWasInterrupted;
     }
 }

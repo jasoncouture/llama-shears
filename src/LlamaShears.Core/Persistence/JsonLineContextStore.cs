@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 
@@ -10,7 +11,7 @@ namespace LlamaShears.Core.Persistence;
 
 public sealed class JsonLineContextStore : IContextStore
 {
-    private const string CurrentFileName = "current.json";
+    private const string DefaultCurrentFileName = "current.json";
 
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
@@ -28,18 +29,17 @@ public sealed class JsonLineContextStore : IContextStore
         _time = time;
     }
 
-    public async Task<IAgentContext> OpenAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
+    public async Task<IAgentContext> OpenAsync(SessionId session, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        ArgumentNullException.ThrowIfNull(session);
 
-        var key = new SessionKey(agentId, sessionId);
+        var key = SessionKey.For(session);
         if (_contexts.TryGetValue(key, out var existing))
         {
             return existing;
         }
 
-        var folder = ResolveFolder(agentId, sessionId, ensureExists: true);
-        var currentPath = Path.Combine(folder, CurrentFileName);
+        var currentPath = ResolveCurrentPath(session, ensureFolderExists: true);
 
         var seed = new List<IContextEntry>();
         await foreach (var entry in ReadJsonLinesAsync(currentPath, cancellationToken).ConfigureAwait(false))
@@ -47,22 +47,21 @@ public sealed class JsonLineContextStore : IContextStore
             seed.Add(entry);
         }
 
-        var fresh = new AgentContext(agentId, sessionId, currentPath, seed, _jsonOptions);
+        var fresh = new AgentContext(session, currentPath, seed, _jsonOptions);
         return _contexts.GetOrAdd(key, fresh);
     }
 
-    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<IContextEntry> ReadCurrentAsync(SessionId session, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var folder = ResolveFolder(agentId, sessionId, ensureExists: false);
-        var currentPath = Path.Combine(folder, CurrentFileName);
+        ArgumentNullException.ThrowIfNull(session);
+        var currentPath = ResolveCurrentPath(session, ensureFolderExists: false);
         return ReadJsonLinesAsync(currentPath, cancellationToken);
     }
 
     public IAsyncEnumerable<IContextEntry> ReadArchiveAsync(ArchiveId archiveId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(archiveId.AgentId);
-        var folder = ResolveFolder(archiveId.AgentId, archiveId.SessionId, ensureExists: false);
+        ArgumentNullException.ThrowIfNull(archiveId.Session);
+        var folder = ResolveFolder(archiveId.Session, ensureExists: false);
         var archivePath = Path.Combine(folder, $"{archiveId.UnixMillis}.json");
         return ReadJsonLinesAsync(archivePath, cancellationToken);
     }
@@ -79,17 +78,16 @@ public sealed class JsonLineContextStore : IContextStore
             .Select(Path.GetFileName)
             .Where(name => !string.IsNullOrEmpty(name))
             .Select(name => name!)
-            .Where(name => !IsSessionGuidFolderName(name))
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
         return Task.FromResult<IReadOnlyList<string>>(agents);
     }
 
-    public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(string agentId, Guid? sessionId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ArchiveId>> ListArchivesAsync(SessionId session, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        ArgumentNullException.ThrowIfNull(session);
 
-        var folder = ResolveFolder(agentId, sessionId, ensureExists: false);
+        var folder = ResolveFolder(session, ensureExists: false);
         if (!Directory.Exists(folder))
         {
             return Task.FromResult<IReadOnlyList<ArchiveId>>([]);
@@ -99,26 +97,26 @@ public sealed class JsonLineContextStore : IContextStore
         foreach (var path in Directory.EnumerateFiles(folder, "*.json"))
         {
             var name = Path.GetFileNameWithoutExtension(path);
-            if (string.Equals(name, "current", StringComparison.Ordinal))
+            if (IsCurrentFileName(session, name))
             {
                 continue;
             }
 
             if (long.TryParse(name, out var unixMillis))
             {
-                archives.Add(new ArchiveId(agentId, sessionId, unixMillis));
+                archives.Add(new ArchiveId(session, unixMillis));
             }
         }
         archives.Sort((a, b) => a.UnixMillis.CompareTo(b.UnixMillis));
         return Task.FromResult<IReadOnlyList<ArchiveId>>(archives);
     }
 
-    public Task ClearAsync(string agentId, Guid? sessionId, bool archive, CancellationToken cancellationToken)
+    public Task ClearAsync(SessionId session, bool archive, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        ArgumentNullException.ThrowIfNull(session);
 
-        var folder = ResolveFolder(agentId, sessionId, ensureExists: true);
-        var currentPath = Path.Combine(folder, CurrentFileName);
+        var folder = ResolveFolder(session, ensureExists: true);
+        var currentPath = Path.Combine(folder, ResolveCurrentFileName(session));
 
         if (File.Exists(currentPath))
         {
@@ -133,7 +131,7 @@ public sealed class JsonLineContextStore : IContextStore
             }
         }
 
-        if (_contexts.TryGetValue(new SessionKey(agentId, sessionId), out var context))
+        if (_contexts.TryGetValue(SessionKey.For(session), out var context))
         {
             context.ClearInMemory();
         }
@@ -143,9 +141,9 @@ public sealed class JsonLineContextStore : IContextStore
 
     public Task DeleteAsync(ArchiveId archiveId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(archiveId.AgentId);
+        ArgumentNullException.ThrowIfNull(archiveId.Session);
 
-        var folder = ResolveFolder(archiveId.AgentId, archiveId.SessionId, ensureExists: false);
+        var folder = ResolveFolder(archiveId.Session, ensureExists: false);
         var archivePath = Path.Combine(folder, $"{archiveId.UnixMillis}.json");
         if (File.Exists(archivePath))
         {
@@ -154,18 +152,26 @@ public sealed class JsonLineContextStore : IContextStore
         return Task.CompletedTask;
     }
 
-    private string ResolveFolder(string agentId, Guid? sessionId, bool ensureExists)
+    private string ResolveFolder(SessionId session, bool ensureExists)
     {
-        if (sessionId is null)
-        {
-            return _paths.GetPath(PathKind.Context, agentId, ensureExists: ensureExists);
-        }
-        var subpath = Path.Combine(agentId, sessionId.Value.ToString("n"));
-        return _paths.GetPath(PathKind.Context, subpath, ensureExists: ensureExists);
+        return session.IsDefault
+            ? _paths.GetPath(PathKind.Context, session.AgentId, ensureExists: ensureExists)
+            : _paths.GetPath(PathKind.Context, Path.Combine(session.AgentId, session.Name), ensureExists: ensureExists);
     }
 
-    private static bool IsSessionGuidFolderName(string name)
-        => name.Length == 32 && Guid.TryParseExact(name, "N", out _);
+    private string ResolveCurrentPath(SessionId session, bool ensureFolderExists)
+    {
+        var folder = ResolveFolder(session, ensureExists: ensureFolderExists);
+        return Path.Combine(folder, ResolveCurrentFileName(session));
+    }
+
+    private static string ResolveCurrentFileName(SessionId session)
+        => session.IsDefault ? DefaultCurrentFileName : $"{session.Id:n}.json";
+
+    private static bool IsCurrentFileName(SessionId session, string nameWithoutExtension)
+        => session.IsDefault
+            ? string.Equals(nameWithoutExtension, "current", StringComparison.Ordinal)
+            : string.Equals(nameWithoutExtension, session.Id.ToString("n"), StringComparison.Ordinal);
 
     private static async IAsyncEnumerable<IContextEntry> ReadJsonLinesAsync(
         string path,
@@ -209,5 +215,11 @@ public sealed class JsonLineContextStore : IContextStore
         }
     }
 
-    private readonly record struct SessionKey(string AgentId, Guid? SessionId);
+    private readonly record struct SessionKey(string AgentId, string Name, Guid? Id)
+    {
+        public static SessionKey For(SessionId session)
+            => session.IsDefault
+                ? new SessionKey(session.AgentId, session.Name, null)
+                : new SessionKey(session.AgentId, session.Name, session.Id);
+    }
 }

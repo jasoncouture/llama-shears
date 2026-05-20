@@ -2,5 +2,5 @@
 
 ## Types
 
-- [ChannelMessage](ChannelMessage.md) — One message inbound on a chat channel. Routed onto the event bus so the agent loop, UI, and any audit subscribers see the same payload.
+- [ChannelMessage](ChannelMessage.md) — Inbound channel message routed to a specific session. Published on [Channel](../Event/WellKnown/Channel.md).`Message` with the channel id in the `Id` segment of the event type.
 

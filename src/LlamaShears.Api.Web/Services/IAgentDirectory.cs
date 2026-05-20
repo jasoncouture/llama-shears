@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Api.Web.Services;
@@ -24,35 +25,37 @@ public interface IAgentDirectory
     IReadOnlyList<string> ListAgentIds();
 
     /// <summary>
-    /// Snapshot of the agent's persisted conversation turns, in arrival
-    /// order, so a fresh circuit can show prior conversation context to
-    /// the user instead of starting blank after a refresh.
+    /// Snapshot of <paramref name="session"/>'s persisted conversation
+    /// turns, in arrival order, so a fresh circuit can show prior
+    /// conversation context to the user instead of starting blank after
+    /// a refresh.
     /// </summary>
-    Task<IReadOnlyList<ModelTurn>> GetTurnsAsync(string agentId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ModelTurn>> GetTurnsAsync(SessionId session, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Clears the agent's stored context. With <paramref name="archive"/>
-    /// set, the existing context is moved to a timestamped archive file;
-    /// otherwise it is deleted. The live <c>IAgentContext</c> is emptied
-    /// either way.
+    /// Clears <paramref name="session"/>'s stored context. With
+    /// <paramref name="archive"/> set, the existing context is moved to
+    /// a timestamped archive file; otherwise it is deleted. The live
+    /// <c>IAgentContext</c> is emptied either way.
     /// </summary>
-    Task ClearAsync(string agentId, bool archive, CancellationToken cancellationToken);
+    Task ClearAsync(SessionId session, bool archive, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Forces an immediate context compaction on the agent regardless
-    /// of token-budget pressure. The agent's processing gate is
-    /// acquired for the duration so this serializes naturally with
+    /// Forces an immediate context compaction on <paramref name="session"/>
+    /// regardless of token-budget pressure. The agent's processing gate
+    /// is acquired for the duration so this serializes naturally with
     /// in-flight turn handling.
     /// </summary>
-    [Obsolete("Publish command:compaction-request:<agentId> with AgentCompactionRequest.Forced instead.", error: false)]
-    Task RequestCompactionAsync(string agentId, CancellationToken cancellationToken);
+    [Obsolete("Publish command:compaction-request:<sessionId> with AgentCompactionRequest.Forced instead.", error: false)]
+    Task RequestCompactionAsync(SessionId session, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Interrupts the agent's in-flight turn, if any. Persisted context
-    /// up to the interrupt is preserved; partial assistant text or
-    /// thought fragments emitted by the canceled turn are dropped. The
-    /// agent stays live and resumes on the next inbound message.
+    /// Interrupts <paramref name="session"/>'s in-flight turn, if any.
+    /// Persisted context up to the interrupt is preserved; partial
+    /// assistant text or thought fragments emitted by the canceled turn
+    /// are dropped. The agent stays live and resumes on the next inbound
+    /// message.
     /// </summary>
-    [Obsolete("Publish command:interrupt-agent:<agentId> with AgentInterruptRequest.Instance instead.", error: false)]
-    Task InterruptAsync(string agentId, CancellationToken cancellationToken);
+    [Obsolete("Publish command:interrupt-agent:<sessionId> with AgentInterruptRequest.Instance instead.", error: false)]
+    Task InterruptAsync(SessionId session, CancellationToken cancellationToken);
 }

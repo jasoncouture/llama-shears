@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -102,7 +103,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         }
 
         await _eventPublisher.PublishAsync(
-            Event.WellKnown.Agent.CompactingStarted with { Id = agentContext.AgentId },
+            Event.WellKnown.Agent.CompactingStarted with { Id = _dataContextScope.GetCurrentSessionId() },
             new AgentCompactionRequest(),
             cancellationToken);
         try
@@ -129,8 +130,9 @@ public sealed partial class ContextCompactor : IContextCompactor
             var rebuiltPrompt = new ModelPrompt(rebuilt);
 
             LogContextCompacted(agentContext.AgentId);
-            await _contextStore.ClearAsync(agentContext.AgentId, archive: true, cancellationToken);
-            var live = await _contextStore.OpenAsync(agentContext.AgentId, cancellationToken);
+            var session = _dataContextScope.GetCurrentSessionId();
+            await _contextStore.ClearAsync(session, archive: true, cancellationToken);
+            var live = await _contextStore.OpenAsync(session, cancellationToken);
             foreach (var turn in rebuiltPrompt.Turns)
             {
                 if (turn.Role == ModelRole.System)
@@ -144,7 +146,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         finally
         {
             await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.CompactingFinished with { Id = agentContext.AgentId },
+                Event.WellKnown.Agent.CompactingFinished with { Id = _dataContextScope.GetCurrentSessionId() },
                 new AgentCompactionRequest(),
                 CancellationToken.None);
         }

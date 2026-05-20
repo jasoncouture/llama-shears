@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,8 +16,7 @@ internal sealed class DataContextFactory : IDataContextFactory
         _providers = [.. providers];
     }
 
-    private readonly Dictionary<string, WeakReference<IDataContextScope>> _scopes =
-        new Dictionary<string, WeakReference<IDataContextScope>>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<SessionId, WeakReference<IDataContextScope>> _scopes = [];
 
     private readonly object _lock = new object();
 
@@ -28,38 +28,38 @@ internal sealed class DataContextFactory : IDataContextFactory
         set => _current.Value = value;
     }
 
-    public IDataContextScope CreateContext(string key)
+    public IDataContextScope CreateContext(SessionId sessionId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(sessionId);
         SweepDeadEntries();
 
-        var scope = new DataContextScope(key);
+        var scope = new DataContextScope(sessionId);
         lock (_lock)
         {
-            if (_scopes.TryGetValue(key, out var existing) && existing.TryGetTarget(out _))
+            if (_scopes.TryGetValue(sessionId, out var existing) && existing.TryGetTarget(out _))
             {
-                throw new InvalidOperationException($"A data context with key '{key}' is already active.");
+                throw new InvalidOperationException($"A data context with key '{sessionId}' is already active.");
             }
 
-            _scopes[key] = new WeakReference<IDataContextScope>(scope);
+            _scopes[sessionId] = new WeakReference<IDataContextScope>(scope);
             return _current.Value = scope;
         }
     }
 
-    public async ValueTask InitializeAsync(string key,IEnumerable<IDataContextItemProvider> scopeProviders, IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken)
+    public async ValueTask InitializeAsync(SessionId sessionId, IEnumerable<IDataContextItemProvider> scopeProviders, IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(sessionId);
         IDataContextScope? scope;
         lock (_lock)
         {
-            if (!_scopes.TryGetValue(key, out var weakScopeReference) || !weakScopeReference.TryGetTarget(out scope))
+            if (!_scopes.TryGetValue(sessionId, out var weakScopeReference) || !weakScopeReference.TryGetTarget(out scope))
             {
-                throw new InvalidOperationException($"No such scope exists: {key}");
+                throw new InvalidOperationException($"No such scope exists: {sessionId}");
             }
         }
 
         var hadAny = scope.Any();
-        scope.SetItems(values); // Values are always set first, because providers might need them.
+        scope.SetItems(values);
         if (!hadAny)
         {
             foreach (var provider in _providers)
@@ -74,16 +74,16 @@ internal sealed class DataContextFactory : IDataContextFactory
         }
     }
 
-    public bool TryJoinContextScope(string key, [NotNullWhen(true)] out IDataContextScope? context)
+    public bool TryJoinContextScope(SessionId sessionId, [NotNullWhen(true)] out IDataContextScope? context)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(sessionId);
         SweepDeadEntries();
         context = null;
         lock (_lock)
         {
             if (Current is not null)
             {
-                if (string.Equals(Current.Key, key, StringComparison.OrdinalIgnoreCase))
+                if (Equals(Current.Key, sessionId))
                 {
                     context = Current;
                     return true;
@@ -93,11 +93,11 @@ internal sealed class DataContextFactory : IDataContextFactory
                     "A scope is already present on this call chain; cannot join a different scope.");
             }
 
-            if (!_scopes.TryGetValue(key, out var reference) || !reference.TryGetTarget(out var target))
+            if (!_scopes.TryGetValue(sessionId, out var reference) || !reference.TryGetTarget(out var target))
             {
                 if (reference is not null)
                 {
-                    _scopes.Remove(key);
+                    _scopes.Remove(sessionId);
                 }
 
                 return false;
@@ -109,17 +109,17 @@ internal sealed class DataContextFactory : IDataContextFactory
         }
     }
 
-    public void DeleteContext(string key)
+    public void DeleteContext(SessionId sessionId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(sessionId);
         lock (_lock)
         {
-            if (Current is not null && string.Equals(Current.Key, key, StringComparison.OrdinalIgnoreCase))
+            if (Current is not null && Equals(Current.Key, sessionId))
             {
                 _current.Value = null;
             }
 
-            _scopes.Remove(key);
+            _scopes.Remove(sessionId);
         }
     }
 
@@ -146,7 +146,7 @@ internal sealed class DataContextFactory : IDataContextFactory
     {
         lock (_lock)
         {
-            var dead = new List<string>();
+            var dead = new List<SessionId>();
             foreach (var pair in _scopes)
             {
                 if (!pair.Value.TryGetTarget(out _))

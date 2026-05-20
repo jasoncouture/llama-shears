@@ -4,6 +4,7 @@ using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
@@ -32,15 +33,16 @@ public sealed class AgentTurnFlowTests
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
-        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
+        var session = new SessionId("alice", SessionId.DefaultSessionName);
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
 
-        using var captured = new CapturingTurnSubscriber(bus, "alice");
+        using var captured = new CapturingTurnSubscriber(bus, session);
         var model = new ScriptedLanguageModel("ack");
 
-        await using var agent = await BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", session, provider, ctx, model);
 
-        await PublishChannelMessageAsync(publisher, "alice", "first");
-        await PublishChannelMessageAsync(publisher, "alice", "second");
+        await PublishChannelMessageAsync(publisher, session, "first");
+        await PublishChannelMessageAsync(publisher, session, "second");
 
         await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
@@ -56,14 +58,15 @@ public sealed class AgentTurnFlowTests
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
-        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
+        var session = new SessionId("alice", SessionId.DefaultSessionName);
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
 
-        using var captured = new CapturingTurnSubscriber(bus, "alice");
+        using var captured = new CapturingTurnSubscriber(bus, session);
         var model = new ScriptedLanguageModel("ack");
 
-        await using var agent = await BuildAgent("alice", provider, ctx, model);
+        await using var agent = await BuildAgent("alice", session, provider, ctx, model);
 
-        await PublishChannelMessageAsync(publisher, "alice", "hello");
+        await PublishChannelMessageAsync(publisher, session, "hello");
         await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
 
         var userTurn = ctx.Turns.Single(t => t.Role == ModelRole.User);
@@ -76,19 +79,20 @@ public sealed class AgentTurnFlowTests
         await using var provider = BuildServices();
         var publisher = provider.GetRequiredService<IEventBus>();
         var bus = provider.GetRequiredService<IEventBus>();
-        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync("alice", CancellationToken.None);
+        var session = new SessionId("alice", SessionId.DefaultSessionName);
+        var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
 
-        using var captured = new CapturingTurnSubscriber(bus, "alice");
+        using var captured = new CapturingTurnSubscriber(bus, session);
 
         var model = new TwoStageScriptedModel(
             stageOne: [ScriptedLanguageModel.ToolCallFragment("test", "noop", "{}", "1")],
             stageTwo: [TextResponseFragment("done")]);
 
-        var dispatcher = new InlinePublishingDispatcher(publisher, "alice", "during-tool");
+        var dispatcher = new InlinePublishingDispatcher(publisher, session, "during-tool");
 
-        await using var agent = await BuildAgent("alice", provider, ctx, model, dispatcher: dispatcher);
+        await using var agent = await BuildAgent("alice", session, provider, ctx, model, dispatcher: dispatcher);
 
-        await PublishChannelMessageAsync(publisher, "alice", "first");
+        await PublishChannelMessageAsync(publisher, session, "first");
 
         await WaitForAsync(() =>
             ctx.Turns.Count(t => t.Role == ModelRole.Assistant) >= 2,
@@ -116,13 +120,13 @@ public sealed class AgentTurnFlowTests
     private sealed class InlinePublishingDispatcher : IToolCallDispatcher
     {
         private readonly IEventBus _publisher;
-        private readonly string _agentId;
+        private readonly SessionId _session;
         private readonly string _text;
 
-        public InlinePublishingDispatcher(IEventBus publisher, string agentId, string text)
+        public InlinePublishingDispatcher(IEventBus publisher, SessionId session, string text)
         {
             _publisher = publisher;
-            _agentId = agentId;
+            _session = session;
             _text = text;
         }
 
@@ -134,8 +138,8 @@ public sealed class AgentTurnFlowTests
             CancellationToken cancellationToken)
         {
             await _publisher.PublishAsync(
-                Event.WellKnown.Channel.Message with { Id = TestChannelId },
-                new ChannelMessage(_text, _agentId, DateTimeOffset.UtcNow),
+                Event.WellKnown.Channel.Message with { Id = _session },
+                new ChannelMessage(_text, TestChannelId, DateTimeOffset.UtcNow),
                 cancellationToken);
             return new ToolCallResult("ok", IsError: false);
         }
@@ -187,15 +191,16 @@ public sealed class AgentTurnFlowTests
 
     private static ValueTask PublishChannelMessageAsync(
         IEventBus publisher,
-        string agentId,
+        SessionId session,
         string text)
         => publisher.PublishAsync(
-            Event.WellKnown.Channel.Message with { Id = TestChannelId },
-            new ChannelMessage(text, agentId, DateTimeOffset.UtcNow),
+            Event.WellKnown.Channel.Message with { Id = session },
+            new ChannelMessage(text, TestChannelId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
     private static async Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
+        SessionId session,
         IServiceProvider services,
         IAgentContext agentContext,
         ILanguageModel model,
@@ -209,11 +214,12 @@ public sealed class AgentTurnFlowTests
                 Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
         var contextProvider = Substitute.For<IAgentContextProvider>();
-        contextProvider.CreateAgentContextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        contextProvider.CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
         var publisher = services.GetRequiredService<IEventBus>();
         var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
-        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig);
+        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig, session);
+        services.GetRequiredService<IDataContextFactory>().Current = dataContextFactory.Current;
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
         agentServices.AddSingleton(compactor);
@@ -233,7 +239,7 @@ public sealed class AgentTurnFlowTests
             model,
             NullLogger<InferenceRunner>.Instance));
         var agentProvider = agentServices.BuildServiceProvider();
-        var contextStore = new FakeContextStore().With(id, agentContext);
+        var contextStore = new FakeContextStore().With(session, agentContext);
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
         var iterationRunner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
@@ -271,6 +277,7 @@ public sealed class AgentTurnFlowTests
         services.AddLogging();
         services.AddEventingFramework();
         services.AddSingleton<IContextStore>(new FakeContextStore());
+        services.AddSingleton(Substitute.For<IDataContextFactory>());
         services.AddEventHandler<AgentTurnContextPersister>();
         services.AddSingleton<ISessionFactory, SessionFactory>();
         var provider = services.BuildServiceProvider();

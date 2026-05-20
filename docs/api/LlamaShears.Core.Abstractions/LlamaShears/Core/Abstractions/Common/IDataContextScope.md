@@ -11,7 +11,7 @@ block.
 
 ### `Key`
 
-The scope's key, assigned at start.
+The session this scope belongs to, assigned at start.
 
 ## Methods
 

@@ -20,7 +20,7 @@ public sealed class CompactCommand : ISlashCommand
 
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
-        await _directory.RequestCompactionAsync(context.AgentId, cancellationToken);
+        await _directory.RequestCompactionAsync(context.Session, cancellationToken);
         return SlashCommandResult.Default;
     }
 }

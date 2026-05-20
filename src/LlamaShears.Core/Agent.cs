@@ -59,22 +59,25 @@ public sealed partial class Agent :
         _agentLock = agentLock;
         _iterationRunner = iterationRunner;
         _agentServices = [.. agentServices];
-        var agentId = _dataScope.GetAgentConfig().Id;
         var sessionId = _dataScope.GetCurrentSessionId();
         _sessionQueue = sessionFactory.Get(sessionId);
         _shutdown = new CancellationTokenSource();
         _subscription = bus.Subscribe<ChannelMessage>(
-            $"{Event.WellKnown.Channel.Message}:+",
+            $"{Event.WellKnown.Channel.Message}:{sessionId}",
             EventDeliveryMode.Awaited,
-            this);
+            this,
+            preserveSubscriberExecutionContext: true);
         _interruptSubscription = bus.Subscribe<AgentInterruptRequest>(
-            Event.WellKnown.Command.InterruptAgent with { Id = agentId },
+            Event.WellKnown.Command.InterruptAgent with { Id = sessionId },
             EventDeliveryMode.Awaited,
-            this);
+            this,
+            preserveSubscriberExecutionContext: true);
+
         _directStopSubscription = bus.Subscribe<AgentShutdownRequest>(
             $"{Event.WellKnown.Command.AgentShutdown}:{sessionId}",
             EventDeliveryMode.Awaited,
-            this);
+            this,
+            preserveSubscriberExecutionContext: true);
 
         _broadcastStopSubscription = bus.Subscribe<AgentShutdownRequest>(
             $"{Event.WellKnown.Command.AgentShutdown}",
@@ -87,14 +90,14 @@ public sealed partial class Agent :
         var agentConfig = _dataScope.GetAgentConfig();
         var sessionId = _dataScope.GetCurrentSessionId();
         var eventInformation = new AgentLifecycleEvent(agentConfig, sessionId);
-        type = type with { Id = agentConfig.Id };
+        type = type with { Id = _dataScope.GetCurrentSessionId() };
         await _eventPublisher.PublishAsync(type, eventInformation, cancellationToken);
     }
 
     public async Task RunAsync()
     {
         var cancellationToken = _shutdown.Token;
-        var agentContext = await _contextStore.OpenAsync(_dataScope.GetAgentConfig().Id, cancellationToken);
+        var agentContext = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
         using var shutdownTimeoutCancellationTokenSource = new CancellationTokenSource();
         await PublishLifecycleEventAsync(Event.WellKnown.Agent.Starting, cancellationToken);
         try
@@ -195,16 +198,11 @@ public sealed partial class Agent :
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(data.AgentId) && !string.Equals(data.AgentId, _dataScope.GetAgentConfig().Id, StringComparison.Ordinal))
-        {
-            return;
-        }
-
         var turn = new ModelTurn(
             ModelRole.User,
             data.Text,
             data.Timestamp,
-            ChannelId: envelope.Type.Id)
+            ChannelId: data.ChannelId)
         {
             Attachments = data.Attachments,
         };
@@ -213,8 +211,8 @@ public sealed partial class Agent :
 
     private async Task RunIterationsAsync(IAgentContext agentContext, CancellationToken cancellationToken)
     {
-        var agentId = _dataScope.GetAgentConfig().Id;
-        using var loggingScope = _logger.BeginScope("{AgentId}", agentId);
+        var sessionId = _dataScope.GetCurrentSessionId();
+        using var loggingScope = _logger.BeginScope("{Session}", sessionId);
         var isIdle = true; // We intentionally don't send the first idle event. Since we aren't "idle", we are "started".
         await PublishLifecycleEventAsync(Event.WellKnown.Agent.Started, cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
@@ -258,7 +256,7 @@ public sealed partial class Agent :
                         turnCancellationTokenSource.Token);
                     if (outcome.Interrupted)
                     {
-                        LogTurnInterrupted(agentId, correlationId);
+                        LogTurnInterrupted(sessionId, correlationId);
                     }
                     else
                     {
@@ -271,7 +269,7 @@ public sealed partial class Agent :
                 catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested &&
                                                          !cancellationToken.IsCancellationRequested)
                 {
-                    LogTurnInterrupted(agentId, correlationId);
+                    LogTurnInterrupted(sessionId, correlationId);
                 }
                 finally
                 {
@@ -283,25 +281,25 @@ public sealed partial class Agent :
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                LogAgentStopping(agentId);
+                LogAgentStopping(sessionId);
                 return;
             }
             catch (Exception ex)
             {
-                LogProcessOnceFailed(agentId, ex);
+                LogProcessOnceFailed(sessionId, ex);
             }
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' is stopping.")]
-    private partial void LogAgentStopping(string agentId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' is stopping.")]
+    private partial void LogAgentStopping(SessionId session);
 
     [LoggerMessage(Level = LogLevel.Error,
-        Message = "Agent '{AgentId}' failed to process turn; will retry on next signal.")]
-    private partial void LogProcessOnceFailed(string agentId, Exception ex);
+        Message = "Agent '{Session}' failed to process turn; will retry on next signal.")]
+    private partial void LogProcessOnceFailed(SessionId session, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message =
-            "Agent '{AgentId}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
-    private partial void LogTurnInterrupted(string agentId, Guid correlationId);
+            "Agent '{Session}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
+    private partial void LogTurnInterrupted(SessionId session, Guid correlationId);
 }

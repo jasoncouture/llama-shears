@@ -177,9 +177,16 @@
     {
         var id = e.Value as string;
         var normalized = string.IsNullOrWhiteSpace(id) ? null : id;
-        await Session.SelectAgentAsync(normalized, CancellationToken.None);
+        SessionId? session = null;
+        if (normalized is not null
+            && Repository.TryGetDefaultSession(normalized, out var sessionId)
+            && Repository.TryGetAgent(sessionId, out var handle))
+        {
+            session = handle.SessionPath.Current;
+        }
+        await Session.SelectSessionAsync(session, CancellationToken.None);
         RefreshSessions();
-        Nav.NavigateTo(normalized is null ? "/chat" : $"/chat/{Uri.EscapeDataString(normalized)}", replace: true);
+        Nav.NavigateTo(normalized is null ? "/chat" : $"/chat/{Uri.EscapeDataString(normalized)}");
     }
 
     private async ValueTask<bool?> ReadBoolAsync(string key)

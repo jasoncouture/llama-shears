@@ -15,7 +15,7 @@ public sealed class DefaultAgentClaimsProjector : IAgentClaimsProjector
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role);
 
-        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, agent.AgentId));
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, agent.Session));
         identity.AddClaim(new Claim(ClaimTypes.Name, agent.AgentId));
 
         return new ClaimsPrincipal(identity);

@@ -1,3 +1,5 @@
+using LlamaShears.Core.Abstractions.Agent.Sessions;
+
 namespace LlamaShears.Core.Abstractions.Common;
 
 /// <summary>
@@ -8,8 +10,8 @@ namespace LlamaShears.Core.Abstractions.Common;
 /// </summary>
 public interface IDataContextScope : IEnumerable<KeyValuePair<string, object?>>
 {
-    /// <summary>The scope's key, assigned at start.</summary>
-    string Key { get; }
+    /// <summary>The session this scope belongs to, assigned at start.</summary>
+    SessionId Key { get; }
 
     /// <summary>
     /// Returns the value at <paramref name="key"/> if it is assignable to

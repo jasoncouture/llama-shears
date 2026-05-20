@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Paths;
@@ -11,6 +12,7 @@ namespace LlamaShears.UnitTests.Agent.Core.Persistence;
 public sealed class JsonLineContextStoreTests
 {
     private const string AgentId = "alice";
+    private static readonly SessionId _session = new SessionId(AgentId, SessionId.DefaultSessionName);
 
     private static ModelTurn Turn(ModelRole role, string content, DateTimeOffset at) => new ModelTurn(role, content, at);
 
@@ -18,7 +20,7 @@ public sealed class JsonLineContextStoreTests
     public async Task AppendThenReadCurrentRoundTripsModelTurnViaPolymorphicJson()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
 
         var first = Turn(ModelRole.User, "hi", new DateTimeOffset(2026, 4, 29, 20, 0, 0, TimeSpan.Zero));
         var second = Turn(ModelRole.Assistant, "hello", new DateTimeOffset(2026, 4, 29, 20, 0, 1, TimeSpan.Zero));
@@ -27,7 +29,7 @@ public sealed class JsonLineContextStoreTests
         await context.AppendAsync(second, CancellationToken.None);
 
         var read = new List<IContextEntry>();
-        await foreach (var entry in fixture.Store.ReadCurrentAsync(AgentId, CancellationToken.None))
+        await foreach (var entry in fixture.Store.ReadCurrentAsync(_session, CancellationToken.None))
         {
             read.Add(entry);
         }
@@ -41,7 +43,7 @@ public sealed class JsonLineContextStoreTests
     public async Task ReadCurrentSkipsMalformedLines()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         await context.AppendAsync(
             Turn(ModelRole.User, "valid", DateTimeOffset.UnixEpoch),
             CancellationToken.None);
@@ -56,7 +58,7 @@ public sealed class JsonLineContextStoreTests
             CancellationToken.None);
 
         var read = new List<IContextEntry>();
-        await foreach (var entry in fixture.Store.ReadCurrentAsync(AgentId, CancellationToken.None))
+        await foreach (var entry in fixture.Store.ReadCurrentAsync(_session, CancellationToken.None))
         {
             read.Add(entry);
         }
@@ -69,8 +71,8 @@ public sealed class JsonLineContextStoreTests
     public async Task RepeatedOpenAsyncReturnsTheSameHandle()
     {
         using var fixture = new Fixture();
-        var first = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
-        var second = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var first = await fixture.Store.OpenAsync(_session, CancellationToken.None);
+        var second = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         await Assert.That(ReferenceEquals(first, second)).IsTrue();
     }
 
@@ -78,7 +80,7 @@ public sealed class JsonLineContextStoreTests
     public async Task AppendIsVisibleThroughBothTurnsAndEntries()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         var turn = Turn(ModelRole.User, "x", DateTimeOffset.UnixEpoch);
 
         await context.AppendAsync(turn, CancellationToken.None);
@@ -92,12 +94,12 @@ public sealed class JsonLineContextStoreTests
     {
         using var fixture = new Fixture();
 
-        var first = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var first = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         var existing = Turn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
         await first.AppendAsync(existing, CancellationToken.None);
 
         var rebooted = fixture.NewStore();
-        var rehydrated = await rebooted.OpenAsync(AgentId, CancellationToken.None);
+        var rehydrated = await rebooted.OpenAsync(_session, CancellationToken.None);
 
         await Assert.That(rehydrated.Turns).Contains(existing);
     }
@@ -106,7 +108,7 @@ public sealed class JsonLineContextStoreTests
     public async Task ClearWithArchiveRenamesCurrentAndEmptiesInMemory()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         await context.AppendAsync(
             Turn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch),
             CancellationToken.None);
@@ -114,7 +116,7 @@ public sealed class JsonLineContextStoreTests
         fixture.TimeProvider.SetUtcNow(new DateTimeOffset(2026, 4, 29, 20, 0, 0, TimeSpan.Zero));
         var expectedMillis = fixture.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds();
 
-        await fixture.Store.ClearAsync(AgentId, archive: true, CancellationToken.None);
+        await fixture.Store.ClearAsync(_session, archive: true, CancellationToken.None);
 
         var archivePath = Path.Combine(fixture.AgentFolder(AgentId), $"{expectedMillis}.json");
         await Assert.That(File.Exists(archivePath)).IsTrue();
@@ -127,12 +129,12 @@ public sealed class JsonLineContextStoreTests
     public async Task ClearWithoutArchiveDeletesCurrentAndEmptiesInMemory()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         await context.AppendAsync(
             Turn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch),
             CancellationToken.None);
 
-        await fixture.Store.ClearAsync(AgentId, archive: false, CancellationToken.None);
+        await fixture.Store.ClearAsync(_session, archive: false, CancellationToken.None);
 
         await Assert.That(File.Exists(fixture.CurrentPath(AgentId))).IsFalse();
         await Assert.That(context.Turns.Count).IsEqualTo(0);
@@ -143,11 +145,11 @@ public sealed class JsonLineContextStoreTests
     public async Task ClearAsyncRaisesClearedEventOnTheLiveContext()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         var raised = 0;
         context.Cleared += (_, _) => Interlocked.Increment(ref raised);
 
-        await fixture.Store.ClearAsync(AgentId, archive: false, CancellationToken.None);
+        await fixture.Store.ClearAsync(_session, archive: false, CancellationToken.None);
 
         await Assert.That(raised).IsEqualTo(1);
     }
@@ -156,7 +158,7 @@ public sealed class JsonLineContextStoreTests
     public async Task ListArchivesAsyncReturnsArchivesInChronologicalOrder()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
 
         async Task ArchiveAt(long unixMillis)
         {
@@ -164,14 +166,14 @@ public sealed class JsonLineContextStoreTests
             await context.AppendAsync(
                 Turn(ModelRole.User, $"#{unixMillis}", DateTimeOffset.UnixEpoch),
                 CancellationToken.None);
-            await fixture.Store.ClearAsync(AgentId, archive: true, CancellationToken.None);
+            await fixture.Store.ClearAsync(_session, archive: true, CancellationToken.None);
         }
 
         await ArchiveAt(1000);
         await ArchiveAt(2000);
         await ArchiveAt(3000);
 
-        var archives = await fixture.Store.ListArchivesAsync(AgentId, CancellationToken.None);
+        var archives = await fixture.Store.ListArchivesAsync(_session, CancellationToken.None);
 
         await Assert.That(archives.Select(a => a.UnixMillis).ToArray())
             .IsEquivalentTo(new long[] { 1000, 2000, 3000 });
@@ -181,7 +183,7 @@ public sealed class JsonLineContextStoreTests
     public async Task DeleteAsyncRemovesOnlyTheTargetedArchive()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
 
         async Task<ArchiveId> ArchiveAt(long unixMillis)
         {
@@ -189,8 +191,8 @@ public sealed class JsonLineContextStoreTests
             await context.AppendAsync(
                 Turn(ModelRole.User, $"#{unixMillis}", DateTimeOffset.UnixEpoch),
                 CancellationToken.None);
-            await fixture.Store.ClearAsync(AgentId, archive: true, CancellationToken.None);
-            return new ArchiveId(AgentId, null, unixMillis);
+            await fixture.Store.ClearAsync(_session, archive: true, CancellationToken.None);
+            return new ArchiveId(_session, unixMillis);
         }
 
         var keep = await ArchiveAt(1000);
@@ -198,7 +200,7 @@ public sealed class JsonLineContextStoreTests
 
         await fixture.Store.DeleteAsync(drop, CancellationToken.None);
 
-        var remaining = await fixture.Store.ListArchivesAsync(AgentId, CancellationToken.None);
+        var remaining = await fixture.Store.ListArchivesAsync(_session, CancellationToken.None);
         await Assert.That(remaining.Count).IsEqualTo(1);
         await Assert.That(remaining[0]).IsEqualTo(keep);
         await Assert.That(Directory.Exists(fixture.AgentFolder(AgentId))).IsTrue();
@@ -208,7 +210,7 @@ public sealed class JsonLineContextStoreTests
     public async Task AppendRecreatesCurrentJsonAfterExternalDelete()
     {
         using var fixture = new Fixture();
-        var context = await fixture.Store.OpenAsync(AgentId, CancellationToken.None);
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
         await context.AppendAsync(
             Turn(ModelRole.User, "first", DateTimeOffset.UnixEpoch),
             CancellationToken.None);
@@ -232,8 +234,8 @@ public sealed class JsonLineContextStoreTests
     public async Task ListAgentsAsyncReturnsAgentsWithFolders()
     {
         using var fixture = new Fixture();
-        await fixture.Store.OpenAsync("alice", CancellationToken.None);
-        await fixture.Store.OpenAsync("bob", CancellationToken.None);
+        await fixture.Store.OpenAsync(new SessionId("alice", SessionId.DefaultSessionName), CancellationToken.None);
+        await fixture.Store.OpenAsync(new SessionId("bob", SessionId.DefaultSessionName), CancellationToken.None);
 
         var agents = await fixture.Store.ListAgentsAsync(CancellationToken.None);
 
@@ -241,35 +243,20 @@ public sealed class JsonLineContextStoreTests
     }
 
     [Test]
-    public async Task ListAgentsAsyncSkipsTopLevelSessionGuidFolders()
+    public async Task NonDefaultSessionPersistsUnderNameSubfolderAsGuidNamedFile()
     {
         using var fixture = new Fixture();
-        await fixture.Store.OpenAsync("alice", CancellationToken.None);
-        var rogueGuid = Guid.NewGuid();
-        Directory.CreateDirectory(Path.Combine(
-            fixture.Paths.GetPath(PathKind.Context, ensureExists: true),
-            rogueGuid.ToString("n")));
-
-        var agents = await fixture.Store.ListAgentsAsync(CancellationToken.None);
-
-        await Assert.That(agents).IsEquivalentTo(["alice"]);
-    }
-
-    [Test]
-    public async Task NonDefaultSessionPersistsUnderGuidSubfolderAndDoesNotAppearAsAgent()
-    {
-        using var fixture = new Fixture();
-        var sessionId = Guid.NewGuid();
-        var context = await fixture.Store.OpenAsync("alice", sessionId, CancellationToken.None);
+        var sessionGuid = Guid.NewGuid();
+        var session = new SessionId(AgentId, "side") { Id = sessionGuid };
+        var context = await fixture.Store.OpenAsync(session, CancellationToken.None);
         await context.AppendAsync(Turn(ModelRole.User, "hello", DateTimeOffset.UnixEpoch), CancellationToken.None);
 
-        var sessionFolder = Path.Combine(fixture.AgentFolder("alice"), sessionId.ToString("n"));
+        var sessionFolder = Path.Combine(fixture.AgentFolder(AgentId), "side");
         await Assert.That(Directory.Exists(sessionFolder)).IsTrue();
-        await Assert.That(File.Exists(Path.Combine(sessionFolder, "current.json"))).IsTrue();
+        await Assert.That(File.Exists(Path.Combine(sessionFolder, $"{sessionGuid:n}.json"))).IsTrue();
 
         var agents = await fixture.Store.ListAgentsAsync(CancellationToken.None);
-        await Assert.That(agents).Contains("alice");
-        await Assert.That(agents).DoesNotContain(sessionId.ToString("n"));
+        await Assert.That(agents).Contains(AgentId);
     }
 
     private sealed class Fixture : IDisposable

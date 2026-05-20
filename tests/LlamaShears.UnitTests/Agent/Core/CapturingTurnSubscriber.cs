@@ -1,10 +1,11 @@
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.UnitTests.Agent.Core;
 
 /// <summary>
-/// Subscribes to <c>agent:turn:&lt;id&gt;</c> for a single agent and
+/// Subscribes to <c>agent:turn:&lt;sessionId&gt;</c> for a single session and
 /// captures every non-User turn (i.e. everything an old IOutputChannel
 /// would have seen). Used as a drop-in replacement for the old
 /// CapturingOutputChannel test helper.
@@ -17,12 +18,13 @@ internal sealed class CapturingTurnSubscriber : IEventHandler<ModelTurn>, IDispo
         new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly IDisposable _subscription;
 
-    public CapturingTurnSubscriber(IEventBus bus, string agentId)
+    public CapturingTurnSubscriber(IEventBus bus, SessionId session)
     {
         _subscription = bus.Subscribe(
-            Event.WellKnown.Agent.Turn with { Id = agentId },
+            Event.WellKnown.Agent.Turn with { Id = session },
             EventDeliveryMode.Awaited,
-            this);
+            this,
+            preserveSubscriberExecutionContext: true);
     }
 
     public IReadOnlyList<ModelTurn> Turns

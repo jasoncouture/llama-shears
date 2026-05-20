@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LlamaShears.Api.Authentication;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -65,7 +66,9 @@ public sealed class AgentBearerAuthenticationTests
         var identity = principal.Identity!;
 
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(principal.FindFirstValue(ClaimTypes.NameIdentifier)).IsEqualTo("alice");
+        await Assert.That(SessionId.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier)!, out var session)).IsTrue();
+        await Assert.That(session!.AgentId).IsEqualTo("alice");
+        await Assert.That(session.Name).IsEqualTo(SessionId.DefaultSessionName);
         await Assert.That(identity.Name).IsEqualTo("alice");
         await Assert.That(identity.AuthenticationType).IsEqualTo(AgentBearerDefaults.AuthenticationScheme);
     }
@@ -109,5 +112,6 @@ public sealed class AgentBearerAuthenticationTests
         return await auth.AuthenticateAsync(ctx, AgentBearerDefaults.AuthenticationScheme);
     }
 
-    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, new CompositeIdentity("ollama", "llama3"), 8192);
+    private static AgentInfo SampleAgent(string id = "alice")
+        => new AgentInfo(new SessionId(id, SessionId.DefaultSessionName), new CompositeIdentity("ollama", "llama3"), 8192);
 }

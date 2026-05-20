@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Commands;
-using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -21,7 +21,6 @@ public sealed class ChatSession :
     private readonly IEventBus _publisher;
     private readonly IAgentDirectory _directory;
     private readonly ISlashCommandRegistry _slashCommands;
-    private readonly IDataContextFactory _dataContextFactory;
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
@@ -32,7 +31,7 @@ public sealed class ChatSession :
     private IDisposable? _toolResultSubscription;
     private IDisposable? _compactingStartedSubscription;
     private IDisposable? _compactingFinishedSubscription;
-    private string? _selectedAgentId;
+    private SessionId? _selectedSession;
     private bool _showThoughts = true;
     private bool _showStreaming = true;
     private bool _showTools = true;
@@ -42,23 +41,21 @@ public sealed class ChatSession :
         IEventBus bus,
         IEventBus publisher,
         IAgentDirectory directory,
-        ISlashCommandRegistry slashCommands,
-        IDataContextFactory dataContextFactory)
+        ISlashCommandRegistry slashCommands)
     {
         _bus = bus;
         _publisher = publisher;
         _directory = directory;
         _slashCommands = slashCommands;
-        _dataContextFactory = dataContextFactory;
     }
 
-    public string? SelectedAgentId
+    public SessionId? SelectedSession
     {
         get
         {
             lock (_gate)
             {
-                return _selectedAgentId;
+                return _selectedSession;
             }
         }
     }
@@ -145,21 +142,21 @@ public sealed class ChatSession :
 
     public event Action? Changed;
 
-    public async Task SelectAgentAsync(string? agentId, CancellationToken cancellationToken)
+    public async Task SelectSessionAsync(SessionId? session, CancellationToken cancellationToken)
     {
         IReadOnlyList<ModelTurn> history = [];
-        if (!string.IsNullOrWhiteSpace(agentId))
+        if (session is not null)
         {
-            history = await _directory.GetTurnsAsync(agentId, cancellationToken);
+            history = await _directory.GetTurnsAsync(session, cancellationToken);
         }
 
         lock (_gate)
         {
-            if (string.Equals(_selectedAgentId, agentId, StringComparison.Ordinal))
+            if (Equals(_selectedSession, session))
             {
                 return;
             }
-            _selectedAgentId = agentId;
+            _selectedSession = session;
             _bubbles.Clear();
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
@@ -176,7 +173,7 @@ public sealed class ChatSession :
             _toolResultSubscription = null;
             _compactingStartedSubscription = null;
             _compactingFinishedSubscription = null;
-            if (!string.IsNullOrWhiteSpace(agentId))
+            if (session is not null)
             {
                 foreach (var turn in history)
                 {
@@ -187,27 +184,27 @@ public sealed class ChatSession :
                     }
                 }
                 _messageSubscription = _bus.Subscribe<AgentMessageFragment>(
-                    Event.WellKnown.Agent.Message with { Id = agentId },
+                    Event.WellKnown.Agent.Message with { Id = session },
                     EventDeliveryMode.Awaited,
                     this);
                 _thoughtSubscription = _bus.Subscribe<AgentThoughtFragment>(
-                    Event.WellKnown.Agent.Thought with { Id = agentId },
+                    Event.WellKnown.Agent.Thought with { Id = session },
                     EventDeliveryMode.Awaited,
                     this);
                 _toolCallSubscription = _bus.Subscribe<AgentToolCallFragment>(
-                    Event.WellKnown.Agent.ToolCall with { Id = agentId },
+                    Event.WellKnown.Agent.ToolCall with { Id = session },
                     EventDeliveryMode.Awaited,
                     this);
                 _toolResultSubscription = _bus.Subscribe<AgentToolResultFragment>(
-                    Event.WellKnown.Agent.ToolResult with { Id = agentId },
+                    Event.WellKnown.Agent.ToolResult with { Id = session },
                     EventDeliveryMode.Awaited,
                     this);
                 _compactingStartedSubscription = _bus.Subscribe<AgentCompactionRequest>(
-                    Event.WellKnown.Agent.CompactingStarted with { Id = agentId },
+                    Event.WellKnown.Agent.CompactingStarted with { Id = session },
                     EventDeliveryMode.Awaited,
                     this);
                 _compactingFinishedSubscription = _bus.Subscribe<AgentCompactionRequest>(
-                    Event.WellKnown.Agent.CompactingFinished with { Id = agentId },
+                    Event.WellKnown.Agent.CompactingFinished with { Id = session },
                     EventDeliveryMode.Awaited,
                     this);
             }
@@ -226,17 +223,17 @@ public sealed class ChatSession :
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
         var safeAttachments = attachments.IsDefault ? [] : attachments;
         var trimmed = content.Trim();
-        string agentId;
+        SessionId session;
         lock (_gate)
         {
-            if (string.IsNullOrWhiteSpace(_selectedAgentId))
+            if (_selectedSession is null)
             {
-                throw new InvalidOperationException("No agent selected.");
+                throw new InvalidOperationException("No session selected.");
             }
-            agentId = _selectedAgentId;
+            session = _selectedSession;
         }
 
-        if (await TryDispatchSlashCommandAsync(trimmed, agentId, cancellationToken).ConfigureAwait(false))
+        if (await TryDispatchSlashCommandAsync(trimmed, session, cancellationToken).ConfigureAwait(false))
         {
             return;
         }
@@ -251,8 +248,8 @@ public sealed class ChatSession :
         }
         Changed?.Invoke();
         await _publisher.PublishAsync(
-            Event.WellKnown.Channel.Message with { Id = "webui" },
-            new ChannelMessage(content, agentId, DateTimeOffset.Now)
+            Event.WellKnown.Channel.Message with { Id = session },
+            new ChannelMessage(content, "webui", DateTimeOffset.Now)
             {
                 Attachments = safeAttachments,
             },
@@ -339,12 +336,12 @@ public sealed class ChatSession :
         return ValueTask.CompletedTask;
     }
 
-    private void ApplyCompactionState(string? agentId, bool active)
+    private void ApplyCompactionState(string? eventId, bool active)
     {
         bool changed;
         lock (_gate)
         {
-            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            if (!string.Equals(eventId, _selectedSession?.ToString(), StringComparison.Ordinal))
             {
                 return;
             }
@@ -357,11 +354,11 @@ public sealed class ChatSession :
         }
     }
 
-    private void ApplyToolCall(string? agentId, Guid correlationId, AgentToolCallFragment fragment)
+    private void ApplyToolCall(string? eventId, Guid correlationId, AgentToolCallFragment fragment)
     {
         lock (_gate)
         {
-            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            if (!string.Equals(eventId, _selectedSession?.ToString(), StringComparison.Ordinal))
             {
                 return;
             }
@@ -385,11 +382,11 @@ public sealed class ChatSession :
         Changed?.Invoke();
     }
 
-    private void ApplyToolResult(string? agentId, Guid correlationId, AgentToolResultFragment fragment)
+    private void ApplyToolResult(string? eventId, Guid correlationId, AgentToolResultFragment fragment)
     {
         lock (_gate)
         {
-            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            if (!string.Equals(eventId, _selectedSession?.ToString(), StringComparison.Ordinal))
             {
                 return;
             }
@@ -452,11 +449,11 @@ public sealed class ChatSession :
         return null;
     }
 
-    private void ApplyFragment(string? agentId, Guid correlationId, ChatBubbleKind kind, string content, bool final)
+    private void ApplyFragment(string? eventId, Guid correlationId, ChatBubbleKind kind, string content, bool final)
     {
         lock (_gate)
         {
-            if (!string.Equals(agentId, _selectedAgentId, StringComparison.Ordinal))
+            if (!string.Equals(eventId, _selectedSession?.ToString(), StringComparison.Ordinal))
             {
                 return;
             }
@@ -477,7 +474,7 @@ public sealed class ChatSession :
         Changed?.Invoke();
     }
 
-    private async Task<bool> TryDispatchSlashCommandAsync(string trimmedContent, string agentId, CancellationToken cancellationToken)
+    private async Task<bool> TryDispatchSlashCommandAsync(string trimmedContent, SessionId session, CancellationToken cancellationToken)
     {
         if (trimmedContent.Length < 2 || trimmedContent[0] != '/')
         {
@@ -499,8 +496,7 @@ public sealed class ChatSession :
         var args = parts.Length == 1
             ? []
             : ImmutableArray.Create(parts, 1, parts.Length - 1);
-        _dataContextFactory.TryJoinContextScope(agentId, out _);
-        var result = await command.ExecuteAsync(new SlashCommandContext(agentId, args), cancellationToken);
+        var result = await command.ExecuteAsync(new SlashCommandContext(session, args), cancellationToken);
         if (result.ContextChanged)
         {
             ResetBubbles();
@@ -572,5 +568,4 @@ public sealed class ChatSession :
             turn.Timestamp,
             attachments: turn.Attachments);
     }
-
 }

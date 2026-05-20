@@ -10,6 +10,9 @@ public sealed class AgentInstanceRepository : IAgentInstanceRepository, IDisposa
     private readonly ConcurrentDictionary<Guid, AgentHandle> _agentHandles =
         new ConcurrentDictionary<Guid, AgentHandle>();
 
+    private readonly ConcurrentDictionary<string, Guid> _agentDefaultSessions =
+        new ConcurrentDictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+
     public IEnumerable<AgentHandle> GetAllAgents()
     {
         var roots = _agentHandles.Where(i => i.Value.SessionPath.IsRootSession)
@@ -24,6 +27,8 @@ public sealed class AgentInstanceRepository : IAgentInstanceRepository, IDisposa
             yield return root;
         }
     }
+
+    public bool TryGetDefaultSession(string agentId, out Guid id) => _agentDefaultSessions.TryGetValue(agentId, out id);
 
     public IEnumerable<Guid> GetAgentInstancesByName(string name) =>
         _agentHandles.Values.Where(i =>
@@ -95,7 +100,12 @@ public sealed class AgentInstanceRepository : IAgentInstanceRepository, IDisposa
 
     public bool Remove(Guid id)
     {
-        return _agentHandles.TryRemove(id, out _);
+        if (!_agentHandles.TryRemove(id, out var handle)) return false;
+        if (handle.SessionPath.IsRootSession)
+        {
+            _agentDefaultSessions.TryRemove(handle.SessionPath.Current.AgentId, out _);
+        }
+        return true;
     }
 
     private void ThrowIfDisposed()
@@ -139,6 +149,9 @@ public sealed class AgentInstanceRepository : IAgentInstanceRepository, IDisposa
         {
             throw new InvalidOperationException($"Session {handle.SessionPath} already exists");
         }
+
+        if (!handle.SessionPath.IsRootSession) return;
+        _agentDefaultSessions[handle.SessionPath.Current.AgentId] = handle.SessionPath.Id;
     }
 
     private IEnumerable<Guid> BuildSessionPath(Guid id)

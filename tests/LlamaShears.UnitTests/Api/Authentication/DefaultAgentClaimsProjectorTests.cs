@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LlamaShears.Api.Authentication;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,13 +12,14 @@ namespace LlamaShears.UnitTests.Api.Authentication;
 public sealed class DefaultAgentClaimsProjectorTests
 {
     [Test]
-    public async Task ProjectEmitsANameIdentifierClaimCarryingTheAgentId()
+    public async Task ProjectEmitsANameIdentifierClaimCarryingTheSessionCanonical()
     {
         var projector = BuildProjector();
+        var agent = SampleAgent();
 
-        var principal = projector.Project(SampleAgent(), AgentBearerDefaults.AuthenticationScheme);
+        var principal = projector.Project(agent, AgentBearerDefaults.AuthenticationScheme);
 
-        await Assert.That(principal.FindFirstValue(ClaimTypes.NameIdentifier)).IsEqualTo("alice");
+        await Assert.That(principal.FindFirstValue(ClaimTypes.NameIdentifier)).IsEqualTo(agent.Session.ToString());
     }
 
     [Test]
@@ -51,5 +53,6 @@ public sealed class DefaultAgentClaimsProjectorTests
         return services.BuildServiceProvider().GetRequiredService<IAgentClaimsProjector>();
     }
 
-    private static AgentInfo SampleAgent(string id = "alice") => new AgentInfo(id, new CompositeIdentity("ollama", "llama3"), 8192);
+    private static AgentInfo SampleAgent(string id = "alice")
+        => new AgentInfo(new SessionId(id, SessionId.DefaultSessionName), new CompositeIdentity("ollama", "llama3"), 8192);
 }

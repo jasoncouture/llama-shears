@@ -18,6 +18,15 @@ public interface IAgentInstanceRepository
     bool TryGetAgent(Guid id, [NotNullWhen(true)] out AgentHandle? handle);
 
     /// <summary>
+    /// Returns the session id of the default (root) session for
+    /// <paramref name="agentId"/>, when one exists.
+    /// </summary>
+    /// <param name="agentId">Agent whose default session is being looked up.</param>
+    /// <param name="id">Session id of the default session on success.</param>
+    /// <returns><see langword="true"/> when a default session is registered; <see langword="false"/> otherwise.</returns>
+    bool TryGetDefaultSession(string agentId, out Guid id);
+
+    /// <summary>
     /// Removes the handle with id <paramref name="id"/>. Throws if the handle still has children.
     /// </summary>
     /// <param name="id">Id of the handle to remove.</param>
