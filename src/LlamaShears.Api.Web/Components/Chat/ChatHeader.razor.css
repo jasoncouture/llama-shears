@@ -1,5 +1,6 @@
 .chat-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
@@ -14,6 +15,21 @@
     border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--text);
+    flex: 1 1 8rem;
+    min-width: 0;
+    max-width: 16rem;
+}
+
+@media (max-width: 480px) {
+    .chat-header select {
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .chat-header-actions {
+        margin-left: 0;
+        flex-wrap: wrap;
+    }
 }
 
 .chat-header-empty {
