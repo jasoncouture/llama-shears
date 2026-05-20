@@ -35,7 +35,9 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddEventHandler<AgentTurnLogger>();
         builder.Services.AddAgentBearerAuthentication();
         builder.Services.AddModelContextProtocol();
-        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+        builder.Services.AddRazorComponents()
+            .AddInteractiveServerComponents()
+            .AddHubOptions(o => o.MaximumReceiveMessageSize = 32L * 1024 * 1024);
         builder.Services.AddWebUi();
 
         return builder;
