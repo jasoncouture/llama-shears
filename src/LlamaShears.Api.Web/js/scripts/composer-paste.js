@@ -27,17 +27,25 @@
         var items = e.clipboardData && e.clipboardData.items;
         if (!items) return;
 
+        // Collect every image file in the payload. KDE (and others)
+        // commonly deliver a text/uri-list item alongside the image
+        // (the path to the source file). Without pre-scanning we'd see
+        // the text item, treat the paste as text, and miss the image.
+        var images = [];
         for (var i = 0; i < items.length; i++) {
             var item = items[i];
             if (item.kind !== 'file') continue;
+            if (item.type.indexOf('image/') !== 0) continue;
             var file = item.getAsFile();
-            if (!file) continue;
-            if (file.type.indexOf('image/') !== 0) continue;
+            if (file) images.push(file);
+        }
+        if (images.length === 0) return;
 
-            // Stop the textarea from receiving the (binary) paste as
-            // garbled text; we're handling it.
-            e.preventDefault();
+        // Stop the textarea from receiving the (binary or uri-list)
+        // paste as garbled text; we're handling it.
+        e.preventDefault();
 
+        for (var j = 0; j < images.length; j++) {
             (function (f) {
                 var reader = new FileReader();
                 reader.onload = function () {
@@ -48,7 +56,7 @@
                     ref.invokeMethodAsync('OnPasteAsync', f.type, b64);
                 };
                 reader.readAsDataURL(f);
-            })(file);
+            })(images[j]);
         }
     });
 })();
