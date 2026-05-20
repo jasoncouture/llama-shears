@@ -10,16 +10,6 @@ namespace LlamaShears.Core.Abstractions.Agent.Persistence;
 /// </summary>
 public interface IAgentContext
 {
-    /// <summary>Identifier of the agent whose log this represents.</summary>
-    string AgentId { get; }
-
-    /// <summary>
-    /// Session id this context belongs to; <see langword="null"/> for the
-    /// agent's default (main) session. Non-default sessions persist under
-    /// a per-session subfolder rather than the agent root.
-    /// </summary>
-    Guid? SessionId => null;
-
     /// <summary>
     /// Snapshot of the conversation as <see cref="ModelTurn"/> values,
     /// filtered out of the polymorphic entry log. Stable for the duration
@@ -49,7 +39,7 @@ public interface IAgentContext
 
     /// <summary>
     /// Raised when the context is cleared in-memory (typically following
-    /// <see cref="IContextStore.ClearAsync(string, bool, CancellationToken)"/>).
+    /// <see cref="IContextStore.ClearAsync"/>).
     /// Subscribers should treat previously-observed entries as discarded.
     /// </summary>
     event EventHandler? Cleared;
