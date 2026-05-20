@@ -40,7 +40,8 @@ public interface IEventBus
     IDisposable Subscribe<T>(
         string? pattern,
         EventDeliveryMode mode,
-        IEventHandler<T> handler)
+        IEventHandler<T> handler,
+        bool preserveSubscriberExecutionContext = false)
         where T : class;
     
     /// <summary>

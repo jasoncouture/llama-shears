@@ -11,6 +11,7 @@ internal sealed partial class EventHandlerWrapper<T> : IAsyncMessageHandler<IEve
     private readonly EventDeliveryMode _deliveryMode;
     private readonly IPatternMatcher _patternMatcher;
     private readonly ILogger<EventBus> _logger;
+    private readonly ExecutionContext? _executionContext;
 
     public EventHandlerWrapper(IEventHandler<T> handler, EventHandlerWrapperOptions options, IPatternMatcher patternMatcher, ILogger<EventBus> logger)
     {
@@ -19,12 +20,19 @@ internal sealed partial class EventHandlerWrapper<T> : IAsyncMessageHandler<IEve
         _deliveryMode = options.DeliveryMode;
         _patternMatcher = patternMatcher;
         _logger = logger;
+        _executionContext = options.ExecutionContext;
     }
 
     public async ValueTask HandleAsync(IEventEnvelope<T> envelope, CancellationToken cancellationToken)
     {
         if (envelope.DeliveryMode != _deliveryMode) return;
         if (!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
+        ExecutionContext? currentContext = null;
+        if (_executionContext is not null)
+        {
+            currentContext = ExecutionContext.Capture();
+            ExecutionContext.Restore(_executionContext);
+        }
 
         try
         {
@@ -34,6 +42,11 @@ internal sealed partial class EventHandlerWrapper<T> : IAsyncMessageHandler<IEve
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             LogHandlerCancelled(_handler.GetType(), typeof(T), _deliveryMode);
+        }
+        finally
+        {
+            if (currentContext is not null)
+                ExecutionContext.Restore(currentContext);
         }
     }
 
