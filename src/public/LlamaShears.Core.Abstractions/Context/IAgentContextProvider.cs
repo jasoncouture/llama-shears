@@ -1,3 +1,5 @@
+using LlamaShears.Core.Abstractions.Agent.Sessions;
+
 namespace LlamaShears.Core.Abstractions.Context;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace LlamaShears.Core.Abstractions.Context;
 /// host's authoritative sources (config, language model, plugins, etc.).
 /// Returns <see langword="null"/> when no context can be built — for the
 /// parameterless overload, when there is no ambient agent; for the
-/// id-bearing overload, when the agent does not exist.
+/// session-bearing overload, when the agent does not exist.
 /// </summary>
 public interface IAgentContextProvider
 {
@@ -17,8 +19,8 @@ public interface IAgentContextProvider
     ValueTask<AgentContext?> CreateAgentContextAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Builds a snapshot for <paramref name="agentId"/>. Returns
+    /// Builds a snapshot for <paramref name="session"/>. Returns
     /// <see langword="null"/> when no agent with that id is configured.
     /// </summary>
-    ValueTask<AgentContext?> CreateAgentContextAsync(string agentId, CancellationToken cancellationToken);
+    ValueTask<AgentContext?> CreateAgentContextAsync(SessionId session, CancellationToken cancellationToken);
 }
