@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Hosting;
@@ -47,15 +48,15 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
             var scope = _dataContextFactory.Current
                 ?? throw new InvalidOperationException(
                     "Outbound MCP request targets the internal listener but no agent data scope is ambient on the current call; the caller must enter an agent scope before issuing tool calls.");
-            var config = scope.GetAgentConfig();
+            var session = scope.GetCurrentSessionId();
             var model = scope.GetModelConfiguration();
             var agent = new AgentInfo(
-                AgentId: config.Id,
+                Session: session,
                 ModelId: model.Id,
                 ContextWindowSize: model.ContextLength ?? 0);
             var token = _tokenStore.Issue(agent);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            LogInjectedBearer(agent.AgentId, request.RequestUri!);
+            LogInjectedBearer(session, request.RequestUri!);
         }
         return base.SendAsync(request, cancellationToken);
     }
@@ -82,6 +83,6 @@ public sealed partial class LoopbackBearerHandler : DelegatingHandler
         return IPAddress.TryParse(requestUri.Host, out var address) && IPAddress.IsLoopback(address);
     }
 
-    [LoggerMessage(Level = LogLevel.Trace, Message = "Injected loopback bearer for agent '{AgentId}' on request to {RequestUri}.")]
-    private partial void LogInjectedBearer(string agentId, Uri requestUri);
+    [LoggerMessage(Level = LogLevel.Trace, Message = "Injected loopback bearer for session '{Session}' on request to {RequestUri}.")]
+    private partial void LogInjectedBearer(SessionId session, Uri requestUri);
 }

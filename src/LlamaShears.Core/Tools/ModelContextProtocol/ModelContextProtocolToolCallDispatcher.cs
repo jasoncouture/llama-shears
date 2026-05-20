@@ -65,12 +65,11 @@ public sealed partial class ModelContextProtocolToolCallDispatcher : IToolCallDi
 
         try
         {
-            var result = await _client.CallToolAsync(
+            return await _client.CallToolAsync(
                 call.Source,
                 call.Name,
                 arguments,
                 cancellationToken);
-            return result with { Content = ToolResponseClamp.Apply(result.Content) };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
