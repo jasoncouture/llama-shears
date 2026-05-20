@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core.Persistence;
@@ -13,27 +14,27 @@ internal sealed class AgentContext : IAgentContext
     private readonly JsonSerializerOptions _jsonOptions;
 
     public AgentContext(
-        string agentId,
-        Guid? sessionId,
+        SessionId session,
         string currentPath,
         IEnumerable<IContextEntry> seed,
         JsonSerializerOptions jsonOptions)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        ArgumentNullException.ThrowIfNull(session);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentPath);
         ArgumentNullException.ThrowIfNull(seed);
         ArgumentNullException.ThrowIfNull(jsonOptions);
 
-        AgentId = agentId;
-        SessionId = sessionId;
+        Session = session;
         _currentPath = currentPath;
         _entries = [.. seed];
         _jsonOptions = jsonOptions;
     }
 
-    public string AgentId { get; }
+    public SessionId Session { get; }
 
-    public Guid? SessionId { get; }
+    public string AgentId => Session.AgentId;
+
+    public Guid? SessionId => Session.IsDefault ? null : Session.Id;
 
     public IReadOnlyList<ModelTurn> Turns
     {
