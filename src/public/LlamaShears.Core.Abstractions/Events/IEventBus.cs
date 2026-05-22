@@ -43,7 +43,7 @@ public interface IEventBus
         IEventHandler<T> handler,
         bool preserveSubscriberExecutionContext = false)
         where T : class;
-    
+
     /// <summary>
     /// Publishes an event of the given <paramref name="eventType"/> carrying
     /// <paramref name="data"/>.
