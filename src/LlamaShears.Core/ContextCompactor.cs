@@ -226,7 +226,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             TokenLimit: summaryCap,
             Tools: tools,
             SystemPromptTemplate: CompactionTemplateFileName);
-        
+
         var toolCallingTurns = 0;
 
         while (true)
