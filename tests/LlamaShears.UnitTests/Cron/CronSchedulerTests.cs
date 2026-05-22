@@ -1,11 +1,9 @@
-using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Cron;
 using LlamaShears.Core.Paths;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
-using NSubstitute;
 
 namespace LlamaShears.UnitTests.Cron;
 

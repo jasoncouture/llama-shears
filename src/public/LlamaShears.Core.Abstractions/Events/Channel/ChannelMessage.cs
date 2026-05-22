@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Content;
 
 namespace LlamaShears.Core.Abstractions.Events.Channel;
