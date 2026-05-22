@@ -174,7 +174,7 @@ public sealed class AgentInstanceRepository : IAgentInstanceRepository, IDisposa
         }
     }
 
-    public AgentSessionPath GetAgentPath(Guid id) => new AgentSessionPath([..BuildSessionPath(id)]);
+    public AgentSessionPath GetAgentPath(Guid id) => new AgentSessionPath([.. BuildSessionPath(id)]);
 
     public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
 }
