@@ -39,23 +39,4 @@ public interface IAgentDirectory
     /// <c>IAgentContext</c> is emptied either way.
     /// </summary>
     Task ClearAsync(SessionId session, bool archive, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Forces an immediate context compaction on <paramref name="session"/>
-    /// regardless of token-budget pressure. The agent's processing gate
-    /// is acquired for the duration so this serializes naturally with
-    /// in-flight turn handling.
-    /// </summary>
-    [Obsolete("Publish command:compaction-request:<sessionId> with AgentCompactionRequest.Forced instead.", error: false)]
-    Task RequestCompactionAsync(SessionId session, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Interrupts <paramref name="session"/>'s in-flight turn, if any.
-    /// Persisted context up to the interrupt is preserved; partial
-    /// assistant text or thought fragments emitted by the canceled turn
-    /// are dropped. The agent stays live and resumes on the next inbound
-    /// message.
-    /// </summary>
-    [Obsolete("Publish command:interrupt-agent:<sessionId> with AgentInterruptRequest.Instance instead.", error: false)]
-    Task InterruptAsync(SessionId session, CancellationToken cancellationToken);
 }
