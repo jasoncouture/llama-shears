@@ -7,8 +7,7 @@ namespace LlamaShears.Core.PromptContext;
 
 public sealed class FilesystemPromptContextProvider : IPromptContextProvider
 {
-    private const string DefaultName = "PROMPT";
-    private const string TemplateExtension = ".md";
+    private const string DefaultFileName = "PROMPT.md";
     private const string WorkspaceContextSubpath = "workspace/system/context";
     private const string DefaultBundledSubpath = "content/templates/workspace/system/context";
 
@@ -36,8 +35,8 @@ public sealed class FilesystemPromptContextProvider : IPromptContextProvider
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        var name = string.IsNullOrWhiteSpace(templateName) ? DefaultName : templateName;
-        if (name.AsSpan().IndexOfAny('/', '\\') >= 0)
+        var fileName = string.IsNullOrWhiteSpace(templateName) ? DefaultFileName : templateName;
+        if (fileName.AsSpan().IndexOfAny('/', '\\') >= 0)
         {
             throw new ArgumentException(
                 $"Prompt-context template name must not contain path separators (got '{templateName}').",
@@ -45,15 +44,13 @@ public sealed class FilesystemPromptContextProvider : IPromptContextProvider
         }
 
         var workspaceRoot = _paths.GetPath(PathKind.Templates, WorkspaceContextSubpath);
-        var fileName = $"{name}{TemplateExtension}";
-        var defaultFileName = $"{DefaultName}{TemplateExtension}";
 
         string[] candidates =
         [
             Path.Combine(workspaceRoot, fileName),
-            Path.Combine(workspaceRoot, defaultFileName),
+            Path.Combine(workspaceRoot, DefaultFileName),
             Path.Combine(_bundledRoot, fileName),
-            Path.Combine(_bundledRoot, defaultFileName),
+            Path.Combine(_bundledRoot, DefaultFileName),
         ];
 
         foreach (var path in candidates)
