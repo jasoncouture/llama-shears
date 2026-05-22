@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
@@ -50,7 +51,7 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
         _stopEvent = Event.WellKnown.Command.AgentStop with { Id = sessionPath.Current };
         _idleEvent = Event.WellKnown.Agent.Idle with { Id = sessionPath.Current };
         _turnEvent = Event.WellKnown.Agent.Turn with { Id = sessionPath.Current };
-        _channelMessageTemplate = new ChannelMessage("", sessionPath.Current, default);
+        _channelMessageTemplate = new ChannelMessage("", $"subagent:{sessionPath.Current}", default);
         _agentStopRequest = new AgentStopRequest(sessionPath.Current);
     }
 
@@ -67,6 +68,7 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
     {
         if (_messageToolCalled) return;
         if (_lastAgentMessage is null) return;
+        if (string.IsNullOrEmpty(_lastAgentMessage.Content)) return;
         await SendMessageToParentAsync(_lastAgentMessage.Content);
     }
 
@@ -96,6 +98,7 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
 
     public async ValueTask HandleAsync(IEventEnvelope<ModelTurn> envelope, CancellationToken cancellationToken)
     {
+        if(_lastAgentMessage?.Content == Sentinel.NoResponse) return;
         var turn = envelope.Data;
         if (turn is null) return;
         if (turn.Role is ModelRole.Assistant)

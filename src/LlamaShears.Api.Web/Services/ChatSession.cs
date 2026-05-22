@@ -264,7 +264,7 @@ public sealed class ChatSession :
         Changed?.Invoke();
         await _publisher.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = session },
-            new ChannelMessage(content, "webui", DateTimeOffset.Now)
+            new ChannelMessage(content, "user:webui", DateTimeOffset.Now)
             {
                 Attachments = safeAttachments,
             },

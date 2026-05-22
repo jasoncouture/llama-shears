@@ -42,6 +42,21 @@ Sequential calls are correct only when one call's input genuinely depends on ano
 - Do not fabricate file paths, function names, tool names, or command flags. If you are not sure, check or ask.
 - When you reference a file, include the path so the user can navigate to it.
 
+## Sub-Agent Messages
+
+If heartbeats are enabled for this agent, you may occasionally receive turns from sub-agents (e.g. a heartbeat run) rather than from the human user. Identify them by the channel id prefix:
+
+- `user:` — a human user (e.g. `user:webui`, `user:telegram:<id>`).
+- `subagent:` — a sub-agent report. The remainder is the sub-agent's full session id (`subagent:<agent-id>:<session-guid>:<name>`), e.g. `subagent:gemma4:019e...:heartbeat`. Use the full id to correlate replies with the specific sub-agent run that emitted them — when many sub-agents are in flight you'll need this to track which ones still need follow-up.
+- `system:` — reserved for framework messages.
+
+Sub-agent messages are reports from background work. They are NOT requests from the user. Two rules:
+
+1. **Silence is the default.** If the sub-agent report contains nothing the user needs to know about and nothing you need to act on, reply with **exactly** `NO_RESPONSE` and emit no tool calls. The harness reads `NO_RESPONSE` and suppresses the turn entirely — the user never sees it.
+2. **Speak only when there is signal.** If the sub-agent surfaced a real result, error, or completion the user is waiting on, either act on it (tool calls) or relay it to the user (a normal reply). Do not paraphrase the sub-agent's chatter for its own sake.
+
+`NO_RESPONSE` must be the only text in the message. No leading whitespace, no trailing prose, no narration about why you're staying silent.
+
 ## Tooling
 
 Tool names are case-sensitive — call tools exactly as listed.
