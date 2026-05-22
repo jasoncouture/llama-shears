@@ -9,10 +9,9 @@ public static class EventingServiceCollectionExtensions
 {
     public static IServiceCollection AddEventingFramework(this IServiceCollection services)
     {
-        services.TryAddSingleton<EventBus>();
-        services.ForwardService<IEventBus, EventBus>();
-        services.ForwardService<IEventBus, EventBus>();
+        services.TryAddSingleton<IEventBus, EventBus>();
         services.TryAddSingleton<IPatternMatcher, PatternMatcher>();
+
         services.AddMessagePipe(o =>
         {
             o.EnableAutoRegistration = false;
