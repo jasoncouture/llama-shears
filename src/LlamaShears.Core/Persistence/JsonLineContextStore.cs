@@ -186,7 +186,7 @@ public sealed class JsonLineContextStore : IContextStore
             path,
             FileMode.Open,
             FileAccess.Read,
-            FileShare.ReadWrite,
+            FileShare.ReadWrite | FileShare.Delete,
             bufferSize: 4096,
             useAsync: true);
         using var reader = new StreamReader(stream, Encoding.UTF8);
