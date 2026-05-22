@@ -88,8 +88,10 @@ public sealed class ChatSession :
                 {
                     return;
                 }
+
                 _showThoughts = value;
             }
+
             Changed?.Invoke();
         }
     }
@@ -111,8 +113,10 @@ public sealed class ChatSession :
                 {
                     return;
                 }
+
                 _showStreaming = value;
             }
+
             Changed?.Invoke();
         }
     }
@@ -134,8 +138,10 @@ public sealed class ChatSession :
                 {
                     return;
                 }
+
                 _showTools = value;
             }
+
             Changed?.Invoke();
         }
     }
@@ -156,6 +162,7 @@ public sealed class ChatSession :
             {
                 return;
             }
+
             _selectedSession = session;
             _bubbles.Clear();
             _streamingBubbles.Clear();
@@ -183,6 +190,7 @@ public sealed class ChatSession :
                         _bubbles.Add(bubble);
                     }
                 }
+
                 _messageSubscription = _bus.Subscribe<AgentMessageFragment>(
                     Event.WellKnown.Agent.Message with { Id = session },
                     EventDeliveryMode.Awaited,
@@ -209,6 +217,7 @@ public sealed class ChatSession :
                     this);
             }
         }
+
         Changed?.Invoke();
     }
 
@@ -230,6 +239,7 @@ public sealed class ChatSession :
             {
                 throw new InvalidOperationException("No session selected.");
             }
+
             session = _selectedSession;
         }
 
@@ -246,6 +256,7 @@ public sealed class ChatSession :
                 DateTimeOffset.UtcNow,
                 attachments: safeAttachments));
         }
+
         Changed?.Invoke();
         await _publisher.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = session },
@@ -290,8 +301,10 @@ public sealed class ChatSession :
     {
         if (envelope.Data is { } fragment)
         {
-            ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Assistant, fragment.Content, fragment.Final);
+            ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Assistant, fragment.Content,
+                fragment.Final);
         }
+
         return ValueTask.CompletedTask;
     }
 
@@ -299,8 +312,10 @@ public sealed class ChatSession :
     {
         if (envelope.Data is { } fragment)
         {
-            ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Thought, fragment.Content, fragment.Final);
+            ApplyFragment(envelope.Type.Id, envelope.CorrelationId, ChatBubbleKind.Thought, fragment.Content,
+                fragment.Final);
         }
+
         return ValueTask.CompletedTask;
     }
 
@@ -310,6 +325,7 @@ public sealed class ChatSession :
         {
             ApplyToolCall(envelope.Type.Id, envelope.CorrelationId, fragment);
         }
+
         return ValueTask.CompletedTask;
     }
 
@@ -319,19 +335,20 @@ public sealed class ChatSession :
         {
             ApplyToolResult(envelope.Type.Id, envelope.CorrelationId, fragment);
         }
+
         return ValueTask.CompletedTask;
     }
 
     public ValueTask HandleAsync(IEventEnvelope<AgentCompactionRequest> envelope, CancellationToken cancellationToken)
     {
         var started = string.Equals(
-            envelope.Type.Component,
-            Event.WellKnown.Agent.CompactingStarted.Component,
-            StringComparison.Ordinal)
-            && string.Equals(
-                envelope.Type.EventName,
-                Event.WellKnown.Agent.CompactingStarted.EventName,
-                StringComparison.Ordinal);
+                          envelope.Type.Component,
+                          Event.WellKnown.Agent.CompactingStarted.Component,
+                          StringComparison.Ordinal)
+                      && string.Equals(
+                          envelope.Type.EventName,
+                          Event.WellKnown.Agent.CompactingStarted.EventName,
+                          StringComparison.Ordinal);
         ApplyCompactionState(envelope.Type.Id, started);
         return ValueTask.CompletedTask;
     }
@@ -345,9 +362,11 @@ public sealed class ChatSession :
             {
                 return;
             }
+
             changed = _isCompacting != active;
             _isCompacting = active;
         }
+
         if (changed)
         {
             Changed?.Invoke();
@@ -362,6 +381,7 @@ public sealed class ChatSession :
             {
                 return;
             }
+
             if (string.IsNullOrEmpty(fragment.CallId))
             {
                 return;
@@ -373,12 +393,14 @@ public sealed class ChatSession :
                 _inFlightToolBubbles[correlationId] = bubble;
                 _bubbles.Add(bubble);
             }
+
             bubble.AddInFlight(new ToolCallView(
                 fragment.Source,
                 fragment.Name,
                 fragment.ArgumentsJson,
                 fragment.CallId));
         }
+
         Changed?.Invoke();
     }
 
@@ -390,6 +412,7 @@ public sealed class ChatSession :
             {
                 return;
             }
+
             if (string.IsNullOrEmpty(fragment.CallId))
             {
                 return;
@@ -423,6 +446,7 @@ public sealed class ChatSession :
                 {
                     _bubbles.Insert(insertAt, resultBubble);
                 }
+
                 if (inFlightBubble.InFlightCount == 0)
                 {
                     _bubbles.Remove(inFlightBubble);
@@ -430,6 +454,7 @@ public sealed class ChatSession :
                 }
             }
         }
+
         Changed?.Invoke();
     }
 
@@ -439,6 +464,7 @@ public sealed class ChatSession :
         {
             return null;
         }
+
         foreach (var view in bubble.InFlightTools)
         {
             if (string.Equals(view.CallId, callId, StringComparison.Ordinal))
@@ -446,6 +472,7 @@ public sealed class ChatSession :
                 return view;
             }
         }
+
         return null;
     }
 
@@ -465,16 +492,19 @@ public sealed class ChatSession :
                 _streamingBubbles[key] = bubble;
                 _bubbles.Add(bubble);
             }
+
             bubble.Update(content, streaming: !final);
             if (final)
             {
                 _streamingBubbles.Remove(key);
             }
         }
+
         Changed?.Invoke();
     }
 
-    private async Task<bool> TryDispatchSlashCommandAsync(string trimmedContent, SessionId session, CancellationToken cancellationToken)
+    private async Task<bool> TryDispatchSlashCommandAsync(string trimmedContent, SessionId session,
+        CancellationToken cancellationToken)
     {
         if (trimmedContent.Length < 2 || trimmedContent[0] != '/')
         {
@@ -505,6 +535,7 @@ public sealed class ChatSession :
         {
             DropStreamingBubbles();
         }
+
         return true;
     }
 
@@ -515,6 +546,7 @@ public sealed class ChatSession :
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
         }
+
         Changed?.Invoke();
     }
 
@@ -526,6 +558,7 @@ public sealed class ChatSession :
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
         }
+
         Changed?.Invoke();
     }
 
@@ -537,6 +570,7 @@ public sealed class ChatSession :
             {
                 return null;
             }
+
             var view = new ToolCallView(
                 persistedCall.Source,
                 persistedCall.Name,
@@ -556,12 +590,14 @@ public sealed class ChatSession :
         {
             return null;
         }
+
         var hasContent = !string.IsNullOrEmpty(turn.Content);
         var hasAttachments = !turn.Attachments.IsDefaultOrEmpty;
         if (!hasContent && !hasAttachments)
         {
             return null;
         }
+
         return new ChatBubble(
             kind.Value,
             turn.Content,
