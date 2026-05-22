@@ -258,6 +258,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddScoped<IAgent, Agent>();
         services.TryAddScoped<ITransientAgent, TransientAgent>();
         services.TryAddScoped<ITransientAgentFactory, TransientAgentFactory>();
+        services.AddAgentService<AgentHeartbeatService>();
         return services;
     }
 
