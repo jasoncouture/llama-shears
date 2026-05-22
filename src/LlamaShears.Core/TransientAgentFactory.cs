@@ -27,7 +27,7 @@ internal sealed class TransientAgentFactory : ITransientAgentFactory
         ArgumentNullException.ThrowIfNull(initialTurn);
         ArgumentNullException.ThrowIfNull(data);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (initialTurn.Role != ModelRole.User)
+        if (initialTurn.Role is not ModelRole.User and not ModelRole.FrameworkUser)
             throw new ArgumentException(
                 $"Initial turn role must be {nameof(ModelRole.User)} but was {initialTurn.Role}.",
                 nameof(initialTurn));
