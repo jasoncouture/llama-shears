@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 
@@ -52,7 +53,7 @@ internal sealed class DataContextScope : IDataContextScope
         }
     }
 
-    public bool TryGetValue<T>(string key, out T? value) where T : class
+    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? value) where T : class
     {
         if (_current.TryGetValue(key, out var raw) && raw is T typed)
         {

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 
 namespace LlamaShears.Core.Abstractions.Common;
@@ -18,7 +19,7 @@ public interface IDataContextScope : IEnumerable<KeyValuePair<string, object?>>
     /// <typeparamref name="T"/>; otherwise <see langword="false"/> with
     /// <paramref name="value"/> set to <see langword="null"/>.
     /// </summary>
-    bool TryGetValue<T>(string key, out T? value) where T : class;
+    bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? value) where T : class;
 
     /// <summary>
     /// Pushes the current dictionary onto a stack and creates a copy as
