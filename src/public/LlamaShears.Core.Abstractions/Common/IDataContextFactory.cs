@@ -21,7 +21,7 @@ public interface IDataContextFactory
     /// when no scope with that key is alive.
     /// </summary>
     bool TryJoinContextScope(SessionId sessionId, [NotNullWhen(true)] out IDataContextScope? context);
-    
+
     /// <summary>
     /// Creates a new empty scope keyed by <paramref name="sessionId"/> and sets it
     /// as the current call chain's active scope. Throws when a live scope
