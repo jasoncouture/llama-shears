@@ -1,6 +1,7 @@
 using LlamaShears;
 using LlamaShears.Api;
 using LlamaShears.Core;
+using LlamaShears.Debugging;
 using LlamaShears.Hosting;
 using LlamaShears.PluginLoaders;
 using LlamaShears.Plugins.Host;
@@ -48,6 +49,7 @@ if (!skipLocalConfig)
 builder.Services.AddShearsPaths();
 builder.Services.AddHostStartupTask<TemplateSeedingStartupTask>();
 builder.AddApi();
+builder.Services.AddEventBusFileLog();
 builder.Services.AddResponseCompression();
 builder.Services.AddResponseCaching();
 
