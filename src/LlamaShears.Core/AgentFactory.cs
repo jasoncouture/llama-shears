@@ -43,7 +43,7 @@ internal sealed class AgentFactory : IAgentFactory
     }
 
     private async ValueTask<(AsyncServiceScope, ExecutionContext)> CreateAgentServiceScope(
-        SessionPath sessionPath,        
+        SessionPath sessionPath,
         Dictionary<string, object?> globals,
         CancellationToken cancellationToken)
     {
