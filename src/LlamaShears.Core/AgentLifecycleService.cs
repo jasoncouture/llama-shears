@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class AgentLifecycleService : 
+public sealed partial class AgentLifecycleService :
     BackgroundService,
     IEventHandler<AgentConfig>,
     IEventHandler<AgentDeath>
