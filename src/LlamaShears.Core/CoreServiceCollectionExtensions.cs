@@ -239,6 +239,13 @@ public static class CoreServiceCollectionExtensions
     private static IServiceCollection AddSessions(this IServiceCollection services)
     {
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
+        services.AddScoped(serviceProvider =>
+        {
+            var dataScope = serviceProvider.GetRequiredService<IDataContextScope>();
+            var sessionFactory = serviceProvider.GetRequiredService<ISessionFactory>();
+            var sessionQueue = sessionFactory.Get(dataScope.GetCurrentSessionId());
+            return sessionQueue;
+        });
         return services;
     }
 
