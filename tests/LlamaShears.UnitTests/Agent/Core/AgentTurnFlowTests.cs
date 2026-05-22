@@ -225,7 +225,7 @@ public sealed class AgentTurnFlowTests
         agentServices.AddSingleton(compactor);
         agentServices.AddSingleton(model);
         agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
-        agentServices.AddSingleton<IModelContextProtocolToolDiscovery>(TestAgentConfigs.BuildEmptyToolDiscovery());
+        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
         agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
         agentServices.AddMemoryCache();
         agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
