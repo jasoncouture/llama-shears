@@ -24,7 +24,6 @@ public sealed partial class ContextCompactor : IContextCompactor
     private const int MaxToolCallingTurns = 5;
 
     private const string CompactionTemplateFileName = "COMPACTION.md";
-    private const string MemoryToolSource = "llamashears";
     private const string MemoryToolName = "memory_store";
     private const string KickerFileName = "PROMPT.md";
     private const string KickerSubFolder = "compaction";
@@ -160,7 +159,7 @@ public sealed partial class ContextCompactor : IContextCompactor
 
     private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
     {
-        var servers = _serverRegistry.Resolve(whitelist: [MemoryToolSource]);
+        var servers = _serverRegistry.Resolve(whitelist: [ToolCall.InternalToolSource]);
         if (servers.Count == 0)
         {
             return [];
@@ -168,7 +167,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         var groups = await _toolDiscovery.DiscoverAsync(servers.Keys, cancellationToken);
         foreach (var group in groups)
         {
-            if (!string.Equals(group.Source, MemoryToolSource, StringComparison.Ordinal))
+            if (!string.Equals(group.Source, ToolCall.InternalToolSource, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -176,7 +175,7 @@ public sealed partial class ContextCompactor : IContextCompactor
             {
                 if (string.Equals(descriptor.Name, MemoryToolName, StringComparison.Ordinal))
                 {
-                    return [new ToolGroup(MemoryToolSource, [descriptor])];
+                    return [new ToolGroup(ToolCall.InternalToolSource, [descriptor])];
                 }
             }
         }
