@@ -80,3 +80,11 @@
 .chat-header-toggle.is-on:hover {
     background: var(--bubble-thought-bg);
 }
+
+.chat-header select.chat-header-select {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
+}

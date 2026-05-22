@@ -73,10 +73,23 @@
                 @onclick="ToggleTools">
             <Icon Name="tools" />
         </button>
+        <select id="message-limit-select"
+                class="chat-header-select"
+                title="Maximum messages to display"
+                aria-label="Message limit"
+                value="@Session.MessageLimit"
+                @onchange="OnMessageLimitChangedAsync">
+            @foreach (var option in _messageLimitOptions)
+            {
+                <option value="@option">@option</option>
+            }
+        </select>
     </div>
 </div>
 
 @code {
+    private static readonly int[] _messageLimitOptions = [10, 25, 50, 100, 500, 1000];
+
     private IReadOnlyList<string> _agentIds = [];
     private IReadOnlyList<SessionId> _sessions = [];
     private Guid? _selectedSessionGuid;
@@ -99,6 +112,7 @@
         var thoughts = await ReadBoolAsync(ThoughtsKey(current));
         var streaming = await ReadBoolAsync(StreamingKey(current));
         var tools = await ReadBoolAsync(ToolsKey(current));
+        var limit = await ReadIntAsync(MessageLimitKey(current));
         if (thoughts is bool t)
         {
             Session.ShowThoughts = t;
@@ -110,6 +124,10 @@
         if (tools is bool to)
         {
             Session.ShowTools = to;
+        }
+        if (limit is int l)
+        {
+            Session.MessageLimit = l;
         }
     }
 
@@ -173,6 +191,19 @@
         }
     }
 
+    private async Task OnMessageLimitChangedAsync(ChangeEventArgs e)
+    {
+        if (e.Value is not string raw || !int.TryParse(raw, out var value))
+        {
+            return;
+        }
+        Session.MessageLimit = value;
+        if (Session.SelectedAgentId is { } id)
+        {
+            await WriteIntAsync(MessageLimitKey(id), Session.MessageLimit);
+        }
+    }
+
     private async Task OnSelectionChangedAsync(ChangeEventArgs e)
     {
         var id = e.Value as string;
@@ -198,11 +229,22 @@
     private ValueTask WriteBoolAsync(string key, bool value)
         => Js.InvokeVoidAsync("localStorage.setItem", key, value ? "true" : "false");
 
+    private async ValueTask<int?> ReadIntAsync(string key)
+    {
+        var raw = await Js.InvokeAsync<string?>("localStorage.getItem", key);
+        return int.TryParse(raw, out var v) ? v : null;
+    }
+
+    private ValueTask WriteIntAsync(string key, int value)
+        => Js.InvokeVoidAsync("localStorage.setItem", key, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
     private static string ThoughtsKey(string agentId) => $"llamashears:agent:{agentId}:showThoughts";
 
     private static string StreamingKey(string agentId) => $"llamashears:agent:{agentId}:showStreaming";
 
     private static string ToolsKey(string agentId) => $"llamashears:agent:{agentId}:showTools";
+
+    private static string MessageLimitKey(string agentId) => $"llamashears:agent:{agentId}:messageLimit";
 
     public void Dispose()
     {
