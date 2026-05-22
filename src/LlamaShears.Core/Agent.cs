@@ -27,6 +27,7 @@ public sealed partial class Agent :
     private readonly IDisposable _broadcastStopSubscription;
     private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
+    private readonly IEventBus _bus;
     private readonly Lock _interruptLock = new Lock();
     private CancellationTokenSource? _activeTurnCancellationTokenSource;
     private readonly IEventBus _eventPublisher;
@@ -37,6 +38,7 @@ public sealed partial class Agent :
     private int _disposed;
     private bool _started = false;
     private readonly TaskCompletionSource _loopStatus = new TaskCompletionSource();
+    SessionPath _sessionPath;
 
 
     public Agent(
@@ -51,6 +53,7 @@ public sealed partial class Agent :
         IAgentIterationRunner iterationRunner,
         IEnumerable<IAgentService> agentServices)
     {
+        _sessionPath = _dataScope.GetSessionPath();
         _logger = logger;
         _contextStore = contextStore;
         _eventPublisher = eventPublisher;
@@ -59,30 +62,9 @@ public sealed partial class Agent :
         _agentLock = agentLock;
         _iterationRunner = iterationRunner;
         _agentServices = [.. agentServices];
-        var sessionId = _dataScope.GetCurrentSessionId();
-        _sessionQueue = sessionFactory.Get(sessionId);
+        _sessionQueue = sessionFactory.Get(_sessionPath.Current);
         _shutdown = new CancellationTokenSource();
-        _subscription = bus.Subscribe<ChannelMessage>(
-            $"{Event.WellKnown.Channel.Message}:{sessionId}",
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true);
-        _interruptSubscription = bus.Subscribe<AgentInterruptRequest>(
-            Event.WellKnown.Command.InterruptAgent with { Id = sessionId },
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true);
-
-        _directStopSubscription = bus.Subscribe<AgentShutdownRequest>(
-            $"{Event.WellKnown.Command.AgentShutdown}:{sessionId}",
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true);
-
-        _broadcastStopSubscription = bus.Subscribe<AgentShutdownRequest>(
-            $"{Event.WellKnown.Command.AgentShutdown}",
-            EventDeliveryMode.Awaited,
-            this);
+        _bus = bus;
     }
 
     private async Task PublishLifecycleEventAsync(EventType type, CancellationToken cancellationToken)
@@ -92,6 +74,33 @@ public sealed partial class Agent :
         var eventInformation = new AgentLifecycleEvent(agentConfig, sessionId);
         type = type with { Id = _dataScope.GetCurrentSessionId() };
         await _eventPublisher.PublishAsync(type, eventInformation, cancellationToken);
+    }
+
+    private IAsyncDisposable SubscribeToEvents()
+    {
+        var disposable = DisposableList.Create().And(_bus.Subscribe<AgentShutdownRequest>(
+            Event.WellKnown.Command.AgentShutdown with { Id = _sessionPath.Current },
+            EventDeliveryMode.Awaited,
+            this,
+            preserveSubscriberExecutionContext: true));
+
+        disposable = disposable.And(_bus.Subscribe<AgentShutdownRequest>(
+            Event.WellKnown.Command.AgentShutdown,
+            EventDeliveryMode.Awaited,
+            this));
+
+        disposable.And(_bus.Subscribe<ChannelMessage>(
+            Event.WellKnown.Channel.Message with { Id = _sessionPath.Current },
+            EventDeliveryMode.Awaited,
+            this,
+            preserveSubscriberExecutionContext: true));
+        disposable.And(_bus.Subscribe<AgentInterruptRequest>(
+            Event.WellKnown.Command.InterruptAgent with { Id = _sessionPath.Current },
+            EventDeliveryMode.Awaited,
+            this,
+            preserveSubscriberExecutionContext: true));
+
+        return disposable;
     }
 
     public async Task RunAsync()
@@ -169,7 +178,7 @@ public sealed partial class Agent :
         {
             await _shutdown.CancelAsync();
         }
-        if(!_started) _loopStatus.TrySetResult();
+        if (!_started) _loopStatus.TrySetResult();
         if (_started && wait)
         {
             await _loopStatus.Task.ConfigureAwait(false);
@@ -183,10 +192,6 @@ public sealed partial class Agent :
             return;
         }
         await ShutdownLoopAsync(true).ConfigureAwait(false);
-        _subscription.Dispose();
-        _interruptSubscription.Dispose();
-        _broadcastStopSubscription.Dispose();
-        _directStopSubscription.Dispose();
         _shutdown.Dispose();
     }
 
@@ -211,8 +216,10 @@ public sealed partial class Agent :
 
     private async Task RunIterationsAsync(IAgentContext agentContext, CancellationToken cancellationToken)
     {
-        var sessionId = _dataScope.GetCurrentSessionId();
-        using var loggingScope = _logger.BeginScope("{Session}", sessionId);
+        // It doesn't make sense to subscribe to events before we're up and running, and likewise, it doesn't make sense to keep listening after we've stopped.
+        // So instead of doing subscriptions in the constructor, do it here instead.
+        await using var subscriptions = SubscribeToEvents();
+        using var loggingScope = _logger.BeginScope("{Session}", _sessionPath.Current);
         var isIdle = true; // We intentionally don't send the first idle event. Since we aren't "idle", we are "started".
         await PublishLifecycleEventAsync(Event.WellKnown.Agent.Started, cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
@@ -256,7 +263,7 @@ public sealed partial class Agent :
                         turnCancellationTokenSource.Token);
                     if (outcome.Interrupted)
                     {
-                        LogTurnInterrupted(sessionId, correlationId);
+                        LogTurnInterrupted(_sessionPath.Current, correlationId);
                     }
                     else
                     {
@@ -269,7 +276,7 @@ public sealed partial class Agent :
                 catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested &&
                                                          !cancellationToken.IsCancellationRequested)
                 {
-                    LogTurnInterrupted(sessionId, correlationId);
+                    LogTurnInterrupted(_sessionPath.Current, correlationId);
                 }
                 finally
                 {
@@ -281,12 +288,12 @@ public sealed partial class Agent :
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                LogAgentStopping(sessionId);
+                LogAgentStopping(_sessionPath.Current);
                 return;
             }
             catch (Exception ex)
             {
-                LogProcessOnceFailed(sessionId, ex);
+                LogProcessOnceFailed(_sessionPath.Current, ex);
             }
         }
     }
