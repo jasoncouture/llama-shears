@@ -18,11 +18,13 @@ namespace LlamaShears.Core;
 /// <param name="ConfigHash">Hash of the <see cref="AgentConfig"/> the handle was built against.</param>
 /// <param name="Scope">DI scope owned by the handle; disposed on teardown.</param>
 /// <param name="ExecutionContext">Blank execution context the agent loop runs under.</param>
+/// <param name="AgentServiceType">The service type that will be resolved from dependency injection to start the agent. This type must be assignible to IAgent.</param>
 public sealed record AgentHandle(
     SessionPath SessionPath,
     string ConfigHash,
     AsyncServiceScope Scope,
-    ExecutionContext ExecutionContext) : IAsyncDisposable
+    ExecutionContext ExecutionContext,
+    Type AgentServiceType) : IAsyncDisposable
 {
     /// <summary>Background task returned by <see cref="IAgent.RunAsync"/>; <see langword="null"/> until <see cref="Start"/> is called.</summary>
     public Task? AgentTask { get; private set; }
@@ -69,7 +71,7 @@ public sealed record AgentHandle(
         try
         {
             ExecutionContext.Restore(ExecutionContext);
-            var agent = Scope.ServiceProvider.GetRequiredService<IAgent>();
+            var agent = (IAgent)Scope.ServiceProvider.GetRequiredService(AgentServiceType);
             AgentTask = agent.RunAsync();
         }
         finally

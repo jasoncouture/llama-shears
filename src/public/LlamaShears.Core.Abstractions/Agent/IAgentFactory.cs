@@ -18,6 +18,10 @@ public interface IAgentFactory
     /// <param name="data">Additional data to inject into the agent's context data scope.</param>
     /// <param name="cancellationToken">Cancellation token for the build pipeline.</param>
     /// <returns>A ready-to-start, validated <see cref="AgentHandle"/> with a unique execution context.</returns>
-    ValueTask<AgentHandle> CreateAgentAsync(AgentConfig config, SessionPath sessionPath,
-        IEnumerable<KeyValuePair<string, object?>> data, CancellationToken cancellationToken);
+    ValueTask<AgentHandle> CreateAgentAsync<TAgent>(
+        AgentConfig config, 
+        SessionPath sessionPath,
+        IEnumerable<KeyValuePair<string, object?>> data, 
+        CancellationToken cancellationToken) where TAgent : class, IAgent;
+
 }

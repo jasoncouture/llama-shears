@@ -29,7 +29,7 @@ public sealed class AgentLifecycleServiceTests
             .GetPath(PathKind.Workspace, config.Id)
             .Returns("/workspaces/agent-a");
         fixture.Factory
-            .CreateAgentAsync(
+            .CreateAgentAsync<IAgent>(
                 Arg.Is<AgentConfig>(c => c.Id == config.Id),
                 Arg.Is<SessionPath>(p => p.Current.AgentId == config.Id && p.IsRootSession),
                 Arg.Any<IEnumerable<KeyValuePair<string, object?>>>(),
@@ -58,7 +58,7 @@ public sealed class AgentLifecycleServiceTests
         await fixture.Service.HandleAsync(envelope, CancellationToken.None);
 
         fixture.Seeder.DidNotReceiveWithAnyArgs().SeedIfEmpty(default!, default!);
-        await fixture.Factory.DidNotReceiveWithAnyArgs().CreateAgentAsync(
+        await fixture.Factory.DidNotReceiveWithAnyArgs().CreateAgentAsync<IAgent>(
             default!, default(SessionPath)!, default!, default);
         await fixture.Bus.DidNotReceiveWithAnyArgs().PublishAsync(
             default!, default(AgentStartRequest)!, default, default);
@@ -70,7 +70,7 @@ public sealed class AgentLifecycleServiceTests
         var fixture = new Fixture();
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id: "agent-a");
         fixture.Factory
-            .CreateAgentAsync(
+            .CreateAgentAsync<IAgent>(
                 Arg.Any<AgentConfig>(),
                 Arg.Any<SessionPath>(),
                 Arg.Any<IEnumerable<KeyValuePair<string, object?>>>(),
@@ -167,7 +167,7 @@ public sealed class AgentLifecycleServiceTests
             .GetPath(PathKind.Templates, "workspace")
             .Returns("/templates/workspace");
         fixture.Factory
-            .CreateAgentAsync(
+            .CreateAgentAsync<IAgent>(
                 Arg.Any<AgentConfig>(),
                 Arg.Any<SessionPath>(),
                 Arg.Any<IEnumerable<KeyValuePair<string, object?>>>(),
