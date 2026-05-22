@@ -39,6 +39,10 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentFactory](LlamaShears/Core/IAgentFactory.md)
 - [IAgentInstanceRepository](LlamaShears/Core/IAgentInstanceRepository.md)
 
+## LlamaShears.Core.Abstractions
+
+- [Sentinel](LlamaShears/Core/Abstractions/Sentinel.md)
+
 ## LlamaShears.Core.Abstractions.Agent
 
 - [AgentConfig](LlamaShears/Core/Abstractions/Agent/AgentConfig.md)

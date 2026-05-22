@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text;
+using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
@@ -17,7 +18,6 @@ namespace LlamaShears.Core;
 public sealed partial class InferenceRunner : IInferenceRunner
 {
     private const int ConsecutiveToolCallLimit = 15;
-    private const string NoResponseSentinel = "NO_RESPONSE";
     private static readonly TimeSpan _interruptFinalizeTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IEventBus _eventPublisher;
@@ -111,8 +111,8 @@ public sealed partial class InferenceRunner : IInferenceRunner
                         if (textSuppressed)
                         {
                             var snapshot = content.ToString();
-                            if (snapshot.Length <= NoResponseSentinel.Length
-                                && NoResponseSentinel.StartsWith(snapshot, StringComparison.Ordinal))
+                            if (snapshot.Length <= Sentinel.NoResponse.Length
+                                && Sentinel.NoResponse.StartsWith(snapshot, StringComparison.Ordinal))
                             {
                                 break;
                             }
@@ -173,7 +173,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
                     cancellationToken);
             }
         }
-        var suppressed = content.ToString() == NoResponseSentinel && toolCalls.Count == 0;
+        var suppressed = content.ToString() == Sentinel.NoResponse && toolCalls.Count == 0;
         var finalContent = suppressed ? string.Empty : content.ToString();
         if (finalContent.Length > 0)
         {
