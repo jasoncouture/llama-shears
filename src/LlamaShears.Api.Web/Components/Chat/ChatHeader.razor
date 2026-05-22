@@ -27,7 +27,7 @@
         {
             @foreach (var session in _sessions)
             {
-                <option value="@session.Id">@session</option>
+                <option value="@session.Id">@session.Name - @session.Id</option>
             }
         }
     </select>
