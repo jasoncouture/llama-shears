@@ -83,7 +83,8 @@ public sealed partial class Agent :
         disposable = disposable.And(_bus.Subscribe<AgentShutdownRequest>(
             Event.WellKnown.Command.AgentShutdown,
             EventDeliveryMode.Awaited,
-            this));
+            this,
+            preserveSubscriberExecutionContext: true));
 
         disposable.And(_bus.Subscribe<ChannelMessage>(
             Event.WellKnown.Channel.Message with { Id = _sessionPath.Current },
