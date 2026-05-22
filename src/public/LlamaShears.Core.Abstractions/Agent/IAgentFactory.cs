@@ -19,9 +19,9 @@ public interface IAgentFactory
     /// <param name="cancellationToken">Cancellation token for the build pipeline.</param>
     /// <returns>A ready-to-start, validated <see cref="AgentHandle"/> with a unique execution context.</returns>
     ValueTask<AgentHandle> CreateAgentAsync<TAgent>(
-        AgentConfig config, 
+        AgentConfig config,
         SessionPath sessionPath,
-        IEnumerable<KeyValuePair<string, object?>> data, 
+        IEnumerable<KeyValuePair<string, object?>> data,
         CancellationToken cancellationToken) where TAgent : class, IAgent;
 
 }

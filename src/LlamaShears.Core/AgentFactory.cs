@@ -18,9 +18,9 @@ internal sealed class AgentFactory : IAgentFactory
     }
 
     public async ValueTask<AgentHandle> CreateAgentAsync<TAgent>(
-        AgentConfig config, 
+        AgentConfig config,
         SessionPath sessionPath,
-        IEnumerable<KeyValuePair<string, object?>> data, 
+        IEnumerable<KeyValuePair<string, object?>> data,
         CancellationToken cancellationToken) where TAgent : class, IAgent
     {
         var previousContext = ExecutionContext.Capture();
@@ -65,7 +65,7 @@ internal sealed class AgentFactory : IAgentFactory
 
     private static Dictionary<string, object?> CreateAgentDataContextGlobals(
         AgentConfig config,
-        SessionPath sessionPath, 
+        SessionPath sessionPath,
         IEnumerable<KeyValuePair<string, object?>> data)
     {
         var globals = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
