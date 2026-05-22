@@ -223,7 +223,7 @@ public sealed class ChatSession :
 
     private const int DefaultMessageLimit = 50;
 
-    private const int MinimumMessageLimit = 20;
+    private const int MinimumMessageLimit = 10;
     private const int MaximumMessageLimit = 1000;
 
     public int MessageLimit
