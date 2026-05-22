@@ -25,9 +25,9 @@ public readonly struct AsyncDataContextServiceScope : IAsyncDisposable
     public IServiceScope ServiceScope => _serviceScope;
 
     /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
-    {
-        _dataFrame.Dispose();
-        await _serviceScope.DisposeAsync();
-    }
+    public ValueTask DisposeAsync()
+        => DisposableList.Create()
+            .And((IAsyncDisposable)_serviceScope)
+            .And(_dataFrame)
+            .DisposeAsync();
 }

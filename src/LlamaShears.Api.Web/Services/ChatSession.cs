@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Commands;
 using LlamaShears.Core.Abstractions.Content;
@@ -25,12 +26,7 @@ public sealed class ChatSession :
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
     private readonly Lock _gate = new Lock();
-    private IDisposable? _messageSubscription;
-    private IDisposable? _thoughtSubscription;
-    private IDisposable? _toolCallSubscription;
-    private IDisposable? _toolResultSubscription;
-    private IDisposable? _compactingStartedSubscription;
-    private IDisposable? _compactingFinishedSubscription;
+    private IDisposable? _subscriptions;
     private SessionId? _selectedSession;
     private bool _showThoughts = true;
     private bool _showStreaming = true;
@@ -168,18 +164,8 @@ public sealed class ChatSession :
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
             _isCompacting = false;
-            _messageSubscription?.Dispose();
-            _thoughtSubscription?.Dispose();
-            _toolCallSubscription?.Dispose();
-            _toolResultSubscription?.Dispose();
-            _compactingStartedSubscription?.Dispose();
-            _compactingFinishedSubscription?.Dispose();
-            _messageSubscription = null;
-            _thoughtSubscription = null;
-            _toolCallSubscription = null;
-            _toolResultSubscription = null;
-            _compactingStartedSubscription = null;
-            _compactingFinishedSubscription = null;
+            _subscriptions?.Dispose();
+            _subscriptions = null;
             if (session is not null)
             {
                 foreach (var turn in history)
@@ -191,30 +177,31 @@ public sealed class ChatSession :
                     }
                 }
 
-                _messageSubscription = _bus.Subscribe<AgentMessageFragment>(
-                    Event.WellKnown.Agent.Message with { Id = session },
-                    EventDeliveryMode.Awaited,
-                    this);
-                _thoughtSubscription = _bus.Subscribe<AgentThoughtFragment>(
-                    Event.WellKnown.Agent.Thought with { Id = session },
-                    EventDeliveryMode.Awaited,
-                    this);
-                _toolCallSubscription = _bus.Subscribe<AgentToolCallFragment>(
-                    Event.WellKnown.Agent.ToolCall with { Id = session },
-                    EventDeliveryMode.Awaited,
-                    this);
-                _toolResultSubscription = _bus.Subscribe<AgentToolResultFragment>(
-                    Event.WellKnown.Agent.ToolResult with { Id = session },
-                    EventDeliveryMode.Awaited,
-                    this);
-                _compactingStartedSubscription = _bus.Subscribe<AgentCompactionRequest>(
-                    Event.WellKnown.Agent.CompactingStarted with { Id = session },
-                    EventDeliveryMode.Awaited,
-                    this);
-                _compactingFinishedSubscription = _bus.Subscribe<AgentCompactionRequest>(
-                    Event.WellKnown.Agent.CompactingFinished with { Id = session },
-                    EventDeliveryMode.Awaited,
-                    this);
+                _subscriptions = DisposableList.Create()
+                    .And(_bus.Subscribe<AgentMessageFragment>(
+                        Event.WellKnown.Agent.Message with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentThoughtFragment>(
+                        Event.WellKnown.Agent.Thought with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentToolCallFragment>(
+                        Event.WellKnown.Agent.ToolCall with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentToolResultFragment>(
+                        Event.WellKnown.Agent.ToolResult with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentCompactionRequest>(
+                        Event.WellKnown.Agent.CompactingStarted with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentCompactionRequest>(
+                        Event.WellKnown.Agent.CompactingFinished with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this));
             }
         }
 
@@ -299,18 +286,8 @@ public sealed class ChatSession :
     {
         lock (_gate)
         {
-            _messageSubscription?.Dispose();
-            _thoughtSubscription?.Dispose();
-            _toolCallSubscription?.Dispose();
-            _toolResultSubscription?.Dispose();
-            _compactingStartedSubscription?.Dispose();
-            _compactingFinishedSubscription?.Dispose();
-            _messageSubscription = null;
-            _thoughtSubscription = null;
-            _toolCallSubscription = null;
-            _toolResultSubscription = null;
-            _compactingStartedSubscription = null;
-            _compactingFinishedSubscription = null;
+            _subscriptions?.Dispose();
+            _subscriptions = null;
         }
     }
 
