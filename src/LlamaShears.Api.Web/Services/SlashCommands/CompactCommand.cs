@@ -1,15 +1,17 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Commands;
+using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 
 namespace LlamaShears.Api.Web.Services.SlashCommands;
 
 public sealed class CompactCommand : ISlashCommand
 {
-    private readonly IAgentDirectory _directory;
+    private readonly IEventBus _eventBus;
 
-    public CompactCommand(IAgentDirectory directory)
+    public CompactCommand(IEventBus eventBus)
     {
-        _directory = directory;
+        _eventBus = eventBus;
     }
 
     public string Name => "/compact";
@@ -20,7 +22,10 @@ public sealed class CompactCommand : ISlashCommand
 
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
-        await _directory.RequestCompactionAsync(context.Session, cancellationToken);
+        await _eventBus.PublishAsync(
+            Event.WellKnown.Command.CompactionRequest with { Id = context.Session },
+            AgentCompactionRequest.Forced,
+            cancellationToken);
         return SlashCommandResult.Default;
     }
 }
