@@ -80,19 +80,18 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
 
     private IAsyncDisposable Subscribe()
     {
-        return _eventBus.Subscribe<AgentLifecycleEvent>(
+        var idleSubscirption = _eventBus.Subscribe<AgentLifecycleEvent>(
             _idleEvent,
             EventDeliveryMode.FireAndForget,
             handler: this,
-            preserveSubscriberExecutionContext: true
-            )
-            .And(
-                _eventBus.Subscribe<ModelTurn>(
-                    _turnEvent,
-                    EventDeliveryMode.Awaited,
-                    handler: this,
-                    preserveSubscriberExecutionContext: true)
-            );
+            preserveSubscriberExecutionContext: true);
+        var turnSubscription = _eventBus.Subscribe<ModelTurn>(
+            _turnEvent,
+            EventDeliveryMode.Awaited,
+            handler: this,
+            preserveSubscriberExecutionContext: true);
+
+        return idleSubscirption.And(turnSubscription);
     }
 
     public async ValueTask HandleAsync(IEventEnvelope<ModelTurn> envelope, CancellationToken cancellationToken)
