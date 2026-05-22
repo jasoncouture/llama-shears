@@ -26,7 +26,9 @@
 - [IAgentStateTracker](IAgentStateTracker.md) — Writes the active [AgentState](AgentState.md) into the current data context scope. Centralizes the construction so every caller stamps the same shape (channel, event id, correlation id).
 - [IAgentTokenStore](IAgentTokenStore.md) — In-process store that issues opaque single-use bearer tokens bound to an [AgentInfo](AgentInfo.md). Tokens are valid until consumed (via [IAgentTokenStore](IAgentTokenStore.md).`TryGetAgentInformation`) or until they expire — whichever comes first.
 - [ILockScope](ILockScope.md) — Disposable handle to an acquired agent lock. The scope owns the underlying semaphore permit; disposing it releases the permit and flips [ILockScope](ILockScope.md).`Active` to `false`. If the holder forgets to dispose, the finalizer still releases the permit so the lock isn't wedged for the rest of the process lifetime.
+- [ITransientAgent](ITransientAgent.md) — Represents a transient agent that will terminate itself as soon as it goes idle
 - [IterationOutcome](IterationOutcome.md) — Result of running one agent iteration: was the turn interrupted before completion, and any tool-result turns the inference produced that the caller should feed back into its driver on the next iteration.
 - [SaveAgentConfigResult](SaveAgentConfigResult.md) — Outcome of an [IAgentConfigProvider](IAgentConfigProvider.md).`SaveAsync` attempt. Pattern-match to handle each branch.
 - [SystemTick](SystemTick.md) — Periodic host heartbeat broadcast onto the event bus. Subscribers use it as a coarse "wall-clock advanced" signal — agent idle detection, refreshes, scheduled chores — without each component running its own timer.
+- [TransientAgentInitialPrompt](TransientAgentInitialPrompt.md) — Context data for a transient agent
 

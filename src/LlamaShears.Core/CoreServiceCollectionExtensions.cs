@@ -256,6 +256,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddScoped<IAgentLock, AgentLock>();
         services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
         services.TryAddScoped<IAgent, Agent>();
+        services.TryAddScoped<ITransientAgent, TransientAgent>();
         return services;
     }
 

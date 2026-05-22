@@ -58,9 +58,11 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentStateTracker](LlamaShears/Core/Abstractions/Agent/IAgentStateTracker.md)
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
 - [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)
+- [ITransientAgent](LlamaShears/Core/Abstractions/Agent/ITransientAgent.md)
 - [IterationOutcome](LlamaShears/Core/Abstractions/Agent/IterationOutcome.md)
 - [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
+- [TransientAgentInitialPrompt](LlamaShears/Core/Abstractions/Agent/TransientAgentInitialPrompt.md)
 
 ## LlamaShears.Core.Abstractions.Agent.Persistence
 
