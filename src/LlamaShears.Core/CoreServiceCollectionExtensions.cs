@@ -183,7 +183,7 @@ public static class CoreServiceCollectionExtensions
     private static IServiceCollection AddDataContext(this IServiceCollection services)
     {
         services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
-        services.TryAddScoped<IDataContextScope>(sp =>
+        services.TryAddScoped(sp =>
             sp.GetRequiredService<IDataContextFactory>().Current
                 ?? throw new InvalidOperationException("No ambient data scope is available"));
         services.AddSingletonDataProvider<HostDataProvider>();
@@ -197,7 +197,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
         services.TryAddScoped<IInferenceRunner, InferenceRunner>();
-        services.TryAddScoped<ILanguageModel>(sp =>
+        services.TryAddScoped(sp =>
         {
             var dataScope = sp.GetRequiredService<IDataContextScope>();
             var modelConfig = dataScope.GetModelConfiguration();
