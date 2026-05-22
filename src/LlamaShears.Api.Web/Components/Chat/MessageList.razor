@@ -14,7 +14,7 @@
     {
         ChatBubbleKind? hiddenIndicatorKind = null;
         var hasVisibleBusy = false;
-        foreach (var bubble in Session.Bubbles)
+        foreach (var bubble in Session.Bubbles.Reverse().Take(Session.MessageLimit).Reverse())
         {
             var hideAsThought = bubble.Kind == ChatBubbleKind.Thought && !Session.ShowThoughts;
             var hideAsTool = (bubble.Kind == ChatBubbleKind.ToolInFlight || bubble.Kind == ChatBubbleKind.ToolResult) && !Session.ShowTools;

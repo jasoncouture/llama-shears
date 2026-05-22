@@ -75,4 +75,9 @@ public interface IChatSession : IDisposable
     /// text-only overload.
     /// </summary>
     Task SendAsync(string content, ImmutableArray<Attachment> attachments, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Limit how many messages can be displayed
+    /// </summary>
+    int MessageLimit { get; set; }
 }

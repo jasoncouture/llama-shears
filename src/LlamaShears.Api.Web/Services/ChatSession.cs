@@ -221,6 +221,23 @@ public sealed class ChatSession :
         Changed?.Invoke();
     }
 
+    private const int DefaultMessageLimit = 50;
+
+    private const int MinimumMessageLimit = 20;
+    private const int MaximumMessageLimit = 1000;
+
+    public int MessageLimit
+    {
+        get;
+        set
+        {
+            value = Math.Clamp(value, MinimumMessageLimit, MaximumMessageLimit);
+            if (value == field) return;
+            field = value;
+            Changed?.Invoke();
+        }
+    } = DefaultMessageLimit;
+
     public Task SendAsync(string content, CancellationToken cancellationToken)
         => SendAsync(content, attachments: [], cancellationToken);
 
