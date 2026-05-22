@@ -36,7 +36,6 @@ public sealed partial class Agent :
     private bool _started = false;
     private readonly TaskCompletionSource _loopStatus = new TaskCompletionSource();
     SessionPath _sessionPath;
-    private AgentConfig? _pendingConfig;
 
 
     public Agent(
@@ -166,7 +165,8 @@ public sealed partial class Agent :
     {
         if (envelope.Data?.UpdatedConfig is { } updated)
         {
-            Interlocked.Exchange(ref _pendingConfig, updated);
+            _dataScope.SetItem(AgentConfig.DataKey, updated);
+            LogConfigReloaded(_sessionPath.Current, updated.Hash);
         }
         return ValueTask.CompletedTask;
     }
@@ -256,8 +256,6 @@ public sealed partial class Agent :
                     isIdle = false;
                 }
 
-                ApplyPendingConfig();
-
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
@@ -313,18 +311,10 @@ public sealed partial class Agent :
         }
     }
 
-    private void ApplyPendingConfig()
-    {
-        var pending = Interlocked.Exchange(ref _pendingConfig, null);
-        if (pending is null) return;
-        _dataScope.SetItem(AgentConfig.DataKey, pending);
-        LogConfigReloaded(_sessionPath.Current, pending.Hash);
-    }
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' is stopping.")]
     private partial void LogAgentStopping(SessionId session);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' picked up new config (hash '{ConfigHash}') for the next turn.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' picked up new config (hash '{ConfigHash}').")]
     private partial void LogConfigReloaded(SessionId session, string configHash);
 
     [LoggerMessage(Level = LogLevel.Error,
