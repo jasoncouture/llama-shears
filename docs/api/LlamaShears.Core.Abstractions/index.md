@@ -59,6 +59,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
 - [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)
 - [ITransientAgent](LlamaShears/Core/Abstractions/Agent/ITransientAgent.md)
+- [ITransientAgentFactory](LlamaShears/Core/Abstractions/Agent/ITransientAgentFactory.md)
 - [IterationOutcome](LlamaShears/Core/Abstractions/Agent/IterationOutcome.md)
 - [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
