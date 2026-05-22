@@ -9,39 +9,52 @@ internal sealed partial class EventBus : IEventBus
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger _logger;
+    private readonly ILoggerFactory _loggerFactory;
+    private const string EventPublishLogCategory = "Events";
 
-    public EventBus(IServiceProvider serviceProvider, ILogger<EventBus> logger)
+    public EventBus(IServiceProvider serviceProvider, ILogger<EventBus> logger, ILoggerFactory loggerFactory)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _loggerFactory = loggerFactory;
     }
     public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken) where T : class
     {
-        using var loggerScope = _logger.BeginScope("{EventType} {EventCorrelationId}", eventType, correlationId);
-        var publisher = _serviceProvider.GetRequiredService<IAsyncPublisher<IEventEnvelope<T>>>();
-        var envelope = new EventEnvelope<T>(eventType, EventDeliveryMode.FireAndForget, correlationId, data);
-
-        var denied = EventDeliveryMask.None;
-        foreach (var filter in _serviceProvider.GetServices<IEventFilter>())
+        using var loggerScope = _logger.BeginScope("{EventType}", eventType);
+        try
         {
-            denied |= await filter.GetDeniedModesAsync(envelope, cancellationToken);
-            if (denied == EventDeliveryMask.Both) break;
-        }
 
-        if (!denied.HasFlag(EventDeliveryMask.FireAndForget))
-        {
-            _logger.LogTrace("Publishing fire and forget event: {Envelope}", envelope);
-            publisher.Publish(envelope, cancellationToken);
-        }
+            var publisher = _serviceProvider.GetRequiredService<IAsyncPublisher<IEventEnvelope<T>>>();
+            var envelope = new EventEnvelope<T>(eventType, EventDeliveryMode.FireAndForget, correlationId, data);
 
-        envelope = envelope with { DeliveryMode = EventDeliveryMode.Awaited };
-        if (!denied.HasFlag(EventDeliveryMask.Awaited))
-        {
-            _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
-            await publisher.PublishAsync(envelope, cancellationToken);
+            var denied = EventDeliveryMask.None;
+            foreach (var filter in _serviceProvider.GetServices<IEventFilter>())
+            {
+                denied |= await filter.GetDeniedModesAsync(envelope, cancellationToken);
+                if (denied == EventDeliveryMask.Both) break;
+            }
+
+            if (!denied.HasFlag(EventDeliveryMask.FireAndForget))
+            {
+                _logger.LogTrace("Publishing fire and forget event: {Envelope}", envelope);
+                publisher.Publish(envelope, cancellationToken);
+            }
+
+            envelope = envelope with { DeliveryMode = EventDeliveryMode.Awaited };
+            if (!denied.HasFlag(EventDeliveryMask.Awaited))
+            {
+                _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
+                await publisher.PublishAsync(envelope, cancellationToken);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            _logger.LogTrace("Event publishing complete");
+            _loggerFactory.CreateLogger(EventPublishLogCategory).LogDebug("Event: {EventType} - Published", eventType);
         }
-        cancellationToken.ThrowIfCancellationRequested();
-        _logger.LogTrace("Event publishing complete");
+        catch (Exception ex)
+        {
+            _loggerFactory.CreateLogger(EventPublishLogCategory).LogWarning("Event {EventType} failed to publish: {ExceptionType} - {Exception}", eventType, ex.GetType().FullName, ex.Message);
+            throw;
+        }
     }
 
     public IDisposable Subscribe<T>(string? pattern, EventDeliveryMode mode, IEventHandler<T> handler, bool preserveSubscriberExecutionContext = false) where T : class

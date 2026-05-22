@@ -1,5 +1,4 @@
 using Cronos;
-using LlamaShears.Core.Abstractions.Agent;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Cron;

@@ -27,7 +27,7 @@ public sealed partial class AgentHost : BackgroundService, IEventHandler<AgentSt
         _agentRepository = agentRepository;
         _subscriptions =
             eventBus.Subscribe<AgentStartRequest>($"{Event.WellKnown.Command.AgentStart}:+", EventDeliveryMode.Awaited, this)
-                .And(eventBus.Subscribe<AgentStopRequest>($"{Event.WellKnown.Command.AgentStop}:+" , EventDeliveryMode.Awaited,
+                .And(eventBus.Subscribe<AgentStopRequest>($"{Event.WellKnown.Command.AgentStop}:+", EventDeliveryMode.Awaited,
                     this));
     }
 

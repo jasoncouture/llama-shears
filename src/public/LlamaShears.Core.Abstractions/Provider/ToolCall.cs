@@ -13,4 +13,10 @@ public sealed record ToolCall(
     string Source,
     string Name,
     string ArgumentsJson,
-    string? CallId = null);
+    string? CallId = null)
+{
+    /// <summary>
+    /// The MCP source used to call internal tools
+    /// </summary>
+    public const string InternalToolSource = "llamashears";
+}

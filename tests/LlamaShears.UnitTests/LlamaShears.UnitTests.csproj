@@ -17,11 +17,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LlamaShears\LlamaShears.csproj" />
+    <ProjectReference Include="..\..\src\LlamaShears.Core\LlamaShears.Core.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Core.Eventing\LlamaShears.Core.Eventing.csproj" />
+    <ProjectReference Include="..\..\src\LlamaShears.Core.Eventing.Extensions\LlamaShears.Core.Eventing.Extensions.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Hosting\LlamaShears.Hosting.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Provider.Ollama\LlamaShears.Provider.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\LlamaShears.Provider.OpenAI\LlamaShears.Provider.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\LlamaShears.Provider.Onnx.Embeddings\LlamaShears.Provider.Onnx.Embeddings.csproj" />
+    <ProjectReference Include="..\..\src\LlamaShears.Api\LlamaShears.Api.csproj" />
   </ItemGroup>
 
 </Project>

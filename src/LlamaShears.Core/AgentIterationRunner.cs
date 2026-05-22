@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -117,7 +118,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
                 [
                     .. prompt.Turns,
                     new ModelTurn(ModelRole.User,
-                        "<SYSTEM>ERROR: You must reply with content, or a tool. Please try again. If you do not wish to respond, please reply with exactly: NO_RESPONSE</SYSTEM>",
+                        $"<SYSTEM>ERROR: You must reply with content, or a tool. Please try again. If you do not wish to respond, please reply with exactly: {Sentinel.NoResponse}</SYSTEM>",
                         _time.GetLocalNow(), prompt.Turns[^1].ChannelId)
                 ]
             };

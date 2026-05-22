@@ -1,15 +1,17 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Commands;
+using LlamaShears.Core.Abstractions.Events;
+using LlamaShears.Core.Abstractions.Events.Agent;
 
 namespace LlamaShears.Api.Web.Services.SlashCommands;
 
 public sealed class InterruptCommand : ISlashCommand
 {
-    private readonly IAgentDirectory _directory;
+    private readonly IEventBus _eventBus;
 
-    public InterruptCommand(IAgentDirectory directory)
+    public InterruptCommand(IEventBus eventBus)
     {
-        _directory = directory;
+        _eventBus = eventBus;
     }
 
     public string Name => "/interrupt";
@@ -18,9 +20,13 @@ public sealed class InterruptCommand : ISlashCommand
 
     public ImmutableArray<SlashCommandParameter> Parameters => [];
 
+    [Obsolete]
     public async Task<SlashCommandResult> ExecuteAsync(SlashCommandContext context, CancellationToken cancellationToken)
     {
-        await _directory.InterruptAsync(context.Session, cancellationToken);
+        await _eventBus.PublishAsync(
+            Event.WellKnown.Command.InterruptAgent with { Id = context.Session },
+            AgentInterruptRequest.Instance,
+            cancellationToken);
         return SlashCommandResult.StreamingWasInterrupted;
     }
 }

@@ -27,7 +27,7 @@ public sealed class RejectInvalidAgentBearerMiddleware : IMiddleware
         var sessionCanonical = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!string.IsNullOrEmpty(sessionCanonical) && SessionId.TryParse(sessionCanonical, out var session))
         {
-            if(!_dataContextFactory.TryJoinContextScope(session, out _))
+            if (!_dataContextFactory.TryJoinContextScope(session, out _))
             {
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 return;

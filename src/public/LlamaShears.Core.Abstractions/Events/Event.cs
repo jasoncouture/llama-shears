@@ -65,22 +65,22 @@ public static class Event
             /// <summary>A complete turn has been recorded to the agent's context log.</summary>
             public static EventType Turn { get; } = new EventType(Sources.Agent, "turn");
             /// <summary>Agent boot is beginning — scope and data context are being built but the agent loop has not yet started.</summary>
-            public static EventType Starting {get;} = new EventType(Sources.Agent, "starting");
+            public static EventType Starting { get; } = new EventType(Sources.Agent, "starting");
             /// <summary>Agent boot is complete — scope and data context are ready, agent loop has started.</summary>
-            public static EventType Started {get;} = new EventType(Sources.Agent, "started");
+            public static EventType Started { get; } = new EventType(Sources.Agent, "started");
             /// <summary>Agent shutdown is beginning — children are being disposed before the agent's own scope tears down.</summary>
-            public static EventType Stopping {get;} = new EventType(Sources.Agent, "stopping");
+            public static EventType Stopping { get; } = new EventType(Sources.Agent, "stopping");
             /// <summary>Agent shutdown is complete — scope disposed, data context deleted.</summary>
-            public static EventType Stopped {get;} = new EventType(Sources.Agent, "stopped");
+            public static EventType Stopped { get; } = new EventType(Sources.Agent, "stopped");
 
         }
         /// <summary>Agent lifecycle events keyed on the agent id.</summary>
         public static class Lifecycle
         {
-            /// <summary>A new agent config has appeared and a root agent should be spawned. Payload is the <see cref="LlamaShears.Core.Abstractions.Agent.AgentConfig"/>.</summary>
+            /// <summary>A new agent config has appeared and a root agent should be spawned. Payload is the <see cref="Abstractions.Agent.AgentConfig"/>.</summary>
             public static EventType Birth { get; } = new EventType(Sources.Lifecycle, "birth");
 
-            /// <summary>An agent config has been removed and its tree should be torn down. Payload is the <see cref="LlamaShears.Core.Abstractions.Events.Agent.AgentDeath"/> singleton.</summary>
+            /// <summary>An agent config has been removed and its tree should be torn down. Payload is the <see cref="Events.Agent.AgentDeath"/> singleton.</summary>
             public static EventType Death { get; } = new EventType(Sources.Lifecycle, "death");
 
             /// <summary>An existing agent's config has been mutated. Payload contract is owned elsewhere.</summary>
@@ -93,13 +93,13 @@ public static class Event
             public static EventType CompactionRequest { get; } = new EventType(Sources.Command, "compaction-request");
             /// <summary>Caller is requesting that the agent's in-flight turn be interrupted.</summary>
             public static EventType InterruptAgent { get; } = new EventType(Sources.Command, "interrupt-agent");
-            /// <summary>Config supervisor is asking the agent manager to load or replace an agent. Payload carries the resolved <see cref="LlamaShears.Core.Abstractions.Agent.AgentConfig"/>.</summary>
+            /// <summary>Config supervisor is asking the agent manager to load or replace an agent. Payload carries the resolved <see cref="Abstractions.Agent.AgentConfig"/>.</summary>
             public static EventType AgentLoad { get; } = new EventType(Sources.Command, "agent-load");
             /// <summary>Config supervisor is asking the agent manager to unload an agent. Payload is the empty marker.</summary>
             public static EventType AgentUnload { get; } = new EventType(Sources.Command, "agent-unload");
             /// <summary>Caller is asking a specific agent boot to shut itself down. Payload carries the target <c>SessionId</c>.</summary>
             public static EventType AgentShutdown { get; } = new EventType(Sources.Command, "agent-shutdown");
-            /// <summary>Caller is asking the host to register and start a freshly built <see cref="LlamaShears.Core.AgentHandle"/>. Payload carries the cold handle.</summary>
+            /// <summary>Caller is asking the host to register and start a freshly built <see cref="AgentHandle"/>. Payload carries the cold handle.</summary>
             public static EventType AgentStart { get; } = new EventType(Sources.Command, "agent-start");
             /// <summary>Caller is asking the host to stop a specific session. Payload carries the non-null target <c>SessionId</c>.</summary>
             public static EventType AgentStop { get; } = new EventType(Sources.Command, "agent-stop");

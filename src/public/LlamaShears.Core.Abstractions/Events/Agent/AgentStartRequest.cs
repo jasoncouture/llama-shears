@@ -1,5 +1,3 @@
-using LlamaShears.Core.Abstractions.Agent;
-
 namespace LlamaShears.Core.Abstractions.Events.Agent;
 
 /// <summary>

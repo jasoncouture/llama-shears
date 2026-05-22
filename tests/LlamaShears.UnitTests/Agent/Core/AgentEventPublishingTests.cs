@@ -132,7 +132,7 @@ public sealed class AgentEventPublishingTests
         provider.GetRequiredService<IDataContextFactory>().Current = dataContextFactory.Current;
         var agentServices = new ServiceCollection();
         agentServices.AddSingleton(dataContextFactory.Current!);
-        agentServices.AddSingleton<IContextCompactor>(BuildNoOpCompactor());
+        agentServices.AddSingleton(BuildNoOpCompactor());
         agentServices.AddSingleton<ILanguageModel>(model);
         agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
         agentServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());

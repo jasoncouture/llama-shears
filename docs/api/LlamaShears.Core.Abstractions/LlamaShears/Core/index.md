@@ -1,5 +1,9 @@
 # LlamaShears.Core
 
+## Namespaces
+
+- [LlamaShears.Core.Abstractions](Abstractions/index.md)
+
 ## Types
 
 - [AgentHandle](AgentHandle.md) — Owns the resources of one running agent instance: the DI scope, the captured ExecutionContext the agent boots into, the underlying [IAgent](Abstractions/Agent/IAgent.md)'s background run-task, and any child [AgentHandle](AgentHandle.md)s spawned from it. Created cold by [IAgentFactory](IAgentFactory.md); goes hot when [AgentHandle](AgentHandle.md).`Start` is invoked. Disposing tears down children first, then the scope, then awaits the run-task.

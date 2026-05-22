@@ -16,6 +16,7 @@ public sealed partial class Agent :
     IEventHandler<ChannelMessage>,
     IEventHandler<AgentInterruptRequest>,
     IEventHandler<AgentShutdownRequest>,
+    IEventHandler<ConfigurationChangedNotification>,
     IAsyncDisposable
 {
     private readonly ILogger _logger;
@@ -35,6 +36,7 @@ public sealed partial class Agent :
     private bool _started = false;
     private readonly TaskCompletionSource _loopStatus = new TaskCompletionSource();
     SessionPath _sessionPath;
+    private AgentConfig? _pendingConfig;
 
 
     public Agent(
@@ -83,7 +85,8 @@ public sealed partial class Agent :
         disposable = disposable.And(_bus.Subscribe<AgentShutdownRequest>(
             Event.WellKnown.Command.AgentShutdown,
             EventDeliveryMode.Awaited,
-            this));
+            this,
+            preserveSubscriberExecutionContext: true));
 
         disposable.And(_bus.Subscribe<ChannelMessage>(
             Event.WellKnown.Channel.Message with { Id = _sessionPath.Current },
@@ -92,6 +95,11 @@ public sealed partial class Agent :
             preserveSubscriberExecutionContext: true));
         disposable.And(_bus.Subscribe<AgentInterruptRequest>(
             Event.WellKnown.Command.InterruptAgent with { Id = _sessionPath.Current },
+            EventDeliveryMode.Awaited,
+            this,
+            preserveSubscriberExecutionContext: true));
+        disposable.And(_bus.Subscribe<ConfigurationChangedNotification>(
+            Event.WellKnown.Lifecycle.Update with { Id = _dataScope.GetAgentConfig().Id },
             EventDeliveryMode.Awaited,
             this,
             preserveSubscriberExecutionContext: true));
@@ -151,6 +159,15 @@ public sealed partial class Agent :
         }
 
         cancellationTokenSource?.Cancel();
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(IEventEnvelope<ConfigurationChangedNotification> envelope, CancellationToken cancellationToken)
+    {
+        if (envelope.Data?.UpdatedConfig is { } updated)
+        {
+            Interlocked.Exchange(ref _pendingConfig, updated);
+        }
         return ValueTask.CompletedTask;
     }
 
@@ -239,6 +256,8 @@ public sealed partial class Agent :
                     isIdle = false;
                 }
 
+                ApplyPendingConfig();
+
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
@@ -294,8 +313,19 @@ public sealed partial class Agent :
         }
     }
 
+    private void ApplyPendingConfig()
+    {
+        var pending = Interlocked.Exchange(ref _pendingConfig, null);
+        if (pending is null) return;
+        _dataScope.SetItem(AgentConfig.DataKey, pending);
+        LogConfigReloaded(_sessionPath.Current, pending.Hash);
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' is stopping.")]
     private partial void LogAgentStopping(SessionId session);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' picked up new config (hash '{ConfigHash}') for the next turn.")]
+    private partial void LogConfigReloaded(SessionId session, string configHash);
 
     [LoggerMessage(Level = LogLevel.Error,
         Message = "Agent '{Session}' failed to process turn; will retry on next signal.")]

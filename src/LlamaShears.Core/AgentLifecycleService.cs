@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class AgentLifecycleService : 
+public sealed partial class AgentLifecycleService :
     BackgroundService,
     IEventHandler<AgentConfig>,
     IEventHandler<AgentDeath>
@@ -73,7 +73,7 @@ public sealed partial class AgentLifecycleService :
         try
         {
             var sessionId = new SessionId(config.Id, DefaultSessionName);
-            handle = await _factory.CreateAgentAsync(
+            handle = await _factory.CreateAgentAsync<IAgent>(
                 config,
                 new SessionPath(sessionId),
                 [],

@@ -27,7 +27,7 @@
         {
             @foreach (var session in _sessions)
             {
-                <option value="@session.Id">@session.Name - @session.Id</option>
+                <option value="@session.Session.Id">@session.Label</option>
             }
         }
     </select>
@@ -91,9 +91,11 @@
     private static readonly int[] _messageLimitOptions = [10, 25, 50, 100, 500, 1000];
 
     private IReadOnlyList<string> _agentIds = [];
-    private IReadOnlyList<SessionId> _sessions = [];
+    private IReadOnlyList<SessionEntry> _sessions = [];
     private Guid? _selectedSessionGuid;
     private string? _loadedPrefsAgentId;
+
+    private sealed record SessionEntry(SessionId Session, string Label);
 
     protected override void OnInitialized()
     {
@@ -147,21 +149,35 @@
             _selectedSessionGuid = null;
             return;
         }
-        var matches = new List<SessionId>();
-        SessionId? defaultSession = null;
+        var roots = new List<SessionPath>();
+        var children = new List<SessionPath>();
         foreach (var handle in Repository.GetAllAgents())
         {
-            if (!handle.SessionPath.IsRootSession) continue;
-            var current = handle.SessionPath.Current;
-            if (!string.Equals(current.AgentId, agentId, StringComparison.OrdinalIgnoreCase)) continue;
-            matches.Add(current);
-            if (current.IsDefault)
+            var path = handle.SessionPath;
+            if (!string.Equals(path.Current.AgentId, agentId, StringComparison.OrdinalIgnoreCase)) continue;
+            if (path.IsRootSession) roots.Add(path);
+            else children.Add(path);
+        }
+
+        var dedupedChildren = children
+            .GroupBy(p => (p.Parent.Id, p.Current.Name))
+            .Select(g => g.OrderByDescending(p => p.Current.Id).First())
+            .ToLookup(p => p.Parent.Id);
+
+        var entries = new List<SessionEntry>();
+        SessionId? defaultSession = null;
+        foreach (var root in roots)
+        {
+            entries.Add(new SessionEntry(root.Current, $"{root.Current.Name} - {root.Current.Id}"));
+            if (root.Current.IsDefault) defaultSession = root.Current;
+            foreach (var child in dedupedChildren[root.Current.Id])
             {
-                defaultSession = current;
+                entries.Add(new SessionEntry(child.Current, $"↳ {child.Current.Name} - {child.Current.Id}"));
             }
         }
-        _sessions = matches;
-        _selectedSessionGuid = defaultSession?.Id ?? matches.FirstOrDefault()?.Id;
+
+        _sessions = entries;
+        _selectedSessionGuid = defaultSession?.Id ?? entries.FirstOrDefault()?.Session.Id;
     }
 
     private async Task ToggleThoughts()

@@ -17,15 +17,11 @@ internal sealed class AgentFactory : IAgentFactory
         _dataContextFactory = dataContextFactory;
     }
 
-    public async ValueTask<AgentHandle> CreateAgentAsync(AgentConfig config, SessionId session,
-        IEnumerable<KeyValuePair<string, object?>> data, CancellationToken cancellationToken)
-    {
-        var sessionPath = _dataContextFactory.Current.GetSessionPath().CreateChildSession(session);
-        return await CreateAgentAsync(config, sessionPath, data, cancellationToken);
-    }
-
-    public async ValueTask<AgentHandle> CreateAgentAsync(AgentConfig config, SessionPath sessionPath,
-        IEnumerable<KeyValuePair<string, object?>> data, CancellationToken cancellationToken)
+    public async ValueTask<AgentHandle> CreateAgentAsync<TAgent>(
+        AgentConfig config,
+        SessionPath sessionPath,
+        IEnumerable<KeyValuePair<string, object?>> data,
+        CancellationToken cancellationToken) where TAgent : class, IAgent
     {
         var previousContext = ExecutionContext.Capture();
         var agentExecutionContext = await CreateAgentExecutionContext();
@@ -33,8 +29,8 @@ internal sealed class AgentFactory : IAgentFactory
         try
         {
             var globals = CreateAgentDataContextGlobals(config, sessionPath, data);
-            var (scope, agentContext) = await CreateAgentServiceScope(sessionPath, globals, cancellationToken);
-            return new AgentHandle(sessionPath, config.Hash, scope, agentContext);
+            var (scope, agentContext) = await CreateAgentServiceScope<TAgent>(sessionPath, globals, cancellationToken);
+            return new AgentHandle(sessionPath, config.Hash, scope, agentContext, typeof(TAgent));
         }
         finally
         {
@@ -42,10 +38,10 @@ internal sealed class AgentFactory : IAgentFactory
         }
     }
 
-    private async ValueTask<(AsyncServiceScope, ExecutionContext)> CreateAgentServiceScope(
-        SessionPath sessionPath,        
+    private async ValueTask<(AsyncServiceScope, ExecutionContext)> CreateAgentServiceScope<TAgent>(
+        SessionPath sessionPath,
         Dictionary<string, object?> globals,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) where TAgent : class, IAgent
     {
         var scope = _scopeFactory.CreateAsyncScope();
         try
@@ -56,7 +52,7 @@ internal sealed class AgentFactory : IAgentFactory
             dataContextFactory.InitializeSession(sessionPath.Current, dataProviders, globals.UnionBy(sessionPath.GetData(), k => k.Key), cancellationToken);
             // Resolve critical services now, so we fail fast.
             _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
-            _ = scope.ServiceProvider.GetRequiredService<IAgent>();
+            _ = scope.ServiceProvider.GetRequiredService<TAgent>();
             // Because we transitioned to async, the parent scope may not pick up what we've just done.
             return (scope, ExecutionContext.Capture()!);
         }
@@ -67,8 +63,10 @@ internal sealed class AgentFactory : IAgentFactory
         }
     }
 
-    private static Dictionary<string, object?> CreateAgentDataContextGlobals(AgentConfig config,
-        SessionPath sessionPath, IEnumerable<KeyValuePair<string, object?>> data)
+    private static Dictionary<string, object?> CreateAgentDataContextGlobals(
+        AgentConfig config,
+        SessionPath sessionPath,
+        IEnumerable<KeyValuePair<string, object?>> data)
     {
         var globals = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var pair in data)

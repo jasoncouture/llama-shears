@@ -183,7 +183,7 @@ public static class CoreServiceCollectionExtensions
     private static IServiceCollection AddDataContext(this IServiceCollection services)
     {
         services.TryAddSingleton<IDataContextFactory, DataContextFactory>();
-        services.TryAddScoped<IDataContextScope>(sp =>
+        services.TryAddScoped(sp =>
             sp.GetRequiredService<IDataContextFactory>().Current
                 ?? throw new InvalidOperationException("No ambient data scope is available"));
         services.AddSingletonDataProvider<HostDataProvider>();
@@ -197,7 +197,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
         services.TryAddScoped<IInferenceRunner, InferenceRunner>();
-        services.TryAddScoped<ILanguageModel>(sp =>
+        services.TryAddScoped(sp =>
         {
             var dataScope = sp.GetRequiredService<IDataContextScope>();
             var modelConfig = dataScope.GetModelConfiguration();
@@ -239,6 +239,13 @@ public static class CoreServiceCollectionExtensions
     private static IServiceCollection AddSessions(this IServiceCollection services)
     {
         services.TryAddSingleton<ISessionFactory, SessionFactory>();
+        services.AddScoped(serviceProvider =>
+        {
+            var dataScope = serviceProvider.GetRequiredService<IDataContextScope>();
+            var sessionFactory = serviceProvider.GetRequiredService<ISessionFactory>();
+            var sessionQueue = sessionFactory.Get(dataScope.GetCurrentSessionId());
+            return sessionQueue;
+        });
         return services;
     }
 
@@ -249,6 +256,9 @@ public static class CoreServiceCollectionExtensions
         services.TryAddScoped<IAgentLock, AgentLock>();
         services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
         services.TryAddScoped<IAgent, Agent>();
+        services.TryAddScoped<ITransientAgent, TransientAgent>();
+        services.TryAddScoped<ITransientAgentFactory, TransientAgentFactory>();
+        services.AddAgentService<AgentHeartbeatService>();
         return services;
     }
 

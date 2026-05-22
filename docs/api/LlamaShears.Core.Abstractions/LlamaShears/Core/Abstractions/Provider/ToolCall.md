@@ -13,6 +13,12 @@ tool catalog to find the right handler.
 - `ArgumentsJson` — Tool arguments serialized as JSON exactly as the model produced them.
 - `CallId` — Provider-supplied correlation id; used to pair a call with its result. `null` when the provider does not surface one.
 
+## Fields
+
+### `InternalToolSource`
+
+The MCP source used to call internal tools
+
 ## Properties
 
 ### `ArgumentsJson`

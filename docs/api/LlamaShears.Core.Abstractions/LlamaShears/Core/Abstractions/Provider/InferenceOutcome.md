@@ -14,7 +14,7 @@ and the cumulative token count if the provider reported it.
 - `ToolCalls` — Tool calls the model emitted during this run.
 - `ToolResults` — Results of dispatching `ToolCalls`; aligned by index with `ToolCalls`. Tool calls that were in flight when the run was interrupted carry a synthetic error result.
 - `Interrupted` — `true` when the run terminated because the caller's cancellation token fired; partial fragments and turns were still published, and any in-flight tool calls were collapsed into error results so caller-side history remains paired.
-- `Suppressed` — `true` when the model chose to emit no output for this turn (sentinel `NO_RESPONSE`). Distinguishes intentional silence from a transient empty response — callers should not retry on a suppressed turn.
+- `Suppressed` — `true` when the model chose to emit no output for this turn ([Sentinel](../Sentinel.md).`NoResponse`). Distinguishes intentional silence from a transient empty response — callers should not retry on a suppressed turn.
 
 ## Properties
 
@@ -28,7 +28,7 @@ Concatenated assistant content (empty when the call only produced tool calls).
 
 ### `Suppressed`
 
-`true` when the model chose to emit no output for this turn (sentinel `NO_RESPONSE`). Distinguishes intentional silence from a transient empty response — callers should not retry on a suppressed turn.
+`true` when the model chose to emit no output for this turn ([Sentinel](../Sentinel.md).`NoResponse`). Distinguishes intentional silence from a transient empty response — callers should not retry on a suppressed turn.
 
 ### `Thinking`
 
@@ -62,5 +62,5 @@ and the cumulative token count if the provider reported it.
 - `ToolCalls` — Tool calls the model emitted during this run.
 - `ToolResults` — Results of dispatching `ToolCalls`; aligned by index with `ToolCalls`. Tool calls that were in flight when the run was interrupted carry a synthetic error result.
 - `Interrupted` — `true` when the run terminated because the caller's cancellation token fired; partial fragments and turns were still published, and any in-flight tool calls were collapsed into error results so caller-side history remains paired.
-- `Suppressed` — `true` when the model chose to emit no output for this turn (sentinel `NO_RESPONSE`). Distinguishes intentional silence from a transient empty response — callers should not retry on a suppressed turn.
+- `Suppressed` — `true` when the model chose to emit no output for this turn ([Sentinel](../Sentinel.md).`NoResponse`). Distinguishes intentional silence from a transient empty response — callers should not retry on a suppressed turn.
 

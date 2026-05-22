@@ -23,8 +23,7 @@ public sealed partial class CompactionAgentService
     private readonly IAgentContextProvider _agentContextProvider;
     private readonly IAgentLock _agentLock;
     private readonly ILogger<CompactionAgentService> _logger;
-    private readonly IDisposable _idleSubscription;
-    private readonly IDisposable _requestedSubscription;
+    private readonly IDisposable _subscriptions;
 
     public CompactionAgentService(
         IEventBus bus,
@@ -42,16 +41,17 @@ public sealed partial class CompactionAgentService
         _agentLock = agentLock;
         _logger = logger;
         var sessionId = _dataScope.GetCurrentSessionId();
-        _idleSubscription = bus.Subscribe<AgentLifecycleMarker>(
-            Event.WellKnown.Agent.Idle with { Id = sessionId },
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true);
-        _requestedSubscription = bus.Subscribe<AgentCompactionRequest>(
-            Event.WellKnown.Command.CompactionRequest with { Id = sessionId },
-            EventDeliveryMode.Awaited,
-            this, 
-            preserveSubscriberExecutionContext: true);
+        _subscriptions = DisposableList.Create()
+            .And(bus.Subscribe<AgentLifecycleMarker>(
+                Event.WellKnown.Agent.Idle with { Id = sessionId },
+                EventDeliveryMode.Awaited,
+                this,
+                preserveSubscriberExecutionContext: true))
+            .And(bus.Subscribe<AgentCompactionRequest>(
+                Event.WellKnown.Command.CompactionRequest with { Id = sessionId },
+                EventDeliveryMode.Awaited,
+                this,
+                preserveSubscriberExecutionContext: true));
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -64,11 +64,7 @@ public sealed partial class CompactionAgentService
     public ValueTask HandleAsync(IEventEnvelope<AgentCompactionRequest> envelope, CancellationToken cancellationToken)
         => CompactAsync(force: envelope.Data?.Force ?? false, cancellationToken);
 
-    public void Dispose()
-    {
-        _idleSubscription.Dispose();
-        _requestedSubscription.Dispose();
-    }
+    public void Dispose() => _subscriptions.Dispose();
 
     private async ValueTask CompactAsync(bool force, CancellationToken cancellationToken)
     {

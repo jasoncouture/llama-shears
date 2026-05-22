@@ -50,7 +50,7 @@ internal sealed class WorkspaceContextDataProvider : IDataContextItemProvider
         foreach (var name in _workspaceFileNames)
         {
             var fullPath = Path.Combine(workspacePath, name);
-            var file = await _cache.GetOrParseAsync<WorkspaceFile, string>(
+            var file = await _cache.GetOrParseAsync(
                 fullPath,
                 fullPath,
                 ParseWorkspaceFileAsync,

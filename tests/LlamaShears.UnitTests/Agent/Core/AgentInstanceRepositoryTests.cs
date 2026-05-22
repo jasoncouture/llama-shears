@@ -1,4 +1,5 @@
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -239,6 +240,6 @@ public sealed class AgentInstanceRepositoryTests
     private static AgentHandle BuildHandle(SessionPath path)
     {
         var scope = new AsyncServiceScope(Substitute.For<IServiceScope>());
-        return new AgentHandle(path, "hash", scope, ExecutionContext.Capture()!);
+        return new AgentHandle(path, "hash", scope, ExecutionContext.Capture()!, typeof(IAgent));
     }
 }
