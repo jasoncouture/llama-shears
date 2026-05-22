@@ -49,7 +49,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         CancellationToken turnCancellationToken)
     {
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
-        await bundle.ServiceScope.ApplyScopeDataAsync(turnCancellationToken);
+        bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
         var sessionId = batch[^1].SessionId;
         bundle.ServiceProvider.GetRequiredService<IAgentStateTracker>()
             .SetState(batch[^1].ChannelId ?? DefaultChannel, correlationId: correlationId, sessionId: sessionId);

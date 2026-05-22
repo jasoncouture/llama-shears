@@ -30,13 +30,13 @@ public static class DataContextScopeFactoryExtensions
     /// applies each to the <see cref="IDataContextScope"/> resolved
     /// from the same provider.
     /// </summary>
-    public static async Task ApplyScopeDataAsync(this IServiceScope scope, CancellationToken cancellationToken)
+    public static void ApplyScopeData(this IServiceScope scope, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
         var dataScope = scope.ServiceProvider.GetRequiredService<IDataContextScope>();
         foreach (var provider in scope.ServiceProvider.GetScopedDataProviders())
         {
-            await dataScope.SetItemsAsync(provider, cancellationToken);
+            dataScope.SetItems(provider, cancellationToken);
         }
     }
 }

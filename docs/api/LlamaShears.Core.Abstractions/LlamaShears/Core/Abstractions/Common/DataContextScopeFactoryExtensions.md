@@ -8,7 +8,7 @@ share a single disposable lifetime.
 
 ## Methods
 
-### `ApplyScopeDataAsync`(IServiceScope scope, CancellationToken cancellationToken)
+### `ApplyScopeData`(IServiceScope scope, CancellationToken cancellationToken)
 
 Resolves every scoped [IDataContextItemProvider](IDataContextItemProvider.md)
 registered against `scope`'s provider and

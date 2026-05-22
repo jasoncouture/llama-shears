@@ -30,8 +30,9 @@ internal sealed class FakeDataContextScope : IDataContextScope
 
     public IDisposable BeginScope() => NoopDisposable.Instance;
 
-    public Task SetItemsAsync(IDataContextItemProvider provider, CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    public void SetItems(IDataContextItemProvider provider, CancellationToken cancellationToken)
+    {
+    }
 
     public void SetItems(IEnumerable<KeyValuePair<string, object?>> items)
     {

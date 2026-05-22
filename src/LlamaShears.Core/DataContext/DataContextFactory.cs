@@ -46,7 +46,7 @@ internal sealed class DataContextFactory : IDataContextFactory
         }
     }
 
-    public async ValueTask InitializeAsync(SessionId sessionId, IEnumerable<IDataContextItemProvider> scopeProviders, IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken)
+    public void InitializeSession(SessionId sessionId, IEnumerable<IDataContextItemProvider> scopeProviders, IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sessionId);
         IDataContextScope? scope;
@@ -64,13 +64,13 @@ internal sealed class DataContextFactory : IDataContextFactory
         {
             foreach (var provider in _providers)
             {
-                await scope.SetItemsAsync(provider, cancellationToken);
+                scope.SetItems(provider, cancellationToken);
             }
         }
 
         foreach (var provider in scopeProviders)
         {
-            await scope.SetItemsAsync(provider, cancellationToken);
+            scope.SetItems(provider, cancellationToken);
         }
     }
 

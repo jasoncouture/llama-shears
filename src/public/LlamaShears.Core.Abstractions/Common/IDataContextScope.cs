@@ -31,7 +31,7 @@ public interface IDataContextScope : IEnumerable<KeyValuePair<string, object?>>
     /// Materializes <paramref name="provider"/>'s items into the current
     /// dictionary. Existing keys are overwritten.
     /// </summary>
-    Task SetItemsAsync(IDataContextItemProvider provider, CancellationToken cancellationToken);
+    void SetItems(IDataContextItemProvider provider, CancellationToken cancellationToken);
 
     /// <summary>
     /// Sets each <paramref name="items"/> pair into the current

@@ -28,19 +28,19 @@ internal sealed class DataContextScope : IDataContextScope
         return new ScopePopper(this);
     }
 
+    public void SetItems(IDataContextItemProvider provider, CancellationToken cancellationToken)
+    { 
+        ArgumentNullException.ThrowIfNull(provider);
+        var items = provider.GetItemsForCurrentContext(cancellationToken).WaitAsync(cancellationToken).GetAwaiter().GetResult();
+        SetItems(items);
+    }
+
     public void Clear() => _current.Clear();
 
     public bool Remove(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         return _current.TryRemove(key, out _);
-    }
-
-    public async Task SetItemsAsync(IDataContextItemProvider provider, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(provider);
-        var items = await provider.GetItemsForCurrentContext(cancellationToken);
-        SetItems(items);
     }
 
     public void SetItems(IEnumerable<KeyValuePair<string, object?>> items)

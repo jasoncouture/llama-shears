@@ -26,13 +26,13 @@ scope is also removed from the factory's registry.
 Creates a new empty scope keyed by `sessionId` and sets it
 as the current call chain's active scope. Throws when a live scope
 already claims that key. The returned scope must be populated via
-[IDataContextFactory](IDataContextFactory.md).`InitializeAsync` before consumers read from it.
+[IDataContextFactory](IDataContextFactory.md).`InitializeSession` before consumers read from it.
 
 ### `DeleteContext`([SessionId](../Agent/Sessions/SessionId.md) sessionId)
 
 Forcibly removes the scope keyed by `sessionId`.
 
-### `InitializeAsync`([SessionId](../Agent/Sessions/SessionId.md) sessionId, IEnumerable<[IDataContextItemProvider](IDataContextItemProvider.md)> scopeProviders, IEnumerable<KeyValuePair<string, object>> values, CancellationToken cancellationToken)
+### `InitializeSession`([SessionId](../Agent/Sessions/SessionId.md) sessionId, IEnumerable<[IDataContextItemProvider](IDataContextItemProvider.md)> scopeProviders, IEnumerable<KeyValuePair<string, object>> values, CancellationToken cancellationToken)
 
 Populates the scope keyed by `sessionId`: `values`
 are written first (so providers can observe them), singleton item

@@ -34,7 +34,6 @@ internal sealed class AgentFactory : IAgentFactory
         {
             var globals = CreateAgentDataContextGlobals(config, sessionPath, data);
             var (scope, agentContext) = await CreateAgentServiceScope(sessionPath, globals, cancellationToken);
-            // Must re-capture the execution context
             return new AgentHandle(sessionPath, config.Hash, scope, agentContext);
         }
         finally
@@ -54,7 +53,7 @@ internal sealed class AgentFactory : IAgentFactory
             var dataContextFactory = scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
             dataContextFactory.CreateContext(sessionPath.Current);
             var dataProviders = scope.ServiceProvider.GetScopedDataProviders();
-            await dataContextFactory.InitializeAsync(sessionPath.Current, dataProviders, globals, cancellationToken);
+            dataContextFactory.InitializeSession(sessionPath.Current, dataProviders, globals.UnionBy(sessionPath.GetData(), k => k.Key), cancellationToken);
             // Resolve critical services now, so we fail fast.
             _ = scope.ServiceProvider.GetRequiredService<ILanguageModel>();
             _ = scope.ServiceProvider.GetRequiredService<IAgent>();

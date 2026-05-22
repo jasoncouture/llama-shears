@@ -21,10 +21,6 @@ public sealed partial class Agent :
     private readonly ILogger _logger;
     private readonly IContextStore _contextStore;
     private readonly TimeProvider _time;
-    private readonly IDisposable _subscription;
-    private readonly IDisposable _interruptSubscription;
-    private readonly IDisposable _directStopSubscription;
-    private readonly IDisposable _broadcastStopSubscription;
     private readonly ISessionQueue _sessionQueue;
     private readonly CancellationTokenSource _shutdown;
     private readonly IEventBus _bus;
@@ -53,7 +49,7 @@ public sealed partial class Agent :
         IAgentIterationRunner iterationRunner,
         IEnumerable<IAgentService> agentServices)
     {
-        _sessionPath = _dataScope.GetSessionPath();
+        _sessionPath = dataScope.GetSessionPath();
         _logger = logger;
         _contextStore = contextStore;
         _eventPublisher = eventPublisher;

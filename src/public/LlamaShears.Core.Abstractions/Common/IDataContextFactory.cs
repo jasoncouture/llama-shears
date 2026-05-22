@@ -26,7 +26,7 @@ public interface IDataContextFactory
     /// Creates a new empty scope keyed by <paramref name="sessionId"/> and sets it
     /// as the current call chain's active scope. Throws when a live scope
     /// already claims that key. The returned scope must be populated via
-    /// <see cref="InitializeAsync"/> before consumers read from it.
+    /// <see cref="InitializeSession"/> before consumers read from it.
     /// </summary>
     IDataContextScope CreateContext(SessionId sessionId);
 
@@ -37,7 +37,7 @@ public interface IDataContextFactory
     /// then call-site scoped providers (<paramref name="scopeProviders"/>)
     /// contribute on top.
     /// </summary>
-    ValueTask InitializeAsync(SessionId sessionId, IEnumerable<IDataContextItemProvider> scopeProviders,
+    void InitializeSession(SessionId sessionId, IEnumerable<IDataContextItemProvider> scopeProviders,
         IEnumerable<KeyValuePair<string, object?>> values, CancellationToken cancellationToken);
 
     /// <summary>Forcibly removes the scope keyed by <paramref name="sessionId"/>.</summary>

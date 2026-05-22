@@ -75,7 +75,7 @@ public sealed partial class CompactionAgentService
         var agentId = _dataScope.GetAgentConfig().Id;
         using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
-        await bundle.ServiceScope.ApplyScopeDataAsync(cancellationToken);
+        bundle.ServiceScope.ApplyScopeData(cancellationToken);
 
         var agentContext = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
         var prompt = new ModelPrompt([.. agentContext.Turns]);

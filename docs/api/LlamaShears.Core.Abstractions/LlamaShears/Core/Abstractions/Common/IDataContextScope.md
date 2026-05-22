@@ -37,13 +37,13 @@ key.
 Sets `key` to the provided value.
 Existing keys are overwritten.
 
+### `SetItems`([IDataContextItemProvider](IDataContextItemProvider.md) provider, CancellationToken cancellationToken)
+
+Materializes `provider`'s items into the current
+dictionary. Existing keys are overwritten.
+
 ### `SetItems`(IEnumerable<KeyValuePair<string, object>> items)
 
 Sets each `items` pair into the current
-dictionary. Existing keys are overwritten.
-
-### `SetItemsAsync`([IDataContextItemProvider](IDataContextItemProvider.md) provider, CancellationToken cancellationToken)
-
-Materializes `provider`'s items into the current
 dictionary. Existing keys are overwritten.
 
