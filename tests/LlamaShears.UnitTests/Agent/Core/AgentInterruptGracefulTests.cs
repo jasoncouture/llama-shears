@@ -42,11 +42,11 @@ public sealed class AgentInterruptGracefulTests
         await using var agent = await BuildAgent("alice", session, provider, ctx, model);
 
         await PublishChannelMessageAsync(publisher, session, "go");
-        await model.WaitForFragmentEmittedAsync(TimeSpan.FromSeconds(5));
+        await model.WaitForFragmentEmittedAsync(TimeSpan.FromMilliseconds(500));
 
         await PublishInterruptAsync(publisher, session);
 
-        using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var lockTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
@@ -69,11 +69,11 @@ public sealed class AgentInterruptGracefulTests
         await using var agent = await BuildAgent("alice", session, provider, ctx, model, dispatcher: dispatcher);
 
         await PublishChannelMessageAsync(publisher, session, "go");
-        await dispatcher.WaitForDispatchAsync(TimeSpan.FromSeconds(5));
+        await dispatcher.WaitForDispatchAsync(TimeSpan.FromMilliseconds(500));
 
         await PublishInterruptAsync(publisher, session);
 
-        using var lockTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var lockTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();

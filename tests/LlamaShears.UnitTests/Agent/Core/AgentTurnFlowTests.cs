@@ -67,7 +67,7 @@ public sealed class AgentTurnFlowTests
         await using var agent = await BuildAgent("alice", session, provider, ctx, model);
 
         await PublishChannelMessageAsync(publisher, session, "hello");
-        await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+        await captured.WaitForTurnAsync(TimeSpan.FromMilliseconds(500));
 
         var userTurn = ctx.Turns.Single(t => t.Role == ModelRole.User);
         await Assert.That(userTurn.ChannelId).IsEqualTo(TestChannelId);
@@ -96,7 +96,7 @@ public sealed class AgentTurnFlowTests
 
         await WaitForAsync(() =>
             ctx.Turns.Count(t => t.Role == ModelRole.Assistant) >= 2,
-            TimeSpan.FromSeconds(5));
+            TimeSpan.FromMilliseconds(500));
 
         var roles = ctx.Turns.Select(t => t.Role).ToArray();
         var firstUser = Array.IndexOf(roles, ModelRole.User);

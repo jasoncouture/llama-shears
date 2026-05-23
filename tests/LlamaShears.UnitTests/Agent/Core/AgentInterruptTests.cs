@@ -54,11 +54,11 @@ public sealed class AgentInterruptTests
 
         await PublishChannelMessageAsync(publisher, session, "hang here please");
 
-        await model.WaitForInvocationAsync(TimeSpan.FromSeconds(5));
+        await model.WaitForInvocationAsync(TimeSpan.FromMilliseconds(500));
 
         await PublishInterruptAsync(publisher, session);
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         using var idle = await _lockManager.AcquireLockAsync("alice", timeout.Token);
     }
 

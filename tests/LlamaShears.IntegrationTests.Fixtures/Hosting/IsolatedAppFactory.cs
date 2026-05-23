@@ -118,7 +118,7 @@ public sealed class IsolatedAppFactory : WebApplicationFactory<Program>
             return;
         }
 
-        await WaitForStartedAsync(agentId, timeout ?? TimeSpan.FromSeconds(5), started, subscription);
+        await WaitForStartedAsync(agentId, timeout ?? TimeSpan.FromMilliseconds(500), started, subscription);
     }
 
     private bool AgentAlreadyStarted(string agentId)

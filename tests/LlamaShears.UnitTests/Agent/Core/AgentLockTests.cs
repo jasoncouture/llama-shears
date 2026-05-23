@@ -25,7 +25,7 @@ public sealed class AgentLockTests
         await Assert.That(pending.IsCompleted).IsFalse();
 
         locked.Dispose();
-        using var next = await pending.WaitAsync(TimeSpan.FromSeconds(5));
+        using var next = await pending.WaitAsync(TimeSpan.FromMilliseconds(500));
         await Assert.That(next.Active).IsTrue();
     }
 
