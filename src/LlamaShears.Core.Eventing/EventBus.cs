@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using System.Reflection;
 using LlamaShears.Core.Abstractions.Events;
 using MessagePipe;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +14,8 @@ internal sealed partial class EventBus : IEventBus
     private readonly ILogger _logger;
     private readonly ILoggerFactory _loggerFactory;
     private const string EventPublishLogCategory = "Events";
+    internal static ActivitySource ActivitySource { get; } = new ActivitySource($"LlamaShears.Core.Eventing.{nameof(EventBus)}", typeof(EventBus).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
+    private static Meter _meter {get;} = new Meter($"LlamaShears.Core.Eventing.{nameof(EventBus)}", typeof(EventBus).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
 
     public EventBus(IServiceProvider serviceProvider, ILogger<EventBus> logger, ILoggerFactory loggerFactory)
     {
@@ -21,6 +26,10 @@ internal sealed partial class EventBus : IEventBus
     public async ValueTask PublishAsync<T>(EventType eventType, T? data, Guid correlationId, CancellationToken cancellationToken) where T : class
     {
         using var loggerScope = _logger.BeginScope("{EventType}", eventType);
+        using var activity = ActivitySource.StartActivity($"event.publish {eventType.Component}:{eventType.EventName}", ActivityKind.Producer);
+        activity?.SetTag("event.id", eventType.ToString());
+        activity?.SetTag("event.payload.type", typeof(T).FullName);
+        
         try
         {
 
@@ -28,6 +37,8 @@ internal sealed partial class EventBus : IEventBus
             var envelope = new EventEnvelope<T>(eventType, EventDeliveryMode.FireAndForget, correlationId, data);
 
             var denied = EventDeliveryMask.None;
+
+
             foreach (var filter in _serviceProvider.GetServices<IEventFilter>())
             {
                 denied |= await filter.GetDeniedModesAsync(envelope, cancellationToken);
@@ -36,22 +47,29 @@ internal sealed partial class EventBus : IEventBus
 
             if (!denied.HasFlag(EventDeliveryMask.FireAndForget))
             {
+                activity?.SetTag("event.publish.mode", EventDeliveryMask.FireAndForget.ToString("G"));
                 _logger.LogTrace("Publishing fire and forget event: {Envelope}", envelope);
                 publisher.Publish(envelope, cancellationToken);
             }
 
-            envelope = envelope with { DeliveryMode = EventDeliveryMode.Awaited };
+            
             if (!denied.HasFlag(EventDeliveryMask.Awaited))
             {
+                envelope = envelope with { DeliveryMode = EventDeliveryMode.Awaited };
+                activity?.SetTag("event.publish.mode", EventDeliveryMask.Awaited.ToString("G"));
                 _logger.LogTrace("Publishing awaited event: {Envelope}", envelope);
                 await publisher.PublishAsync(envelope, cancellationToken);
             }
+            activity?.SetTag("event.publish.mode", null);
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogTrace("Event publishing complete");
             _loggerFactory.CreateLogger(EventPublishLogCategory).LogDebug("Event: {EventType} - Published", eventType);
+            activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
+            activity?.AddException(ex);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.ToString());
             _loggerFactory.CreateLogger(EventPublishLogCategory).LogWarning("Event {EventType} failed to publish: {ExceptionType} - {Exception}", eventType, ex.GetType().FullName, ex.Message);
             throw;
         }
