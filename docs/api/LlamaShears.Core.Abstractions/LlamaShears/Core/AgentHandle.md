@@ -15,6 +15,7 @@ is invoked. Disposing tears down children first, then the scope, then awaits the
 - `Scope` — DI scope owned by the handle; disposed on teardown.
 - `ExecutionContext` — Blank execution context the agent loop runs under.
 - `AgentServiceType` — The service type that will be resolved from dependency injection to start the agent. This type must be assignible to IAgent.
+- `Disposables` — Additional disposable services
 
 ## Properties
 
@@ -29,6 +30,10 @@ Background task returned by [IAgent](Abstractions/Agent/IAgent.md).`RunAsync`; `
 ### `ConfigHash`
 
 Hash of the [AgentConfig](Abstractions/Agent/AgentConfig.md) the handle was built against.
+
+### `Disposables`
+
+Additional disposable services
 
 ### `ExecutionContext`
 
@@ -52,7 +57,7 @@ Identity of this agent's session, including parent/root chain.
 
 ## Methods
 
-### `AgentHandle`([SessionPath](Abstractions/Agent/Sessions/SessionPath.md) SessionPath, string ConfigHash, AsyncServiceScope Scope, ExecutionContext ExecutionContext, Type AgentServiceType)
+### `AgentHandle`([SessionPath](Abstractions/Agent/Sessions/SessionPath.md) SessionPath, string ConfigHash, AsyncServiceScope Scope, ExecutionContext ExecutionContext, Type AgentServiceType, [DisposableList](DisposableList.md) Disposables)
 
 Owns the resources of one running agent instance: the DI scope, the captured
 ExecutionContext the agent boots into, the underlying
@@ -67,6 +72,7 @@ is invoked. Disposing tears down children first, then the scope, then awaits the
 - `Scope` — DI scope owned by the handle; disposed on teardown.
 - `ExecutionContext` — Blank execution context the agent loop runs under.
 - `AgentServiceType` — The service type that will be resolved from dependency injection to start the agent. This type must be assignible to IAgent.
+- `Disposables` — Additional disposable services
 
 ### `DestroyChild`(Guid id)
 

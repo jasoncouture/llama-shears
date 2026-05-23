@@ -19,12 +19,14 @@ namespace LlamaShears.Core;
 /// <param name="Scope">DI scope owned by the handle; disposed on teardown.</param>
 /// <param name="ExecutionContext">Blank execution context the agent loop runs under.</param>
 /// <param name="AgentServiceType">The service type that will be resolved from dependency injection to start the agent. This type must be assignible to IAgent.</param>
+/// <param name="Disposables">Additional disposable services</param>
 public sealed record AgentHandle(
     SessionPath SessionPath,
     string ConfigHash,
     AsyncServiceScope Scope,
     ExecutionContext ExecutionContext,
-    Type AgentServiceType) : IAsyncDisposable
+    Type AgentServiceType,
+    DisposableList? Disposables = null) : IAsyncDisposable
 {
     /// <summary>Background task returned by <see cref="IAgent.RunAsync"/>; <see langword="null"/> until <see cref="Start"/> is called.</summary>
     public Task? AgentTask { get; private set; }
@@ -95,6 +97,14 @@ public sealed record AgentHandle(
             if (!_children.TryRemove(child, out var handle)) continue;
             await handle.DisposeAsync();
         }
+
+        if (ExecutionContext is not null)
+        {
+            await Task.Yield(); // force an async transition to protect our callers execution context
+            ExecutionContext.Restore(ExecutionContext);
+        }
+
+        if (Disposables is not null) await Disposables.DisposeAsync();
 
         await Scope.DisposeAsync();
         if (AgentTask is not null) await AgentTask;

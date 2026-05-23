@@ -8,42 +8,44 @@ namespace LlamaShears.Core;
 public static class CombinedDisposable
 {
     /// <summary>Combines two synchronous disposables.</summary>
-    public static DisposableList And(this IDisposable current, IDisposable? disposable)
+    public static DisposableList And(this IDisposable? current, IDisposable? disposable)
     {
         if (current is DisposableList list) return list.Push(disposable);
         return new DisposableList().Push(current).Push(disposable);
     }
 
     /// <summary>Combines a synchronous disposable with an asynchronous one.</summary>
-    public static DisposableList And(this IDisposable current, IAsyncDisposable? disposable)
+    public static DisposableList And(this IDisposable? current, IAsyncDisposable? disposable)
     {
         if (current is DisposableList list) return list.Push(disposable);
         return new DisposableList().Push(current).Push(disposable);
     }
 
     /// <summary>Combines an asynchronous disposable with a synchronous one.</summary>
-    public static DisposableList And(this IAsyncDisposable current, IDisposable? disposable)
+    public static DisposableList And(this IAsyncDisposable? current, IDisposable? disposable)
     {
         if (current is DisposableList list) return list.Push(disposable);
         return new DisposableList().Push(current).Push(disposable);
     }
 
     /// <summary>Combines two asynchronous disposables.</summary>
-    public static DisposableList And(this IAsyncDisposable current, IAsyncDisposable? disposable)
+    public static DisposableList And(this IAsyncDisposable? current, IAsyncDisposable? disposable)
     {
         if (current is DisposableList list) return list.Push(disposable);
         return new DisposableList().Push(current).Push(disposable);
     }
 
     /// <summary>Appends a synchronous disposable to an existing list.</summary>
-    public static DisposableList And(this DisposableList current, IDisposable? disposable)
+    public static DisposableList And(this DisposableList? current, IDisposable? disposable)
     {
+        current ??= new DisposableList();
         return current.Push(disposable);
     }
 
     /// <summary>Appends an asynchronous disposable to an existing list.</summary>
-    public static DisposableList And(this DisposableList current, IAsyncDisposable? disposable)
+    public static DisposableList And(this DisposableList? current, IAsyncDisposable? disposable)
     {
+        current ??= new DisposableList();
         return current.Push(disposable);
     }
 }
