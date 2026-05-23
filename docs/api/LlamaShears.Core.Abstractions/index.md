@@ -42,6 +42,7 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions
 
 - [Sentinel](LlamaShears/Core/Abstractions/Sentinel.md)
+- [Telemetry](LlamaShears/Core/Abstractions/Telemetry.md)
 
 ## LlamaShears.Core.Abstractions.Agent
 
