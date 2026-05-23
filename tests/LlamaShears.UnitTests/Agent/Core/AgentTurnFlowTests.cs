@@ -44,7 +44,7 @@ public sealed class AgentTurnFlowTests
         await PublishChannelMessageAsync(publisher, session, "first");
         await PublishChannelMessageAsync(publisher, session, "second");
 
-        await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+        await WaitForAsync(() => ctx.Turns.Count(t => t.Role == ModelRole.User) >= 2, TimeSpan.FromMilliseconds(500));
 
         var userTurns = ctx.Turns.Where(t => t.Role == ModelRole.User).ToArray();
         await Assert.That(userTurns).Count().IsEqualTo(2);
