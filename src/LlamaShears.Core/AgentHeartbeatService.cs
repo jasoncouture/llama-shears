@@ -102,8 +102,10 @@ public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemT
             [new KeyValuePair<string, object?>(HeartbeatDataContext.DataKey, heartbeatData)],
             cancellationToken);
         var heartbeatContextStorage = await _contextStore.OpenAsync(handle.SessionPath.Current, cancellationToken);
+        var lastHeartbeatStartedAt = _lastHeartbeatStart;
+        _lastHeartbeatStart = _timeProvider.GetLocalNow();
         var parentTurns = contextStorage.Turns
-            .Where(i => i.Timestamp > _lastHeartbeatStart)
+            .Where(i => i.Timestamp > lastHeartbeatStartedAt)
             .ToArray();
         _logger.LogInformation("Summarising {Count} parent turn(s) into briefing for {HeartbeatSessionPath}", parentTurns.Length, handle.SessionPath);
         if (parentTurns.Length > 0)
