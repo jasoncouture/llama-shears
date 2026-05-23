@@ -16,6 +16,7 @@ public sealed class EventFilterTests
 
         await publisher.PublishAsync(_testType, new Payload("hi"), Guid.NewGuid(), CancellationToken.None);
 
+        await WaitForAsync(() => recorder.FireAndForgetCount >= 1, TimeSpan.FromMilliseconds(500));
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(1);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(1);
         GC.KeepAlive(bus);
@@ -48,6 +49,7 @@ public sealed class EventFilterTests
 
         await publisher.PublishAsync(_testType, new Payload("x"), Guid.NewGuid(), CancellationToken.None);
 
+        await WaitForAsync(() => recorder.FireAndForgetCount >= 1, TimeSpan.FromMilliseconds(500));
         await Assert.That(recorder.FireAndForgetCount).IsEqualTo(1);
         await Assert.That(recorder.AwaitedCount).IsEqualTo(0);
         GC.KeepAlive(bus);
@@ -190,6 +192,17 @@ public sealed class EventFilterTests
 
         await Assert.That(observed).IsEqualTo(EventDeliveryMode.FireAndForget);
         GC.KeepAlive(bus);
+    }
+
+    private static async Task WaitForAsync(Func<bool> predicate, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (predicate()) return;
+            await Task.Delay(20);
+        }
+        throw new TimeoutException($"Predicate never became true within {timeout}.");
     }
 
     private static (IEventBus publisher, IEventBus bus, RecordingHandler recorder) BuildHarness(params IEventFilter[] filters)

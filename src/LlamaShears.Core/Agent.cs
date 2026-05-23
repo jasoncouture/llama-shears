@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
+using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -35,6 +37,7 @@ public sealed partial class Agent :
     private int _disposed;
     private bool _started = false;
     private readonly TaskCompletionSource _loopStatus = new TaskCompletionSource();
+    private static readonly ActivitySource _agentActivitySource = Telemetry.CreateActivitySourceForType<Agent>();
     SessionPath _sessionPath;
 
 
@@ -110,18 +113,19 @@ public sealed partial class Agent :
     {
         var cancellationToken = _shutdown.Token;
         var agentContext = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
+
         using var shutdownTimeoutCancellationTokenSource = new CancellationTokenSource();
         await PublishLifecycleEventAsync(Event.WellKnown.Agent.Starting, cancellationToken);
         try
         {
             _started = true;
-            foreach (var agentService in _agentServices)
-            {
-                await agentService.StartAsync(cancellationToken);
-            }
-
             try
             {
+                foreach (var agentService in _agentServices)
+                {
+                    await agentService.StartAsync(cancellationToken);
+                }
+                
                 await RunIterationsAsync(agentContext, cancellationToken);
             }
             finally
@@ -135,6 +139,12 @@ public sealed partial class Agent :
                     await agentService.StopAsync(timeoutTokenSource.Token);
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Activity.Current?.AddException(ex);
+            Activity.Current?.SetStatus(ActivityStatusCode.Error);
+            throw;
         }
         finally
         {
@@ -232,33 +242,41 @@ public sealed partial class Agent :
         // It doesn't make sense to subscribe to events before we're up and running, and likewise, it doesn't make sense to keep listening after we've stopped.
         // So instead of doing subscriptions in the constructor, do it here instead.
         await using var subscriptions = SubscribeToEvents();
-        using var loggingScope = _logger.BeginScope("{Session}", _sessionPath.Current);
-        var isIdle = true; // We intentionally don't send the first idle event. Since we aren't "idle", we are "started".
         await PublishLifecycleEventAsync(Event.WellKnown.Agent.Started, cancellationToken);
+        using var loggingScope = _logger.BeginScope("{Session}", _sessionPath.Current);
+        using var eventCancellationTokenSource = new CancellationTokenSource();
+        await using var tokenRegistration = cancellationToken.Register(tokenSource =>
+        {
+            ((CancellationTokenSource)tokenSource!).CancelAfter(TimeSpan.FromSeconds(5));
+        }, eventCancellationTokenSource);
+
+        var isIdle = true; // We intentionally don't send the first idle event. Since we aren't "idle", we are "started".
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 if (!_sessionQueue.HasQueuedMessages() && !isIdle)
                 {
-                    await PublishLifecycleEventAsync(Event.WellKnown.Agent.Idle, cancellationToken);
+                    await PublishLifecycleEventAsync(Event.WellKnown.Agent.Idle, eventCancellationTokenSource.Token);
                     isIdle = true;
                 }
                 var batch = await _sessionQueue.DequeueBatchAsync(cancellationToken);
+
                 if (batch.IsDefaultOrEmpty)
                 {
                     return;
                 }
-
+                using var activity = _agentActivitySource.StartActivity(name: $"chat {_dataScope.GetModelConfiguration().Id}", kind: ActivityKind.Client, tags: GetAgentTags());
                 if (isIdle)
                 {
-                    await PublishLifecycleEventAsync(Event.WellKnown.Agent.Busy, cancellationToken);
+                    await PublishLifecycleEventAsync(Event.WellKnown.Agent.Busy, eventCancellationTokenSource.Token);
                     isIdle = false;
                 }
 
                 var correlationId = Guid.CreateVersion7();
                 using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
                 using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
+                activity?.AddEvent(new ActivityEvent("lock acquired"));
                 using var turnCancellationTokenSource =
                     CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 lock (_interruptLock)
@@ -291,6 +309,11 @@ public sealed partial class Agent :
                 {
                     LogTurnInterrupted(_sessionPath.Current, correlationId);
                 }
+                catch (Exception ex)
+                {
+                    activity?.AddException(ex);
+                    activity?.SetStatus(ActivityStatusCode.Error);
+                }
                 finally
                 {
                     lock (_interruptLock)
@@ -306,9 +329,26 @@ public sealed partial class Agent :
             }
             catch (Exception ex)
             {
+
                 LogProcessOnceFailed(_sessionPath.Current, ex);
             }
         }
+    }
+
+    private IEnumerable<KeyValuePair<string, object?>>? GetAgentTags()
+    {
+        var agentId = _dataScope.GetAgentConfig().Id;
+        var sessionId = _dataScope.GetCurrentSessionId();
+        var modelId = _dataScope.GetModelConfiguration().Id;
+        var conversationId = sessionId.ToString();
+        if (sessionId.IsDefault) conversationId = $"{sessionId.AgentId}:{sessionId.Name}";
+        yield return new KeyValuePair<string, object?>("gen_ai.request.model", modelId.ToString());
+        yield return new KeyValuePair<string, object?>("gen_ai.system", "llamashears");
+        yield return new KeyValuePair<string, object?>("gen_ai.operation.name", "chat");
+        yield return new KeyValuePair<string, object?>("gen_ai.agent.id", agentId);
+        yield return new KeyValuePair<string, object?>("gen_ai.agent.name", agentId);
+        yield return new KeyValuePair<string, object?>("gen_ai.agent.version", _agentActivitySource.Version);
+        yield return new KeyValuePair<string, object?>("gen_ai.conversation.id", conversationId);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' is stopping.")]

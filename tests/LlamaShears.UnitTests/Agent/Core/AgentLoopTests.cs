@@ -40,7 +40,7 @@ public sealed class AgentLoopTests
 
         await PublishChannelMessageAsync(publisher, session, "hello");
 
-        await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+        await captured.WaitForTurnAsync(TimeSpan.FromMilliseconds(500));
 
         await Assert.That(captured.Turns).Count().IsEqualTo(1);
         await Assert.That(captured.Turns[0].Role).IsEqualTo(ModelRole.Assistant);
@@ -93,7 +93,7 @@ public sealed class AgentLoopTests
 
         await PublishChannelMessageAsync(publisher, session, "hello");
 
-        await captured.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+        await captured.WaitForTurnAsync(TimeSpan.FromMilliseconds(500));
 
         await Assert.That(captured.Turns).Count().IsEqualTo(1);
         await Assert.That(captured.Turns[0].Role).IsEqualTo(ModelRole.Assistant);

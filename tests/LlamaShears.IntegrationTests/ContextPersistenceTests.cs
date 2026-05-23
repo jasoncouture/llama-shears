@@ -15,7 +15,7 @@ namespace LlamaShears.IntegrationTests;
 public sealed class ContextPersistenceTests
 {
     private const string AgentId = "alpha";
-    private static readonly TimeSpan _responseTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _responseTimeout = TimeSpan.FromMilliseconds(500);
 
     [Test]
     public async Task UserMessageIsPersistedToCurrentJsonAfterTheAgentResponds()

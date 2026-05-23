@@ -18,4 +18,5 @@
 ## Types
 
 - [Sentinel](Sentinel.md) — Well-known sentinel strings used to signal special conditions in model output that wouldn't survive cleanly as a typed value.
+- [Telemetry](Telemetry.md) — Static functions for collecting Telemetry (trace/metrics/etc)
 

@@ -175,7 +175,7 @@ public sealed class AgentEventPublishingTests
             Event.WellKnown.Channel.Message with { Id = session },
             new ChannelMessage("hello", "test", DateTimeOffset.UtcNow),
             CancellationToken.None);
-        await captureChannel.WaitForTurnAsync(TimeSpan.FromSeconds(5));
+        await captureChannel.WaitForTurnAsync(TimeSpan.FromMilliseconds(500));
 
         return capturing.Captured;
     }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LlamaShears.Core.Abstractions.Events;
 using MessagePipe;
 using Microsoft.Extensions.Logging;
@@ -27,20 +28,24 @@ internal sealed partial class EventHandlerWrapper<T> : IAsyncMessageHandler<IEve
     {
         if (envelope.DeliveryMode != _deliveryMode) return;
         if (!string.IsNullOrWhiteSpace(_pattern) && !_patternMatcher.IsMatch(_pattern, envelope.Type)) return;
-        ExecutionContext? currentContext = null;
-        if (_executionContext is not null)
-        {
-            currentContext = ExecutionContext.Capture();
-            ExecutionContext.Restore(_executionContext);
-        }
+        await Task.Yield();
+        var activityContext = Activity.Current?.Context ?? default;
+        ExecutionContext? currentContext = ExecutionContext.Capture()!;
+        ExecutionContext.Restore(_executionContext ?? currentContext);
 
+        using var activity = EventBus.ActivitySource.StartActivity($"event.consume {envelope.Type.Component}:{envelope.Type.EventName}", ActivityKind.Consumer, parentContext: activityContext);
+        activity?.SetTag("event.id", envelope.Type.ToString());
+        activity?.SetTag("event.payload.type", typeof(T).FullName);
+        activity?.SetTag("consumer.type", _handler.GetType().FullName);
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             await _handler.HandleAsync(envelope, cancellationToken);
+            activity?.SetStatus(ActivityStatusCode.Ok, "completed");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "cancelled");
             LogHandlerCancelled(_handler.GetType(), typeof(T), _deliveryMode);
         }
         finally

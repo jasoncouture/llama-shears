@@ -6,56 +6,23 @@ using LlamaShears.Hosting;
 using LlamaShears.PluginLoaders;
 using LlamaShears.Plugins.Host;
 using Microsoft.Extensions.Configuration.Json;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var skipLocalConfig =
-    args.Any(a => string.Equals(a, "--no-local-config", StringComparison.OrdinalIgnoreCase))
-    || string.Equals(
-        Environment.GetEnvironmentVariable("LLAMASHEARS_NO_LOCAL_CONFIG"),
-        "true",
-        StringComparison.OrdinalIgnoreCase);
+builder.AddLocalConfiguration();
+builder.AddTelemetry();
+builder.AddCore();
 
-if (!skipLocalConfig)
-{
-    var dataRoot = builder.Configuration["Paths:DataRoot"];
-    if (string.IsNullOrWhiteSpace(dataRoot))
-    {
-        dataRoot = "~/.llama-shears";
-    }
-    dataRoot = dataRoot.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-    dataRoot = Directory.CreateDirectory(dataRoot).FullName;
 
-    var overrideSource = new JsonConfigurationSource
-    {
-        Path = Path.Combine(dataRoot, "appsettings.json"),
-        Optional = true,
-        ReloadOnChange = true,
-    };
-    overrideSource.ResolveFileProvider();
-
-    var sources = builder.Configuration.Sources;
-    var insertAt = 0;
-    for (var i = 0; i < sources.Count; i++)
-    {
-        if (sources[i] is JsonConfigurationSource)
-        {
-            insertAt = i + 1;
-        }
-    }
-    sources.Insert(insertAt, overrideSource);
-}
-
-builder.Services.AddShearsPaths();
-builder.Services.AddHostStartupTask<TemplateSeedingStartupTask>();
-builder.AddApi();
-builder.Services.AddEventBusFileLog();
 builder.Services.AddResponseCompression();
 builder.Services.AddResponseCaching();
 
-var pluginPaths = Array.Empty<string>();
 
-await builder.Services.LoadPluginsAsync(failureCallback: null, CancellationToken.None, new PathPluginLoader(pluginPaths));
+await builder.AddPluginsAsync(CancellationToken.None);
 
 builder.Host.UseDefaultServiceProvider((context, options) =>
 {

@@ -37,7 +37,7 @@ public sealed class AgentLockManagerTests
 
         first.Dispose();
 
-        using var second = await secondTask.WaitAsync(TimeSpan.FromSeconds(5));
+        using var second = await secondTask.WaitAsync(TimeSpan.FromMilliseconds(500));
         await Assert.That(second.Active).IsTrue();
     }
 
@@ -64,7 +64,7 @@ public sealed class AgentLockManagerTests
 
         using var next = await manager.AcquireLockAsync("alice", CancellationToken.None)
             .AsTask()
-            .WaitAsync(TimeSpan.FromSeconds(5));
+            .WaitAsync(TimeSpan.FromMilliseconds(500));
         await Assert.That(next.Active).IsTrue();
     }
 
@@ -93,7 +93,7 @@ public sealed class AgentLockManagerTests
 
         using var next = await manager.AcquireLockAsync("alice", CancellationToken.None)
             .AsTask()
-            .WaitAsync(TimeSpan.FromSeconds(5));
+            .WaitAsync(TimeSpan.FromMilliseconds(500));
         await Assert.That(next.Active).IsTrue();
     }
 
