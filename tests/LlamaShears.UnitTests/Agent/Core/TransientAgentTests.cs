@@ -150,7 +150,7 @@ public sealed class TransientAgentTests
                 && t.EventName == Event.WellKnown.Channel.Message.EventName
                 && t.Id == _path.Parent.ToString()),
             Arg.Is<ChannelMessage>(m => m.Text == "final answer"
-                && m.ChannelId == _path.Current.ToString()),
+                && m.ChannelId == $"subagent:{_path.Current}"),
             Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
     }
