@@ -11,6 +11,7 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
     private const string DefaultAgentsFolderName = "agents";
     private const string DefaultTemplatesFolderName = "templates";
     private const string DefaultContextFolderName = "context";
+    private const string DefaultSkillsFolderName = "skills";
 
     private readonly ConcurrentDictionary<PathKind, string> _roots;
 
@@ -27,11 +28,20 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
             [PathKind.Agents] = ResolveAndCreate(values.AgentsRoot, () => Path.Combine(dataRoot, DefaultAgentsFolderName)),
             [PathKind.Templates] = ResolveAndCreate(values.TemplatesRoot, () => Path.Combine(dataRoot, DefaultTemplatesFolderName)),
             [PathKind.Context] = ResolveAndCreate(values.ContextRoot, () => Path.Combine(dataRoot, DefaultContextFolderName)),
+            [PathKind.AppSkills] = ResolveAndCreate(null, () => Path.Combine(dataRoot, DefaultSkillsFolderName)),
+            [PathKind.GlobalSkills] = ResolveAndCreate(null, () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".agent", DefaultSkillsFolderName))
         };
     }
 
     public string GetPath(PathKind kind, string? subpath = null, bool ensureExists = false)
     {
+        if (kind == PathKind.AgentSkills)
+        {
+            var workspaceDirectory = GetPath(PathKind.Workspace, subpath, true);
+            var targetPath = Path.Combine(workspaceDirectory, DefaultSkillsFolderName);
+            if (ensureExists) targetPath = Directory.CreateDirectory(targetPath).FullName;
+            return targetPath;
+        }
         if (!_roots.TryGetValue(kind, out var path)) throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown path kind.");
         if (!string.IsNullOrWhiteSpace(subpath)) path = Path.Combine(path, subpath);
         if (ensureExists) path = Directory.CreateDirectory(path).FullName;

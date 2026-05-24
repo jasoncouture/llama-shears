@@ -17,4 +17,21 @@ public enum PathKind
     Templates,
     /// <summary>The directory holding per-agent persisted conversation logs (the "context" store).</summary>
     Context,
+    /// <summary>
+    /// The shared, user-profile-level skill root (e.g. <c>~/.agent/skills</c>).
+    /// Skills installed here are visible to every host instance run by the user.
+    /// </summary>
+    GlobalSkills,
+    /// <summary>
+    /// The host-scoped skill root that lives under the framework data directory
+    /// (<see cref="Data"/>). Skills installed here are shared by every agent of
+    /// this host but isolated from other hosts on the machine.
+    /// </summary>
+    AppSkills,
+    /// <summary>
+    /// The per-agent skill root located inside the agent's workspace
+    /// (<see cref="Workspace"/>/<c>&lt;subpath&gt;</c>/<c>skills</c>). Skills installed here are
+    /// only visible to the agent whose workspace contains them.
+    /// </summary>
+    AgentSkills
 }
