@@ -276,6 +276,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(section);
+        services.TryAddSingleton<IToolFilter, NoOpToolFilter>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
         services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();

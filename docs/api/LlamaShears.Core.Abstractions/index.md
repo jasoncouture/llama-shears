@@ -241,6 +241,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IModelThoughtResponse](LlamaShears/Core/Abstractions/Provider/IModelThoughtResponse.md)
 - [IModelToolCallFragment](LlamaShears/Core/Abstractions/Provider/IModelToolCallFragment.md)
 - [IProviderFactory](LlamaShears/Core/Abstractions/Provider/IProviderFactory.md)
+- [IToolFilter](LlamaShears/Core/Abstractions/Provider/IToolFilter.md)
 - [InferenceOutcome](LlamaShears/Core/Abstractions/Provider/InferenceOutcome.md)
 - [LanguageModelExtensions](LlamaShears/Core/Abstractions/Provider/LanguageModelExtensions.md)
 - [ModelConfiguration](LlamaShears/Core/Abstractions/Provider/ModelConfiguration.md)

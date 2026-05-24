@@ -7,13 +7,16 @@ namespace LlamaShears.Core.Tools.ModelContextProtocol;
 public sealed partial class ModelContextProtocolToolDiscovery : IModelContextProtocolToolDiscovery
 {
     private readonly IModelContextProtocolClient _client;
+    private readonly IToolFilter _filter;
     private readonly ILogger<ModelContextProtocolToolDiscovery> _logger;
 
     public ModelContextProtocolToolDiscovery(
         IModelContextProtocolClient client,
+        IToolFilter filter,
         ILogger<ModelContextProtocolToolDiscovery> logger)
     {
         _client = client;
+        _filter = filter;
         _logger = logger;
     }
 
@@ -23,14 +26,36 @@ public sealed partial class ModelContextProtocolToolDiscovery : IModelContextPro
     {
         ArgumentNullException.ThrowIfNull(serverNames);
 
+        if (!_filter.AreToolsAllowed())
+        {
+            return [];
+        }
+
         var builder = ImmutableArray.CreateBuilder<ToolGroup>();
         foreach (var name in serverNames)
         {
-            var group = await DiscoverServerAsync(name, cancellationToken);
-            if (group is not null)
+            if (!_filter.IsSourceAllowed(name))
             {
-                builder.Add(group);
+                continue;
             }
+
+            var group = await DiscoverServerAsync(name, cancellationToken);
+            if (group is null)
+            {
+                continue;
+            }
+
+            var allowed = group.Tools
+                .Where(t => _filter.IsToolAllowed(name, t.Name))
+                .ToImmutableArray();
+            if (allowed.Length == 0)
+            {
+                continue;
+            }
+
+            builder.Add(allowed.Length == group.Tools.Length
+                ? group
+                : group with { Tools = allowed });
         }
         return builder.ToImmutable();
     }
