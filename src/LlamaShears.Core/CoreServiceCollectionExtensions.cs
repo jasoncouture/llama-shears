@@ -61,6 +61,7 @@ public static class CoreServiceCollectionExtensions
         services.AddPromptProviders();
         services.AddContextStore();
         services.AddDataContext();
+        services.AddSkills();
         services.AddInference();
         services.AddTodo();
         services.AddCompaction();
@@ -190,6 +191,15 @@ public static class CoreServiceCollectionExtensions
         services.AddScopedDataProvider<TodoListDataProvider>();
         services.AddScopedDataProvider<WallClockDataProvider>();
         services.AddScopedDataProvider<WorkspaceContextDataProvider>();
+        return services;
+    }
+
+    private static IServiceCollection AddSkills(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ISkillParser, SkillParser>();
+        services.TryAddSingleton<ISkillFilter, NoOpSkillFilter>();
+        services.TryAddSingleton<ISkillRepository, SkillRepository>();
+        services.AddScopedDataProvider<SkillDataProvider>();
         return services;
     }
 
