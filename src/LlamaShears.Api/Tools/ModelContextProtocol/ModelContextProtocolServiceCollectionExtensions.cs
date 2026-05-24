@@ -2,12 +2,15 @@ using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
 using LlamaShears.Api.Tools.ModelContextProtocol.Shell;
+using LlamaShears.Api.Tools.ModelContextProtocol.Skills;
 using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Paths;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace LlamaShears.Api.Tools.ModelContextProtocol;
 
@@ -40,6 +43,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
 
         services.AddMcpServer()
             .WithHttpTransport()
+            //.WithListToolsHandler(OnListTools)
             .WithTools<ReadFileTool>()
             .WithTools<ListFilesTool>()
             .WithTools<WriteFileTool>()
@@ -57,8 +61,15 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<EditCronTool>()
             .WithTools<TriggerCronTool>()
             .WithTools<TodoTools>()
-            .WithTools<ShellTools>();
+            .WithTools<ShellTools>()
+            .WithTools<SkillTools>();
 
         return services;
     }
+
+    // TODO: Don't show certian tools in certian contexts
+    // IE: Skill tool should not show when skills are not enabled
+    // private static ValueTask<ListToolsResult> OnListTools(RequestContext<ListToolsRequestParams> request, CancellationToken cancellationToken)
+    // {
+    // }
 }

@@ -61,6 +61,7 @@ public static class CoreServiceCollectionExtensions
         services.AddPromptProviders();
         services.AddContextStore();
         services.AddDataContext();
+        services.AddSkills();
         services.AddInference();
         services.AddTodo();
         services.AddCompaction();
@@ -193,6 +194,15 @@ public static class CoreServiceCollectionExtensions
         return services;
     }
 
+    private static IServiceCollection AddSkills(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ISkillParser, SkillParser>();
+        services.TryAddSingleton<ISkillFilter, AgentBehaviorSkillFilter>();
+        services.TryAddSingleton<ISkillRepository, SkillRepository>();
+        services.AddScopedDataProvider<SkillDataProvider>();
+        return services;
+    }
+
     private static IServiceCollection AddInference(this IServiceCollection services)
     {
         services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
@@ -266,6 +276,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(section);
+        services.TryAddSingleton<IToolFilter, AgentBehaviorToolFilter>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
         services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();

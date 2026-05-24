@@ -217,13 +217,21 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.PromptContext
 
+- [AgentSkills](LlamaShears/Core/Abstractions/PromptContext/AgentSkills.md)
 - [IPromptContextProvider](LlamaShears/Core/Abstractions/PromptContext/IPromptContextProvider.md)
+- [ISkillFilter](LlamaShears/Core/Abstractions/PromptContext/ISkillFilter.md)
+- [ISkillParser](LlamaShears/Core/Abstractions/PromptContext/ISkillParser.md)
+- [ISkillRepository](LlamaShears/Core/Abstractions/PromptContext/ISkillRepository.md)
 - [PromptContextMemory](LlamaShears/Core/Abstractions/PromptContext/PromptContextMemory.md)
+- [SkillRecord](LlamaShears/Core/Abstractions/PromptContext/SkillRecord.md)
 
 ## LlamaShears.Core.Abstractions.Provider
 
+- [AgentBehaviorOptions](LlamaShears/Core/Abstractions/Provider/AgentBehaviorOptions.md)
 - [AgentProviderOptions](LlamaShears/Core/Abstractions/Provider/AgentProviderOptions.md)
 - [EmbeddingModelConfigurationExtensions](LlamaShears/Core/Abstractions/Provider/EmbeddingModelConfigurationExtensions.md)
+- [FilterOptions](LlamaShears/Core/Abstractions/Provider/FilterOptions.md)
+- [FilterPolicy](LlamaShears/Core/Abstractions/Provider/FilterPolicy.md)
 - [IContextEntry](LlamaShears/Core/Abstractions/Provider/IContextEntry.md)
 - [IEmbeddingModel](LlamaShears/Core/Abstractions/Provider/IEmbeddingModel.md)
 - [IEmbeddingProviderFactory](LlamaShears/Core/Abstractions/Provider/IEmbeddingProviderFactory.md)
@@ -236,6 +244,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IModelThoughtResponse](LlamaShears/Core/Abstractions/Provider/IModelThoughtResponse.md)
 - [IModelToolCallFragment](LlamaShears/Core/Abstractions/Provider/IModelToolCallFragment.md)
 - [IProviderFactory](LlamaShears/Core/Abstractions/Provider/IProviderFactory.md)
+- [IToolFilter](LlamaShears/Core/Abstractions/Provider/IToolFilter.md)
 - [InferenceOutcome](LlamaShears/Core/Abstractions/Provider/InferenceOutcome.md)
 - [LanguageModelExtensions](LlamaShears/Core/Abstractions/Provider/LanguageModelExtensions.md)
 - [ModelConfiguration](LlamaShears/Core/Abstractions/Provider/ModelConfiguration.md)

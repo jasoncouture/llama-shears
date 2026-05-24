@@ -17,6 +17,7 @@ turn sees one consistent configuration end-to-end.
 - `PromptContext` — Name of the per-turn prompt-context template; `null` uses `PROMPT`.
 - `Embedding` — Embedding model selection used for memory search; `null` disables memory features.
 - `ModelContextProtocolServers` — Set of MCP server names this agent is allowed to call; `null` grants no MCP access.
+- `Security` — Per-agent skill/tool/source filter policies; `null` leaves every subsystem at its default (all-pass) behavior.
 
 ## Fields
 
@@ -58,6 +59,10 @@ Set of MCP server names this agent is allowed to call; `null` grants no MCP acce
 
 Name of the per-turn prompt-context template; `null` uses `PROMPT`.
 
+### `Security`
+
+Per-agent skill/tool/source filter policies; `null` leaves every subsystem at its default (all-pass) behavior.
+
 ### `SystemPrompt`
 
 File name (including extension) of the system-prompt template to render, e.g. `DEFAULT.md`; `null` uses `DEFAULT.md`.
@@ -72,7 +77,7 @@ Absolute or workspace-relative path to the agent's workspace overlay; `null` fal
 
 ## Methods
 
-### `AgentConfig`([ModelConfiguration](../Provider/ModelConfiguration.md) Model, string Id, string Hash, string WorkspacePath, string SystemPrompt, string PromptContext, [ModelConfiguration](../Provider/ModelConfiguration.md) Embedding, ImmutableHashSet<string> ModelContextProtocolServers)
+### `AgentConfig`([ModelConfiguration](../Provider/ModelConfiguration.md) Model, string Id, string Hash, string WorkspacePath, string SystemPrompt, string PromptContext, [ModelConfiguration](../Provider/ModelConfiguration.md) Embedding, ImmutableHashSet<string> ModelContextProtocolServers, [AgentBehaviorOptions](../Provider/AgentBehaviorOptions.md) Security)
 
 Immutable on-disk configuration snapshot for one agent. Loaded from
 `<Data>/agents/<id>.json` by [IAgentConfigProvider](IAgentConfigProvider.md)
@@ -89,6 +94,7 @@ turn sees one consistent configuration end-to-end.
 - `PromptContext` — Name of the per-turn prompt-context template; `null` uses `PROMPT`.
 - `Embedding` — Embedding model selection used for memory search; `null` disables memory features.
 - `ModelContextProtocolServers` — Set of MCP server names this agent is allowed to call; `null` grants no MCP access.
+- `Security` — Per-agent skill/tool/source filter policies; `null` leaves every subsystem at its default (all-pass) behavior.
 
 ### `GetData`
 
