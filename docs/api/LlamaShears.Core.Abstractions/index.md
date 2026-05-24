@@ -217,8 +217,13 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.PromptContext
 
+- [AgentSkills](LlamaShears/Core/Abstractions/PromptContext/AgentSkills.md)
 - [IPromptContextProvider](LlamaShears/Core/Abstractions/PromptContext/IPromptContextProvider.md)
+- [ISkillFilter](LlamaShears/Core/Abstractions/PromptContext/ISkillFilter.md)
+- [ISkillParser](LlamaShears/Core/Abstractions/PromptContext/ISkillParser.md)
+- [ISkillRepository](LlamaShears/Core/Abstractions/PromptContext/ISkillRepository.md)
 - [PromptContextMemory](LlamaShears/Core/Abstractions/PromptContext/PromptContextMemory.md)
+- [SkillRecord](LlamaShears/Core/Abstractions/PromptContext/SkillRecord.md)
 
 ## LlamaShears.Core.Abstractions.Provider
 
