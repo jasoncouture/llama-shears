@@ -26,7 +26,7 @@ public sealed partial class ListFilesTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "file_list")]
+    [McpServerTool(Name = "file_list", Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Lists files and directories under the given path on the host filesystem. Returns a JSON object with the resolved path, the recursion flag, an array of entries (each carries name, isDirectory, and sizeBytes for files), the entry count, a truncation flag, and the cap applied. Entries are ordered: directories first, then files, both alphabetically.")]
     public async Task<FileListResult> ListFiles(
         [Description("Path to list. Relative paths resolve against the agent's workspace; absolute paths are honored as-is. Empty (default) lists the agent's workspace root.")] string path = "",

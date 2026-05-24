@@ -17,7 +17,7 @@ public sealed class CancelCronTool
         _scheduler = scheduler;
     }
 
-    [McpServerTool(Name = "cron_cancel")]
+    [McpServerTool(Name = "cron_cancel", Idempotent = true, OpenWorld = false)]
     [Description("Cancels a cron job belonging to the calling agent. Returns a JSON object with the parsed jobId and a cancelled flag. Refuses jobs owned by other agents, unknown ids, or unparseable id strings.")]
     public async Task<CronCancelResult> CancelCron(
         [Description("Cron job id (GUID, format-D).")] string id,

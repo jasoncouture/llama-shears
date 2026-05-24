@@ -20,7 +20,7 @@ public sealed partial class EditCronTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "cron_edit")]
+    [McpServerTool(Name = "cron_edit", Idempotent = true, OpenWorld = false)]
     [Description("Edits a cron job belonging to the calling agent. Any unspecified field is left unchanged. Mutating the cron expression revalidates and recomputes the next fire time. Returns a JSON object with the parsed jobId, an edited flag, and the updated job summary on success.")]
     public async Task<CronEditResult> EditCron(
         [Description("Cron job id (GUID, format-D).")] string id,

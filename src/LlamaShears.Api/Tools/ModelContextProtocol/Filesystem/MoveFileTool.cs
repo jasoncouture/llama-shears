@@ -25,7 +25,7 @@ public sealed partial class MoveFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "file_move")]
+    [McpServerTool(Name = "file_move", OpenWorld = false)]
     [Description("Moves a file from source to target inside the agent's workspace. Returns a JSON object with source, target, moved flag, and overwritten flag. Source needs read+write permissions; target needs write. By default refuses if the target already exists; pass force=true to overwrite. Refused if source is missing or either path is in the protected 'system/' subfolder or matches the workspace file-protection policy. Parent directories are created if missing. On failure the error field is populated and moved=false.")]
     public async Task<FileMoveResult> MoveFile(
         [Description("Source path. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string source,

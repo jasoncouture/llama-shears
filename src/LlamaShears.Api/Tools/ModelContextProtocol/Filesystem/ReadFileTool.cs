@@ -26,7 +26,7 @@ public sealed partial class ReadFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "file_read")]
+    [McpServerTool(Name = "file_read", Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Reads a file from the host filesystem starting at startLine. Returns a JSON object with the line range read, the content, the file's createdAt/modifiedAt timestamps (local time), and an endOfFile flag. A single call is capped by the shared response budget; when endOfFile is false, re-call with startLine = endLine + 1 to continue. On failure, the error field is populated and content is empty.")]
     public async Task<FileReadResult> ReadFile(
         [Description("Path to read. Relative paths are resolved against the agent's workspace; absolute paths are honored as-is, anywhere on disk the host can reach.")] string path,

@@ -20,7 +20,7 @@ public sealed partial class StoreMemoryTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "memory_store")]
+    [McpServerTool(Name = "memory_store", Destructive = false, OpenWorld = false)]
     [Description("Stores a memory file in the agent's workspace under memory/YYYY-MM-DD/<unix-seconds>.md. Returns a JSON object with the stored flag and the workspace-relative path of the new memory file. The file is the source of truth and is also embedded into the agent's vector index so memory_search can find it. Indexing failures do not fail the write — the next memory_index will catch up. Convention: lead the file with a single-line summary (typically a markdown H1 like '# Short title — what this memory says'). When this memory matches a future turn, only that first line is auto-injected into context; the full body is fetched on demand via file_read. A weak first line means a weak summary, so the rest of the memory may never get loaded.")]
     public async Task<MemoryStoreResult> StoreMemory(
         [Description("Memory content (markdown). Stored verbatim. The first line is surfaced as the memory's summary in injected context — make it a meaningful one-line description.")] string content,
