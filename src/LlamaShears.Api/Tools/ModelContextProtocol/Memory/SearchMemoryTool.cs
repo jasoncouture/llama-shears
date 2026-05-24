@@ -25,7 +25,7 @@ public sealed partial class SearchMemoryTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "memory_search")]
+    [McpServerTool(Name = "memory_search", Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Vector-searches the agent's memory index and returns the top matching memories as a JSON object: echoes the query/minScore/limit, plus a hitCount and an array of hits (workspace-relative path, cosine similarity score, first-line summary). Read full bodies on demand with file_read. The hits array is empty when nothing crosses minScore.")]
     public async Task<MemorySearchResultPayload> SearchMemory(
         [Description("Free-text query. Embedded with the agent's configured embedding model and compared by cosine similarity.")] string query,

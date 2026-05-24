@@ -10,9 +10,14 @@ model), and its parameter schema.
 - `Name` — Tool name; combined with the owning [ToolGroup](ToolGroup.md).`Source` to dispatch a call.
 - `Description` — Human-readable description shown to the model so it knows when to invoke the tool.
 - `Parameters` — Parsed parameter list in declaration order; lossy projection of `Schema` kept for caller-side introspection (required-ness, top-level type names).
+- `Annotations` — Behavior hints (destructive / idempotent / open-world / read-only) propagated from the source's MCP tool annotations. Lets host code and confirmation gates reason about side effects without re-deriving them.
 - `Schema` — Raw JSON Schema for the tool's parameters as the source advertised it. Providers should forward this verbatim instead of rebuilding from `Parameters`, since rebuilding drops fields strict validators (Gemini, structured-output) require. JsonValueKind.`Undefined` means the source advertised no schema.
 
 ## Properties
+
+### `Annotations`
+
+Behavior hints (destructive / idempotent / open-world / read-only) propagated from the source's MCP tool annotations. Lets host code and confirmation gates reason about side effects without re-deriving them.
 
 ### `Description`
 
@@ -32,7 +37,7 @@ Raw JSON Schema for the tool's parameters as the source advertised it. Providers
 
 ## Methods
 
-### `ToolDescriptor`(string Name, string Description, ImmutableArray<[ToolParameter](ToolParameter.md)> Parameters, JsonElement Schema)
+### `ToolDescriptor`(string Name, string Description, ImmutableArray<[ToolParameter](ToolParameter.md)> Parameters, [ToolDescriptorAnnotations](ToolDescriptorAnnotations.md) Annotations, JsonElement Schema)
 
 Describes one callable tool: its name, what it does (for the
 model), and its parameter schema.
@@ -42,5 +47,6 @@ model), and its parameter schema.
 - `Name` — Tool name; combined with the owning [ToolGroup](ToolGroup.md).`Source` to dispatch a call.
 - `Description` — Human-readable description shown to the model so it knows when to invoke the tool.
 - `Parameters` — Parsed parameter list in declaration order; lossy projection of `Schema` kept for caller-side introspection (required-ness, top-level type names).
+- `Annotations` — Behavior hints (destructive / idempotent / open-world / read-only) propagated from the source's MCP tool annotations. Lets host code and confirmation gates reason about side effects without re-deriving them.
 - `Schema` — Raw JSON Schema for the tool's parameters as the source advertised it. Providers should forward this verbatim instead of rebuilding from `Parameters`, since rebuilding drops fields strict validators (Gemini, structured-output) require. JsonValueKind.`Undefined` means the source advertised no schema.
 

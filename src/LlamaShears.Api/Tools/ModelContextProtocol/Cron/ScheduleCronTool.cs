@@ -20,7 +20,7 @@ public sealed partial class ScheduleCronTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "cron_schedule")]
+    [McpServerTool(Name = "cron_schedule", Destructive = false, OpenWorld = false)]
     [Description("Schedules a recurring future input for the current agent. The expression is a 5-field cron string (minute hour day-of-month month day-of-week) evaluated in UTC. Today the executor is a stub that logs the would-have-been input rather than actually delivering it; the schedule, expression, and prompt are still persisted across restarts so they materialize once the executor graduates from stub to real fire. Returns a JSON object with the scheduled flag and the new job's summary.")]
     public async Task<CronScheduleResult> ScheduleCron(
         [Description("Human-readable handle for this job. Used in list output and log messages.")] string name,

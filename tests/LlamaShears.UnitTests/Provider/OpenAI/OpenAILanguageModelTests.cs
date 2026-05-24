@@ -53,8 +53,8 @@ public sealed class OpenAiLanguageModelTests
         var captured = await CaptureRequestAsync(
             options: new PromptOptions(Tools:
             [
-                new ToolGroup("github", [new ToolDescriptor("create_issue", "", [])]),
-                new ToolGroup("linear", [new ToolDescriptor("search", "", [])]),
+                new ToolGroup("github", [new ToolDescriptor("create_issue", "", [], new ToolDescriptorAnnotations("create_issue"))]),
+                new ToolGroup("linear", [new ToolDescriptor("search", "", [], new ToolDescriptorAnnotations("search"))]),
             ]),
             sseBody: "data: [DONE]\n\n");
 

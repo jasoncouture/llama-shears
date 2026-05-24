@@ -17,7 +17,7 @@ public sealed class TriggerCronTool
         _scheduler = scheduler;
     }
 
-    [McpServerTool(Name = "cron_trigger")]
+    [McpServerTool(Name = "cron_trigger", OpenWorld = false)]
     [Description("Forces an immediate fire of one of the calling agent's cron jobs (the same stub-fire path the executor takes on a scheduled tick). Returns a JSON object with the parsed jobId and a fired flag. Updates the job's last-fired-at and recomputes the next fire from the wall clock at trigger time.")]
     public async Task<CronTriggerResult> TriggerCron(
         [Description("Cron job id (GUID, format-D).")] string id,

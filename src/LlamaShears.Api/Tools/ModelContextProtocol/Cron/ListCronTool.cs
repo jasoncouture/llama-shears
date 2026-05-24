@@ -18,7 +18,7 @@ public sealed class ListCronTool
         _scheduler = scheduler;
     }
 
-    [McpServerTool(Name = "cron_list")]
+    [McpServerTool(Name = "cron_list", Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Returns the calling agent's cron jobs as a JSON object: jobCount plus an array of jobs (id, name, cronExpression, prompt, enabled, lastFiredAt, nextFireAt). Other agents' jobs are not visible.")]
     public async Task<CronListResult> ListCron(CancellationToken cancellationToken = default)
     {

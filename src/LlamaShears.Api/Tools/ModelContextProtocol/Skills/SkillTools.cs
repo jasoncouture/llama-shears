@@ -22,7 +22,7 @@ public sealed class SkillTools
         _parser = parser;
     }
 
-    [McpServerTool(Name = "skill_get")]
+    [McpServerTool(Name = "skill_get", Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Returns the full record for a single skill by name: declared name, description, absolute path to the SKILL.md file, the markdown body with frontmatter stripped, plus any extra frontmatter fields and the optional metadata block. The catalog of available skills (name + description only) is already injected into the per-turn prompt context — call this only when the agent has chosen a skill and needs its body / resource directory. Returns an error string when skills are disabled or the name does not resolve.")]
     public GetSkillResponse GetSkill(
         [Description("Declared name of the skill to load (case-insensitive). Must match an entry in the per-turn skill catalog.")]
@@ -40,7 +40,7 @@ public sealed class SkillTools
         return skill;
     }
 
-    [McpServerTool(Name = "skill_test")]
+    [McpServerTool(Name = "skill_test", Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Loads a SKILL.md file from disk and runs it through the skill parser without registering it. Use after writing a new skill (see the create-skill skill) to confirm the frontmatter validates: name 1-64 chars / lowercase alphanumeric + hyphens / matches parent directory, description 1-1024 chars, metadata if present is an object. The file must be named exactly 'SKILL.md' — any other filename is rejected up front. On success returns the parsed SkillRecord (name, description, absolute path, body, extra frontmatter, metadata). On failure returns an error message describing what is wrong. Relative paths resolve against the agent's workspace; absolute paths are honored as-is.")]
     public async Task<SkillTestResponse> TestSkill(
         [Description("Path to a SKILL.md file. Relative paths resolve against the agent's workspace; absolute paths are used as-is. The basename must be exactly 'SKILL.md'.")]

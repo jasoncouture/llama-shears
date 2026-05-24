@@ -261,6 +261,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [ToolCall](LlamaShears/Core/Abstractions/Provider/ToolCall.md)
 - [ToolCallResult](LlamaShears/Core/Abstractions/Provider/ToolCallResult.md)
 - [ToolDescriptor](LlamaShears/Core/Abstractions/Provider/ToolDescriptor.md)
+- [ToolDescriptorAnnotations](LlamaShears/Core/Abstractions/Provider/ToolDescriptorAnnotations.md)
 - [ToolGroup](LlamaShears/Core/Abstractions/Provider/ToolGroup.md)
 - [ToolParameter](LlamaShears/Core/Abstractions/Provider/ToolParameter.md)
 

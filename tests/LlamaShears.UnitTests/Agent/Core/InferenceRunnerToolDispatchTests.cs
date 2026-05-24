@@ -105,7 +105,7 @@ public sealed class InferenceRunnerToolDispatchTests
     }
 
     private static ImmutableArray<ToolGroup> BuildToolsAdvertisement() =>
-        [new ToolGroup("llamashears", [new ToolDescriptor("file_read", "Read a file.", [])])];
+        [new ToolGroup("llamashears", [new ToolDescriptor("file_read", "Read a file.", [], new ToolDescriptorAnnotations("file_read"))])];
 
     private static ServiceProvider BuildServices()
     {

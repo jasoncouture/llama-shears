@@ -36,6 +36,7 @@
 - [ToolCall](ToolCall.md) — One tool the model is asking the host to invoke. The host pairs [ToolCall](ToolCall.md).`Source` + [ToolCall](ToolCall.md).`Name` against the registered tool catalog to find the right handler.
 - [ToolCallResult](ToolCallResult.md) — Output of dispatching a single [ToolCall](ToolCall.md) back to the model.
 - [ToolDescriptor](ToolDescriptor.md) — Describes one callable tool: its name, what it does (for the model), and its parameter schema.
+- [ToolDescriptorAnnotations](ToolDescriptorAnnotations.md) — Behavior hints attached to a [ToolDescriptor](ToolDescriptor.md). Mirrors the optional MCP `ToolAnnotations` block (`destructiveHint` / `idempotentHint` / `openWorldHint` / `readOnlyHint`) so host code, UI surfaces, and confirmation gates can reason about a tool's side-effect profile without re-deriving it from the schema. Values default to the MCP-spec defaults so an absent annotation block degrades to the conservative interpretation.
 - [ToolGroup](ToolGroup.md) — A bundle of [ToolDescriptor](ToolDescriptor.md)s sharing a single [ToolGroup](ToolGroup.md).`Source` (e.g. an MCP server slug). Used as the prompt-time grouping; the framework dispatches tool calls by pairing [ToolGroup](ToolGroup.md).`Source` with the model-supplied tool name.
 - [ToolParameter](ToolParameter.md) — One parameter in a [ToolDescriptor](ToolDescriptor.md)'s schema.
 

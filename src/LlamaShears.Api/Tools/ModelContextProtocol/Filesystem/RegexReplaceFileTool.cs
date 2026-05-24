@@ -30,7 +30,7 @@ public sealed partial class RegexReplaceFileTool
         _logger = logger;
     }
 
-    [McpServerTool(Name = "file_regex_replace")]
+    [McpServerTool(Name = "file_regex_replace", OpenWorld = false)]
     [Description("Edits a file in place by applying a .NET regex replacement. Returns a JSON object with the path, an edited flag, and replacement count. edited is true only when at least one match was replaced and the file was rewritten; a zero-match call returns edited=false with no error. Files in the protected 'system/' subfolder or matching the workspace file-protection policy cannot be edited. Hard-capped to files <= 4 MiB.")]
     public async Task<FileRegexReplaceResult> RegexReplaceFile(
         [Description("Path to edit. Relative paths resolve against the agent's workspace; absolute paths must still resolve inside the workspace.")] string path,
