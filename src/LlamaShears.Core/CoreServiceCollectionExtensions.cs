@@ -197,7 +197,7 @@ public static class CoreServiceCollectionExtensions
     private static IServiceCollection AddSkills(this IServiceCollection services)
     {
         services.TryAddSingleton<ISkillParser, SkillParser>();
-        services.TryAddSingleton<ISkillFilter, NoOpSkillFilter>();
+        services.TryAddSingleton<ISkillFilter, AgentBehaviorSkillFilter>();
         services.TryAddSingleton<ISkillRepository, SkillRepository>();
         services.AddScopedDataProvider<SkillDataProvider>();
         return services;
@@ -276,7 +276,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.AddOptions<ModelContextProtocolOptions>()
             .BindConfiguration(section);
-        services.TryAddSingleton<IToolFilter, NoOpToolFilter>();
+        services.TryAddSingleton<IToolFilter, AgentBehaviorToolFilter>();
         services.TryAddSingleton<IModelContextProtocolToolDiscovery, ModelContextProtocolToolDiscovery>();
         services.TryAddSingleton<IModelContextProtocolServerRegistry, ModelContextProtocolServerRegistry>();
         services.TryAddSingleton<IToolCallDispatcher, ModelContextProtocolToolCallDispatcher>();
