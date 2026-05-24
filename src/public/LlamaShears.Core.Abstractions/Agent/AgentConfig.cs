@@ -19,6 +19,7 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// <param name="PromptContext">Name of the per-turn prompt-context template; <see langword="null"/> uses <c>PROMPT</c>.</param>
 /// <param name="Embedding">Embedding model selection used for memory search; <see langword="null"/> disables memory features.</param>
 /// <param name="ModelContextProtocolServers">Set of MCP server names this agent is allowed to call; <see langword="null"/> grants no MCP access.</param>
+/// <param name="Security">Per-agent skill/tool/source filter policies; <see langword="null"/> leaves every subsystem at its default (all-pass) behavior.</param>
 public sealed record AgentConfig(
     [property: JsonRequired] ModelConfiguration Model,
     [property: JsonIgnore] string Id = "",
@@ -27,7 +28,8 @@ public sealed record AgentConfig(
     string? SystemPrompt = null,
     string? PromptContext = null,
     ModelConfiguration? Embedding = null,
-    [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null) : IAgentData
+    [property: JsonPropertyName("mcpServers")] ImmutableHashSet<string>? ModelContextProtocolServers = null,
+    AgentBehaviorOptions? Security = null) : IAgentData
 {
     /// <summary>How often the host injects a heartbeat turn into an idle agent. Defaults to 30 minutes.</summary>
     public TimeSpan HeartbeatPeriod { get; init; } = TimeSpan.FromMinutes(30);

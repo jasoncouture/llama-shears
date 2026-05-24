@@ -227,8 +227,11 @@ The package is organised into namespaces by concern; each namespace was previous
 
 ## LlamaShears.Core.Abstractions.Provider
 
+- [AgentBehaviorOptions](LlamaShears/Core/Abstractions/Provider/AgentBehaviorOptions.md)
 - [AgentProviderOptions](LlamaShears/Core/Abstractions/Provider/AgentProviderOptions.md)
 - [EmbeddingModelConfigurationExtensions](LlamaShears/Core/Abstractions/Provider/EmbeddingModelConfigurationExtensions.md)
+- [FilterOptions](LlamaShears/Core/Abstractions/Provider/FilterOptions.md)
+- [FilterPolicy](LlamaShears/Core/Abstractions/Provider/FilterPolicy.md)
 - [IContextEntry](LlamaShears/Core/Abstractions/Provider/IContextEntry.md)
 - [IEmbeddingModel](LlamaShears/Core/Abstractions/Provider/IEmbeddingModel.md)
 - [IEmbeddingProviderFactory](LlamaShears/Core/Abstractions/Provider/IEmbeddingProviderFactory.md)
