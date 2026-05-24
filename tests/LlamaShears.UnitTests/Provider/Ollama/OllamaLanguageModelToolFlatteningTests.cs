@@ -20,8 +20,8 @@ public sealed class OllamaLanguageModelToolFlatteningTests
         var capturedRequest = await CaptureChatRequestAsync(new PromptOptions(
             Tools:
             [
-                new ToolGroup("github", [new ToolDescriptor("create_issue", "", [])]),
-                new ToolGroup("linear", [new ToolDescriptor("search", "", [])]),
+                new ToolGroup("github", [new ToolDescriptor("create_issue", "", [], new ToolDescriptorAnnotations("create_issue"))]),
+                new ToolGroup("linear", [new ToolDescriptor("search", "", [], new ToolDescriptorAnnotations("search"))]),
             ]));
 
         var names = capturedRequest.Tools!
@@ -64,7 +64,8 @@ public sealed class OllamaLanguageModelToolFlatteningTests
                         [
                             new ToolParameter("query", "what to look up", "string", Required: true),
                             new ToolParameter("limit", "max results", "integer", Required: false),
-                        ]),
+                        ],
+                        new ToolDescriptorAnnotations("do_thing")),
                 ]),
             ]));
 

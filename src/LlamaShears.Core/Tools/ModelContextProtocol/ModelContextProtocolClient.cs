@@ -111,7 +111,25 @@ public sealed class ModelContextProtocolClient : IModelContextProtocolClient
             tool.Name,
             tool.Description ?? string.Empty,
             ParseSchema(schema),
+            MapAnnotations(tool),
             schema);
+    }
+
+    private static ToolDescriptorAnnotations MapAnnotations(McpClientTool tool)
+    {
+        var annotations = tool.ProtocolTool.Annotations;
+        var title = annotations?.Title ?? tool.Title ?? tool.Name;
+        var destructive = annotations?.DestructiveHint ?? true;
+        var idempotent = annotations?.IdempotentHint ?? false;
+        var openWorld = annotations?.OpenWorldHint ?? true;
+        var readOnly = annotations?.ReadOnlyHint ?? false;
+        return new ToolDescriptorAnnotations(
+            title,
+            destructive,
+            idempotent,
+            openWorld,
+            readOnly);
+
     }
 
     private static ImmutableArray<ToolParameter> ParseSchema(JsonElement schema)
