@@ -163,6 +163,33 @@ public sealed class AgentHeartbeatServiceTests
             Paths.GetPath(PathKind.Workspace, Arg.Any<string>(), Arg.Any<bool>())
                 .Returns("/workspace/agent-a/HEARTBEAT.md");
 
+            PromptedAgentSpawner = Substitute.For<IPromptedAgentSpawner>();
+            PromptedAgentSpawner.CreateAsync(Arg.Any<PromptedAgentStartInformation>(), Arg.Any<CancellationToken>())
+                .Returns(call => SpawnAsync((PromptedAgentStartInformation)call[0]!, (CancellationToken)call[1]!));
+
+            async ValueTask<AgentHandle> SpawnAsync(PromptedAgentStartInformation info, CancellationToken ct)
+            {
+                var handle = await TransientAgentFactory.CreateTransientAgent(
+                    info.Config,
+                    info.Id.Name,
+                    info.InitialPrompt with { ChannelId = $"subagent:{info.Id.Name}" },
+                    info.ContextData ?? [],
+                    ct);
+                var childContext = await ContextStore.OpenAsync(handle.SessionPath.Current, ct);
+                foreach (var turn in info.Turns ?? [])
+                {
+                    await childContext.AppendAsync(turn, ct);
+                }
+                if (info.AutoStart)
+                {
+                    await EventBus.PublishAsync(
+                        Event.WellKnown.Command.AgentStart with { Id = handle.SessionPath.Current },
+                        new AgentStartRequest(handle),
+                        ct);
+                }
+                return handle;
+            }
+
             Service = new AgentHeartbeatService(
                 scope,
                 NullLogger<AgentHeartbeatService>.Instance,
@@ -171,7 +198,10 @@ public sealed class AgentHeartbeatServiceTests
                 TimeProvider,
                 EventBus,
                 FileParserCache,
-                Paths);
+                Paths,
+                PromptedAgentSpawner);
         }
+
+        public IPromptedAgentSpawner PromptedAgentSpawner { get; }
     }
 }
