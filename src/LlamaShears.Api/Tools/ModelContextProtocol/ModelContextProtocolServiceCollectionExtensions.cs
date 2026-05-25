@@ -1,6 +1,7 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
+using LlamaShears.Api.Tools.ModelContextProtocol.Session;
 using LlamaShears.Api.Tools.ModelContextProtocol.Shell;
 using LlamaShears.Api.Tools.ModelContextProtocol.Skills;
 using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
@@ -33,36 +34,22 @@ public static class ModelContextProtocolServiceCollectionExtensions
                 options.Rules.Add(new ProtectedFile("**/.git", ProtectionMode.Delete, FileType.Directory, "nested git metadata"));
                 options.Rules.Add(new ProtectedFile("**/.git/**", ProtectionMode.Delete, FileType.Any, "nested git metadata"));
                 options.Rules.Add(new ProtectedFile("IDENTITY.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
-                options.Rules.Add(new ProtectedFile("AGENTS.md", ProtectionMode.Delete | ProtectionMode.Write, FileType.File, "agent root markdown"));
+                options.Rules.Add(new ProtectedFile("AGENTS.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
                 options.Rules.Add(new ProtectedFile("USER.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
                 options.Rules.Add(new ProtectedFile("SOUL.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
-                options.Rules.Add(new ProtectedFile("TOOLS.md", ProtectionMode.Delete, FileType.File, "agent root markdown"));
                 options.Rules.Add(new ProtectedFile(".gitignore", ProtectionMode.Delete | ProtectionMode.Write, FileType.File, "workspace .gitignore"));
-                options.Rules.Add(new ProtectedFile("TODO.md", ProtectionMode.Read | ProtectionMode.Write | ProtectionMode.Delete, FileType.File, "host-owned TODO list"));
             });
 
         services.AddMcpServer()
             .WithHttpTransport()
             //.WithListToolsHandler(OnListTools)
-            .WithTools<ReadFileTool>()
-            .WithTools<ListFilesTool>()
-            .WithTools<WriteFileTool>()
-            .WithTools<AppendFileTool>()
-            .WithTools<DeleteFileTool>()
-            .WithTools<MoveFileTool>()
-            .WithTools<RegexReplaceFileTool>()
-            .WithTools<GrepTool>()
-            .WithTools<StoreMemoryTool>()
-            .WithTools<SearchMemoryTool>()
-            .WithTools<IndexMemoryTool>()
-            .WithTools<ScheduleCronTool>()
-            .WithTools<ListCronTool>()
-            .WithTools<CancelCronTool>()
-            .WithTools<EditCronTool>()
-            .WithTools<TriggerCronTool>()
+            .WithTools<FileTools>()
+            .WithTools<MemoryTools>()
+            .WithTools<CronTools>()
             .WithTools<TodoTools>()
             .WithTools<ShellTools>()
-            .WithTools<SkillTools>();
+            .WithTools<SkillTools>()
+            .WithTools<SessionTools>();
 
         return services;
     }

@@ -15,7 +15,7 @@ public sealed class JsonCronStoreTests
         using var fixture = new TempRoot();
         var store = NewStore(fixture);
 
-        var jobs = await store.GetAllAsync();
+        var jobs = await store.GetAllAsync("agent-a");
 
         await Assert.That(jobs).IsEmpty();
     }
@@ -30,7 +30,7 @@ public sealed class JsonCronStoreTests
         await first.UpsertAsync(job);
 
         var second = NewStore(fixture);
-        var roundTripped = await second.GetAsync(job.Id);
+        var roundTripped = await second.GetAsync("agent-a", job.Id);
 
         await Assert.That(roundTripped).IsNotNull();
         await Assert.That(roundTripped!.Name).IsEqualTo("nightly");
@@ -49,7 +49,7 @@ public sealed class JsonCronStoreTests
         await store.UpsertAsync(job);
         await store.UpsertAsync(job with { Name = "v2", Prompt = "second" });
 
-        var all = await store.GetAllAsync();
+        var all = await store.GetAllAsync("agent-a");
         await Assert.That(all).HasSingleItem();
         await Assert.That(all[0].Name).IsEqualTo("v2");
         await Assert.That(all[0].Prompt).IsEqualTo("second");
@@ -64,22 +64,64 @@ public sealed class JsonCronStoreTests
         var job = NewJob("agent-a", "n", "0 0 * * *", "p");
         await store.UpsertAsync(job);
 
-        await Assert.That(await store.RemoveAsync(job.Id)).IsTrue();
-        await Assert.That(await store.RemoveAsync(job.Id)).IsFalse();
-        await Assert.That(await store.GetAsync(job.Id)).IsNull();
+        await Assert.That(await store.RemoveAsync("agent-a", job.Id)).IsTrue();
+        await Assert.That(await store.RemoveAsync("agent-a", job.Id)).IsFalse();
+        await Assert.That(await store.GetAsync("agent-a", job.Id)).IsNull();
+    }
+
+    [Test]
+    public async Task GetReturnsNullForOtherAgentsJob()
+    {
+        using var fixture = new TempRoot();
+        var store = NewStore(fixture);
+
+        var job = NewJob("agent-a", "n", "0 0 * * *", "p");
+        await store.UpsertAsync(job);
+
+        await Assert.That(await store.GetAsync("agent-b", job.Id)).IsNull();
+    }
+
+    [Test]
+    public async Task RemoveReturnsFalseForOtherAgentsJob()
+    {
+        using var fixture = new TempRoot();
+        var store = NewStore(fixture);
+
+        var job = NewJob("agent-a", "n", "0 0 * * *", "p");
+        await store.UpsertAsync(job);
+
+        await Assert.That(await store.RemoveAsync("agent-b", job.Id)).IsFalse();
+        await Assert.That(await store.GetAsync("agent-a", job.Id)).IsNotNull();
+    }
+
+    [Test]
+    public async Task GetAllOnlySeesCallingAgentsJobs()
+    {
+        using var fixture = new TempRoot();
+        var store = NewStore(fixture);
+
+        await store.UpsertAsync(NewJob("agent-a", "a1", "0 0 * * *", "p"));
+        await store.UpsertAsync(NewJob("agent-a", "a2", "0 1 * * *", "p"));
+        await store.UpsertAsync(NewJob("agent-b", "b1", "0 2 * * *", "p"));
+
+        var aJobs = await store.GetAllAsync("agent-a");
+        var bJobs = await store.GetAllAsync("agent-b");
+
+        await Assert.That(aJobs.Count).IsEqualTo(2);
+        await Assert.That(bJobs.Count).IsEqualTo(1);
     }
 
     [Test]
     public async Task LoadHandlesGarbageJsonByStartingEmpty()
     {
         using var fixture = new TempRoot();
-        var dataRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
-            .GetPath(PathKind.Data, ensureExists: true);
-        await File.WriteAllTextAsync(Path.Combine(dataRoot, "cron.json"), "{ this is not json");
+        var cronRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
+            .GetPath(PathKind.Data, "cron", ensureExists: true);
+        await File.WriteAllTextAsync(Path.Combine(cronRoot, "agent-a.json"), "{ this is not json");
 
         var store = NewStore(fixture);
 
-        var jobs = await store.GetAllAsync();
+        var jobs = await store.GetAllAsync("agent-a");
         await Assert.That(jobs).IsEmpty();
     }
 
@@ -87,21 +129,40 @@ public sealed class JsonCronStoreTests
     public async Task LoadDedupesDuplicateIdsLastWriteWins()
     {
         using var fixture = new TempRoot();
-        var dataRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
-            .GetPath(PathKind.Data, ensureExists: true);
+        var cronRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
+            .GetPath(PathKind.Data, "cron", ensureExists: true);
         var sharedId = Guid.NewGuid();
         var earlier = NewJob("agent-a", "earlier", "0 0 * * *", "earlier-prompt") with { Id = sharedId };
         var later = NewJob("agent-a", "later", "0 1 * * *", "later-prompt") with { Id = sharedId };
         await File.WriteAllTextAsync(
-            Path.Combine(dataRoot, "cron.json"),
+            Path.Combine(cronRoot, "agent-a.json"),
             JsonSerializer.Serialize(new[] { earlier, later }));
 
         var store = NewStore(fixture);
 
-        var jobs = await store.GetAllAsync();
+        var jobs = await store.GetAllAsync("agent-a");
         await Assert.That(jobs).HasSingleItem();
         await Assert.That(jobs[0].Name).IsEqualTo("later");
         await Assert.That(jobs[0].Prompt).IsEqualTo("later-prompt");
+    }
+
+    [Test]
+    public async Task LoadSkipsJobsWhoseAgentIdDoesNotMatchTheFile()
+    {
+        using var fixture = new TempRoot();
+        var cronRoot = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }))
+            .GetPath(PathKind.Data, "cron", ensureExists: true);
+        var ownJob = NewJob("agent-a", "own", "0 0 * * *", "p");
+        var foreignJob = NewJob("agent-b", "foreign", "0 1 * * *", "p");
+        await File.WriteAllTextAsync(
+            Path.Combine(cronRoot, "agent-a.json"),
+            JsonSerializer.Serialize(new[] { ownJob, foreignJob }));
+
+        var store = NewStore(fixture);
+
+        var jobs = await store.GetAllAsync("agent-a");
+        await Assert.That(jobs).HasSingleItem();
+        await Assert.That(jobs[0].Name).IsEqualTo("own");
     }
 
     private static ICronStore NewStore(TempRoot fixture)

@@ -4,14 +4,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LlamaShears.UnitTests.Api.Tools.ModelContextProtocol.Filesystem;
 
-public sealed class RegexReplaceFileToolTests
+public sealed partial class FileToolsTests
 {
     [Test]
     public async Task ReplacesMatchesAndReportsCount()
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "foo bar foo");
-        var tool = new RegexReplaceFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<RegexReplaceFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.RegexReplaceFile(
             "a.txt",
@@ -33,7 +33,7 @@ public sealed class RegexReplaceFileToolTests
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "foo foo foo");
-        var tool = new RegexReplaceFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<RegexReplaceFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.RegexReplaceFile(
             "a.txt",
@@ -55,7 +55,7 @@ public sealed class RegexReplaceFileToolTests
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "hello");
-        var tool = new RegexReplaceFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<RegexReplaceFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.RegexReplaceFile(
             "a.txt",
@@ -78,7 +78,7 @@ public sealed class RegexReplaceFileToolTests
         using var temp = TempWorkspace.Create();
         Directory.CreateDirectory(temp.PathOf("system"));
         await File.WriteAllTextAsync(temp.PathOf("system", "x.md"), "foo");
-        var tool = new RegexReplaceFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<RegexReplaceFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.RegexReplaceFile(
             "system/x.md",

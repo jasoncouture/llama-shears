@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using LlamaShears.Core;
 
 namespace LlamaShears.Core.Cron;
 
@@ -11,8 +12,8 @@ public static class CronServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ICronStore, JsonCronStore>();
-        services.TryAddSingleton<ICronScheduler, CronScheduler>();
-        services.TryAddActivatedSingleton<CronExecutor>();
+        services.TryAddScoped<ICronScheduler, CronScheduler>();
+        services.AddAgentService<AgentCronService>();
 
         return services;
     }

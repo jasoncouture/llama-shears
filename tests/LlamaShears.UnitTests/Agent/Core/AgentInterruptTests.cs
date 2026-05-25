@@ -137,7 +137,7 @@ public sealed class AgentInterruptTests
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             iterationRunner: iterationRunner,
             agentServices: []);
-        _ = agent.RunAsync();
+        await AgentStartHelper.StartAndWaitAsync(services.GetRequiredService<IEventBus>(), session, agent);
         return agent;
     }
 

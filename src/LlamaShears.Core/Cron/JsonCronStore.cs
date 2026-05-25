@@ -7,7 +7,7 @@ namespace LlamaShears.Core.Cron;
 
 public sealed partial class JsonCronStore : ICronStore
 {
-    private const string FileName = "cron.json";
+    private const string CronFolderName = "cron";
 
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
@@ -18,7 +18,7 @@ public sealed partial class JsonCronStore : ICronStore
     private readonly IApplicationPathProvider _paths;
     private readonly ILogger<JsonCronStore> _logger;
     private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
-    private Dictionary<Guid, CronJob>? _cache;
+    private readonly Dictionary<string, Dictionary<Guid, CronJob>> _cache = new(StringComparer.Ordinal);
 
     public JsonCronStore(IApplicationPathProvider paths, ILogger<JsonCronStore> logger)
     {
@@ -26,17 +26,19 @@ public sealed partial class JsonCronStore : ICronStore
         _logger = logger;
     }
 
-    private string FilePath => Path.Combine(
-        _paths.GetPath(PathKind.Data, ensureExists: true),
-        FileName);
+    private string CronRoot => _paths.GetPath(PathKind.Data, CronFolderName, ensureExists: true);
 
-    public async ValueTask<IReadOnlyList<CronJob>> GetAllAsync(CancellationToken cancellationToken = default)
+    private string FilePathFor(string agentId) => Path.Combine(CronRoot, agentId + ".json");
+
+    public async ValueTask<IReadOnlyList<CronJob>> GetAllAsync(string agentId, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken);
-            return [.. _cache!.Values];
+            var bucket = await EnsureAgentLoadedAsync(agentId, cancellationToken);
+            return [.. bucket.Values];
         }
         finally
         {
@@ -44,13 +46,15 @@ public sealed partial class JsonCronStore : ICronStore
         }
     }
 
-    public async ValueTask<CronJob?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+    public async ValueTask<CronJob?> GetAsync(string agentId, Guid id, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken);
-            return _cache!.GetValueOrDefault(id);
+            var bucket = await EnsureAgentLoadedAsync(agentId, cancellationToken);
+            return bucket.GetValueOrDefault(id);
         }
         finally
         {
@@ -61,13 +65,14 @@ public sealed partial class JsonCronStore : ICronStore
     public async ValueTask UpsertAsync(CronJob job, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(job);
+        ArgumentException.ThrowIfNullOrWhiteSpace(job.AgentId);
 
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken);
-            _cache![job.Id] = job;
-            await PersistAsync(cancellationToken);
+            var bucket = await EnsureAgentLoadedAsync(job.AgentId, cancellationToken);
+            bucket[job.Id] = job;
+            await PersistAsync(job.AgentId, bucket, cancellationToken);
         }
         finally
         {
@@ -75,17 +80,19 @@ public sealed partial class JsonCronStore : ICronStore
         }
     }
 
-    public async ValueTask<bool> RemoveAsync(Guid id, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> RemoveAsync(string agentId, Guid id, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            await EnsureLoadedAsync(cancellationToken);
-            if (!_cache!.Remove(id))
+            var bucket = await EnsureAgentLoadedAsync(agentId, cancellationToken);
+            if (!bucket.Remove(id))
             {
                 return false;
             }
-            await PersistAsync(cancellationToken);
+            await PersistAsync(agentId, bucket, cancellationToken);
             return true;
         }
         finally
@@ -94,53 +101,66 @@ public sealed partial class JsonCronStore : ICronStore
         }
     }
 
-    private async Task EnsureLoadedAsync(CancellationToken cancellationToken)
+    private async Task<Dictionary<Guid, CronJob>> EnsureAgentLoadedAsync(string agentId, CancellationToken cancellationToken)
     {
-        if (_cache is not null)
+        if (_cache.TryGetValue(agentId, out var existing))
         {
-            return;
+            return existing;
         }
 
-        var path = FilePath;
-        if (!File.Exists(path))
+        var bucket = new Dictionary<Guid, CronJob>();
+        var path = FilePathFor(agentId);
+        if (File.Exists(path))
         {
-            _cache = [];
-            return;
-        }
-
-        try
-        {
-            await using var stream = File.OpenRead(path);
-            var loaded = await JsonSerializer
-                .DeserializeAsync<List<CronJob>>(stream, _jsonOptions, cancellationToken)
-                .ConfigureAwait(false) ?? [];
-            _cache = [];
-            foreach (var job in loaded)
+            try
             {
-                if (_cache.ContainsKey(job.Id))
+                await using var stream = File.OpenRead(path);
+                var loaded = await JsonSerializer
+                    .DeserializeAsync<List<CronJob>>(stream, _jsonOptions, cancellationToken)
+                    .ConfigureAwait(false) ?? [];
+                foreach (var job in loaded)
                 {
-                    LogDuplicateJobId(path, job.Id);
+                    if (!string.Equals(job.AgentId, agentId, StringComparison.Ordinal))
+                    {
+                        LogAgentIdMismatch(path, job.Id, job.AgentId, agentId);
+                        continue;
+                    }
+                    if (bucket.ContainsKey(job.Id))
+                    {
+                        LogDuplicateJobId(path, job.Id);
+                    }
+                    bucket[job.Id] = job;
                 }
-                _cache[job.Id] = job;
+                LogLoaded(path, bucket.Count);
             }
-            LogLoaded(path, _cache.Count);
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                LogLoadFailed(path, ex.Message, ex);
+                bucket.Clear();
+            }
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
-        {
-            LogLoadFailed(path, ex.Message, ex);
-            _cache = [];
-        }
+
+        _cache[agentId] = bucket;
+        return bucket;
     }
 
-    private async Task PersistAsync(CancellationToken cancellationToken)
+    private async Task PersistAsync(string agentId, Dictionary<Guid, CronJob> bucket, CancellationToken cancellationToken)
     {
-        var path = FilePath;
+        var path = FilePathFor(agentId);
+        if (bucket.Count == 0)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+            return;
+        }
+
         var temp = path + ".tmp";
         await using (var stream = File.Create(temp))
         {
             await JsonSerializer
-                .SerializeAsync(stream, _cache!.Values.OrderBy(j => j.CreatedAt).ToList(), _jsonOptions, cancellationToken)
-                ;
+                .SerializeAsync(stream, bucket.Values.OrderBy(j => j.CreatedAt).ToList(), _jsonOptions, cancellationToken);
         }
         File.Move(temp, path, overwrite: true);
     }
@@ -153,4 +173,7 @@ public sealed partial class JsonCronStore : ICronStore
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron store '{Path}' contains duplicate job id '{JobId}'; keeping the last occurrence.")]
     private partial void LogDuplicateJobId(string path, Guid jobId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cron store '{Path}' contains job '{JobId}' with AgentId '{StoredAgentId}' but the file is owned by '{ExpectedAgentId}'; skipping.")]
+    private partial void LogAgentIdMismatch(string path, Guid jobId, string storedAgentId, string expectedAgentId);
 }

@@ -4,4 +4,5 @@ public sealed record CronJobEdit(
     string? Name = null,
     string? CronExpression = null,
     string? Prompt = null,
-    bool? Enabled = null);
+    bool? Enabled = null,
+    bool? OneShot = null);
