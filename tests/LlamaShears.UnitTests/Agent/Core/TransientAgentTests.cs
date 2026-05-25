@@ -156,13 +156,13 @@ public sealed class TransientAgentTests
     }
 
     [Test]
-    public async Task MessageSendToolSuppressesAutoForward()
+    public async Task SessionSendToolSuppressesAutoForward()
     {
         Setup();
         var assistant = new ModelTurn(ModelRole.Assistant, "would be auto-sent", _now);
         var toolTurn = new ModelTurn(ModelRole.Tool, "ok", _now)
         {
-            ToolCall = new ToolCall(ToolCall.InternalToolSource, "message_send", "{}", CallId: "1"),
+            ToolCall = new ToolCall(ToolCall.InternalToolSource, "session_send", "{}", CallId: "1"),
         };
 
         await _agent.HandleAsync(Envelope(assistant), CancellationToken.None);
@@ -183,7 +183,7 @@ public sealed class TransientAgentTests
         var assistant = new ModelTurn(ModelRole.Assistant, "answer", _now);
         var toolTurn = new ModelTurn(ModelRole.Tool, "boom", _now)
         {
-            ToolCall = new ToolCall(ToolCall.InternalToolSource, "message_send", "{}", CallId: "1"),
+            ToolCall = new ToolCall(ToolCall.InternalToolSource, "session_send", "{}", CallId: "1"),
             IsError = true,
         };
 
@@ -205,7 +205,7 @@ public sealed class TransientAgentTests
         var assistant = new ModelTurn(ModelRole.Assistant, "answer", _now);
         var toolTurn = new ModelTurn(ModelRole.Tool, "ok", _now)
         {
-            ToolCall = new ToolCall("other_mcp", "message_send", "{}", CallId: "1"),
+            ToolCall = new ToolCall("other_mcp", "session_send", "{}", CallId: "1"),
         };
 
         await _agent.HandleAsync(Envelope(assistant), CancellationToken.None);
