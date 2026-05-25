@@ -10,6 +10,8 @@ public sealed record CronJob(
 {
     public bool Enabled { get; init; } = true;
 
+    public bool OneShot { get; init; }
+
     public DateTimeOffset? LastFiredAt { get; init; }
 
     public DateTimeOffset? NextFireAt { get; init; }

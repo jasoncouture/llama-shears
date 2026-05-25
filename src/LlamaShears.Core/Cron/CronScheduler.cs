@@ -37,6 +37,7 @@ public sealed partial class CronScheduler : ICronScheduler
         string name,
         string cronExpression,
         string prompt,
+        bool oneShot = false,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -57,6 +58,7 @@ public sealed partial class CronScheduler : ICronScheduler
             CreatedAt: now)
         {
             NextFireAt = nextFireAt,
+            OneShot = oneShot,
         };
 
         await _store.UpsertAsync(job, cancellationToken);
@@ -113,6 +115,7 @@ public sealed partial class CronScheduler : ICronScheduler
         var newName = edit.Name ?? existing.Name;
         var newPrompt = edit.Prompt ?? existing.Prompt;
         var newEnabled = edit.Enabled ?? existing.Enabled;
+        var newOneShot = edit.OneShot ?? existing.OneShot;
         var newExpression = edit.CronExpression ?? existing.CronExpression;
 
         var nextFireAt = existing.NextFireAt;
@@ -128,6 +131,7 @@ public sealed partial class CronScheduler : ICronScheduler
             CronExpression = newExpression,
             Prompt = newPrompt,
             Enabled = newEnabled,
+            OneShot = newOneShot,
             NextFireAt = nextFireAt,
         };
 
@@ -203,7 +207,12 @@ public sealed partial class CronScheduler : ICronScheduler
         {
             LastFiredAt = firedAt,
             NextFireAt = nextFireAt,
+            Enabled = job.Enabled && !job.OneShot,
         };
+        if (job.OneShot)
+        {
+            LogOneShotDisabled(job.Id, job.AgentId, job.Name);
+        }
         await _store.UpsertAsync(updated, cancellationToken);
     }
 
@@ -233,6 +242,9 @@ public sealed partial class CronScheduler : ICronScheduler
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Cron job '{JobId}' '{Name}' fired for agent '{AgentId}' (manual={Manual}); transient sub-agent launched.")]
     private partial void LogFired(Guid jobId, string agentId, bool manual, string name);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Cron job '{JobId}' '{Name}' for agent '{AgentId}' was one-shot; auto-disabled after fire.")]
+    private partial void LogOneShotDisabled(Guid jobId, string agentId, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron job '{JobId}' for agent '{AgentId}' failed to fire on this tick; remaining jobs continue.")]
     private partial void LogFireFailed(Guid jobId, string agentId, Exception ex);

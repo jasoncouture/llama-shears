@@ -21,11 +21,12 @@ public sealed partial class ScheduleCronTool
     }
 
     [McpServerTool(Name = "cron_schedule", Destructive = false, OpenWorld = false)]
-    [Description("Schedules a recurring future input for the current agent. The expression is a 5-field cron string (minute hour day-of-month month day-of-week) evaluated in UTC. Today the executor is a stub that logs the would-have-been input rather than actually delivering it; the schedule, expression, and prompt are still persisted across restarts so they materialize once the executor graduates from stub to real fire. Returns a JSON object with the scheduled flag and the new job's summary.")]
+    [Description("Schedules a recurring task for a transient cron sub-agent of yours. When the job fires, a fresh sub-agent spawns and reads `prompt` as an instruction FROM YOU TO IT — exactly the way the user gives instructions to you. The cron expression is 5-field (minute hour day-of-month month day-of-week) evaluated in UTC. Returns a JSON object with the scheduled flag and the new job's summary.")]
     public async Task<CronScheduleResult> ScheduleCron(
         [Description("Human-readable handle for this job. Used in list output and log messages.")] string name,
         [Description("Cron expression in 5-field form (e.g. '0 9 * * 1-5' for 09:00 UTC weekdays).")] string cronExpression,
-        [Description("Prompt text that will be delivered as the agent's input when the job fires.")] string prompt,
+        [Description("Instructions you (the scheduling agent) are giving to the future cron sub-agent. Write it as a directive, not as the literal output you want produced. Example: when the user says \"have it say hello in chat every minute\", the prompt is \"Send the message 'hello' to the user's chat channel via the message_send tool.\" — NOT just \"hello\". The sub-agent will read this string as its initial user-role turn and must figure out what tools to call to satisfy it.")] string prompt,
+        [Description("When true, the job auto-disables itself after its first successful fire (one-shot). Defaults to false.")] bool oneShot = false,
         CancellationToken cancellationToken = default)
     {
         var workspace = await _workspace.GetAsync(cancellationToken);
@@ -36,7 +37,7 @@ public sealed partial class ScheduleCronTool
 
         try
         {
-            var job = await _scheduler.ScheduleAsync(name, cronExpression, prompt, cancellationToken);
+            var job = await _scheduler.ScheduleAsync(name, cronExpression, prompt, oneShot, cancellationToken);
             return new CronScheduleResult(
                 Scheduled: true,
                 Job: new CronJobSummary(

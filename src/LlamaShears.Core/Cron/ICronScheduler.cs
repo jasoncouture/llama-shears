@@ -10,12 +10,15 @@ public interface ICronScheduler
 {
     /// <summary>
     /// Creates a new job for the current agent. Throws when
-    /// <paramref name="cronExpression"/> is unparseable.
+    /// <paramref name="cronExpression"/> is unparseable. When
+    /// <paramref name="oneShot"/> is <see langword="true"/>, the job auto-disables
+    /// itself after its first successful fire.
     /// </summary>
     ValueTask<CronJob> ScheduleAsync(
         string name,
         string cronExpression,
         string prompt,
+        bool oneShot = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>Returns every job owned by the current agent.</summary>

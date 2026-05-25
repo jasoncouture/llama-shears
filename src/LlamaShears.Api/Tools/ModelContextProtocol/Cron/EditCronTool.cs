@@ -26,7 +26,7 @@ public sealed partial class EditCronTool
         [Description("Cron job id (GUID, format-D).")] string id,
         [Description("New human-readable name. Leave null to keep current.")] string? name = null,
         [Description("New 5-field cron expression. Leave null to keep current.")] string? cronExpression = null,
-        [Description("New prompt text. Leave null to keep current.")] string? prompt = null,
+        [Description("New instruction text the future cron sub-agent will execute. Write it as a directive FROM YOU TO THE SUB-AGENT — describe what action to take and which tools to use, not the literal output you want. Example: \"Send 'hello' to the user's chat via message_send\" — NOT just \"hello\". Leave null to keep current.")] string? prompt = null,
         [Description("New enabled flag. Leave null to keep current.")] bool? enabled = null,
         CancellationToken cancellationToken = default)
     {
