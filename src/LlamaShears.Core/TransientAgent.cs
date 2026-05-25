@@ -107,7 +107,7 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
         {
             if (turn.IsError) return;
             if (turn.ToolCall?.Source != ToolCall.InternalToolSource) return;
-            if (turn.ToolCall?.Name != "message_send") return;
+            if (turn.ToolCall?.Name != "session_send") return;
             _messageToolCalled = true;
         }
     }
