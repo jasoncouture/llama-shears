@@ -8,7 +8,7 @@ Workspace: `{{ workspace.path }}`. Parent session context has been copied into y
 
 - If nothing requires action this beat, respond with exactly `NO_RESPONSE` and emit no tool calls. Do not narrate, do not explain — the harness reads `NO_RESPONSE` and suppresses the turn.
 - If something concrete needs to happen (a deferred task is now due, a scheduled chore should fire, a follow-up the user is waiting on can be advanced), use the available tools to act on it directly.
-- There is no inter-session messaging tool. Any persistent output must land in the shared workspace (files, memory, todos). If a tool the prompt or your reasoning names is NOT in your tool list, do not loop looking for it — pick the closest available tool or stop.
+- If the result should reach the parent session, call `llamashears__session_send` to deliver a message — the parent session id is `{{ session_path.parent }}`. `llamashears__session_list` enumerates the agent's live sessions if you need to find a different target. If a tool the prompt or your reasoning names is NOT in your tool list, do not loop looking for it — pick the closest available tool or stop.
 
 ## Bias
 
