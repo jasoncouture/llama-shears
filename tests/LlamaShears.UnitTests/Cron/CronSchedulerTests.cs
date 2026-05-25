@@ -1,6 +1,11 @@
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Paths;
+using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Cron;
 using LlamaShears.Core.Paths;
+using LlamaShears.UnitTests.Agent.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -14,9 +19,9 @@ public sealed class CronSchedulerTests
     {
         using var fixture = new TempRoot();
         var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
-        var scheduler = NewScheduler(fixture, time);
+        var scheduler = NewScheduler(fixture, "agent-a", time);
 
-        var job = await scheduler.ScheduleAsync("agent-a", "hourly-ish", "0 11 * * *", "wake up");
+        var job = await scheduler.ScheduleAsync("hourly-ish", "0 11 * * *", "wake up");
 
         await Assert.That(job.NextFireAt).IsEqualTo(new DateTimeOffset(2026, 5, 7, 11, 0, 0, TimeSpan.Zero));
         await Assert.That(job.AgentId).IsEqualTo("agent-a");
@@ -28,24 +33,25 @@ public sealed class CronSchedulerTests
     public async Task ScheduleRejectsUnparseableExpression()
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
+        var scheduler = NewScheduler(fixture, "agent-a");
 
-        await Assert.That(async () => await scheduler.ScheduleAsync("agent-a", "bad", "this is not cron", "p"))
+        await Assert.That(async () => await scheduler.ScheduleAsync("bad", "this is not cron", "p"))
             .Throws<ArgumentException>();
     }
 
     [Test]
-    public async Task ListIsAgentScoped()
+    public async Task ListReturnsOnlyTheCallingAgentsJobs()
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
+        var schedulerA = NewScheduler(fixture, "agent-a");
+        var schedulerB = NewScheduler(fixture, "agent-b");
 
-        await scheduler.ScheduleAsync("agent-a", "a1", "0 0 * * *", "p");
-        await scheduler.ScheduleAsync("agent-a", "a2", "0 1 * * *", "p");
-        await scheduler.ScheduleAsync("agent-b", "b1", "0 2 * * *", "p");
+        await schedulerA.ScheduleAsync("a1", "0 0 * * *", "p");
+        await schedulerA.ScheduleAsync("a2", "0 1 * * *", "p");
+        await schedulerB.ScheduleAsync("b1", "0 2 * * *", "p");
 
-        var aJobs = await scheduler.ListByAgentAsync("agent-a");
-        var bJobs = await scheduler.ListByAgentAsync("agent-b");
+        var aJobs = await schedulerA.ListAsync();
+        var bJobs = await schedulerB.ListAsync();
 
         await Assert.That(aJobs.Count).IsEqualTo(2);
         await Assert.That(bJobs.Count).IsEqualTo(1);
@@ -56,13 +62,14 @@ public sealed class CronSchedulerTests
     public async Task CancelRefusesOtherAgentsJob()
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
+        var schedulerA = NewScheduler(fixture, "agent-a");
+        var schedulerB = NewScheduler(fixture, "agent-b");
 
-        var bJob = await scheduler.ScheduleAsync("agent-b", "b1", "0 0 * * *", "p");
+        var bJob = await schedulerB.ScheduleAsync("b1", "0 0 * * *", "p");
 
-        await Assert.That(await scheduler.CancelAsync("agent-a", bJob.Id)).IsFalse();
+        await Assert.That(await schedulerA.CancelAsync(bJob.Id)).IsFalse();
 
-        var bAfter = await scheduler.ListByAgentAsync("agent-b");
+        var bAfter = await schedulerB.ListAsync();
         await Assert.That(bAfter).HasSingleItem();
     }
 
@@ -70,10 +77,10 @@ public sealed class CronSchedulerTests
     public async Task EditPatchesOnlyProvidedFields()
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
+        var scheduler = NewScheduler(fixture, "agent-a");
 
-        var job = await scheduler.ScheduleAsync("agent-a", "name1", "0 0 * * *", "prompt1");
-        var edited = await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(Name: "name2"));
+        var job = await scheduler.ScheduleAsync("name1", "0 0 * * *", "prompt1");
+        var edited = await scheduler.EditAsync(job.Id, new CronJobEdit(Name: "name2"));
 
         await Assert.That(edited).IsNotNull();
         await Assert.That(edited!.Name).IsEqualTo("name2");
@@ -87,10 +94,10 @@ public sealed class CronSchedulerTests
     public async Task EditRejectsBlankName(string blank)
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
-        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 0 * * *", "p");
+        var scheduler = NewScheduler(fixture, "agent-a");
+        var job = await scheduler.ScheduleAsync("n", "0 0 * * *", "p");
 
-        await Assert.That(async () => await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(Name: blank)))
+        await Assert.That(async () => await scheduler.EditAsync(job.Id, new CronJobEdit(Name: blank)))
             .Throws<ArgumentException>();
     }
 
@@ -98,10 +105,10 @@ public sealed class CronSchedulerTests
     public async Task EditRejectsBlankPrompt()
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
-        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 0 * * *", "p");
+        var scheduler = NewScheduler(fixture, "agent-a");
+        var job = await scheduler.ScheduleAsync("n", "0 0 * * *", "p");
 
-        await Assert.That(async () => await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(Prompt: "   ")))
+        await Assert.That(async () => await scheduler.EditAsync(job.Id, new CronJobEdit(Prompt: "   ")))
             .Throws<ArgumentException>();
     }
 
@@ -109,10 +116,10 @@ public sealed class CronSchedulerTests
     public async Task EditRejectsBlankCronExpression()
     {
         using var fixture = new TempRoot();
-        var scheduler = NewScheduler(fixture);
-        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 0 * * *", "p");
+        var scheduler = NewScheduler(fixture, "agent-a");
+        var job = await scheduler.ScheduleAsync("n", "0 0 * * *", "p");
 
-        await Assert.That(async () => await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(CronExpression: "  ")))
+        await Assert.That(async () => await scheduler.EditAsync(job.Id, new CronJobEdit(CronExpression: "  ")))
             .Throws<ArgumentException>();
     }
 
@@ -121,10 +128,10 @@ public sealed class CronSchedulerTests
     {
         using var fixture = new TempRoot();
         var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
-        var scheduler = NewScheduler(fixture, time);
+        var scheduler = NewScheduler(fixture, "agent-a", time);
 
-        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 11 * * *", "p");
-        var edited = await scheduler.EditAsync("agent-a", job.Id, new CronJobEdit(CronExpression: "0 12 * * *"));
+        var job = await scheduler.ScheduleAsync("n", "0 11 * * *", "p");
+        var edited = await scheduler.EditAsync(job.Id, new CronJobEdit(CronExpression: "0 12 * * *"));
 
         await Assert.That(edited!.NextFireAt).IsEqualTo(new DateTimeOffset(2026, 5, 7, 12, 0, 0, TimeSpan.Zero));
     }
@@ -134,13 +141,13 @@ public sealed class CronSchedulerTests
     {
         using var fixture = new TempRoot();
         var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
-        var scheduler = NewScheduler(fixture, time);
+        var scheduler = NewScheduler(fixture, "agent-a", time);
 
-        var job = await scheduler.ScheduleAsync("agent-a", "n", "0 11 * * *", "p");
+        var job = await scheduler.ScheduleAsync("n", "0 11 * * *", "p");
 
-        await Assert.That(await scheduler.TriggerAsync("agent-a", job.Id)).IsTrue();
+        await Assert.That(await scheduler.TriggerAsync(job.Id)).IsTrue();
 
-        var listed = await scheduler.ListByAgentAsync("agent-a");
+        var listed = await scheduler.ListAsync();
         await Assert.That(listed[0].LastFiredAt).IsEqualTo(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
         await Assert.That(listed[0].NextFireAt).IsEqualTo(new DateTimeOffset(2026, 5, 7, 11, 0, 0, TimeSpan.Zero));
     }
@@ -150,18 +157,18 @@ public sealed class CronSchedulerTests
     {
         using var fixture = new TempRoot();
         var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
-        var scheduler = NewScheduler(fixture, time);
+        var scheduler = NewScheduler(fixture, "agent-a", time);
 
-        var due = await scheduler.ScheduleAsync("agent-a", "due", "*/5 * * * *", "p");
-        var notYet = await scheduler.ScheduleAsync("agent-a", "later", "0 23 * * *", "p");
-        var disabled = await scheduler.ScheduleAsync("agent-a", "off", "*/5 * * * *", "p");
-        await scheduler.EditAsync("agent-a", disabled.Id, new CronJobEdit(Enabled: false));
+        var due = await scheduler.ScheduleAsync("due", "*/5 * * * *", "p");
+        var notYet = await scheduler.ScheduleAsync("later", "0 23 * * *", "p");
+        var disabled = await scheduler.ScheduleAsync("off", "*/5 * * * *", "p");
+        await scheduler.EditAsync(disabled.Id, new CronJobEdit(Enabled: false));
 
         time.Advance(TimeSpan.FromMinutes(15));
         var fireAt = time.GetUtcNow();
         await scheduler.FireDueAsync(fireAt);
 
-        var listed = (await scheduler.ListByAgentAsync("agent-a")).ToDictionary(j => j.Id);
+        var listed = (await scheduler.ListAsync()).ToDictionary(j => j.Id);
 
         await Assert.That(listed[due.Id].LastFiredAt).IsEqualTo(fireAt);
         await Assert.That(listed[notYet.Id].LastFiredAt).IsNull();
@@ -170,12 +177,17 @@ public sealed class CronSchedulerTests
 
     private static FakeTimeProvider NewTime(DateTimeOffset start) => new FakeTimeProvider(start);
 
-    private static ICronScheduler NewScheduler(TempRoot fixture, FakeTimeProvider? time = null)
+    private static ICronScheduler NewScheduler(TempRoot fixture, string agentId, FakeTimeProvider? time = null)
     {
         IApplicationPathProvider paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
         ICronStore store = new JsonCronStore(paths, NullLogger<JsonCronStore>.Instance);
-        return new CronScheduler(store, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
+        IDataContextScope scope = new FakeDataContextScope(new SessionId(agentId, SessionId.DefaultSessionName));
+        scope.SetItem(AgentConfig.DataKey, NewAgentConfig(agentId));
+        return new CronScheduler(store, scope, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
     }
+
+    private static AgentConfig NewAgentConfig(string agentId) =>
+        new AgentConfig(Model: new ModelConfiguration(new CompositeIdentity("test", "model")), Id: agentId);
 
     private sealed class TempRoot : IDisposable
     {
