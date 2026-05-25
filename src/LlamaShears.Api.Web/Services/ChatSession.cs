@@ -25,6 +25,7 @@ public sealed class ChatSession :
     private readonly List<ChatBubble> _bubbles = [];
     private readonly Dictionary<(Guid CorrelationId, ChatBubbleKind Kind), ChatBubble> _streamingBubbles = [];
     private readonly Dictionary<Guid, ChatBubble> _inFlightToolBubbles = [];
+    private readonly HashSet<string> _renderedResultCallIds = new(StringComparer.Ordinal);
     private readonly Lock _gate = new Lock();
     private IDisposable? _subscriptions;
     private SessionId? _selectedSession;
@@ -163,6 +164,7 @@ public sealed class ChatSession :
             _bubbles.Clear();
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
+            _renderedResultCallIds.Clear();
             _isCompacting = false;
             _subscriptions?.Dispose();
             _subscriptions = null;
@@ -171,10 +173,17 @@ public sealed class ChatSession :
                 foreach (var turn in history)
                 {
                     var bubble = HistoryBubbleFromTurn(turn);
-                    if (bubble is not null)
+                    if (bubble is null)
                     {
-                        _bubbles.Add(bubble);
+                        continue;
                     }
+                    if (bubble.Kind == ChatBubbleKind.ToolResult
+                        && bubble.CompletedCall?.CallId is { Length: > 0 } callId
+                        && !_renderedResultCallIds.Add(callId))
+                    {
+                        continue;
+                    }
+                    _bubbles.Add(bubble);
                 }
 
                 _subscriptions = DisposableList.Create()
@@ -412,6 +421,17 @@ public sealed class ChatSession :
                 return;
             }
 
+            if (!_renderedResultCallIds.Add(fragment.CallId))
+            {
+                var inFlight = _inFlightToolBubbles.GetValueOrDefault(correlationId);
+                if (inFlight is not null && inFlight.RemoveInFlight(fragment.CallId) && inFlight.InFlightCount == 0)
+                {
+                    _bubbles.Remove(inFlight);
+                    _inFlightToolBubbles.Remove(correlationId);
+                }
+                return;
+            }
+
             var inFlightBubble = _inFlightToolBubbles.GetValueOrDefault(correlationId);
             var inFlightCall = inFlightBubble is not null
                 ? FindInFlight(inFlightBubble, fragment.CallId)
@@ -551,6 +571,7 @@ public sealed class ChatSession :
             _bubbles.Clear();
             _streamingBubbles.Clear();
             _inFlightToolBubbles.Clear();
+            _renderedResultCallIds.Clear();
         }
 
         Changed?.Invoke();
