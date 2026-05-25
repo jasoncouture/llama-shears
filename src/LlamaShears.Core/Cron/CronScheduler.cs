@@ -1,21 +1,32 @@
 using Cronos;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
+using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Cron;
 
 public sealed partial class CronScheduler : ICronScheduler
 {
+    private const string CronChannelName = "cron";
+
     private readonly ICronStore _store;
     private readonly IDataContextScope _scope;
+    private readonly IPromptedAgentSpawner _spawner;
     private readonly TimeProvider _time;
     private readonly ILogger<CronScheduler> _logger;
 
-    public CronScheduler(ICronStore store, IDataContextScope scope, TimeProvider time, ILogger<CronScheduler> logger)
+    public CronScheduler(
+        ICronStore store,
+        IDataContextScope scope,
+        IPromptedAgentSpawner spawner,
+        TimeProvider time,
+        ILogger<CronScheduler> logger)
     {
         _store = store;
         _scope = scope;
+        _spawner = spawner;
         _time = time;
         _logger = logger;
     }
@@ -168,7 +179,23 @@ public sealed partial class CronScheduler : ICronScheduler
 
     private async Task FireSingleAsync(CronJob job, DateTimeOffset firedAt, bool manual, CancellationToken cancellationToken)
     {
-        LogStubFire(job.Id, job.AgentId, manual, job.Prompt.Length);
+        var agentConfig = _scope.GetAgentConfig();
+        var parentPath = _scope.GetSessionPath();
+        var subAgentConfig = PromptedAgentStartInformation.CreateDefaultSubAgentConfig(CronChannelName, agentConfig);
+        var childSession = SessionId.CreateFor(agentConfig.Id, $"{CronChannelName}-{job.Id:n}");
+        var initialPrompt = new ModelTurn(
+            ModelRole.User,
+            job.Prompt,
+            firedAt,
+            $"subagent:{CronChannelName}");
+        var startInfo = new PromptedAgentStartInformation(
+            Config: subAgentConfig,
+            Id: childSession,
+            ParentSessionPath: parentPath,
+            InitialPrompt: initialPrompt);
+
+        await _spawner.CreateAsync(startInfo, cancellationToken);
+        LogFired(job.Id, job.AgentId, manual, job.Name);
 
         var parsed = ParseOrThrow(job.CronExpression);
         var nextFireAt = parsed.GetNextOccurrence(firedAt, TimeZoneInfo.Utc);
@@ -204,8 +231,8 @@ public sealed partial class CronScheduler : ICronScheduler
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' edited cron job '{JobId}' '{Name}'.")]
     private partial void LogEdited(string agentId, Guid jobId, string name);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "[cron stub] Job '{JobId}' for agent '{AgentId}' (manual={Manual}) would fire with a prompt of length {PromptLength}.")]
-    private partial void LogStubFire(Guid jobId, string agentId, bool manual, int promptLength);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Cron job '{JobId}' '{Name}' fired for agent '{AgentId}' (manual={Manual}); transient sub-agent launched.")]
+    private partial void LogFired(Guid jobId, string agentId, bool manual, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cron job '{JobId}' for agent '{AgentId}' failed to fire on this tick; remaining jobs continue.")]
     private partial void LogFireFailed(Guid jobId, string agentId, Exception ex);
