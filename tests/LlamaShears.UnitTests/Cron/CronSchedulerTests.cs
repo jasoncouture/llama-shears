@@ -1,4 +1,6 @@
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Paths;
@@ -6,9 +8,11 @@ using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Cron;
 using LlamaShears.Core.Paths;
 using LlamaShears.UnitTests.Agent.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using NSubstitute;
 
 namespace LlamaShears.UnitTests.Cron;
 
@@ -181,9 +185,21 @@ public sealed class CronSchedulerTests
     {
         IApplicationPathProvider paths = new ApplicationPathProvider(Options.Create(new ShearsPathsOptions { DataRoot = fixture.Path }));
         ICronStore store = new JsonCronStore(paths, NullLogger<JsonCronStore>.Instance);
-        IDataContextScope scope = new FakeDataContextScope(new SessionId(agentId, SessionId.DefaultSessionName));
+        var session = SessionId.CreateFor(agentId);
+        IDataContextScope scope = new FakeDataContextScope(session);
         scope.SetItem(AgentConfig.DataKey, NewAgentConfig(agentId));
-        return new CronScheduler(store, scope, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
+        scope.SetItem(SessionPath.DataKey, new SessionPath(session));
+        var spawner = Substitute.For<IPromptedAgentSpawner>();
+        spawner.CreateAsync(Arg.Any<PromptedAgentStartInformation>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var info = (PromptedAgentStartInformation)call[0]!;
+                var path = info.ParentSessionPath.CreateChildSession(info.Id);
+                var serviceScope = new AsyncServiceScope(Substitute.For<IServiceScope>());
+                var handle = new AgentHandle(path, "hash", serviceScope, ExecutionContext.Capture()!, typeof(IAgent));
+                return ValueTask.FromResult(handle);
+            });
+        return new CronScheduler(store, scope, spawner, time ?? new FakeTimeProvider(DateTimeOffset.UnixEpoch), NullLogger<CronScheduler>.Instance);
     }
 
     private static AgentConfig NewAgentConfig(string agentId) =>
