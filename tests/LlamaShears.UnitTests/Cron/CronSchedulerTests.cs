@@ -157,6 +157,47 @@ public sealed class CronSchedulerTests
     }
 
     [Test]
+    public async Task OneShotJobDisablesItselfAfterFiring()
+    {
+        using var fixture = new TempRoot();
+        var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
+        var scheduler = NewScheduler(fixture, "agent-a", time);
+
+        var job = await scheduler.ScheduleAsync("once", "*/5 * * * *", "p", oneShot: true);
+        await Assert.That(job.OneShot).IsTrue();
+        await Assert.That(job.Enabled).IsTrue();
+
+        time.Advance(TimeSpan.FromMinutes(15));
+        await scheduler.FireDueAsync(time.GetUtcNow());
+
+        var listed = (await scheduler.ListAsync()).Single();
+        await Assert.That(listed.Enabled).IsFalse();
+        await Assert.That(listed.OneShot).IsTrue();
+        await Assert.That(listed.LastFiredAt).IsNotNull();
+    }
+
+    [Test]
+    public async Task OneShotJobStaysDisabledOnSecondFireDueTick()
+    {
+        using var fixture = new TempRoot();
+        var time = NewTime(new DateTimeOffset(2026, 5, 7, 10, 30, 0, TimeSpan.Zero));
+        var scheduler = NewScheduler(fixture, "agent-a", time);
+
+        var job = await scheduler.ScheduleAsync("once", "*/5 * * * *", "p", oneShot: true);
+
+        time.Advance(TimeSpan.FromMinutes(15));
+        await scheduler.FireDueAsync(time.GetUtcNow());
+        var firstFiredAt = (await scheduler.ListAsync()).Single().LastFiredAt;
+
+        time.Advance(TimeSpan.FromMinutes(15));
+        await scheduler.FireDueAsync(time.GetUtcNow());
+
+        var listed = (await scheduler.ListAsync()).Single();
+        await Assert.That(listed.LastFiredAt).IsEqualTo(firstFiredAt);
+        await Assert.That(listed.Enabled).IsFalse();
+    }
+
+    [Test]
     public async Task FireDueSkipsDisabledAndJobsBeforeTheirNextFire()
     {
         using var fixture = new TempRoot();
