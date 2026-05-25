@@ -68,6 +68,14 @@ public sealed partial record SessionId(string AgentId, string Name)
         return true;
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="agentId"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    public static SessionId CreateFor(string agentId, string? name = null) => new SessionId(agentId, name ?? DefaultSessionName);
+
     /// <inheritdoc/>
     public override string ToString() => $"{AgentId}:{Id}:{Name}";
 

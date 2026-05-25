@@ -54,6 +54,15 @@ e.g. `telegram:123456`, round-trip cleanly).
 - `AgentId` — Agent the session belongs to.
 - `Name` — Channel the session is bound to. May contain `:` — everything after the first `:` in the canonical form is treated as part of this value.
 
+### `CreateFor`(string agentId, string name)
+
+#### Parameters
+
+- `agentId`
+- `name`
+
+#### Returns
+
 ### `ToString`
 
 ### `TryParse`(string sessionId, [SessionId](SessionId.md)& typed)
