@@ -7,7 +7,6 @@ using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
@@ -260,23 +259,8 @@ public sealed class AgentTurnFlowTests
             sessionFactory: services.GetRequiredService<ISessionFactory>(),
             iterationRunner: iterationRunner,
             agentServices: []);
-        await StartAgentAsync(services.GetRequiredService<IEventBus>(), session, agent);
+        await AgentStartHelper.StartAndWaitAsync(services.GetRequiredService<IEventBus>(), session, agent);
         return agent;
-    }
-
-    private static async Task StartAgentAsync(IEventBus bus, SessionId session, LlamaShears.Core.Agent agent)
-    {
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var subscription = bus.Subscribe<AgentLifecycleEvent>(
-            Event.WellKnown.Agent.Started with { Id = session },
-            EventDeliveryMode.Awaited,
-            (_, _) =>
-            {
-                started.TrySetResult();
-                return ValueTask.CompletedTask;
-            });
-        _ = agent.RunAsync();
-        await started.Task.WaitAsync(TimeSpan.FromMilliseconds(500));
     }
 
     private static ISystemPromptProvider BuildStubSystemPromptProvider()

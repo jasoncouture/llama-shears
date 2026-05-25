@@ -169,7 +169,7 @@ public sealed class AgentEventPublishingTests
             sessionFactory: provider.GetRequiredService<ISessionFactory>(),
             iterationRunner: iterationRunner,
             agentServices: []);
-        _ = agent.RunAsync();
+        await AgentStartHelper.StartAndWaitAsync(bus, session, agent);
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = session },
