@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LlamaShears.UnitTests.Api.Tools.ModelContextProtocol.Filesystem;
 
-public sealed class WriteFileToolTests
+public sealed partial class FileToolsTests
 {
     [Test]
     public async Task WritesNewFileAndCreatesParentDirectories()
     {
         using var temp = TempWorkspace.Create();
-        var tool = new WriteFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<WriteFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.WriteFile("notes/scratch.txt", "hello", overwrite: false, CancellationToken.None);
 
@@ -27,7 +27,7 @@ public sealed class WriteFileToolTests
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "original");
-        var tool = new WriteFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<WriteFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.WriteFile("a.txt", "new", overwrite: false, CancellationToken.None);
 
@@ -41,7 +41,7 @@ public sealed class WriteFileToolTests
     {
         using var temp = TempWorkspace.Create();
         await File.WriteAllTextAsync(temp.PathOf("a.txt"), "original");
-        var tool = new WriteFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<WriteFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.WriteFile("a.txt", "new", overwrite: true, CancellationToken.None);
 
@@ -55,7 +55,7 @@ public sealed class WriteFileToolTests
     public async Task RefusesWritesIntoSystemSubfolder()
     {
         using var temp = TempWorkspace.Create();
-        var tool = new WriteFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<WriteFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.WriteFile("system/anything.md", "x", overwrite: true, CancellationToken.None);
 
@@ -68,7 +68,7 @@ public sealed class WriteFileToolTests
     public async Task RefusesWritesOutsideWorkspace()
     {
         using var temp = TempWorkspace.Create();
-        var tool = new WriteFileTool(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<WriteFileTool>.Instance);
+        var tool = new FileTools(new StubAgentWorkspaceLocator(temp.Workspace), new PathExpander(), TestFileProtectionPolicies.AllowAll, NullLogger<FileTools>.Instance);
 
         var result = await tool.WriteFile("../escape.txt", "x", overwrite: true, CancellationToken.None);
 

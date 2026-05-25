@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LlamaShears.UnitTests.Api.Tools.ModelContextProtocol.Filesystem;
 
-public sealed class ReadFileToolTests
+public sealed partial class FileToolsTests
 {
     [Test]
     public async Task ReadsWholeFileAndReportsEndOfFile()
@@ -120,10 +120,10 @@ public sealed class ReadFileToolTests
         await Assert.That(result.ModifiedAt).IsNull();
     }
 
-    private static ReadFileTool CreateTool(TempWorkspace temp)
+    private static FileTools CreateTool(TempWorkspace temp)
         => new(
             new StubAgentWorkspaceLocator(temp.Workspace),
             new PathExpander(),
             TestFileProtectionPolicies.AllowAll,
-            NullLogger<ReadFileTool>.Instance);
+            NullLogger<FileTools>.Instance);
 }
