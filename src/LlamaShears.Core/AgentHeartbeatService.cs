@@ -19,9 +19,7 @@ namespace LlamaShears.Core;
 
 public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemTick>, IEventHandler<AgentLifecycleEvent>
 {
-    private static readonly ActivitySource _activitySource = new ActivitySource("heartbeat", typeof(AgentHeartbeatService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
-
-    public AgentHeartbeatService(IDataContextScope dataScope, ILogger<AgentHeartbeatService> logger, ITransientAgentFactory transientAgentFactory, IContextStore contextStore, TimeProvider timeProvider, IEventBus eventBus, IFileParserCache<AgentHeartbeatService> fileParserCache, IApplicationPathProvider paths)
+    public AgentHeartbeatService(IDataContextScope dataScope, ILogger<AgentHeartbeatService> logger, ITransientAgentFactory transientAgentFactory, IContextStore contextStore, TimeProvider timeProvider, IEventBus eventBus, IFileParserCache<AgentHeartbeatService> fileParserCache, IApplicationPathProvider paths, IPromptedAgentSpawner promptedAgentSpawner)
     {
         _dataScope = dataScope;
         _logger = logger;
@@ -43,6 +41,8 @@ public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemT
         {
             _logger.LogDebug("Agent heartbeat service created for {SessionPath}, but this isn't the default session, ignoring", _parentSessionPath);
         }
+
+        _promptedAgentSpawner = promptedAgentSpawner;
     }
     private const string HeartbeatPrompt = "HEARTBEAT.md";
     private const string HeartbeatChannelName = "heartbeat";
@@ -62,6 +62,7 @@ public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemT
     private readonly bool _isDefaultAgent;
     private readonly SessionId _parentSession;
     private readonly SessionPath _parentSessionPath;
+    private readonly IPromptedAgentSpawner _promptedAgentSpawner;
     private SessionId? _heartbeatSession;
 
     public async ValueTask HandleAsync(IEventEnvelope<SystemTick> envelope, CancellationToken cancellationToken)
@@ -73,12 +74,10 @@ public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemT
         var elapsed = _timeProvider.GetElapsedTime(current);
         var updatedTimestamp = _timeProvider.GetTimestamp();
         if (elapsed < configuredInterval) return;
-        using var activity = _activitySource.StartActivity("heartbeat", ActivityKind.Internal);
 
         var heartbeatFile = await ReadHeartbeatFileAsync(cancellationToken);
         if (heartbeatFile is null)
         {
-            activity?.SetStatus(ActivityStatusCode.Ok, "No heartbeat file found");
             Interlocked.Exchange(ref _lastHeartbeat, _timeProvider.GetTimestamp());
             return;
         }
@@ -89,48 +88,28 @@ public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemT
 
         if (_heartbeatSession is not null)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, "Transient agent is already running");
             _logger.LogWarning("Heartbeat interval has elapsed, but a heartbeat session ({Current}) is already active, skipping this beat", heartbeatSession);
             return;
         }
-
-        var heartbeatConfig = agentConfig with
-        {
-            SystemPrompt = HeartbeatPrompt,
-            PromptContext = HeartbeatPrompt
-        };
-        var contextStorage = await _contextStore.OpenAsync(_parentSession, cancellationToken);
-
         var heartbeatChildSessionId = new SessionId(agentConfig.Id, HeartbeatChannelName);
-        activity?.SetTag("agent.session.current", heartbeatChildSessionId);
+        var heartbeatConfig = PromptedAgentStartInformation.CreateDefaultSubAgentConfig(HeartbeatChannelName, agentConfig);
         var heartbeatData = new HeartbeatDataContext(heartbeatChildSessionId, _parentSession, heartbeatFile);
-
-        var handle = await _transientAgentFactory.CreateTransientAgent(
+        var startInfo = new PromptedAgentStartInformation(
             heartbeatConfig,
-            HeartbeatChannelName,
+            heartbeatChildSessionId,
+            _parentSessionPath,
             new ModelTurn(ModelRole.User, HeartbeatPrompt, DateTimeOffset.Now, $"subagent:{HeartbeatChannelName}"),
-            [new KeyValuePair<string, object?>(HeartbeatDataContext.DataKey, heartbeatData)],
-            cancellationToken);
+            Turns: await GetInjectedTurnsAsync(_lastHeartbeatStart, cancellationToken),
+            ContextData: [new KeyValuePair<string, object?>(HeartbeatDataContext.DataKey, heartbeatData)],
+            AutoStart: false);
 
-        var heartbeatContextStorage = await _contextStore.OpenAsync(handle.SessionPath.Current, cancellationToken);
-        var lastHeartbeatStartedAt = _lastHeartbeatStart;
+        AgentHandle? handle = null;
         _lastHeartbeatStart = _timeProvider.GetLocalNow();
-        var parentTurns = contextStorage.Turns
-            .Where(i => i.Timestamp > lastHeartbeatStartedAt)
-            .ToArray();
-        _logger.LogInformation("Summarising {Count} parent turn(s) into briefing for {HeartbeatSessionPath}", parentTurns.Length, handle.SessionPath);
-        if (parentTurns.Length > 0)
-        {
-
-            var briefing = BuildParentActivityBriefing(parentTurns);
-            await heartbeatContextStorage.AppendAsync(briefing, cancellationToken);
-            activity?.AddEvent(new ActivityEvent("Added existing context propmpt to context"));
-        }
-        _heartbeatSession = handle.SessionPath.Current;
         try
         {
-            var factory = handle.Scope.ServiceProvider.GetRequiredService<IDataContextFactory>();
-            
+            handle = await _promptedAgentSpawner.CreateAsync(startInfo, cancellationToken);
+            _heartbeatSession = handle.SessionPath.Current;
+
             _logger.LogInformation("Sending agent start request for transient heartbeat agent session {HeartbeatSessionId}", handle.SessionPath);
             await _eventBus.PublishAsync(
                 Event.WellKnown.Command.AgentStart with
@@ -140,16 +119,34 @@ public sealed class AgentHeartbeatService : IAgentService, IEventHandler<SystemT
                 new AgentStartRequest(handle),
                 cancellationToken);
             _logger.LogInformation("Heartbeat agent {HeartbeatSessionPath} started", handle.SessionPath);
-            activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
-            activity?.AddException(ex);
-            activity?.SetStatus(ActivityStatusCode.Error);
-            _logger.LogError(ex, "Failed to start heartbeat agent {HeartbeatSessionPath}", handle.SessionPath);
-            await handle.DisposeAsync();
+            if (handle is null)
+            {
+                _logger.LogError(ex, "Failed to create heartbeat agent");
+            }
+            else
+            {
+                _logger.LogError(ex, "Failed to start heartbeat agent");
+                await handle.DisposeAsync();
+            }
             _heartbeatSession = null;
         }
+    }
+
+    private async ValueTask<ImmutableArray<ModelTurn>> GetInjectedTurnsAsync(DateTimeOffset since, CancellationToken cancellationToken)
+    {
+        var contextStorage = await _contextStore.OpenAsync(_parentSession, cancellationToken);
+        var parentTurns = contextStorage.Turns
+            .Where(i => i.Timestamp > since)
+            .ToArray();
+
+        if (parentTurns.Length <= 0) return [];
+
+        _logger.LogInformation("Summarising {Count} parent turn(s) into briefing for {ParentSessionPath}", parentTurns.Length, _parentSessionPath);
+        var briefing = BuildParentActivityBriefing(parentTurns);
+        return [briefing];
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
