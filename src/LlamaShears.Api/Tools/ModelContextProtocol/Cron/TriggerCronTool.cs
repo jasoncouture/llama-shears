@@ -33,7 +33,7 @@ public sealed class TriggerCronTool
             return new CronTriggerResult(JobId: null, Fired: false, Error: $"Refused: '{id}' is not a valid GUID.");
         }
 
-        var fired = await _scheduler.TriggerAsync(workspace.AgentId, jobId, cancellationToken);
+        var fired = await _scheduler.TriggerAsync(jobId, cancellationToken);
         return fired
             ? new CronTriggerResult(JobId: jobId, Fired: true)
             : new CronTriggerResult(JobId: jobId, Fired: false, Error: $"No cron job {jobId:D} owned by this agent.");

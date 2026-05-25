@@ -33,7 +33,7 @@ public sealed class CancelCronTool
             return new CronCancelResult(JobId: null, Cancelled: false, Error: $"Refused: '{id}' is not a valid GUID.");
         }
 
-        var removed = await _scheduler.CancelAsync(workspace.AgentId, jobId, cancellationToken);
+        var removed = await _scheduler.CancelAsync(jobId, cancellationToken);
         return removed
             ? new CronCancelResult(JobId: jobId, Cancelled: true)
             : new CronCancelResult(JobId: jobId, Cancelled: false, Error: $"No cron job {jobId:D} owned by this agent.");

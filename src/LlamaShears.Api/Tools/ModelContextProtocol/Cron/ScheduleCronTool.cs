@@ -36,7 +36,7 @@ public sealed partial class ScheduleCronTool
 
         try
         {
-            var job = await _scheduler.ScheduleAsync(workspace.AgentId, name, cronExpression, prompt, cancellationToken);
+            var job = await _scheduler.ScheduleAsync(name, cronExpression, prompt, cancellationToken);
             return new CronScheduleResult(
                 Scheduled: true,
                 Job: new CronJobSummary(

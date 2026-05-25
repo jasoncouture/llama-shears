@@ -1,4 +1,6 @@
 using Cronos;
+using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Common;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core.Cron;
@@ -6,28 +8,31 @@ namespace LlamaShears.Core.Cron;
 public sealed partial class CronScheduler : ICronScheduler
 {
     private readonly ICronStore _store;
+    private readonly IDataContextScope _scope;
     private readonly TimeProvider _time;
     private readonly ILogger<CronScheduler> _logger;
 
-    public CronScheduler(ICronStore store, TimeProvider time, ILogger<CronScheduler> logger)
+    public CronScheduler(ICronStore store, IDataContextScope scope, TimeProvider time, ILogger<CronScheduler> logger)
     {
         _store = store;
+        _scope = scope;
         _time = time;
         _logger = logger;
     }
 
+    private string AgentId => _scope.GetAgentConfig().Id;
+
     public async ValueTask<CronJob> ScheduleAsync(
-        string agentId,
         string name,
         string cronExpression,
         string prompt,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(cronExpression);
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
 
+        var agentId = AgentId;
         var parsed = ParseOrThrow(cronExpression);
         var now = _time.GetUtcNow();
         var nextFireAt = parsed.GetNextOccurrence(now, TimeZoneInfo.Utc);
@@ -48,25 +53,19 @@ public sealed partial class CronScheduler : ICronScheduler
         return job;
     }
 
-    public async ValueTask<IReadOnlyList<CronJob>> ListByAgentAsync(string agentId, CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<CronJob>> ListAsync(CancellationToken cancellationToken = default)
+        => await _store.GetAllAsync(AgentId, cancellationToken);
+
+    public async ValueTask<bool> CancelAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-
-        var all = await _store.GetAllAsync(cancellationToken);
-        return [.. all.Where(j => string.Equals(j.AgentId, agentId, StringComparison.Ordinal))];
-    }
-
-    public async ValueTask<bool> CancelAsync(string agentId, Guid id, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-
-        var existing = await _store.GetAsync(id, cancellationToken);
-        if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
+        var agentId = AgentId;
+        var existing = await _store.GetAsync(agentId, id, cancellationToken);
+        if (existing is null)
         {
             return false;
         }
 
-        var removed = await _store.RemoveAsync(id, cancellationToken);
+        var removed = await _store.RemoveAsync(agentId, id, cancellationToken);
         if (removed)
         {
             LogCancelled(agentId, id, existing.Name);
@@ -75,12 +74,10 @@ public sealed partial class CronScheduler : ICronScheduler
     }
 
     public async ValueTask<CronJob?> EditAsync(
-        string agentId,
         Guid id,
         CronJobEdit edit,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         ArgumentNullException.ThrowIfNull(edit);
         if (edit.Name is not null && string.IsNullOrWhiteSpace(edit.Name))
         {
@@ -95,8 +92,9 @@ public sealed partial class CronScheduler : ICronScheduler
             throw new ArgumentException("Cron expression must not be blank.", nameof(edit));
         }
 
-        var existing = await _store.GetAsync(id, cancellationToken);
-        if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
+        var agentId = AgentId;
+        var existing = await _store.GetAsync(agentId, id, cancellationToken);
+        if (existing is null)
         {
             return null;
         }
@@ -127,12 +125,10 @@ public sealed partial class CronScheduler : ICronScheduler
         return updated;
     }
 
-    public async ValueTask<bool> TriggerAsync(string agentId, Guid id, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> TriggerAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-
-        var existing = await _store.GetAsync(id, cancellationToken);
-        if (existing is null || !string.Equals(existing.AgentId, agentId, StringComparison.Ordinal))
+        var existing = await _store.GetAsync(AgentId, id, cancellationToken);
+        if (existing is null)
         {
             return false;
         }
@@ -143,7 +139,7 @@ public sealed partial class CronScheduler : ICronScheduler
 
     public async ValueTask FireDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        var jobs = await _store.GetAllAsync(cancellationToken);
+        var jobs = await _store.GetAllAsync(AgentId, cancellationToken);
         foreach (var job in jobs)
         {
             if (!job.Enabled)

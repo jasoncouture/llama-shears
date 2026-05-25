@@ -28,7 +28,7 @@ public sealed class ListCronTool
             return new CronListResult(JobCount: 0, Jobs: [], Error: "Refused: cron_list requires an authenticated agent on the request.");
         }
 
-        var jobs = await _scheduler.ListByAgentAsync(workspace.AgentId, cancellationToken);
+        var jobs = await _scheduler.ListAsync(cancellationToken);
         var builder = ImmutableArray.CreateBuilder<CronJobSummary>();
         foreach (var job in jobs)
         {

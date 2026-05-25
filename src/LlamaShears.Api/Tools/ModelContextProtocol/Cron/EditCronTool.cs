@@ -43,7 +43,7 @@ public sealed partial class EditCronTool
         var edit = new CronJobEdit(name, cronExpression, prompt, enabled);
         try
         {
-            var updated = await _scheduler.EditAsync(workspace.AgentId, jobId, edit, cancellationToken);
+            var updated = await _scheduler.EditAsync(jobId, edit, cancellationToken);
             if (updated is null)
             {
                 return new CronEditResult(JobId: jobId, Edited: false, Job: null, Error: $"No cron job {jobId:D} owned by this agent.");
