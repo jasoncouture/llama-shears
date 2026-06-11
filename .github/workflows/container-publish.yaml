@@ -67,7 +67,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ github.token }}
+          password: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
       - name: "Build ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}, push: ${{ github.event_name == 'push' && 'true' || 'false' }}"
         uses: ./.github/actions/build-container
