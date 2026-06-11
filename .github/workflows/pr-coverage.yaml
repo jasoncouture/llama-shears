@@ -30,9 +30,3 @@ jobs:
 
       - name: Run tests with coverage
         uses: ./.github/actions/run-tests
-
-      - name: Post coverage comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          path: code-coverage-results.md
-          header: coverage

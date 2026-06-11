@@ -17,7 +17,8 @@ permissions:
 concurrency:
   group: container-publish-${{ github.ref }}
   cancel-in-progress: true
-
+env:
+  REGISTRY: ${{ vars.REGISTRY || 'ghcr.io' }}
 jobs:
   prepare:
     name: prepare
@@ -60,17 +61,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - if: github.event_name == 'push'
+      - name: "Login to ${{ env.REGISTRY }}"
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: ${{ github.event_name == 'push' && format('Build and push {0} @ {1}', matrix.target, needs.prepare.outputs.version) || format('Build {0} @ {1}', matrix.target, needs.prepare.outputs.version) }}
+      - name: "Build ${{ matrix.target }} @ ${{ needs.prepare.outputs.version }}, push: ${{ github.event_name == 'push' && 'true' || 'false' }}"
         uses: ./.github/actions/build-container
         with:
           target: ${{ matrix.target }}
-          registry: ghcr.io/${{ github.repository }}
+          registry: ${{ env.REGISTRY }}/${{ github.repository }}
           version: ${{ needs.prepare.outputs.version }}
           push: ${{ github.event_name == 'push' && 'true' || 'false' }}
