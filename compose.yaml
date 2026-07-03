@@ -6,8 +6,8 @@ services:
     # Local-only tag by default. To push to a registry, drop a
     # gitignored `compose.override.yaml` next to this file with an
     # alternate `image:` value — compose auto-loads the override.
-    image: llama-shears:dev
-    container_name: llamashears
+    image: docker.instigaterevolution.com/llama-shears:dev
+    container_name: "llamashears"
     user: root
     ports:
       # Host 5125 matches the dev launchSettings port, so existing
