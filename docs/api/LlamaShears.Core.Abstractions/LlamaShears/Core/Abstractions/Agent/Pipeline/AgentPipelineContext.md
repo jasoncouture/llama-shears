@@ -30,8 +30,8 @@ iteration. Empty until correlation-scope middleware assigns one.
 Per-turn prompt-context turn for this batch. `null`
 until ephemeral-context middleware renders it, or when the
 template is empty. Not persisted; the iteration inserts it
-immediately before the last user cluster when the prompt ends
-in a user turn.
+once, immediately before the last user cluster when the prompt
+ends in a user turn.
 
 ### `Outcome`
 

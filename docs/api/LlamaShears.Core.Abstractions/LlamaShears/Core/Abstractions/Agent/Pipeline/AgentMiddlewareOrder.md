@@ -17,6 +17,10 @@ Start and dispose the `chat {model}` activity.
 
 Hold [IAgentLock](../IAgentLock.md) across the rest of the turn.
 
+### `Compaction`
+
+Compact persisted context after the iteration finishes.
+
 ### `CorrelationScope`
 
 Assign a correlation id and logger scope.

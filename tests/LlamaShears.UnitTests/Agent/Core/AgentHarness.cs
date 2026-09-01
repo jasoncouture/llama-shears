@@ -52,7 +52,6 @@ internal static class AgentHarness
 
         var iterationServices = new ServiceCollection();
         iterationServices.AddSingleton<IDataContextScope>(dataScope);
-        iterationServices.AddSingleton(compactor);
         iterationServices.AddSingleton(model);
         iterationServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
         iterationServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
@@ -77,8 +76,7 @@ internal static class AgentHarness
             timeProvider,
             bus,
             dataScope,
-            iterationProvider.GetRequiredService<IServiceScopeFactory>(),
-            contextProvider);
+            iterationProvider.GetRequiredService<IServiceScopeFactory>());
 
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var sessionQueue = sessionFactory.Get(session);
@@ -100,6 +98,7 @@ internal static class AgentHarness
                 new AgentStateTracker(dataScope),
                 dataScope,
                 timeProvider),
+            new CompactionMiddleware(compactor, contextProvider, dataScope),
             new RunIterationMiddleware(iterationRunner),
         ]);
 

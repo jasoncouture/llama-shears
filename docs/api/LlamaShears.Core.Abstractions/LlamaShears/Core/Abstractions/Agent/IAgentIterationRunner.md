@@ -8,9 +8,9 @@ and [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`EphemeralContext`)
 invokes the language model (with the empty-response retry),
 persists the model's output via the active context store, and
 returns any tool-result turns the caller should feed back on the
-next iteration. Knows nothing about session queues, agent locks,
-or interrupt subscriptions — those concerns belong to the
-surrounding onion.
+next iteration. Compaction belongs to the surrounding onion, after
+this call returns. Knows nothing about session queues, agent locks,
+or interrupt subscriptions.
 
 ## Methods
 

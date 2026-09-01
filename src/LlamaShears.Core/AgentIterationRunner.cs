@@ -5,7 +5,6 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -25,22 +24,19 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
     private readonly IEventBus _eventPublisher;
     private readonly IDataContextScope _dataScope;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IAgentContextProvider _agentContextProvider;
 
     public AgentIterationRunner(
         ILogger<AgentIterationRunner> logger,
         TimeProvider time,
         IEventBus eventPublisher,
         IDataContextScope dataScope,
-        IServiceScopeFactory scopeFactory,
-        IAgentContextProvider agentContextProvider)
+        IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
         _time = time;
         _eventPublisher = eventPublisher;
         _dataScope = dataScope;
         _scopeFactory = scopeFactory;
-        _agentContextProvider = agentContextProvider;
     }
 
     public async Task<IterationOutcome> RunAsync(AgentPipelineContext context)
@@ -69,19 +65,14 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
                 outerCancellationToken);
         }
 
-        var prompt = context.SystemPrompt is { } systemPrompt
-            ? new ModelPrompt([systemPrompt, .. agentContext.Turns])
-            : new ModelPrompt([.. agentContext.Turns]);
-        var agentContextSnapshot =
-            await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetCurrentSessionId(), turnCancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{agentId}'.");
+        var prompt = WithEphemeral(
+            context.SystemPrompt is { } systemPrompt
+                ? new ModelPrompt([systemPrompt, .. agentContext.Turns])
+                : new ModelPrompt([.. agentContext.Turns]),
+            context.EphemeralContext);
         var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
         var serverRegistry = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolServerRegistry>();
         var toolDiscovery = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolToolDiscovery>();
-        var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
-
-        prompt = await compactor
-            .CompactAsync(agentContextSnapshot, prompt, force: false, turnCancellationToken);
         var servers = serverRegistry.Resolve(_dataScope.GetAgentConfig().ModelContextProtocolServers);
         var tools = await toolDiscovery.DiscoverAsync(servers.Keys, turnCancellationToken);
         var promptOptions = new PromptOptions(
@@ -94,7 +85,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         while (true)
         {
             outcome = await inferenceRunner.RunAsync(
-                prompt: WithEphemeral(prompt, context.EphemeralContext),
+                prompt: prompt,
                 options: promptOptions,
                 cancellationToken: turnCancellationToken);
             if (outcome.Interrupted)

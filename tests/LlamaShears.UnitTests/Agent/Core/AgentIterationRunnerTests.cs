@@ -4,7 +4,6 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
@@ -135,29 +134,49 @@ public sealed class AgentIterationRunnerTests
             .IsEquivalentTo([ModelRole.Assistant]);
     }
 
+    [Test]
+    public async Task InsertsEphemeralOnceAcrossEmptyResponseRetries()
+    {
+        var (runner, inference, agentContext) = BuildRunner();
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            EphemeralContext = ephemeral,
+        };
+        var sent = new List<ModelPrompt>();
+        inference
+            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                sent.Add(call.Arg<ModelPrompt>());
+                return sent.Count == 1
+                    ? new InferenceOutcome("", "", null, [], [])
+                    : new InferenceOutcome("", "ok", null, [], []);
+            });
+
+        await runner.RunAsync(context);
+
+        await Assert.That(sent.Count).IsEqualTo(2);
+        await Assert.That(sent[0].Turns.Count(turn => turn.Ephemeral)).IsEqualTo(1);
+        await Assert.That(sent[1].Turns.Count(turn => turn.Ephemeral)).IsEqualTo(1);
+        await Assert.That(sent[1].Turns.Count).IsEqualTo(sent[0].Turns.Count + 1);
+        await Assert.That(sent[1].Turns[^1].Role).IsEqualTo(ModelRole.User);
+    }
+
     private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext) BuildRunner()
     {
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice");
         var session = new SessionId(config.Id, SessionId.DefaultSessionName);
         var dataScope = TestAgentConfigs.DataContextFactoryWith(config, session).Current!;
         var inference = Substitute.For<IInferenceRunner>();
-        var compactor = Substitute.For<IContextCompactor>();
-        compactor
-            .CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
-        var contextProvider = Substitute.For<IAgentContextProvider>();
-        contextProvider
-            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(config.Id)));
 
         var services = new ServiceCollection();
         services.AddSingleton<IDataContextScope>(dataScope);
         services.AddSingleton(inference);
-        services.AddSingleton(compactor);
         services.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
         services.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
         services.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataScope));
@@ -171,8 +190,7 @@ public sealed class AgentIterationRunnerTests
             TimeProvider.System,
             Substitute.For<IEventBus>(),
             dataScope,
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            contextProvider);
+            provider.GetRequiredService<IServiceScopeFactory>());
         return (runner, inference, agentContext);
     }
 }
