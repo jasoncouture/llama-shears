@@ -24,7 +24,7 @@ The path from "model emits a turn" to "line on disk":
 1. `Agent.ProcessBatchAsync` builds a user turn (or `InferenceRunner` builds an assistant turn, or `Agent.DispatchToolCallsAsync` builds a tool turn) and publishes it as `agent:turn:<agent-id>` on the bus.
 2. [`AgentTurnContextPersister`](../../src/LlamaShears.Core/Persistence/AgentTurnContextPersister.cs) is subscribed to `agent:turn:+` with `EventDeliveryMode.Awaited` — registered via `AddEventHandler<AgentTurnContextPersister>` in the host wiring (`WebApplicationBuilderExtensions.AddApi`).
 3. The persister calls `IContextStore.OpenAsync(agentId)` (which returns the cached `IAgentContext`) and `IAgentContext.AppendAsync(turn)`.
-4. `AgentContext.AppendAsync` updates the in-memory turn list and serializes one JSON line to `current.json` with a `FileShare.ReadWrite` open.
+4. `AgentContext.AppendAsync` updates the in-memory turn list (including any image attachments so this iteration can still send them) and serializes one JSON line to `current.json` with a `FileShare.ReadWrite` open. The durable line omits image attachments.
 
 Because the subscription is `Awaited`, the publisher (`Agent` or `InferenceRunner`) does not return from `PublishAsync` until the line is on disk. The next iteration of the agent loop won't run until the prior turn is durable. This is the only `Awaited` subscription in the host's hot path; everything else is fire-and-forget.
 
@@ -69,3 +69,4 @@ What's *not* persisted:
 - **`SystemEphemeral` turns.** The per-turn ephemeral context block (memories, time, identity files) is rebuilt every iteration; persisting it would freeze stale data.
 - **The system prompt.** Reconstructed from the workspace or bundled fallback every iteration.
 - **Streaming fragment events** (`agent:message`, `agent:thought`, `agent:tool-call`). Only the final `ModelTurn` is persisted — the fragments are for live UI rendering.
+- **Image attachments.** `AppendAsync` writes the turn text without `AttachmentKind.Image` payloads. Live context keeps them until after the model has seen the inbound turn (`IAgentContext.StripImageAttachments`), so later prompts and compaction do not resend base64. Replayed history will not show images.

@@ -49,7 +49,7 @@ Tool-result turns are enqueued after a non-interrupted iteration by `ToolResultE
 
 ## Per-batch onion
 
-Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 11000` is inside tool dispatch). Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
+Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 12000` is inside image-strip). Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
 
 ```
 IAgentPipeline
@@ -62,8 +62,9 @@ IAgentPipeline
   7000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt (not persisted)
   8000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
   9000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext; insert into Prompt
-  10000 RunIterationMiddleware          before: copy SessionId from the data scope and ChannelId from the batch, IAgentIterationRunner.RunAsync → context.Outcome; then next
-  11000 ToolDispatchMiddleware          before: dispatch Outcome.ToolCalls, write ToolResultTurns; then next (no-op terminal)
+  10000 RunIterationMiddleware          before: copy SessionId from the data scope and ChannelId from the batch, IAgentIterationRunner.RunAsync → context.Outcome; then next; finally: StripImageAttachments (so a failed infer cannot leave images in live context)
+  11000 ToolDispatchMiddleware          before: dispatch Outcome.ToolCalls, write ToolResultTurns; then next
+  12000 StripImageAttachmentsMiddleware after: drop image attachments from IAgentContext (Prompt already sent)
 ```
 
 The terminal is a no-op. The innermost step must do the work (and may still call `next`). Skipping `next` short-circuits the rest of the chain.

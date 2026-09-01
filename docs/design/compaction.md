@@ -7,7 +7,7 @@ Compaction is how the agent stays inside the model's context window without thro
 When triggered, compaction:
 
 1. Calls the model with the current context (excluding the trailing user message, if any) plus a final `User`-role instruction asking it to summarize what came before.
-2. Replaces the on-disk and in-memory context with `[system, summary, last-user-turn?]`. The system prompt is reconstructed each iteration anyway and is *not* persisted, so the persisted form is `[summary, last-user-turn?]`.
+2. Replaces the on-disk and in-memory context with `[system, summary, last-user-turn?]`. The system prompt is reconstructed each iteration anyway and is *not* persisted, so the persisted form is `[summary, last-user-turn?]`. Image attachments on that trailing user turn are omitted on disk (see [persistence.md](persistence.md)); live context keeps them until after the following inference.
 3. Archives the old `current.json` to `<unix-ms>.json` (see [persistence.md](persistence.md)).
 4. Returns a rewritten `ModelPrompt` for the in-flight iteration to send to the model.
 
