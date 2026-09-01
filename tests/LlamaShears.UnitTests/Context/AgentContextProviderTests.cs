@@ -143,6 +143,21 @@ public sealed class AgentContextProviderTests
             return Task.CompletedTask;
         }
 
+        public void StripImageAttachments()
+        {
+            for (var i = 0; i < _entries.Count; i++)
+            {
+                if (_entries[i] is ModelTurn turn)
+                {
+                    var stripped = turn.WithoutImageAttachments();
+                    if (!ReferenceEquals(stripped, turn))
+                    {
+                        _entries[i] = stripped;
+                    }
+                }
+            }
+        }
+
         internal void RaiseCleared() => Cleared?.Invoke(this, EventArgs.Empty);
     }
 }

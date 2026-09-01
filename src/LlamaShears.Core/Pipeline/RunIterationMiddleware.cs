@@ -30,7 +30,15 @@ public sealed class RunIterationMiddleware : IAgentMiddleware
         {
             context.ChannelId = context.Batch[^1].ChannelId;
         }
-        context.Outcome = await _iterationRunner.RunAsync(context);
-        await next.Invoke(context, cancellationToken);
+
+        try
+        {
+            context.Outcome = await _iterationRunner.RunAsync(context);
+            await next.Invoke(context, cancellationToken);
+        }
+        finally
+        {
+            context.AgentContext.StripImageAttachments();
+        }
     }
 }

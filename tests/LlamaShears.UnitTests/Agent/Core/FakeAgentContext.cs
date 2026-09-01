@@ -55,6 +55,24 @@ internal sealed class FakeAgentContext : IAgentContext
         return Task.CompletedTask;
     }
 
+    public void StripImageAttachments()
+    {
+        lock (_lock)
+        {
+            for (var i = 0; i < _entries.Count; i++)
+            {
+                if (_entries[i] is ModelTurn turn)
+                {
+                    var stripped = turn.WithoutImageAttachments();
+                    if (!ReferenceEquals(stripped, turn))
+                    {
+                        _entries[i] = stripped;
+                    }
+                }
+            }
+        }
+    }
+
     public void RaiseCleared()
     {
         lock (_lock)

@@ -42,4 +42,7 @@ public static class AgentMiddlewareOrder
 
     /// <summary>Dispatch <c>Outcome.ToolCalls</c> and write <c>ToolResultTurns</c>.</summary>
     public const int ToolDispatch = 11000;
+
+    /// <summary>Drop image attachments from live context after the model has seen them.</summary>
+    public const int StripImageAttachments = 12000;
 }

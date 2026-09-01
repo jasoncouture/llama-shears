@@ -84,3 +84,9 @@ observe it (e.g. UI streaming) but persisters skip it. Drives the
 "don't record this" decision from the turn itself instead of from a
 central filter.
 
+### `WithoutImageAttachments`
+
+Returns this turn without [AttachmentKind](../Content/AttachmentKind.md).`Image`
+payloads. Used when writing the durable log and when dropping
+images from live context after the model has seen them.
+

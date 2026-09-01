@@ -103,6 +103,7 @@ internal static class AgentHarness
                 timeProvider),
             new RunIterationMiddleware(iterationRunner, dataScope),
             new ToolDispatchMiddleware(toolExecutor),
+            new StripImageAttachmentsMiddleware(),
         ]);
 
         IAgentService[] inbound =

@@ -1,6 +1,7 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
@@ -110,6 +111,47 @@ public sealed class CompactionMiddlewareTests
         await Assert.That(sent).IsNotNull();
         await Assert.That(sent!.Turns[0]).IsEqualTo(remembered);
         await Assert.That(context.Prompt).IsEqualTo(sent);
+    }
+
+    [Test]
+    public async Task PromptKeepsImageAttachmentsFromLiveTurns()
+    {
+        var image = new Attachment(AttachmentKind.Image, "image/png", "Zm9v");
+        var remembered = new ModelTurn(ModelRole.User, "see this", DateTimeOffset.UnixEpoch)
+        {
+            Attachments = [image],
+        };
+        var provider = Substitute.For<IAgentContextProvider>();
+        provider
+            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext("alice")));
+        ModelPrompt? sent = null;
+        var compactor = Substitute.For<IContextCompactor>();
+        compactor
+            .CompactAsync(
+                Arg.Any<AgentContext>(),
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                sent = call.Arg<ModelPrompt>();
+                return ValueTask.FromResult(call.Arg<ModelPrompt>());
+            });
+        IAgentMiddleware middleware = new CompactionMiddleware(
+            compactor,
+            provider,
+            Substitute.For<IEventBus>(),
+            PipelineTestContext.ScopeFor());
+        var context = new AgentPipelineContext(
+            new FakeAgentContext("alice", [remembered]),
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None);
+
+        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
+
+        await Assert.That(sent).IsNotNull();
+        await Assert.That(sent!.Turns[0].Attachments).IsEquivalentTo([image]);
     }
 
     [Test]

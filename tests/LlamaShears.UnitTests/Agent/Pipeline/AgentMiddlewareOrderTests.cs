@@ -32,9 +32,10 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
             AgentMiddlewareOrder.ToolDispatch,
+            AgentMiddlewareOrder.StripImageAttachments,
         ];
 
-        await Assert.That(orders).IsEquivalentTo([1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000]);
+        await Assert.That(orders).IsEquivalentTo([1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000]);
     }
 
     [Test]
@@ -74,6 +75,7 @@ public sealed class AgentMiddlewareOrderTests
                     Substitute.For<IToolCallDispatcher>(),
                     TimeProvider.System,
                     NullLogger<ToolCallExecutor>.Instance)),
+            new StripImageAttachmentsMiddleware(),
         ];
 
         int[] expected =
@@ -89,6 +91,7 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
             AgentMiddlewareOrder.ToolDispatch,
+            AgentMiddlewareOrder.StripImageAttachments,
         ];
 
         await Assert.That(steps.Select(step => step.Order).ToArray()).IsEquivalentTo(expected);

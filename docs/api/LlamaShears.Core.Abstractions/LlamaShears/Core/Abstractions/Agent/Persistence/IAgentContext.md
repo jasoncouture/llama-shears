@@ -33,6 +33,15 @@ of the call.
 Appends `entry` to the live log and to the
 underlying store atomically. Subsequent reads of
 [IAgentContext](IAgentContext.md).`Turns` / [IAgentContext](IAgentContext.md).`Entries` include it.
+Image attachments on a [ModelTurn](../../Provider/ModelTurn.md) stay on the
+in-memory snapshot so this iteration can still send them;
+the durable line is written without them.
+
+### `StripImageAttachments`
+
+Drops image attachments from in-memory turns after the model
+has seen them. Durable storage already omits images at append
+time. Does not raise [IAgentContext](IAgentContext.md).`Appended`.
 
 ## Events
 

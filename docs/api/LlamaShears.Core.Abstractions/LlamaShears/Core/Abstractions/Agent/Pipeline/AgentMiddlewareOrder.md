@@ -37,6 +37,10 @@ Install the linked turn cancellation token.
 
 Invoke [IAgentIterationRunner](../IAgentIterationRunner.md).
 
+### `StripImageAttachments`
+
+Drop image attachments from live context after the model has seen them.
+
 ### `SystemPrompt`
 
 Render the persistent system-prompt turn onto the bag.

@@ -38,6 +38,22 @@ public record ModelTurn(
     public ImmutableArray<Attachment> Attachments { get; init; } = [];
 
     /// <summary>
+    /// Returns this turn without <see cref="AttachmentKind.Image"/>
+    /// payloads. Used when writing the durable log and when dropping
+    /// images from live context after the model has seen them.
+    /// </summary>
+    public ModelTurn WithoutImageAttachments()
+    {
+        if (Attachments.IsDefaultOrEmpty)
+        {
+            return this;
+        }
+
+        ImmutableArray<Attachment> kept = [.. Attachments.Where(static a => a.Kind != AttachmentKind.Image)];
+        return kept.Length == Attachments.Length ? this : this with { Attachments = kept };
+    }
+
+    /// <summary>
     /// Session id this turn belongs to; <see langword="null"/> = the
     /// agent's default (main) session. Non-default sessions carry their
     /// own id here so context persisters and audit subscribers can route

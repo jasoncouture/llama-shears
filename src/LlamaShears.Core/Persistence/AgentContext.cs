@@ -66,7 +66,8 @@ internal sealed class AgentContext : IAgentContext
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        var line = JsonSerializer.Serialize(entry, _jsonOptions) + "\n";
+        var persisted = entry is ModelTurn turn ? turn.WithoutImageAttachments() : entry;
+        var line = JsonSerializer.Serialize(persisted, _jsonOptions) + "\n";
         await File.AppendAllTextAsync(_currentPath, line, Encoding.UTF8, cancellationToken);
 
         lock (_lock)
@@ -74,6 +75,24 @@ internal sealed class AgentContext : IAgentContext
             _entries.Add(entry);
         }
         Appended?.Invoke(this, entry);
+    }
+
+    public void StripImageAttachments()
+    {
+        lock (_lock)
+        {
+            for (var i = 0; i < _entries.Count; i++)
+            {
+                if (_entries[i] is ModelTurn turn)
+                {
+                    var stripped = turn.WithoutImageAttachments();
+                    if (!ReferenceEquals(stripped, turn))
+                    {
+                        _entries[i] = stripped;
+                    }
+                }
+            }
+        }
     }
 
     internal void ClearInMemory()

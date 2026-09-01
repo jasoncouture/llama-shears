@@ -1,5 +1,6 @@
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Paths;
@@ -65,6 +66,70 @@ public sealed class JsonLineContextStoreTests
 
         await Assert.That(read.Count).IsEqualTo(1);
         await Assert.That(read[0]).IsTypeOf<ModelTurn>();
+    }
+
+    [Test]
+    public async Task AppendKeepsImageAttachmentsInMemoryAndOmitsThemFromDisk()
+    {
+        using var fixture = new Fixture();
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
+        var image = new Attachment(AttachmentKind.Image, "image/png", "Zm9v");
+        var turn = new ModelTurn(ModelRole.User, "see this", DateTimeOffset.UnixEpoch)
+        {
+            Attachments = [image],
+        };
+
+        await context.AppendAsync(turn, CancellationToken.None);
+
+        await Assert.That(context.Turns).Contains(turn);
+        await Assert.That(context.Turns[0].Attachments).IsEquivalentTo([image]);
+
+        var read = new List<IContextEntry>();
+        await foreach (var entry in fixture.Store.ReadCurrentAsync(_session, CancellationToken.None))
+        {
+            read.Add(entry);
+        }
+
+        await Assert.That(read.Count).IsEqualTo(1);
+        var persisted = (ModelTurn)read[0];
+        await Assert.That(persisted.Content).IsEqualTo("see this");
+        await Assert.That(persisted.Attachments.IsDefaultOrEmpty).IsTrue();
+    }
+
+    [Test]
+    public async Task OpenHydratesCurrentJsonWithoutImageAttachments()
+    {
+        using var fixture = new Fixture();
+        var first = await fixture.Store.OpenAsync(_session, CancellationToken.None);
+        var turn = new ModelTurn(ModelRole.User, "see this", DateTimeOffset.UnixEpoch)
+        {
+            Attachments = [new Attachment(AttachmentKind.Image, "image/png", "Zm9v")],
+        };
+        await first.AppendAsync(turn, CancellationToken.None);
+
+        var rebooted = fixture.NewStore();
+        var rehydrated = await rebooted.OpenAsync(_session, CancellationToken.None);
+
+        await Assert.That(rehydrated.Turns.Count).IsEqualTo(1);
+        await Assert.That(rehydrated.Turns[0].Content).IsEqualTo("see this");
+        await Assert.That(rehydrated.Turns[0].Attachments.IsDefaultOrEmpty).IsTrue();
+    }
+
+    [Test]
+    public async Task StripImageAttachmentsRemovesImagesFromMemory()
+    {
+        using var fixture = new Fixture();
+        var context = await fixture.Store.OpenAsync(_session, CancellationToken.None);
+        var turn = new ModelTurn(ModelRole.User, "see this", DateTimeOffset.UnixEpoch)
+        {
+            Attachments = [new Attachment(AttachmentKind.Image, "image/png", "Zm9v")],
+        };
+        await context.AppendAsync(turn, CancellationToken.None);
+
+        context.StripImageAttachments();
+
+        await Assert.That(context.Turns[0].Content).IsEqualTo("see this");
+        await Assert.That(context.Turns[0].Attachments.IsDefaultOrEmpty).IsTrue();
     }
 
     [Test]

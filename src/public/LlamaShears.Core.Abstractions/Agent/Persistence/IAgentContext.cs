@@ -34,8 +34,18 @@ public interface IAgentContext
     /// Appends <paramref name="entry"/> to the live log and to the
     /// underlying store atomically. Subsequent reads of
     /// <see cref="Turns"/> / <see cref="Entries"/> include it.
+    /// Image attachments on a <see cref="ModelTurn"/> stay on the
+    /// in-memory snapshot so this iteration can still send them;
+    /// the durable line is written without them.
     /// </summary>
     Task AppendAsync(IContextEntry entry, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Drops image attachments from in-memory turns after the model
+    /// has seen them. Durable storage already omits images at append
+    /// time. Does not raise <see cref="Appended"/>.
+    /// </summary>
+    void StripImageAttachments();
 
     /// <summary>
     /// Raised when the context is cleared in-memory (typically following

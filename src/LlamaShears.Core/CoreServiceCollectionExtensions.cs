@@ -281,6 +281,7 @@ public static class CoreServiceCollectionExtensions
         services.AddAgentMiddleware<EphemeralContextMiddleware>();
         services.AddAgentMiddleware<RunIterationMiddleware>();
         services.AddAgentMiddleware<ToolDispatchMiddleware>();
+        services.AddAgentMiddleware<StripImageAttachmentsMiddleware>();
         services.AddAgentService<ChannelMessageIntakeService>();
         services.AddAgentService<AgentInterruptService>();
         services.AddAgentService<AgentShutdownService>();

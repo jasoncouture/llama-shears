@@ -1,6 +1,7 @@
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Channel;
 using LlamaShears.Core.Abstractions.Provider;
@@ -45,6 +46,30 @@ public sealed class ChannelMessageIntakeServiceTests
         await ((IEventHandler<ChannelMessage>)service).HandleAsync(Envelope<ChannelMessage>(null), CancellationToken.None);
 
         await queue.DidNotReceive().EnqueueAsync(Arg.Any<ModelTurn>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task HandleAsyncCopiesImageAttachmentsOntoTheQueuedTurn()
+    {
+        var queue = Substitute.For<ISessionQueue>();
+        IAgentService service = new ChannelMessageIntakeService(
+            Substitute.For<IEventBus>(),
+            queue,
+            PipelineTestContext.ScopeFor());
+        var image = new Attachment(AttachmentKind.Image, "image/png", "Zm9v");
+        var message = new ChannelMessage("see this", "web", DateTimeOffset.UnixEpoch)
+        {
+            Attachments = [image],
+        };
+
+        await ((IEventHandler<ChannelMessage>)service).HandleAsync(Envelope(message), CancellationToken.None);
+
+        await queue.Received(1).EnqueueAsync(
+            Arg.Is<ModelTurn>(t =>
+                t.Content == "see this"
+                && t.Attachments.Length == 1
+                && t.Attachments[0] == image),
+            CancellationToken.None);
     }
 
     [Test]
