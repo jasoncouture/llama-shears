@@ -6,13 +6,34 @@ namespace LlamaShears.UnitTests.Agent.Pipeline;
 public sealed class AgentPipelineTests
 {
     [Test]
-    public async Task InvokeAsyncRunsMiddlewareInRegistrationOrderOuterToInner()
+    public async Task InvokeAsyncPreservesEnumerationOrderWhenOrdersMatch()
     {
         var trace = new List<string>();
         IAgentPipeline pipeline = new AgentPipeline(
         [
             new RecordingAgentMiddleware("outer", trace),
             new RecordingAgentMiddleware("inner", trace),
+        ]);
+
+        await pipeline.InvokeAsync(CreateContext(), CancellationToken.None);
+
+        await Assert.That(trace).IsEquivalentTo(
+        [
+            "outer-before",
+            "inner-before",
+            "inner-after",
+            "outer-after",
+        ]);
+    }
+
+    [Test]
+    public async Task InvokeAsyncOrdersByOrderIndependentOfEnumeration()
+    {
+        var trace = new List<string>();
+        IAgentPipeline pipeline = new AgentPipeline(
+        [
+            new RecordingAgentMiddleware("inner", trace, order: 2000),
+            new RecordingAgentMiddleware("outer", trace, order: 1000),
         ]);
 
         await pipeline.InvokeAsync(CreateContext(), CancellationToken.None);

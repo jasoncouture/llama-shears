@@ -13,6 +13,9 @@ public sealed class CorrelationScopeMiddleware : IAgentMiddleware
     }
 
     /// <inheritdoc />
+    public int Order => AgentMiddlewareOrder.CorrelationScope;
+
+    /// <inheritdoc />
     public async Task InvokeAsync(
         AgentPipelineContext context,
         AgentMiddlewareDelegate next,

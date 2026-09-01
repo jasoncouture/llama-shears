@@ -14,6 +14,9 @@ public sealed class AgentLockMiddleware : IAgentMiddleware
     }
 
     /// <inheritdoc />
+    public int Order => AgentMiddlewareOrder.AgentLock;
+
+    /// <inheritdoc />
     public async Task InvokeAsync(
         AgentPipelineContext context,
         AgentMiddlewareDelegate next,

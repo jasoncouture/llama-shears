@@ -82,6 +82,7 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions.Agent.Pipeline
 
 - [AgentMiddlewareDelegate](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentMiddlewareDelegate.md)
+- [AgentMiddlewareOrder](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentMiddlewareOrder.md)
 - [AgentPipeline](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentPipeline.md)
 - [AgentPipelineContext](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentPipelineContext.md)
 - [AgentPipelineServiceCollectionExtensions](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentPipelineServiceCollectionExtensions.md)

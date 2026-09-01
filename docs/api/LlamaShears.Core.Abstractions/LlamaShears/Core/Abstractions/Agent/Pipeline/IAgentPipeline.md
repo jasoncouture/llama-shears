@@ -11,8 +11,9 @@ and calls this once per batch; it does not dequeue, lock, or subscribe.
 ### `InvokeAsync`([AgentPipelineContext](AgentPipelineContext.md) context, CancellationToken cancellationToken)
 
 Runs `context` through every registered
-middleware, outermost first. The terminal is a no-op — the
-innermost step must perform the iteration work.
+middleware, lowest [IAgentMiddleware](IAgentMiddleware.md).`Order` first.
+The terminal is a no-op — the innermost step must perform the
+iteration work.
 
 #### Parameters
 

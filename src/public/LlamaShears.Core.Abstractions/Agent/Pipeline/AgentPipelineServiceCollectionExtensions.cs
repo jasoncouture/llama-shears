@@ -24,8 +24,10 @@ public static class AgentPipelineServiceCollectionExtensions
     /// <summary>
     /// Registers <typeparamref name="T"/> as a scoped
     /// <see cref="IAgentMiddleware"/> and ensures
-    /// <see cref="IAgentPipeline"/> is registered. First-registered
-    /// middleware is outermost.
+    /// <see cref="IAgentPipeline"/> is registered.
+    /// <typeparamref name="T"/>'s <see cref="IAgentMiddleware.Order"/>
+    /// places the step; built-ins use <see cref="AgentMiddlewareOrder"/>
+    /// (spaced 1000). Registration order is not the onion order.
     /// </summary>
     /// <typeparam name="T">The middleware type to add.</typeparam>
     /// <param name="services">The collection to add to.</param>

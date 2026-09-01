@@ -9,6 +9,13 @@ namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
 public interface IAgentMiddleware
 {
     /// <summary>
+    /// Position in the onion. Lower runs farther out. Built-in
+    /// steps use <see cref="AgentMiddlewareOrder"/> (spaced 1000
+    /// apart) so plugins can pick a value between them.
+    /// </summary>
+    int Order { get; }
+
+    /// <summary>
     /// Runs this step around the remainder of the pipeline.
     /// </summary>
     /// <param name="context">The mutable bag for this dequeued batch.</param>

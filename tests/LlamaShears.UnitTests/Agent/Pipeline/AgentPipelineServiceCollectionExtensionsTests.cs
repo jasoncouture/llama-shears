@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
+using LlamaShears.UnitTests.Agent.Core;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LlamaShears.UnitTests.Agent.Pipeline;
@@ -34,6 +35,35 @@ public sealed class AgentPipelineServiceCollectionExtensionsTests
         await Assert.That(pipeline).IsTypeOf<AgentPipeline>();
         await Assert.That(steps).HasSingleItem();
         await Assert.That(steps[0]).IsTypeOf<RecordingAgentMiddleware>();
+    }
+
+    [Test]
+    public async Task PipelineSortsRegisteredMiddlewareByOrder()
+    {
+        var trace = new List<string>();
+        var services = new ServiceCollection();
+        services.AddSingleton<IAgentMiddleware>(new RecordingAgentMiddleware("inner", trace, order: 2000));
+        services.AddSingleton<IAgentMiddleware>(new RecordingAgentMiddleware("outer", trace, order: 1000));
+        services.AddAgentPipeline();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var pipeline = scope.ServiceProvider.GetRequiredService<IAgentPipeline>();
+
+        await pipeline.InvokeAsync(
+            new AgentPipelineContext(
+                new FakeAgentContext("alice"),
+                [],
+                CancellationToken.None),
+            CancellationToken.None);
+
+        await Assert.That(trace).IsEquivalentTo(
+        [
+            "outer-before",
+            "inner-before",
+            "inner-after",
+            "outer-after",
+        ]);
     }
 
     [Test]

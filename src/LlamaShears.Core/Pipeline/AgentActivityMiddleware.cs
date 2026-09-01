@@ -21,6 +21,9 @@ public sealed class AgentActivityMiddleware : IAgentMiddleware
     }
 
     /// <inheritdoc />
+    public int Order => AgentMiddlewareOrder.AgentActivity;
+
+    /// <inheritdoc />
     public async Task InvokeAsync(
         AgentPipelineContext context,
         AgentMiddlewareDelegate next,

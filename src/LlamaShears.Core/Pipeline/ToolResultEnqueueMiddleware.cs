@@ -13,6 +13,9 @@ public sealed class ToolResultEnqueueMiddleware : IAgentMiddleware
     }
 
     /// <inheritdoc />
+    public int Order => AgentMiddlewareOrder.ToolResultEnqueue;
+
+    /// <inheritdoc />
     public async Task InvokeAsync(
         AgentPipelineContext context,
         AgentMiddlewareDelegate next,

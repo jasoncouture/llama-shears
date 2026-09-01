@@ -4,9 +4,9 @@ Assembly: `LlamaShears.Core.Abstractions`
 
 The remainder of the agent-turn onion: either the next
 [IAgentMiddleware](IAgentMiddleware.md) or the no-op terminal.
-First-registered middleware is outermost and sees the batch before
-every later step; last-registered is innermost and sits next to
-the terminal.
+Lowest [IAgentMiddleware](IAgentMiddleware.md).`Order` is outermost and sees
+the batch before every later step; highest is innermost and sits
+next to the terminal.
 
 ## Parameters
 

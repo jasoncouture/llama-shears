@@ -12,6 +12,9 @@ public sealed class InterruptScopeMiddleware : IAgentMiddleware
     }
 
     /// <inheritdoc />
+    public int Order => AgentMiddlewareOrder.InterruptScope;
+
+    /// <inheritdoc />
     public async Task InvokeAsync(
         AgentPipelineContext context,
         AgentMiddlewareDelegate next,

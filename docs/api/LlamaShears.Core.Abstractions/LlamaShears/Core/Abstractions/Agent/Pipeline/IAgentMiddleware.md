@@ -7,6 +7,14 @@ before and/or after invoking the next delegate; skipping it
 short-circuits the rest of the chain. Each implementation owns
 exactly one concern.
 
+## Properties
+
+### `Order`
+
+Position in the onion. Lower runs farther out. Built-in
+steps use [AgentMiddlewareOrder](AgentMiddlewareOrder.md) (spaced 1000
+apart) so plugins can pick a value between them.
+
 ## Methods
 
 ### `InvokeAsync`([AgentPipelineContext](AgentPipelineContext.md) context, [AgentMiddlewareDelegate](AgentMiddlewareDelegate.md) next, CancellationToken cancellationToken)
