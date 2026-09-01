@@ -30,19 +30,21 @@ How an agent's model invokes external work. The contract surface is in [`Core.Ab
 │        ▲                          ▼                                │
 │        │                 ┌────────────────┐                        │
 │        │                 │ InferenceRunner│ accumulates fragments, │
-│        │                 │                │ publishes events       │
+│        │                 │                │ publishes events,      │
+│        │                 │                │ returns ToolCalls      │
 │        │                 └───────┬────────┘                        │
 │        │                         │ InferenceOutcome                │
 │        │                         ▼                                 │
 │        │              ┌──────────────────────┐                     │
-│        │              │ Tool calls present?  │ no  ─▶ done         │
+│        │              │ ToolDispatchMiddleware│ no calls ─▶ done   │
 │        │              └──────────┬───────────┘                     │
 │        │                         │ yes                             │
 │        │                         ▼                                 │
 │        │            ┌─────────────────────────┐                    │
-│        │            │ IToolCallDispatcher     │ parallel fan-out;  │
-│        │            │  → MCP HTTP client      │ source-prefix      │
-│        │            └────────────┬────────────┘ routing            │
+│        │            │ ToolCallExecutor        │ sequential; cap 15 │
+│        │            │  → IToolCallDispatcher  │ source-prefix      │
+│        │            │  → MCP HTTP client      │ routing            │
+│        │            └────────────┬────────────┘                    │
 │        │                         │                                 │
 │        │                         ▼                                 │
 │        │             ┌─────────────────────┐                       │
@@ -139,12 +141,12 @@ The `__` separator is a soft convention — the dispatcher never *parses* the na
 
 Per-call rules:
 
-1. **Parallel by default.** When a model emits N tool calls in one response, `Agent.DispatchToolCallsAsync` launches N tasks via `Task.WhenAll`. Tools are responsible for their own concurrency (locking, transactional integrity, idempotency).
+1. **Sequential, capped.** [`ToolDispatchMiddleware`](../../src/LlamaShears.Core/Pipeline/ToolDispatchMiddleware.cs) runs after inference. [`ToolCallExecutor`](../../src/LlamaShears.Core/ToolCallExecutor.cs) dispatches calls in original order through `IToolCallDispatcher`, up to 15 per turn. Further calls get a structured error result without hitting the dispatcher.
 2. **Cancellation propagates.** The agent's `CancellationToken` flows into every dispatch.
 3. **Failure is structured, not thrown.** A failed dispatch returns a `ToolCallResult(Content, IsError: true)`; the loop converts it to a `Tool` turn with `IsError = true`. The model sees the error in its next prompt and decides what to do.
 4. **No timeouts in v1.** Cancellation handles host shutdown; per-tool wall-clock budgets are deferred.
 5. **Bearer auth flows for loopback calls.** The MCP HTTP client is registered with `LoopbackBearerHandler` as a `DelegatingHandler`; for any request whose URI matches the host's own listener, the handler reads `ICurrentAgentAccessor.Current` and mints a fresh per-call bearer token. External MCP servers see no `Authorization` header from the framework — they're trusted on connect.
-6. **Tool turn order is deterministic.** Results are persisted in *original call order*, even though dispatch is parallel and `agent:tool-result:<id>` events fire in arrival order. Some providers pair tool calls and tool results positionally, not by id; deterministic order keeps re-prompting honest.
+6. **Tool turn order is deterministic.** Results are persisted in original call order. Some providers pair tool calls and tool results positionally, not by id; deterministic order keeps re-prompting honest.
 
 ## Loop termination
 
@@ -190,7 +192,7 @@ A provider is explicitly **not** responsible for:
 
 - The framework will not introspect tool implementations to infer behavior. Tools declare their schema; the framework does not parse implementations.
 - The framework will not retry failed tool calls. Failures surface to the model.
-- The framework will not serialize concurrent tool calls. Tools that need that serialize themselves.
+- The framework will not parallelize tool calls in one turn. Dispatch is sequential and capped.
 - The framework will not synthesize provider-specific role vocabularies. Providers map between `ModelRole` and the API's roles.
 
 ## References
@@ -202,4 +204,5 @@ A provider is explicitly **not** responsible for:
 - [`ModelTurn`](../../src/LlamaShears.Core.Abstractions/Provider/ModelTurn.cs)
 - [`ModelRole`](../../src/LlamaShears.Core.Abstractions/Provider/ModelRole.cs)
 - [`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs)
-- [`Agent.DispatchToolCallsAsync`](../../src/LlamaShears.Core/Agent.cs)
+- [`ToolDispatchMiddleware`](../../src/LlamaShears.Core/Pipeline/ToolDispatchMiddleware.cs)
+- [`ToolCallExecutor`](../../src/LlamaShears.Core/ToolCallExecutor.cs)
