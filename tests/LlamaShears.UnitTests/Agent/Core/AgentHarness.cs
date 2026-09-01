@@ -67,7 +67,6 @@ internal static class AgentHarness
             bus,
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
-            dataScope,
             model,
             NullLogger<InferenceRunner>.Instance));
         var iterationProvider = iterationServices.BuildServiceProvider();
@@ -98,7 +97,7 @@ internal static class AgentHarness
                 new AgentStateTracker(dataScope),
                 dataScope,
                 timeProvider),
-            new RunIterationMiddleware(iterationRunner),
+            new RunIterationMiddleware(iterationRunner, dataScope),
         ]);
 
         IAgentService[] inbound =

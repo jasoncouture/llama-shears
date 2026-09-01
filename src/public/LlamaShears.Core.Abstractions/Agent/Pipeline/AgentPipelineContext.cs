@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Provider;
 
 namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
@@ -9,7 +10,8 @@ namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
 /// dequeued batch. The loop owner constructs it; middleware fill
 /// <see cref="CorrelationId"/>, <see cref="TurnToken"/>,
 /// <see cref="SystemPrompt"/>, <see cref="EphemeralContext"/>,
-/// <see cref="Prompt"/>, and <see cref="Outcome"/> as they run.
+/// <see cref="Prompt"/>, <see cref="SessionId"/>, and
+/// <see cref="Outcome"/> as they run.
 /// </summary>
 public sealed class AgentPipelineContext
 {
@@ -88,6 +90,13 @@ public sealed class AgentPipelineContext
     /// <see cref="EphemeralContext"/>. The iteration sends this as-is.
     /// </summary>
     public ModelPrompt? Prompt { get; set; }
+
+    /// <summary>
+    /// Session this batch is running on. <see langword="null"/> until
+    /// run-iteration middleware copies it from the data scope. The
+    /// iteration passes it to inference for event routing.
+    /// </summary>
+    public SessionId? SessionId { get; set; }
 
     /// <summary>
     /// Result of the iteration runner. <see langword="null"/> until

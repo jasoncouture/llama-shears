@@ -14,22 +14,29 @@ namespace LlamaShears.UnitTests.Agent.Core;
 public sealed class AgentIterationRunnerTests
 {
     [Test]
-    public async Task SendsTheBagPromptToInference()
+    public async Task SendsTheBagPromptSessionAndCorrelationToInference()
     {
-        var (runner, inference, agentContext) = BuildRunner();
+        var (runner, inference, agentContext, session) = BuildRunner();
         var prompt = new ModelPrompt(
             [new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch)]);
+        var correlation = Guid.CreateVersion7();
         var context = new AgentPipelineContext(
             agentContext,
             [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
             CancellationToken.None)
         {
-            CorrelationId = Guid.CreateVersion7(),
+            CorrelationId = correlation,
             Prompt = prompt,
+            SessionId = session,
         };
         ModelPrompt? sent = null;
         inference
-            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
+            .RunAsync(
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<PromptOptions?>(),
+                Arg.Any<SessionId>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 sent = call.Arg<ModelPrompt>();
@@ -39,12 +46,18 @@ public sealed class AgentIterationRunnerTests
         await runner.RunAsync(context);
 
         await Assert.That(sent).IsEqualTo(prompt);
+        await inference.Received(1).RunAsync(
+            prompt,
+            Arg.Any<PromptOptions?>(),
+            session,
+            correlation,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task AppendsEmptyResponseRetryWithoutChangingExistingTurns()
     {
-        var (runner, inference, agentContext) = BuildRunner();
+        var (runner, inference, agentContext, session) = BuildRunner();
         var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
         var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
         var prompt = new ModelPrompt([ephemeral, remembered]);
@@ -55,10 +68,16 @@ public sealed class AgentIterationRunnerTests
         {
             CorrelationId = Guid.CreateVersion7(),
             Prompt = prompt,
+            SessionId = session,
         };
         var sent = new List<ModelPrompt>();
         inference
-            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
+            .RunAsync(
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<PromptOptions?>(),
+                Arg.Any<SessionId>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 sent.Add(call.Arg<ModelPrompt>());
@@ -79,20 +98,39 @@ public sealed class AgentIterationRunnerTests
     [Test]
     public async Task ThrowsWhenTheBagHasNoPrompt()
     {
-        var (runner, _, agentContext) = BuildRunner();
+        var (runner, _, agentContext, session) = BuildRunner();
         var context = new AgentPipelineContext(
             agentContext,
             [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
             CancellationToken.None)
         {
             CorrelationId = Guid.CreateVersion7(),
+            SessionId = session,
         };
 
         await Assert.That(async () => await runner.RunAsync(context))
             .Throws<InvalidOperationException>();
     }
 
-    private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext) BuildRunner()
+    [Test]
+    public async Task ThrowsWhenTheBagHasNoSessionId()
+    {
+        var (runner, _, agentContext, _) = BuildRunner();
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            Prompt = new ModelPrompt(
+                [new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch)]),
+        };
+
+        await Assert.That(async () => await runner.RunAsync(context))
+            .Throws<InvalidOperationException>();
+    }
+
+    private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext, SessionId Session) BuildRunner()
     {
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice");
         var session = new SessionId(config.Id, SessionId.DefaultSessionName);
@@ -115,6 +153,6 @@ public sealed class AgentIterationRunnerTests
             TimeProvider.System,
             dataScope,
             provider.GetRequiredService<IServiceScopeFactory>());
-        return (runner, inference, agentContext);
+        return (runner, inference, agentContext, session);
     }
 }

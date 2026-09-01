@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
@@ -47,12 +48,13 @@ public sealed class InferenceRunnerToolDispatchTests
             publisher,
             dispatcher,
             TimeProvider.System,
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero)).Current!,
             model,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: new PromptOptions(Tools: BuildToolsAdvertisement()),
+            sessionId: new SessionId("alice", SessionId.DefaultSessionName),
+            correlationId: Guid.CreateVersion7(),
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(3);
@@ -82,12 +84,13 @@ public sealed class InferenceRunnerToolDispatchTests
             publisher,
             dispatcher,
             TimeProvider.System,
-            TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero)).Current!,
             model,
             NullLogger<InferenceRunner>.Instance);
         var outcome = await runner.RunAsync(
             prompt: new ModelPrompt([new ModelTurn(ModelRole.User, "go", DateTimeOffset.UnixEpoch)]),
             options: null,
+            sessionId: new SessionId("alice", SessionId.DefaultSessionName),
+            correlationId: Guid.CreateVersion7(),
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(1);

@@ -6,7 +6,8 @@ Mutable bag handed to every [IAgentMiddleware](IAgentMiddleware.md) for one
 dequeued batch. The loop owner constructs it; middleware fill
 [AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`,
 [AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`,
-[AgentPipelineContext](AgentPipelineContext.md).`Prompt`, and [AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
+[AgentPipelineContext](AgentPipelineContext.md).`Prompt`, [AgentPipelineContext](AgentPipelineContext.md).`SessionId`, and
+[AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
 
 ## Properties
 
@@ -44,6 +45,12 @@ Model prompt for this batch. `null` until
 compaction middleware builds it (and possibly rewrites it).
 Ephemeral-context middleware may then insert
 [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`. The iteration sends this as-is.
+
+### `SessionId`
+
+Session this batch is running on. `null` until
+run-iteration middleware copies it from the data scope. The
+iteration passes it to inference for event routing.
 
 ### `ShutdownToken`
 

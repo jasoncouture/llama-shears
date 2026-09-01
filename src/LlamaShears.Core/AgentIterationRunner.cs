@@ -43,6 +43,9 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         var prompt = context.Prompt
             ?? throw new InvalidOperationException(
                 "Compaction middleware must set AgentPipelineContext.Prompt before the iteration runs.");
+        var session = context.SessionId
+            ?? throw new InvalidOperationException(
+                "Run-iteration middleware must set AgentPipelineContext.SessionId before the iteration runs.");
 
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
@@ -67,6 +70,8 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             outcome = await inferenceRunner.RunAsync(
                 prompt: prompt,
                 options: promptOptions,
+                sessionId: session,
+                correlationId: correlationId,
                 cancellationToken: turnCancellationToken);
             if (outcome.Interrupted)
             {

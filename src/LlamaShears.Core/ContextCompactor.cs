@@ -244,6 +244,8 @@ public sealed partial class ContextCompactor : IContextCompactor
             var outcome = await _inferenceRunner.RunAsync(
                 prompt: summarizationPrompt,
                 options: options,
+                sessionId: _dataContextScope.GetCurrentSessionId(),
+                correlationId: _dataContextScope.GetCorrelationId(),
                 cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)

@@ -62,7 +62,9 @@ public sealed class AgentMiddlewareOrderTests
                 Substitute.For<IAgentStateTracker>(),
                 PipelineTestContext.ScopeFor(),
                 TimeProvider.System),
-            new RunIterationMiddleware(Substitute.For<IAgentIterationRunner>()),
+            new RunIterationMiddleware(
+                Substitute.For<IAgentIterationRunner>(),
+                PipelineTestContext.ScopeFor()),
         ];
 
         int[] expected =

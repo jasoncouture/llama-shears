@@ -22,8 +22,9 @@ public interface IAgentIterationRunner
     /// The per-batch bag. Reads <see cref="AgentPipelineContext.AgentContext"/>,
     /// <see cref="AgentPipelineContext.Batch"/>,
     /// <see cref="AgentPipelineContext.CorrelationId"/>,
-    /// <see cref="AgentPipelineContext.TurnToken"/>, and
-    /// <see cref="AgentPipelineContext.Prompt"/>.
+    /// <see cref="AgentPipelineContext.TurnToken"/>,
+    /// <see cref="AgentPipelineContext.Prompt"/>, and
+    /// <see cref="AgentPipelineContext.SessionId"/>.
     /// The run-iteration middleware stores the returned
     /// <see cref="IterationOutcome"/> on the bag.
     /// </param>

@@ -179,7 +179,6 @@ public sealed class ContextCompactorTests
             publisher,
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
-            dataScope,
             model,
             NullLogger<InferenceRunner>.Instance);
         var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();

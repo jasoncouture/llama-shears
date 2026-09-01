@@ -23,8 +23,9 @@ wiring, and acting on returned tool-result turns.
 - `context` — The per-batch bag. Reads [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`AgentContext`,
 [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Batch`,
 [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`CorrelationId`,
-[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`TurnToken`, and
-[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Prompt`.
+[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`TurnToken`,
+[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Prompt`, and
+[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`SessionId`.
 The run-iteration middleware stores the returned
 [IterationOutcome](IterationOutcome.md) on the bag.
 

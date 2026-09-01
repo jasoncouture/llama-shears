@@ -21,6 +21,7 @@ public sealed class AgentPipelineContextTests
         await Assert.That(context.SystemPrompt).IsNull();
         await Assert.That(context.EphemeralContext).IsNull();
         await Assert.That(context.Prompt).IsNull();
+        await Assert.That(context.SessionId).IsNull();
     }
 
     [Test]
