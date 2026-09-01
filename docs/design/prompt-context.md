@@ -57,7 +57,7 @@ The bundled prompt at [`src/LlamaShears/content/templates/workspace/system/DEFAU
 
 ### What it is
 
-`EphemeralContextMiddleware` stamps `IAgentStateTracker` from the inbound batch (so `PROMPT.md` can read `agent_state`), then calls `IPromptContextProvider.GetAsync(config.PromptContext, scope.Snapshot(), context.TurnToken)` once per batch (after a memory search over persisted turns plus the inbound batch), and stores the result as `AgentPipelineContext.EphemeralContext`. The iteration inserts that `SystemEphemeral`-roled turn once, immediately before the last user cluster when the prompt ends in a user turn. Empty-response retries keep that same inserted turn.
+`EphemeralContextMiddleware` stamps `IAgentStateTracker` from the inbound batch (so `PROMPT.md` can read `agent_state`), then calls `IPromptContextProvider.GetAsync(config.PromptContext, scope.Snapshot(), context.TurnToken)` once per batch (after a memory search over persisted turns plus the inbound batch), and stores the result as `AgentPipelineContext.EphemeralContext`. The iteration inserts that `SystemEphemeral`-roled turn once into the compacted `context.Prompt`, immediately before the last user cluster when the prompt ends in a user turn. Empty-response retries keep that same inserted turn.
 
 This block is the framework's single coherent place to inject *everything that's true right now* without having to chain it through the persistent context:
 

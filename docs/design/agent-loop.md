@@ -61,7 +61,7 @@ IAgentPipeline
   6000 ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
   7000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt (not persisted)
   8000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext
-  9000 CompactionMiddleware             after: IContextCompactor.CompactAsync(force: false) on persisted turns (skip if interrupted or no Outcome)
+  9000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
   10000 RunIterationMiddleware          before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
 ```
 
@@ -79,13 +79,12 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 [`AgentIterationRunner.RunAsync`](../../src/LlamaShears.Core/AgentIterationRunner.cs) is one model call, not a TurnLimit inner loop:
 
 1. Open a nested DI scope with the turn's data, stamp `IAgentStateTracker` (channel, correlation id, session).
-2. Publish each inbound batch turn as `agent:turn:<session>` (this is what `AgentTurnContextPersister` writes to `current.json`).
-3. Build `ModelPrompt` from `context.SystemPrompt` (if present) plus persisted context turns, inserting `context.EphemeralContext` once immediately before the last user cluster when the prompt ends in a user turn.
-4. Discover MCP tools and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), using `TurnToken` so interrupt cancels inference.
-5. On interrupt: return `IterationOutcome(Interrupted: true)` and do **not** produce tool-result turns.
-6. On tool calls: return `Tool`-role turns in original call order. The onion enqueues them; the next dequeue feeds them back.
+2. Take `context.Prompt` (required; compaction middleware wrote it) and insert `context.EphemeralContext` once immediately before the last user cluster when the prompt ends in a user turn.
+3. Discover MCP tools and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), using `TurnToken` so interrupt cancels inference.
+4. On interrupt: return `IterationOutcome(Interrupted: true)` and do **not** produce tool-result turns.
+5. On tool calls: return `Tool`-role turns in original call order. The onion enqueues them; the next dequeue feeds them back.
 
-Compaction is not part of this call. `CompactionMiddleware` runs `IContextCompactor.CompactAsync(..., force: false)` after the iteration returns; see [compaction.md](compaction.md).
+Inbound batch persist and compaction happen before this call, in `CompactionMiddleware`; see [compaction.md](compaction.md). Compacting first keeps the trailing user turn and leaves room for the model's reply — compacting after would rewrite the store and drop that reply.
 
 `IAgentIterationRunner` knows nothing about the session queue, the agent lock, or interrupt subscriptions.
 
