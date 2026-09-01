@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
@@ -49,15 +48,18 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
 
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
-        var sessionId = batch[^1].SessionId;
         bundle.ServiceProvider.GetRequiredService<IAgentStateTracker>()
-            .SetState(batch[^1].ChannelId ?? DefaultChannel, correlationId: correlationId, sessionId: sessionId);
+            .SetState(
+                batch[^1].ChannelId ?? DefaultChannel,
+                correlationId: correlationId,
+                sessionId: batch[^1].SessionId);
         var agentId = _dataScope.GetAgentConfig().Id;
         var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
         var serverRegistry = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolServerRegistry>();
         var toolDiscovery = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolToolDiscovery>();
         var servers = serverRegistry.Resolve(_dataScope.GetAgentConfig().ModelContextProtocolServers);
         var tools = await toolDiscovery.DiscoverAsync(servers.Keys, turnCancellationToken);
+        context.Tools = tools;
         var promptOptions = new PromptOptions(
             Tools: tools,
             EmitTurns: true);
@@ -113,30 +115,10 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             await agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens, _time.GetLocalNow()), publishToken);
         }
 
-        if (outcome.Interrupted)
-        {
-            return new IterationOutcome(Interrupted: true, ToolResultTurns: []);
-        }
-
-        if (outcome.ToolCalls.IsDefaultOrEmpty)
-        {
-            return new IterationOutcome(Interrupted: false, ToolResultTurns: []);
-        }
-
-        var toolTurns = ImmutableArray.CreateBuilder<ModelTurn>(outcome.ToolCalls.Length);
-        for (var i = 0; i < outcome.ToolCalls.Length; i++)
-        {
-            toolTurns.Add(new ModelTurn(
-                ModelRole.Tool,
-                outcome.ToolResults[i].Content,
-                _time.GetLocalNow())
-            {
-                ToolCall = outcome.ToolCalls[i],
-                IsError = outcome.ToolResults[i].IsError,
-                SessionId = sessionId,
-            });
-        }
-        return new IterationOutcome(Interrupted: false, ToolResultTurns: toolTurns.ToImmutable());
+        return new IterationOutcome(
+            Interrupted: outcome.Interrupted,
+            ToolResultTurns: [],
+            ToolCalls: outcome.ToolCalls);
     }
 
     [LoggerMessage(Level = LogLevel.Warning,

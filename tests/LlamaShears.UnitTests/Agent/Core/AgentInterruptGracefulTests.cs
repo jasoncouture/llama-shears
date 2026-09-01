@@ -63,7 +63,7 @@ public sealed class AgentInterruptGracefulTests
         await using var agent = await BuildAgent("alice", session, provider, ctx, model, dispatcher: dispatcher);
 
         await PublishChannelMessageAsync(publisher, session, "go");
-        await dispatcher.WaitForDispatchAsync(TimeSpan.FromMilliseconds(500));
+        await model.WaitForFragmentEmittedAsync(TimeSpan.FromMilliseconds(500));
 
         await PublishInterruptAsync(publisher, session);
 
@@ -109,11 +109,15 @@ public sealed class AgentInterruptGracefulTests
     private sealed class GatedToolCallModel : ILanguageModel
     {
         private readonly ToolCall _call;
+        private readonly TaskCompletionSource _emitted =
+            new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public GatedToolCallModel(ToolCall call)
         {
             _call = call;
         }
+
+        public Task WaitForFragmentEmittedAsync(TimeSpan timeout) => _emitted.Task.WaitAsync(timeout);
 
         public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
             ModelPrompt prompt,
@@ -121,6 +125,7 @@ public sealed class AgentInterruptGracefulTests
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             yield return new ToolCallFragmentImpl(_call);
+            _emitted.TrySetResult();
             await Task.Delay(Timeout.Infinite, cancellationToken);
             yield break;
         }

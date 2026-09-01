@@ -209,6 +209,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.TryAddScoped<IAgentStateTracker, AgentStateTracker>();
         services.TryAddScoped<IInferenceRunner, InferenceRunner>();
+        services.TryAddScoped<ToolCallExecutor>();
         services.TryAddScoped(sp =>
         {
             var dataScope = sp.GetRequiredService<IDataContextScope>();
@@ -279,6 +280,7 @@ public static class CoreServiceCollectionExtensions
         services.AddAgentMiddleware<CompactionMiddleware>();
         services.AddAgentMiddleware<EphemeralContextMiddleware>();
         services.AddAgentMiddleware<RunIterationMiddleware>();
+        services.AddAgentMiddleware<ToolDispatchMiddleware>();
         services.AddAgentService<ChannelMessageIntakeService>();
         services.AddAgentService<AgentInterruptService>();
         services.AddAgentService<AgentShutdownService>();

@@ -40,7 +40,7 @@ public sealed class AgentIterationRunnerTests
             .Returns(call =>
             {
                 sent = call.Arg<ModelPrompt>();
-                return new InferenceOutcome("", "ok", null, [], []);
+                return new InferenceOutcome("", "ok", null, []);
             });
 
         await runner.RunAsync(context);
@@ -52,6 +52,36 @@ public sealed class AgentIterationRunnerTests
             session,
             correlation,
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ReturnsToolCallsWithoutDispatchingThem()
+    {
+        var (runner, inference, agentContext, session) = BuildRunner();
+        var call = new ToolCall("llamashears", "file_read", "{}", "1");
+        inference
+            .RunAsync(
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<PromptOptions?>(),
+                Arg.Any<SessionId>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new InferenceOutcome("", "", null, [call]));
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            Prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
+            SessionId = session,
+        };
+
+        var outcome = await runner.RunAsync(context);
+
+        await Assert.That(outcome.ToolCalls.Length).IsEqualTo(1);
+        await Assert.That(outcome.ToolCalls[0]).IsEqualTo(call);
+        await Assert.That(outcome.ToolResultTurns.IsDefaultOrEmpty).IsTrue();
     }
 
     [Test]
@@ -82,8 +112,8 @@ public sealed class AgentIterationRunnerTests
             {
                 sent.Add(call.Arg<ModelPrompt>());
                 return sent.Count == 1
-                    ? new InferenceOutcome("", "", null, [], [])
-                    : new InferenceOutcome("", "ok", null, [], []);
+                    ? new InferenceOutcome("", "", null, [])
+                    : new InferenceOutcome("", "ok", null, []);
             });
 
         await runner.RunAsync(context);

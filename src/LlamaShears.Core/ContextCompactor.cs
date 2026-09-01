@@ -31,6 +31,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IContextStore _contextStore;
     private readonly IAgentStateTracker _stateTracker;
     private readonly IInferenceRunner _inferenceRunner;
+    private readonly ToolCallExecutor _toolExecutor;
     private readonly IEventBus _eventPublisher;
     private readonly IModelContextProtocolServerRegistry _serverRegistry;
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
@@ -44,6 +45,7 @@ public sealed partial class ContextCompactor : IContextCompactor
     public ContextCompactor(IContextStore contextStore,
         IAgentStateTracker stateTracker,
         IInferenceRunner inferenceRunner,
+        ToolCallExecutor toolExecutor,
         IEventBus eventPublisher,
         IModelContextProtocolServerRegistry serverRegistry,
         IModelContextProtocolToolDiscovery toolDiscovery,
@@ -57,6 +59,7 @@ public sealed partial class ContextCompactor : IContextCompactor
         _contextStore = contextStore;
         _stateTracker = stateTracker;
         _inferenceRunner = inferenceRunner;
+        _toolExecutor = toolExecutor;
         _eventPublisher = eventPublisher;
         _serverRegistry = serverRegistry;
         _toolDiscovery = toolDiscovery;
@@ -261,14 +264,16 @@ public sealed partial class ContextCompactor : IContextCompactor
                     ToolCalls = outcome.ToolCalls,
                 };
                 historyTurns.Add(assistantTurn);
-                for (var i = 0; i < outcome.ToolCalls.Length; i++)
-                {
-                    historyTurns.Add(new ModelTurn(ModelRole.Tool, outcome.ToolResults[i].Content, prompt.Turns[^1].Timestamp)
-                    {
-                        ToolCall = outcome.ToolCalls[i],
-                        IsError = outcome.ToolResults[i].IsError,
-                    });
-                }
+                var toolTurns = await _toolExecutor.ExecuteAsync(
+                    outcome.ToolCalls,
+                    options.Tools,
+                    _dataContextScope.GetCurrentSessionId(),
+                    _dataContextScope.GetCorrelationId(),
+                    prompt.Turns[^1].ChannelId,
+                    turnSessionId: null,
+                    cancellationToken,
+                    cancellationToken);
+                historyTurns.AddRange(toolTurns);
                 if (toolCallingTurns >= MaxToolCallingTurns)
                 {
                     LogCompactionToolLimitReached(agentId, MaxToolCallingTurns);

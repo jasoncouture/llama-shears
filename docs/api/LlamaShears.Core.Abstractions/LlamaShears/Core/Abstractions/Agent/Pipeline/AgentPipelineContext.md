@@ -6,8 +6,8 @@ Mutable bag handed to every [IAgentMiddleware](IAgentMiddleware.md) for one
 dequeued batch. The loop owner constructs it; middleware fill
 [AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`,
 [AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`,
-[AgentPipelineContext](AgentPipelineContext.md).`Prompt`, [AgentPipelineContext](AgentPipelineContext.md).`SessionId`, and
-[AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
+[AgentPipelineContext](AgentPipelineContext.md).`Prompt`, [AgentPipelineContext](AgentPipelineContext.md).`SessionId`,
+[AgentPipelineContext](AgentPipelineContext.md).`Tools`, and [AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
 
 ## Properties
 
@@ -38,6 +38,7 @@ cluster when the compacted prompt ends in a user turn.
 
 Result of the iteration runner. `null` until
 the run-iteration step completes (or the chain short-circuits).
+Dispatch middleware may replace [IterationOutcome](../IterationOutcome.md).`ToolResultTurns`.
 
 ### `Prompt`
 
@@ -63,6 +64,12 @@ persistence that must finish after interrupt uses this, not
 Persistent system-prompt turn for this batch. `null`
 until system-prompt middleware renders it. Not persisted; compaction
 prepends it when building [AgentPipelineContext](AgentPipelineContext.md).`Prompt`.
+
+### `Tools`
+
+Tool groups advertised to the model for this batch. Empty until
+the iteration discovers them. Dispatch middleware uses the same
+set to validate calls.
 
 ### `TurnToken`
 

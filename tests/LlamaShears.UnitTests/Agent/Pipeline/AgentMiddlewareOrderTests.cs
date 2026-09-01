@@ -1,3 +1,4 @@
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
@@ -7,6 +8,7 @@ using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Pipeline;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -29,9 +31,10 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.Compaction,
             AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
+            AgentMiddlewareOrder.ToolDispatch,
         ];
 
-        await Assert.That(orders).IsEquivalentTo([1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]);
+        await Assert.That(orders).IsEquivalentTo([1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000]);
     }
 
     [Test]
@@ -65,6 +68,12 @@ public sealed class AgentMiddlewareOrderTests
             new RunIterationMiddleware(
                 Substitute.For<IAgentIterationRunner>(),
                 PipelineTestContext.ScopeFor()),
+            new ToolDispatchMiddleware(
+                new ToolCallExecutor(
+                    Substitute.For<IEventBus>(),
+                    Substitute.For<IToolCallDispatcher>(),
+                    TimeProvider.System,
+                    NullLogger<ToolCallExecutor>.Instance)),
         ];
 
         int[] expected =
@@ -79,6 +88,7 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.Compaction,
             AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
+            AgentMiddlewareOrder.ToolDispatch,
         ];
 
         await Assert.That(steps.Select(step => step.Order).ToArray()).IsEquivalentTo(expected);

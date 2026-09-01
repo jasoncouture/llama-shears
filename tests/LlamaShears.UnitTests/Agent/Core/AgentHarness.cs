@@ -63,9 +63,13 @@ internal static class AgentHarness
         promptContext
             .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>(null));
-        iterationServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+        var toolExecutor = new ToolCallExecutor(
             bus,
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            NullLogger<ToolCallExecutor>.Instance);
+        iterationServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
+            bus,
             TimeProvider.System,
             model,
             NullLogger<InferenceRunner>.Instance));
@@ -98,6 +102,7 @@ internal static class AgentHarness
                 dataScope,
                 timeProvider),
             new RunIterationMiddleware(iterationRunner, dataScope),
+            new ToolDispatchMiddleware(toolExecutor),
         ]);
 
         IAgentService[] inbound =

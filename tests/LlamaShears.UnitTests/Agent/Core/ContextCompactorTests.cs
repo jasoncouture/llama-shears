@@ -177,10 +177,14 @@ public sealed class ContextCompactorTests
             .Returns(ValueTask.FromResult("compaction-system"));
         var runner = new InferenceRunner(
             publisher,
-            Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             model,
             NullLogger<InferenceRunner>.Instance);
+        var toolExecutor = new ToolCallExecutor(
+            publisher,
+            Substitute.For<IToolCallDispatcher>(),
+            TimeProvider.System,
+            NullLogger<ToolCallExecutor>.Instance);
         var serverRegistry = Substitute.For<IModelContextProtocolServerRegistry>();
         serverRegistry.Resolve(Arg.Any<ImmutableHashSet<string>?>())
             .Returns(new Dictionary<string, ModelContextProtocolServerOptions>(StringComparer.OrdinalIgnoreCase));
@@ -197,6 +201,7 @@ public sealed class ContextCompactorTests
             store,
             stateTracker,
             runner,
+            toolExecutor,
             publisher,
             serverRegistry,
             toolDiscovery,

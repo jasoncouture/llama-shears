@@ -5,18 +5,18 @@ Assembly: `LlamaShears.Core.Abstractions`
 Runs a single agent iteration from the pipeline bag: takes
 [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Prompt` (compaction plus
 ephemeral insert already applied), invokes the language model
-(with the empty-response retry), persists the model's output via
-the active context store, and returns any tool-result turns the
-caller should feed back on the next iteration. Knows nothing
-about session queues, agent locks, or interrupt subscriptions.
+(with the empty-response retry), persists token metrics, and
+returns the model's tool calls on [IterationOutcome](IterationOutcome.md).
+Dispatch middleware executes those calls. Knows nothing about
+session queues, agent locks, or interrupt subscriptions.
 
 ## Methods
 
 ### `RunAsync`([AgentPipelineContext](Pipeline/AgentPipelineContext.md) context)
 
 Runs one iteration from `context`. The caller
-is responsible for any lock acquisition, interrupt-token
-wiring, and acting on returned tool-result turns.
+is responsible for any lock acquisition and interrupt-token
+wiring. Dispatch middleware acts on returned tool calls.
 
 #### Parameters
 

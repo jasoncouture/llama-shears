@@ -6,17 +6,17 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// Runs a single agent iteration from the pipeline bag: takes
 /// <see cref="AgentPipelineContext.Prompt"/> (compaction plus
 /// ephemeral insert already applied), invokes the language model
-/// (with the empty-response retry), persists the model's output via
-/// the active context store, and returns any tool-result turns the
-/// caller should feed back on the next iteration. Knows nothing
-/// about session queues, agent locks, or interrupt subscriptions.
+/// (with the empty-response retry), persists token metrics, and
+/// returns the model's tool calls on <see cref="IterationOutcome"/>.
+/// Dispatch middleware executes those calls. Knows nothing about
+/// session queues, agent locks, or interrupt subscriptions.
 /// </summary>
 public interface IAgentIterationRunner
 {
     /// <summary>
     /// Runs one iteration from <paramref name="context"/>. The caller
-    /// is responsible for any lock acquisition, interrupt-token
-    /// wiring, and acting on returned tool-result turns.
+    /// is responsible for any lock acquisition and interrupt-token
+    /// wiring. Dispatch middleware acts on returned tool calls.
     /// </summary>
     /// <param name="context">
     /// The per-batch bag. Reads <see cref="AgentPipelineContext.AgentContext"/>,

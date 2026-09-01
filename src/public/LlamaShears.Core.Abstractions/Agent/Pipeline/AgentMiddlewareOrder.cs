@@ -39,4 +39,7 @@ public static class AgentMiddlewareOrder
 
     /// <summary>Invoke <see cref="IAgentIterationRunner"/>.</summary>
     public const int RunIteration = 10000;
+
+    /// <summary>Dispatch <c>Outcome.ToolCalls</c> and write <c>ToolResultTurns</c>.</summary>
+    public const int ToolDispatch = 11000;
 }

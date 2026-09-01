@@ -5,6 +5,7 @@ namespace LlamaShears.Core.Abstractions.Provider;
 /// <summary>
 /// Streams a single model prompt, emits per-fragment events, and
 /// optionally emits the resulting Thought / Assistant turn events.
+/// Collects tool calls the model emitted but does not dispatch them.
 /// Lifts the inference loop out of the context compactor and the
 /// agent so both can share it. Callers pass the session and
 /// correlation used to key published events; the runner does not

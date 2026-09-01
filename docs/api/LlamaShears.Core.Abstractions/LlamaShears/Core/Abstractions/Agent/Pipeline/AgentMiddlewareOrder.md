@@ -41,6 +41,10 @@ Invoke [IAgentIterationRunner](../IAgentIterationRunner.md).
 
 Render the persistent system-prompt turn onto the bag.
 
+### `ToolDispatch`
+
+Dispatch `Outcome.ToolCalls` and write `ToolResultTurns`.
+
 ### `ToolResultEnqueue`
 
 Re-enqueue tool-result turns when the iteration was not interrupted.

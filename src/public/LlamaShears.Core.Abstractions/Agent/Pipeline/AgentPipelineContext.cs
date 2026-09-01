@@ -10,8 +10,8 @@ namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
 /// dequeued batch. The loop owner constructs it; middleware fill
 /// <see cref="CorrelationId"/>, <see cref="TurnToken"/>,
 /// <see cref="SystemPrompt"/>, <see cref="EphemeralContext"/>,
-/// <see cref="Prompt"/>, <see cref="SessionId"/>, and
-/// <see cref="Outcome"/> as they run.
+/// <see cref="Prompt"/>, <see cref="SessionId"/>,
+/// <see cref="Tools"/>, and <see cref="Outcome"/> as they run.
 /// </summary>
 public sealed class AgentPipelineContext
 {
@@ -99,8 +99,16 @@ public sealed class AgentPipelineContext
     public SessionId? SessionId { get; set; }
 
     /// <summary>
+    /// Tool groups advertised to the model for this batch. Empty until
+    /// the iteration discovers them. Dispatch middleware uses the same
+    /// set to validate calls.
+    /// </summary>
+    public ImmutableArray<ToolGroup> Tools { get; set; }
+
+    /// <summary>
     /// Result of the iteration runner. <see langword="null"/> until
     /// the run-iteration step completes (or the chain short-circuits).
+    /// Dispatch middleware may replace <see cref="IterationOutcome.ToolResultTurns"/>.
     /// </summary>
     public IterationOutcome? Outcome { get; set; }
 }
