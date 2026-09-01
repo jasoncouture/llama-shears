@@ -79,6 +79,17 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentContext](LlamaShears/Core/Abstractions/Agent/Persistence/IAgentContext.md)
 - [IContextStore](LlamaShears/Core/Abstractions/Agent/Persistence/IContextStore.md)
 
+## LlamaShears.Core.Abstractions.Agent.Pipeline
+
+- [AgentMiddlewareDelegate](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentMiddlewareDelegate.md)
+- [AgentPipeline](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentPipeline.md)
+- [AgentPipelineContext](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentPipelineContext.md)
+- [AgentPipelineServiceCollectionExtensions](LlamaShears/Core/Abstractions/Agent/Pipeline/AgentPipelineServiceCollectionExtensions.md)
+- [IActiveTurnCancellation](LlamaShears/Core/Abstractions/Agent/Pipeline/IActiveTurnCancellation.md)
+- [IAgentLifetime](LlamaShears/Core/Abstractions/Agent/Pipeline/IAgentLifetime.md)
+- [IAgentMiddleware](LlamaShears/Core/Abstractions/Agent/Pipeline/IAgentMiddleware.md)
+- [IAgentPipeline](LlamaShears/Core/Abstractions/Agent/Pipeline/IAgentPipeline.md)
+
 ## LlamaShears.Core.Abstractions.Agent.SaveAgentConfigResult
 
 - [Conflict](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult/Conflict.md)

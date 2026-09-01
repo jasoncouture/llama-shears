@@ -3,6 +3,7 @@
 ## Namespaces
 
 - [LlamaShears.Core.Abstractions.Agent.Persistence](Persistence/index.md)
+- [LlamaShears.Core.Abstractions.Agent.Pipeline](Pipeline/index.md)
 - [LlamaShears.Core.Abstractions.Agent.SaveAgentConfigResult](SaveAgentConfigResult/index.md)
 - [LlamaShears.Core.Abstractions.Agent.Sessions](Sessions/index.md)
 - [LlamaShears.Core.Abstractions.Agent.Todo](Todo/index.md)
