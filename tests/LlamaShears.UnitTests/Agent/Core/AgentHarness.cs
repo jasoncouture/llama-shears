@@ -60,12 +60,14 @@ internal static class AgentHarness
         iterationServices.AddMemoryCache();
         var systemPrompt = BuildStubSystemPromptProvider();
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var promptContext = Substitute.For<IPromptContextProvider>();
+        promptContext
+            .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>(null));
         iterationServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             bus,
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
-            Substitute.For<IPromptContextProvider>(),
-            memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
             dataScope,
             model,
             NullLogger<InferenceRunner>.Instance));
@@ -92,6 +94,12 @@ internal static class AgentHarness
             new InterruptScopeMiddleware(activeTurn),
             new ToolResultEnqueueMiddleware(sessionQueue),
             new SystemPromptMiddleware(systemPrompt, dataScope, timeProvider),
+            new EphemeralContextMiddleware(
+                promptContext,
+                memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
+                new AgentStateTracker(dataScope),
+                dataScope,
+                timeProvider),
             new RunIterationMiddleware(iterationRunner),
         ]);
 

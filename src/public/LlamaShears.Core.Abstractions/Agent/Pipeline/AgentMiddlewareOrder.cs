@@ -31,6 +31,9 @@ public static class AgentMiddlewareOrder
     /// <summary>Render the persistent system-prompt turn onto the bag.</summary>
     public const int SystemPrompt = 7000;
 
+    /// <summary>Render the per-turn ephemeral prompt-context turn onto the bag.</summary>
+    public const int EphemeralContext = 8000;
+
     /// <summary>Invoke <see cref="IAgentIterationRunner"/>.</summary>
-    public const int RunIteration = 8000;
+    public const int RunIteration = 9000;
 }

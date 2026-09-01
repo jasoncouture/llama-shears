@@ -6,8 +6,6 @@ using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Memory;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -181,8 +179,6 @@ public sealed class ContextCompactorTests
             publisher,
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
-            Substitute.For<IPromptContextProvider>(),
-            Substitute.For<IMemorySearcher>(),
             dataScope,
             model,
             NullLogger<InferenceRunner>.Instance);

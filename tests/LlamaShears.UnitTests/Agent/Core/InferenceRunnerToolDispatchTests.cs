@@ -1,8 +1,6 @@
 using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Memory;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Tools.ModelContextProtocol;
@@ -49,8 +47,6 @@ public sealed class InferenceRunnerToolDispatchTests
             publisher,
             dispatcher,
             TimeProvider.System,
-            Substitute.For<IPromptContextProvider>(),
-            Substitute.For<IMemorySearcher>(),
             TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero)).Current!,
             model,
             NullLogger<InferenceRunner>.Instance);
@@ -86,8 +82,6 @@ public sealed class InferenceRunnerToolDispatchTests
             publisher,
             dispatcher,
             TimeProvider.System,
-            Substitute.For<IPromptContextProvider>(),
-            Substitute.For<IMemorySearcher>(),
             TestAgentConfigs.DataContextFactoryWith(TestAgentConfigs.WithHeartbeat(TimeSpan.Zero)).Current!,
             model,
             NullLogger<InferenceRunner>.Instance);

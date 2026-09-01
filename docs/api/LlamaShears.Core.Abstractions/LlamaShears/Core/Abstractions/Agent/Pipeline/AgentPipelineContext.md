@@ -5,7 +5,8 @@ Assembly: `LlamaShears.Core.Abstractions`
 Mutable bag handed to every [IAgentMiddleware](IAgentMiddleware.md) for one
 dequeued batch. The loop owner constructs it; middleware fill
 [AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`,
-[AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, and [AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
+[AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`, and
+[AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
 
 ## Properties
 
@@ -23,6 +24,14 @@ array (filter, coalesce) before the iteration runner sees it.
 
 Correlation id stamped on events published during the
 iteration. Empty until correlation-scope middleware assigns one.
+
+### `EphemeralContext`
+
+Per-turn prompt-context turn for this batch. `null`
+until ephemeral-context middleware renders it, or when the
+template is empty. Not persisted; the iteration inserts it
+immediately before the last user cluster when the prompt ends
+in a user turn.
 
 ### `Outcome`
 

@@ -21,6 +21,10 @@ Hold [IAgentLock](../IAgentLock.md) across the rest of the turn.
 
 Assign a correlation id and logger scope.
 
+### `EphemeralContext`
+
+Render the per-turn ephemeral prompt-context turn onto the bag.
+
 ### `InterruptScope`
 
 Install the linked turn cancellation token.

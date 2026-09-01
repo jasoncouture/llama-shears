@@ -86,7 +86,6 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         var tools = await toolDiscovery.DiscoverAsync(servers.Keys, turnCancellationToken);
         var promptOptions = new PromptOptions(
             Tools: tools,
-            InjectEphemeralContext: true,
             EmitTurns: true);
 
         InferenceOutcome outcome;
@@ -95,7 +94,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         while (true)
         {
             outcome = await inferenceRunner.RunAsync(
-                prompt: prompt,
+                prompt: WithEphemeral(prompt, context.EphemeralContext),
                 options: promptOptions,
                 cancellationToken: turnCancellationToken);
             if (outcome.Interrupted)
@@ -162,6 +161,37 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             });
         }
         return new IterationOutcome(Interrupted: false, ToolResultTurns: toolTurns.ToImmutable());
+    }
+
+    private static ModelPrompt WithEphemeral(ModelPrompt prompt, ModelTurn? ephemeral)
+    {
+        if (ephemeral is null || prompt.Turns.Count == 0 || prompt.Turns[^1].Role != ModelRole.User)
+        {
+            return prompt;
+        }
+
+        return new ModelPrompt(InsertAfterLastNonUser(prompt.Turns, ephemeral));
+    }
+
+    private static int GetLastUserMessageIndex(IEnumerable<ModelTurn> turns)
+    {
+        return turns.Select((item, index) => (item, index))
+            .Reverse()
+            .TakeWhile(i => i.item.Role == ModelRole.User)
+            .Select(i => i.index)
+            .DefaultIfEmpty(0)
+            .Last();
+    }
+
+    private static ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
+    {
+        var insertAt = GetLastUserMessageIndex(turns);
+        if (insertAt == 0)
+        {
+            insertAt = turns.Count;
+        }
+
+        return [.. turns.Take(insertAt), ephemeral, .. turns.Skip(insertAt)];
     }
 
     [LoggerMessage(Level = LogLevel.Warning,

@@ -19,6 +19,7 @@ public sealed class AgentPipelineContextTests
         await Assert.That(context.CorrelationId).IsEqualTo(Guid.Empty);
         await Assert.That(context.Outcome).IsNull();
         await Assert.That(context.SystemPrompt).IsNull();
+        await Assert.That(context.EphemeralContext).IsNull();
     }
 
     [Test]

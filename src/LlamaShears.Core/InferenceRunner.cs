@@ -6,8 +6,6 @@ using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
-using LlamaShears.Core.Abstractions.Memory;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
@@ -22,8 +20,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private readonly IEventBus _eventPublisher;
     private readonly IToolCallDispatcher _toolDispatcher;
     private readonly TimeProvider _time;
-    private readonly IPromptContextProvider _promptContext;
-    private readonly IMemorySearcher _memorySearcher;
     private readonly IDataContextScope _dataScope;
     private readonly ILanguageModel _model;
     private readonly ILogger<InferenceRunner> _logger;
@@ -32,8 +28,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         IEventBus eventPublisher,
         IToolCallDispatcher toolDispatcher,
         TimeProvider time,
-        IPromptContextProvider promptContext,
-        IMemorySearcher memorySearcher,
         IDataContextScope dataScope,
         ILanguageModel model,
         ILogger<InferenceRunner> logger)
@@ -41,8 +35,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         _eventPublisher = eventPublisher;
         _toolDispatcher = toolDispatcher;
         _time = time;
-        _promptContext = promptContext;
-        _memorySearcher = memorySearcher;
         _dataScope = dataScope;
         _model = model;
         _logger = logger;
@@ -66,12 +58,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         var correlationId = state.CorrelationId;
         var channelId = prompt.Turns[^1].ChannelId;
         var emitTurns = options?.EmitTurns ?? false;
-
-        if (options is { InjectEphemeralContext: true })
-        {
-            prompt = await InjectEphemeralAsync(prompt, cancellationToken);
-        }
-
 
         var thinking = new StringBuilder();
         var content = new StringBuilder();
@@ -258,96 +244,9 @@ public sealed partial class InferenceRunner : IInferenceRunner
             cancellationToken);
     }
 
-    private async Task<ModelPrompt> InjectEphemeralAsync(ModelPrompt prompt, CancellationToken cancellationToken)
-    {
-        if (prompt.Turns.Count == 0 || prompt.Turns[^1].Role != ModelRole.User)
-        {
-            return prompt;
-        }
-
-        var config = _dataScope.TryGetAgentConfig();
-        if (config is null)
-        {
-            return prompt;
-        }
-
-        var memories = await SearchMemoriesAsync(config.Id, GetMemorySearchQueries(prompt.Turns), cancellationToken);
-
-        _dataScope.SetItem("memories", memories);
-        var body = await _promptContext.GetAsync(config.PromptContext, _dataScope.Snapshot(), cancellationToken);
-        if (string.IsNullOrWhiteSpace(body))
-        {
-            return prompt;
-        }
-
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, body, _time.GetLocalNow(), Ephemeral: true);
-        return new ModelPrompt(InsertAfterLastNonUser(prompt.Turns, ephemeral));
-    }
-
-    private int GetLastUserMessageIndex(IEnumerable<ModelTurn> turns)
-    {
-        return turns.Select((item, index) => (item, index))
-            .Reverse()
-            .TakeWhile(i => i.item.Role == ModelRole.User).Select(i => i.index)
-            .DefaultIfEmpty(0)
-            .Last();
-    }
-
-    // returns turns in reverse order, which doesn't matter because this is intended for memory searches, and order does not matter.
-    private IEnumerable<string> GetMemorySearchQueries(IEnumerable<ModelTurn> turns)
-    {
-        return turns.Reverse().Aggregate(new PromptSearchState(false, false, []), AggregateMemoryMessages, state => state.Turns.Select(i => i.Content));
-
-        PromptSearchState AggregateMemoryMessages(PromptSearchState state, ModelTurn turn)
-        {
-            if (state.Complete) return state;
-            if (state.UserMessageSeen && turn.Role != ModelRole.User)
-            {
-                return state with { Complete = true };
-            }
-            if (turn.Role == ModelRole.User)
-            {
-                state = state with { UserMessageSeen = true };
-            }
-
-            return state with { Turns = [.. state.Turns, turn] };
-        }
-    }
-
-    private record struct PromptSearchState(bool UserMessageSeen, bool Complete, ImmutableArray<ModelTurn> Turns);
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Tool call received: '{Source}.{Name}' (callId={CallId}) args={Arguments}")]
     private partial void LogToolCall(string source, string name, string? callId, string arguments);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Tool call '{Source}.{Name}' refused: limit of {Limit} per turn exceeded.")]
     private partial void LogToolCallLimitExceeded(string source, string name, int limit);
-
-    private ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
-    {
-        var insertAt = GetLastUserMessageIndex(turns);
-
-        if (insertAt == 0) insertAt = turns.Count;
-
-
-        var preUserTurns = turns.Take(insertAt);
-        var postUserTurns = turns.Skip(insertAt);
-        return [.. preUserTurns, ephemeral, .. postUserTurns];
-    }
-
-    private async ValueTask<IReadOnlyList<PromptContextMemory>> SearchMemoriesAsync(
-        string agentId,
-        IEnumerable<string> queries,
-        CancellationToken cancellationToken)
-    {
-        var results = new List<MemorySearchResult>();
-        foreach (var query in queries)
-        {
-            results.AddRange(await _memorySearcher.SearchAsync(agentId, query, limit: null, minScore: null, cancellationToken));
-        }
-
-        return [.. results
-            .Select(static i => new PromptContextMemory(i.RelativePath, i.Summary, i.Score))
-            .OrderByDescending(i => i.Score)
-            .DistinctBy(i => i.RelativePath)];
-    }
 }

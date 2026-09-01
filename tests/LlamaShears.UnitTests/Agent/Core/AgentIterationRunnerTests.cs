@@ -71,6 +71,70 @@ public sealed class AgentIterationRunnerTests
         await Assert.That(sent.Turns[0].Content).IsEqualTo("remembered");
     }
 
+    [Test]
+    public async Task InsertsEphemeralBeforeTheLastUserTurn()
+    {
+        var (runner, inference, agentContext) = BuildRunner();
+        var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            SystemPrompt = system,
+            EphemeralContext = ephemeral,
+        };
+        ModelPrompt? sent = null;
+        inference
+            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                sent = call.Arg<ModelPrompt>();
+                return new InferenceOutcome("", "ok", null, [], []);
+            });
+
+        await runner.RunAsync(context);
+
+        await Assert.That(sent).IsNotNull();
+        await Assert.That(sent!.Turns[0]).IsEqualTo(system);
+        await Assert.That(sent.Turns[1]).IsEqualTo(ephemeral);
+        await Assert.That(sent.Turns[2].Content).IsEqualTo("remembered");
+    }
+
+    [Test]
+    public async Task SkipsEphemeralWhenPromptDoesNotEndWithUser()
+    {
+        var (runner, inference, _) = BuildRunner();
+        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
+        IAgentContext agentContext = new FakeAgentContext(
+            "alice",
+            [new ModelTurn(ModelRole.Assistant, "done", DateTimeOffset.UnixEpoch)]);
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.Tool, "ok", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            EphemeralContext = ephemeral,
+        };
+        ModelPrompt? sent = null;
+        inference
+            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                sent = call.Arg<ModelPrompt>();
+                return new InferenceOutcome("", "ok", null, [], []);
+            });
+
+        await runner.RunAsync(context);
+
+        await Assert.That(sent).IsNotNull();
+        await Assert.That(sent!.Turns.Select(turn => turn.Role).ToArray())
+            .IsEquivalentTo([ModelRole.Assistant]);
+    }
+
     private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext) BuildRunner()
     {
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice");

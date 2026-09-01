@@ -8,7 +8,8 @@ namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
 /// Mutable bag handed to every <see cref="IAgentMiddleware"/> for one
 /// dequeued batch. The loop owner constructs it; middleware fill
 /// <see cref="CorrelationId"/>, <see cref="TurnToken"/>,
-/// <see cref="SystemPrompt"/>, and <see cref="Outcome"/> as they run.
+/// <see cref="SystemPrompt"/>, <see cref="EphemeralContext"/>, and
+/// <see cref="Outcome"/> as they run.
 /// </summary>
 public sealed class AgentPipelineContext
 {
@@ -70,6 +71,15 @@ public sealed class AgentPipelineContext
     /// iteration prepends it to the model prompt only.
     /// </summary>
     public ModelTurn? SystemPrompt { get; set; }
+
+    /// <summary>
+    /// Per-turn prompt-context turn for this batch. <see langword="null"/>
+    /// until ephemeral-context middleware renders it, or when the
+    /// template is empty. Not persisted; the iteration inserts it
+    /// immediately before the last user cluster when the prompt ends
+    /// in a user turn.
+    /// </summary>
+    public ModelTurn? EphemeralContext { get; set; }
 
     /// <summary>
     /// Result of the iteration runner. <see langword="null"/> until
