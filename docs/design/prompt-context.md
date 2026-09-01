@@ -11,7 +11,7 @@ Both are Scriban templates. The renderer is [`TemplateRenderer`](../../src/Llama
 
 ### What it is
 
-`SystemPromptMiddleware` calls `ISystemPromptProvider.GetAsync(config.SystemPrompt, scope.Snapshot(), context.TurnToken)` once per batch and stores the result as `AgentPipelineContext.SystemPrompt`. The iteration prepends that `System`-role turn at position 0 of `prompt.Turns`. The system prompt is *not* persisted — it's reconstructed every batch. Callers outside the onion (compaction) still pass `PromptOptions.SystemPromptTemplate` into `IInferenceRunner`.
+`SystemPromptMiddleware` calls `ISystemPromptProvider.GetAsync(config.SystemPrompt, scope.Snapshot(), context.TurnToken)` once per batch and stores the result as `AgentPipelineContext.SystemPrompt`. The iteration prepends that `System`-role turn at position 0 of `prompt.Turns`. The system prompt is *not* persisted — it's reconstructed every batch. Compaction renders `COMPACTION.md` itself and prepends that turn before calling `IInferenceRunner`.
 
 `AgentConfig.SystemPrompt` selects the template by name (no extension, no path separators). Default is `"DEFAULT"`.
 

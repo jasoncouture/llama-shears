@@ -88,7 +88,7 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 
 ## Inference (still a separate engine)
 
-[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) is **out of this split**. The agent-loop system prompt lives on `SystemPromptMiddleware`; callers such as the compactor still pass `PromptOptions.SystemPromptTemplate`. It still:
+[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) is **out of this split**. It does not render a system prompt. The agent-loop system prompt lives on `SystemPromptMiddleware`; compaction prepends `COMPACTION.md` before calling the runner. It still:
 
 - Injects the ephemeral prompt-context block ([prompt-context.md](prompt-context.md)).
 - Searches memories once per `RunAsync` (best-effort; missing workspace or embedding model → empty).
