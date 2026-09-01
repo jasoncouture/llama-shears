@@ -1,136 +1,123 @@
 # Agent loop
 
-What an agent actually does, turn by turn. The class behind this is [`Agent`](../../src/LlamaShears.Core/Agent.cs); the lifecycle owner is [`AgentManager`](../../src/LlamaShears.Core/AgentManager.cs).
+What an agent actually does, turn by turn. The loop owner is [`Agent`](../../src/LlamaShears.Core/Agent.cs) (`IAgent`). Per-batch work is an onion of [`IAgentMiddleware`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). One model call lives in [`IAgentIterationRunner`](../../src/public/LlamaShears.Core.Abstractions/Agent/IAgentIterationRunner.cs). Lifetime subscriptions (intake, interrupt, shutdown, reload, heartbeat, compaction) are [`IAgentService`](../../src/public/LlamaShears.Core.Abstractions/Agent/IAgentService.cs) implementations. The host lifecycle owner is [`AgentHost`](../../src/LlamaShears.Core/AgentHost.cs) / [`IAgentFactory`](../../src/public/LlamaShears.Core.Abstractions/Agent/IAgentFactory.cs).
 
 ## Shape
 
-An agent is a singleton in the DI container, owned by `AgentManager`. It carries:
+Each running agent is a **scoped** `IAgent` inside an `AgentHandle`. The scope carries the session's `IDataContextScope` (`AgentConfig`, `ModelConfiguration`, `SessionPath`). The loop owner holds:
 
-- A configuration snapshot (`AgentConfig`) — never mutated; reload is a Dispose-and-rebuild.
-- An `IAgentContext` — the in-memory + on-disk turn list opened from `IContextStore.OpenAsync(agentId)`.
-- A `Channel<IEventEnvelope<ChannelMessage>>` (unbounded, single-reader) — the inbound queue.
-- A `SemaphoreSlim(1, 1)` *processing gate* — guarantees that at most one batch is in flight per agent, and lets external callers (eager compactor, slash-command handlers) stop the loop while they do something with the agent's state.
-- A `Task` running `RunLoopAsync` — the loop reads the channel, batches, processes, repeats.
-- A subscription to `channel:message:+` — the inbound feed.
+- An `IAgentContext` opened from `IContextStore.OpenAsync(sessionId)`.
+- An `ISessionQueue` for the current session — inbound user turns and re-enqueued tool-result turns.
+- An `IAgentPipeline` — the per-batch onion.
+- An `IAgentLifetime` — the run-loop token (`Stopping`) and `Stop()` seam.
+- The scoped `IEnumerable<IAgentService>` started before the loop and stopped after it.
 
-Inbound `ChannelMessage` events whose `AgentId` doesn't match this agent's `Id` are dropped at the handler boundary (`HandleAsync`). The host can use a single bus pattern for the chat surface and let each agent self-filter.
+`IAgent` exposes only `RunAsync()`. It does not subscribe to the bus, acquire the agent lock, or run inference.
 
-## Per-batch flow
+## Loop
 
 ```
-inbound channel ──▶ batch coalesce ──▶ user turn build ──▶ publish agent:turn ──▶
-   resolve memories (prefetched on inbound, or searched once now) ──▶
-      iteration loop (≤ TurnLimit):
-         build prompt = system + persisted turns
-         compactor.CompactAsync(force: false)        ← may rewrite prompt + persistence
-         inject ephemeral prompt-context block       ← memories, time, channel id
-         inferenceRunner.RunAsync(dispatchTool)       ← streaming fragments → events
-                                                      ↳ tool calls dispatch eagerly
-                                                        as their fragments land
-         if final iteration:                          ← TurnLimit-th iteration runs tools-less
-            drop any tool calls, log empty-content if any, return
-         if no tool calls:
-            return
-         persist Tool turns in original call order   ← results already in InferenceOutcome
+IAgent.RunAsync
+  open IAgentContext
+  publish agent:starting
+  start IAgentServices
+  publish agent:started
+  while !IAgentLifetime.Stopping:
+    Idle/Busy around ISessionQueue.DequeueBatchAsync
+    new AgentPipelineContext(context, batch, shutdownToken)
+    IAgentPipeline.InvokeAsync
+  publish agent:stopping
+  stop IAgentServices
+  publish agent:stopped
 ```
 
-Every numbered detail below points back to a line in `Agent.cs` or its callees; if you need to chase one of these to ground truth, the source is the source.
+Idle / Busy stay on the loop because they need the wait on `DequeueBatchAsync`, not a per-batch step. An empty dequeue means the queue completed (shutdown); the loop returns. `OperationCanceledException` on the lifetime token is a clean stop. Any other exception at this layer is logged and the loop retries — turn-level failures are swallowed inside the onion (`TurnExceptionMiddleware`) so they never reach here.
 
-### 1. Coalesce input into one batch
+`DisposeAsync` calls `IAgentLifetime.Stop()` and joins the loop task. Inbound shutdown handling calls the same `Stop()` and does not wait; the loop owner joins.
 
-`RunLoopAsync` waits on the channel reader, takes the first envelope, then drains every consecutive envelope of the *same* `EventType` (i.e. same channel id) into a single batch. The drain stops at the first peek that doesn't match. Three messages arriving back-to-back become one prompt; messages from a different channel get processed on the next iteration.
+## Queue → batch
 
-This is why coalescing lives at the loop level, not at the producer: it can only be done with knowledge of "what's already queued right now," which the producer side doesn't have.
+[`ISessionQueue.DequeueBatchAsync`](../../src/public/LlamaShears.Core.Abstractions/Agent/Sessions/ISessionQueue.cs) is the coalesce point:
 
-### 2. Build one user turn from the batch
+1. Drain every currently queued **tool** turn (non-blocking).
+2. If any tool turns drained, also drain a same-channel **user** batch (non-blocking) and append it.
+3. If no tool turns were waiting, block until at least one user turn arrives, then drain the same-channel user batch.
 
-`BuildUserTurn`:
+User turns are enqueued by [`ChannelMessageIntakeService`](../../src/LlamaShears.Core/ChannelMessageIntakeService.cs): `ChannelMessage` → `ModelTurn(User)` on this session's queue. The subscription is session-scoped (`channel:message:<session>`), so other sessions never reach `HandleAsync`.
 
-- Single message → that message's text + attachments, role `User`, timestamp from the message.
-- Multiple → a header (`"The following N messages arrived since your last response, in order:"`) followed by `[1] (timestamp) text`, `[2] (timestamp) text`, … with attachments coalesced and indexed in-line so the model can correlate "image 2 of [3]" with its line. The merged turn carries the *last* message's timestamp.
+Tool-result turns are enqueued after a non-interrupted iteration by `ToolResultEnqueueMiddleware`. That is how a tool-using turn becomes the next loop iteration — not an inner `for` on the loop owner.
 
-The user turn is published as `agent:turn:<id>` immediately and that publication is what triggers `AgentTurnContextPersister` to write it to `current.json`. The model never sees a turn that isn't on disk.
+## Per-batch onion
 
-### 3. Resolve memories once per batch (with optional prefetch)
+First registered middleware is **outermost**. `AddAgentRuntime` registers the defaults in this order. Plugins that `AddAgentMiddleware<T>()` after `AddCore` land **inner** (closest to the iteration).
 
-`SearchMemoriesAsync` builds a query out of the last assistant turn (if any) plus the freshly-coalesced user turn, calls `IMemorySearcher.SearchAsync` with `limit=5, minScore=0.30`, and reads the matching files. If the agent has no `WorkspacePath` or no embedding model, the call short-circuits to an empty list. If the embedding model is unreachable, the failure is logged and the turn proceeds without memory enrichment — search is best-effort.
+```
+IAgentPipeline
+  TurnExceptionMiddleware          after: swallow interrupt OCE and other turn failures; rethrow shutdown OCE
+  AgentActivityMiddleware          before: start `chat {model}` + gen_ai.* tags; after: dispose; stamp error on thrown exceptions
+  CorrelationScopeMiddleware       before: Guid v7 + logger scope {AgentTurnId}
+  AgentLockMiddleware              before: IAgentLock.AcquireLockAsync; after: dispose lock
+  InterruptScopeMiddleware         before: linked CTS, context.TurnToken, IActiveTurnCancellation.Register; after: unregister
+  ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
+  RunIterationMiddleware           before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
+```
 
-The 0.30 floor is empirical against `embeddinggemma:latest` with the configured task prefixes; relevant matches land in the 0.40–0.60 band, noise stays under 0.10. The threshold sits in the gap.
+The terminal is a no-op. The innermost step must do the work (and may still call `next`). Skipping `next` short-circuits the rest of the chain.
 
-Memories are searched **once per batch, not once per iteration**. The user input and prior assistant turn are fixed for the whole tool loop, so re-querying every iteration would be wasted work and wasted embedding-model latency.
+Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register with `AddAgentMiddleware<T>()` — it `TryAddEnumerable`s the step and idempotently registers `IAgentPipeline`.
 
-If `AgentConfig.Memory.Prefetch` is enabled, the search is **kicked off when the inbound `ChannelMessage` arrives** at the agent's bus handler, not when the batch begins processing. The prefetch task runs concurrently with whatever the agent is doing right then (finishing the previous batch, waiting on the gate, etc.); when this batch reaches step 3 it consumes the prefetched result instead of starting a new search. If no prefetch was installed (flag off, empty message text, or the prefetch slot raced with a competing message), the loop falls back to the synchronous search at this step. The win is overlap — embedding-model latency hides behind whatever the agent was already doing.
+### Seams the onion shares with inbound services
 
-### 4. Iterate up to `Tools.TurnLimit`
+- [`IActiveTurnCancellation`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IActiveTurnCancellation.cs) — interrupt-scope middleware `Register`s the linked turn CTS; [`AgentInterruptService`](../../src/LlamaShears.Core/AgentInterruptService.cs) calls `Cancel()`. They must not share a private field on `Agent`.
+- [`IAgentLifetime`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentLifetime.cs) — the loop watches `Stopping`; [`AgentShutdownService`](../../src/LlamaShears.Core/AgentShutdownService.cs) and `DisposeAsync` call `Stop()`. `Stop()` does not wait and does not dispose the token (the loop still reads it).
 
-`Tools.TurnLimit` defaults to 8. The loop runs up to that many model calls per batch, with a deliberate asymmetry:
+## One iteration (`IAgentIterationRunner`)
 
-- **Iterations 1 to N-1:** prompt is sent with the discovered tool catalog. The model can emit tool calls; the loop dispatches them and re-prompts.
-- **Final iteration (Nth):** prompt is sent with `PromptOptions.Tools = []`. The model has no tools available and is told via the ephemeral block: *"You have exceeded your turn limit. Respond in text — any further tool calls will be ignored. This is your final output before control returns to the user."* If the chat template still confabulates tool calls (some do, even with an empty schema), they're logged and dropped.
+[`AgentIterationRunner.RunAsync`](../../src/LlamaShears.Core/AgentIterationRunner.cs) is one model call, not a TurnLimit inner loop:
 
-`TurnLimit = N` therefore means **at most N-1 tool-using turns followed by one tools-less wrap-up**. This is a structural ceiling, not a per-model behavior — it bounds how many round-trips a confused model can burn before control returns.
+1. Open a nested DI scope with the turn's data, stamp `IAgentStateTracker` (channel, correlation id, session).
+2. Publish each inbound batch turn as `agent:turn:<session>` (this is what `AgentTurnContextPersister` writes to `current.json`).
+3. Build `ModelPrompt` from persisted context turns.
+4. `IContextCompactor.CompactAsync(..., force: false)` — usually a no-op; see [compaction.md](compaction.md).
+5. Discover MCP tools and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), using `TurnToken` so interrupt cancels inference.
+6. On interrupt: return `IterationOutcome(Interrupted: true)` and do **not** produce tool-result turns.
+7. On tool calls: return `Tool`-role turns in original call order. The onion enqueues them; the next dequeue feeds them back.
 
-### 5. Compaction runs every iteration
+`IAgentIterationRunner` knows nothing about the session queue, the agent lock, or interrupt subscriptions.
 
-Each iteration calls `IContextCompactor.CompactAsync(snapshot, prompt, model, modelConfig, force: false, cancellationToken)` before sending the prompt. With `force: false` the compactor short-circuits unless the token-estimate-plus-predict-budget would exceed the model's context window — so the steady state is "compaction is a no-op." When the budget is blown, it rewrites the prompt to `[system, summary, last-user-turn]`, archives `current.json` to `<unix-ms>.json`, and rebuilds it from the rebuilt prompt. See [compaction.md](compaction.md).
+## Inference (still a separate engine)
 
-### 6. Inject the per-turn ephemeral block
+[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) is **out of this split**. It still:
 
-`InjectPromptContextAsync` finds the most recent `User` turn in the prompt and inserts a `SystemEphemeral` turn immediately *before* it. The body is rendered by `IPromptContextProvider` from the `PROMPT.md` template (workspace-overridable, falls back to the bundled `content/templates/workspace/system/context/PROMPT.md`).
+- Resolves the system prompt and injects the ephemeral prompt-context block ([prompt-context.md](prompt-context.md)).
+- Searches memories once per `RunAsync` (best-effort; missing workspace or embedding model → empty).
+- Streams `ILanguageModel.PromptAsync`, publishes `agent:message` / `agent:thought` fragments with the iteration's correlation id, and dispatches tool calls as their fragments land ([mcp.md](mcp.md)).
+- Caps consecutive tool-call rounds (`ConsecutiveToolCallLimit`, currently 15) inside that single `RunAsync`.
 
-The block carries: current local time / timezone / day-of-week, channel id, an optional `important_message` (used for the final-iteration "tools are gone, write text" notice), the memory hits as `(path, first-line summary, score)` triples, and a name-only listing of every other root-level `.md` in the workspace (so the model knows what's available without paying token cost for the bodies). See [prompt-context.md](prompt-context.md).
+Exploding `IInferenceRunner` into its own onion is a later cleanup. Do not fold stream / tool / event concerns back onto `Agent`.
 
-The conventional persona files (`BOOTSTRAP.md`, `IDENTITY.md`, `SOUL.md`) used to live in this block; they now live in the **system prompt** instead, since their contents are stable across iterations within a batch and re-emitting them every turn defeated cache locality without buying anything. See [prompt-context.md](prompt-context.md) for the system-prompt template.
+## Inbound services (not middleware)
 
-`SystemEphemeral` is a distinct `ModelRole` so providers can render it as a system-class message without confusing it with the persistent system prompt. It is **never persisted** — it's rebuilt each iteration so that the time, the memory hits, and the workspace file contents stay live.
+These subscribe in `StartAsync` and dispose in `StopAsync`. They are registered with `AddAgentService<T>()` from `AddAgentRuntime`:
 
-### 7. Run inference (with eager tool dispatch)
+| Service | Bus event | Effect |
+|---|---|---|
+| `ChannelMessageIntakeService` | session-scoped `channel:message` | enqueue `ModelTurn(User)` |
+| `AgentInterruptService` | session-scoped `command:interrupt-agent` | `IActiveTurnCancellation.Cancel()` |
+| `AgentShutdownService` | session-scoped **and** broadcast `command:agent-shutdown` | `IAgentLifetime.Stop()` if the payload session matches or is null |
+| `AgentConfigReloadService` | `lifecycle:update` keyed by agent id | `SetItem(AgentConfig.DataKey, updated)` |
 
-`InferenceRunner.RunAsync` consumes `ILanguageModel.PromptAsync(prompt, options)` as an `IAsyncEnumerable<IModelResponseFragment>`. As it streams it accumulates text into one `StringBuilder`, thoughts into another, and tool calls into a builder; it publishes a `FireAndForget` event for each fragment so the chat UI streams in real time.
+Heartbeat and compaction are the same pattern (`AgentHeartbeatService`, `CompactionAgentService`) — they are not part of the per-batch onion. Compaction that must pause the loop takes `IAgentLock`, the same lock the onion holds across `next`.
 
-The runner takes an optional `dispatchTool` callback. When a tool-call fragment lands in the stream, the runner immediately spawns `Task.Run(() => dispatchTool(call, cancellationToken))` for that call and continues consuming the stream. Tool execution overlaps with the rest of the model's output instead of waiting for the stream to finish — by the time the model emits its next text fragment or completes the turn, the earliest tool call may already have a result. After the stream completes, the runner `Task.WhenAll`s the dispatched tasks before returning, so the `InferenceOutcome` carries both the captured tool calls *and* their results in original call order.
+Intake starting in `StartAsync` (before `agent:started`) is slightly earlier than the old in-loop subscribe. Messages that arrive during other services' `StartAsync` queue instead of being dropped.
 
-When the stream completes the runner also publishes a final `agent:turn` event for the assistant turn (carrying both the streamed text and the captured `ToolCalls`, which is what `AgentTurnContextPersister` writes to `current.json`).
+## What's *not* in the loop owner
 
-The runner returns `InferenceOutcome(Thinking, Content, TokenCount?, ToolCalls, ToolResults)`. Earlier iterations of the loop pass a real `dispatchTool`; the **final iteration** passes `null` so any confabulated tool calls the model emits when it has no schema available are dropped rather than executed.
-
-### 8. Persist tool results, then loop or return
-
-The agent loop sees the `ToolResults` already populated in the `InferenceOutcome` (eagerly dispatched in step 7). It walks them in original call order and persists each as a `Tool`-role turn in `current.json`. Persistence in original order matters because some providers pair tool calls and tool results positionally rather than by id; deterministic order keeps re-prompting honest no matter which model is driving.
-
-Around the eager dispatch in step 7, the agent loop opens an `ICurrentAgentAccessor` scope carrying this agent's `AgentInfo`. The scope flows into spawned tasks because `ExecutionContext` captures `AsyncLocal` at task start; this is what makes `LoopbackBearerHandler` able to mint an agent-bound bearer for the loopback dispatch path. See [mcp.md](mcp.md).
-
-Each dispatched task publishes its own `agent:tool-result` event the moment its dispatch completes — so the UI can render results in arrival order regardless of which tool finished first.
-
-Dispatch routes by the `Source` prefix on the tool name (`server__tool` is split into `Source = "server"`, `Name = "tool"` at fragment-decode time on the provider side). If `Source` is empty or unknown, the dispatcher returns an error result rather than throwing — the loop continues and the model gets to see the failure on its next iteration.
-
-The agent's `CancellationToken` flows into every dispatch. Tools are responsible for their own concurrency (locking, transactional integrity, idempotency); the framework does not serialize parallel calls.
-
-### 9. Loop or return
-
-After dispatching, the loop continues. It returns when any of:
-
-- The outcome had no tool calls (the model is done; the assistant turn is the answer).
-- The final iteration ran (loop body returns explicitly after the final iteration).
-- The token budget gets blown and `CompactionFailedException` propagates out (rare; means the summarizer produced an empty summary).
-
-## External entry points
-
-The processing gate (`SemaphoreSlim`) is exposed on `IAgent`:
-
-- **`LockAsync(cancellationToken) / UnlockAsync()`** — for callers that want to block the loop while they do something to the agent's state out-of-band. Pairs 1:1.
-- **`RequestCompactionAsync(cancellationToken)`** — locks the gate, runs `IContextCompactor.CompactAsync(force: true)` against the agent's current context, releases the gate. Skips the under-budget guard so a healthy-but-aged context will still be compacted; the compactor's other guards (min turn count, no `ContextLength` configured) still apply. This is what `EagerCompactor` calls after 15 minutes of idle.
-
-The `LastActivity` property reads the timestamp of the most recent persisted turn. The eager compactor uses it together with its own per-agent `ConcurrentDictionary<string, DateTimeOffset>` of message-fragment arrivals to decide which agents are idle.
-
-## What's *not* in the loop
-
-A few things you might expect from the design vocabulary that aren't here yet:
-
-- **Heartbeat.** The agent does not handle a periodic wake-up turn. `AgentConfig.HeartbeatPeriod` is a record field with no consumer. See [heartbeat.md](heartbeat.md).
-- **Reminder turns for "produce text without tools."** The design in [tool-calling.md](tool-calling.md) discusses a `ReportStatus` tool as the explicit terminator. The implemented loop uses the simpler "final iteration runs with no tools" approach instead — same end state, no extra round-trip. `ReportStatus` is not in the codebase.
-- **Sub-agents.** `system/SUBAGENT.md` exists as a template, and the design vocabulary anticipates sub-agent spawning, but the loop above runs flat.
+- **Lock / interrupt CTS / activity / correlation / tool re-enqueue / iteration.** Middleware.
+- **Channel / interrupt / shutdown / config-reload handlers.** `IAgentService`.
+- **`Tools.TurnLimit`.** That knob is gone. Multi-step tool use is queue → onion → enqueue tool turns → loop. Consecutive tool-call bounding lives on `InferenceRunner`.
+- **`IAgent.LockAsync` / `RequestCompactionAsync`.** Those methods are gone. Lock through `IAgentLock` / `IAgentLockManager`. Compaction through `CompactionAgentService` / `IContextCompactor`.
 
 ## Tests
 
-The agent loop is exercised end-to-end by `tests/LlamaShears.IntegrationTests` using a fake `ILanguageModel`. Read those before changing batching, the iteration limit, or the order of persistence vs. dispatch — they're the regression net for behaviors that matter and are otherwise easy to break by accident.
+Contract tests live under `tests/LlamaShears.UnitTests/Agent/Pipeline/` (order, short-circuit, lock held across `next`, interrupt cancels `TurnToken` without stopping the loop, tool re-enqueue only when not interrupted) and `tests/LlamaShears.UnitTests/Agent/Core/` (loop, intake, interrupt, shutdown, reload). End-to-end coverage is `tests/LlamaShears.IntegrationTests`. Assert through public contracts (`IAgent`, `IAgentPipeline`, `ISessionQueue`, the bus). Do not add `InternalsVisibleTo`.
