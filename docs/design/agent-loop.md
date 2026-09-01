@@ -62,7 +62,7 @@ IAgentPipeline
   7000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt (not persisted)
   8000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
   9000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext; insert into Prompt
-  10000 RunIterationMiddleware          before: copy SessionId from the data scope, IAgentIterationRunner.RunAsync → context.Outcome; then next
+  10000 RunIterationMiddleware          before: copy SessionId from the data scope and ChannelId from the batch, IAgentIterationRunner.RunAsync → context.Outcome; then next
   11000 ToolDispatchMiddleware          before: dispatch Outcome.ToolCalls, write ToolResultTurns; then next (no-op terminal)
 ```
 
@@ -81,7 +81,7 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 
 1. Open a nested DI scope with the turn's data, stamp `IAgentStateTracker` (channel, correlation id, session).
 2. Take `context.Prompt` (required; compaction wrote it and ephemeral middleware may have inserted into it) and `context.SessionId` (required; run-iteration middleware copied it from the data scope). Empty-response retries append a user kicker onto that same prompt — they do not re-insert ephemeral.
-3. Discover MCP tools onto `context.Tools` and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), passing `SessionId` and `CorrelationId` so the runner does not read the data scope. `TurnToken` cancels inference on interrupt.
+3. Discover MCP tools onto `context.Tools` and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), passing `SessionId`, `CorrelationId`, and `ChannelId` so the runner does not read the prompt or the data scope. `TurnToken` cancels inference on interrupt.
 4. Return `IterationOutcome` with the model's `ToolCalls` and empty `ToolResultTurns`. `ToolDispatchMiddleware` executes the calls (including after interrupt, so history stays paired) and writes the result turns. `ToolResultEnqueueMiddleware` enqueues those turns only when the turn was not interrupted.
 
 Inbound batch persist and compaction happen before this call, in `CompactionMiddleware`; see [compaction.md](compaction.md). Compacting first keeps the trailing user turn and leaves room for the model's reply — compacting after would rewrite the store and drop that reply.
