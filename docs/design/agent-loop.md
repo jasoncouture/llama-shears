@@ -60,8 +60,8 @@ IAgentPipeline
   5000 InterruptScopeMiddleware         before: linked CTS, context.TurnToken, IActiveTurnCancellation.Register; after: unregister
   6000 ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
   7000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt (not persisted)
-  8000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext
-  9000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
+  8000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
+  9000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext; insert into Prompt
   10000 RunIterationMiddleware          before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
 ```
 
@@ -79,7 +79,7 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 [`AgentIterationRunner.RunAsync`](../../src/LlamaShears.Core/AgentIterationRunner.cs) is one model call, not a TurnLimit inner loop:
 
 1. Open a nested DI scope with the turn's data, stamp `IAgentStateTracker` (channel, correlation id, session).
-2. Take `context.Prompt` (required; compaction middleware wrote it) and insert `context.EphemeralContext` once immediately before the last user cluster when the prompt ends in a user turn.
+2. Take `context.Prompt` (required; compaction wrote it and ephemeral middleware may have inserted into it). Empty-response retries append a user kicker onto that same prompt — they do not re-insert ephemeral.
 3. Discover MCP tools and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), using `TurnToken` so interrupt cancels inference.
 4. On interrupt: return `IterationOutcome(Interrupted: true)` and do **not** produce tool-result turns.
 5. On tool calls: return `Tool`-role turns in original call order. The onion enqueues them; the next dequeue feeds them back.

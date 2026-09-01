@@ -17,7 +17,7 @@ The summary is an `Assistant`-role turn — written *to itself*, with the framin
 
 ### Auto-compaction (per-iteration, soft)
 
-[`CompactionMiddleware`](../../src/LlamaShears.Core/Pipeline/CompactionMiddleware.cs) (order 9000) publishes the inbound batch, builds `context.Prompt` from the system turn plus persisted turns, and calls `IContextCompactor.CompactAsync(snapshot, prompt, force: false)` **before** `IAgentIterationRunner` runs. That keeps the trailing user message and writes the assistant reply *after* the rewrite, so the model's response is not lost. With `force: false` the compactor short-circuits unless **all** of the following hold:
+[`CompactionMiddleware`](../../src/LlamaShears.Core/Pipeline/CompactionMiddleware.cs) (order 8000) publishes the inbound batch, builds `context.Prompt` from the system turn plus persisted turns, and calls `IContextCompactor.CompactAsync(snapshot, prompt, force: false)` **before** ephemeral insert and `IAgentIterationRunner`. That keeps the trailing user message and writes the assistant reply *after* the rewrite, so the model's response is not lost. With `force: false` the compactor short-circuits unless **all** of the following hold:
 
 - `prompt.Turns.Count >= 5` (below this the cost of a summarization call isn't worth what it would save).
 - `ModelConfiguration.ContextLength` is set on the agent (no configured window → no budget to enforce).
