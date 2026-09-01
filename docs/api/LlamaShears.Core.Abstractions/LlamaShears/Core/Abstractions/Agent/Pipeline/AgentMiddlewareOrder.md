@@ -19,7 +19,7 @@ Hold [IAgentLock](../IAgentLock.md) across the rest of the turn.
 
 ### `Compaction`
 
-Compact persisted context after the iteration finishes.
+Compact the prompt before the iteration runs.
 
 ### `CorrelationScope`
 

@@ -89,23 +89,6 @@ public sealed class ContextCompactorTests
     }
 
     [Test]
-    public async Task OverBudgetCompactsWhenTrailingTurnIsAssistant()
-    {
-        var model = BuildModel(summary: "here is the summary");
-        var config = new ModelConfiguration(new CompositeIdentity("ollama", "test"), ContextLength: 1_000, TokenLimit: 100);
-        var compactor = BuildCompactor(model, config);
-        var prompt = LongPromptEndingWithAssistant(charsPerTurn: 2_000);
-
-        var result = await compactor.CompactAsync(BuildAgentContext(prompt, config), prompt, force: false, CancellationToken.None);
-
-        await Assert.That(result).IsNotSameReferenceAs(prompt);
-        await Assert.That(result.Turns.Count).IsEqualTo(2);
-        await Assert.That(result.Turns[0].Role).IsEqualTo(ModelRole.System);
-        await Assert.That(result.Turns[1].Role).IsEqualTo(ModelRole.Assistant);
-        await Assert.That(result.Turns[1].Content).IsEqualTo("here is the summary");
-    }
-
-    [Test]
     public async Task SummarizationUsesCappedTokenLimit()
     {
         var model = BuildModel(summary: "a summary");
@@ -294,18 +277,6 @@ public sealed class ContextCompactorTests
             new ModelTurn(ModelRole.User, filler, _now),
             new ModelTurn(ModelRole.Assistant, filler, _now),
             new ModelTurn(ModelRole.User, "the latest user message", _now),
-        ]);
-    }
-
-    private static ModelPrompt LongPromptEndingWithAssistant(int charsPerTurn)
-    {
-        var filler = new string('x', charsPerTurn);
-        return new ModelPrompt([
-            new ModelTurn(ModelRole.System, "you are a helpful agent", _now),
-            new ModelTurn(ModelRole.User, filler, _now),
-            new ModelTurn(ModelRole.Assistant, filler, _now),
-            new ModelTurn(ModelRole.User, filler, _now),
-            new ModelTurn(ModelRole.Assistant, filler, _now),
         ]);
     }
 

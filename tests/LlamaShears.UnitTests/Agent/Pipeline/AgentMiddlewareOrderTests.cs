@@ -2,6 +2,7 @@ using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Context;
+using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.SystemPrompt;
@@ -59,6 +60,7 @@ public sealed class AgentMiddlewareOrderTests
             new CompactionMiddleware(
                 Substitute.For<IContextCompactor>(),
                 Substitute.For<IAgentContextProvider>(),
+                Substitute.For<IEventBus>(),
                 PipelineTestContext.ScopeFor()),
             new RunIterationMiddleware(Substitute.For<IAgentIterationRunner>()),
         ];

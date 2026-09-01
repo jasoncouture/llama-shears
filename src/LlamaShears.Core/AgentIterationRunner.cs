@@ -1,11 +1,8 @@
 using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
-using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,20 +18,17 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
 
     private readonly ILogger<AgentIterationRunner> _logger;
     private readonly TimeProvider _time;
-    private readonly IEventBus _eventPublisher;
     private readonly IDataContextScope _dataScope;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public AgentIterationRunner(
         ILogger<AgentIterationRunner> logger,
         TimeProvider time,
-        IEventBus eventPublisher,
         IDataContextScope dataScope,
         IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
         _time = time;
-        _eventPublisher = eventPublisher;
         _dataScope = dataScope;
         _scopeFactory = scopeFactory;
     }
@@ -44,9 +38,12 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         ArgumentNullException.ThrowIfNull(context);
         var batch = context.Batch;
         var correlationId = context.CorrelationId;
-        var outerCancellationToken = context.ShutdownToken;
         var turnCancellationToken = context.TurnToken;
         var agentContext = context.AgentContext;
+        var prompt = WithEphemeral(
+            context.Prompt ?? throw new InvalidOperationException(
+                "Compaction middleware must set AgentPipelineContext.Prompt before the iteration runs."),
+            context.EphemeralContext);
 
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
@@ -54,22 +51,6 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         bundle.ServiceProvider.GetRequiredService<IAgentStateTracker>()
             .SetState(batch[^1].ChannelId ?? DefaultChannel, correlationId: correlationId, sessionId: sessionId);
         var agentId = _dataScope.GetAgentConfig().Id;
-
-        var currentSession = _dataScope.GetCurrentSessionId();
-        foreach (var turn in batch)
-        {
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.Turn with { Id = currentSession },
-                turn,
-                correlationId,
-                outerCancellationToken);
-        }
-
-        var prompt = WithEphemeral(
-            context.SystemPrompt is { } systemPrompt
-                ? new ModelPrompt([systemPrompt, .. agentContext.Turns])
-                : new ModelPrompt([.. agentContext.Turns]),
-            context.EphemeralContext);
         var inferenceRunner = bundle.ServiceProvider.GetRequiredService<IInferenceRunner>();
         var serverRegistry = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolServerRegistry>();
         var toolDiscovery = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolToolDiscovery>();

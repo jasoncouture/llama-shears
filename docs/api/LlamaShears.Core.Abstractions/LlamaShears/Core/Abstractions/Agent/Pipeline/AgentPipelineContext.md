@@ -5,8 +5,8 @@ Assembly: `LlamaShears.Core.Abstractions`
 Mutable bag handed to every [IAgentMiddleware](IAgentMiddleware.md) for one
 dequeued batch. The loop owner constructs it; middleware fill
 [AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`,
-[AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`, and
-[AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
+[AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`,
+[AgentPipelineContext](AgentPipelineContext.md).`Prompt`, and [AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
 
 ## Properties
 
@@ -30,13 +30,20 @@ iteration. Empty until correlation-scope middleware assigns one.
 Per-turn prompt-context turn for this batch. `null`
 until ephemeral-context middleware renders it, or when the
 template is empty. Not persisted; the iteration inserts it
-once, immediately before the last user cluster when the prompt
-ends in a user turn.
+once, immediately before the last user cluster when
+[AgentPipelineContext](AgentPipelineContext.md).`Prompt` ends in a user turn.
 
 ### `Outcome`
 
 Result of the iteration runner. `null` until
 the run-iteration step completes (or the chain short-circuits).
+
+### `Prompt`
+
+Compacted model prompt for this batch. `null`
+until compaction middleware builds it (and possibly rewrites
+it). The iteration sends this, after inserting
+[AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`.
 
 ### `ShutdownToken`
 
@@ -47,8 +54,8 @@ persistence that must finish after interrupt uses this, not
 ### `SystemPrompt`
 
 Persistent system-prompt turn for this batch. `null`
-until system-prompt middleware renders it. Not persisted; the
-iteration prepends it to the model prompt only.
+until system-prompt middleware renders it. Not persisted; compaction
+prepends it when building [AgentPipelineContext](AgentPipelineContext.md).`Prompt`.
 
 ### `TurnToken`
 

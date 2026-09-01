@@ -102,6 +102,10 @@ public sealed partial class ContextCompactor : IContextCompactor
 
         var lastTurn = prompt.Turns[^1];
         var preserveTrailingUser = lastTurn.Role is ModelRole.User or ModelRole.FrameworkUser;
+        if (!preserveTrailingUser && !force)
+        {
+            return prompt;
+        }
 
         await _eventPublisher.PublishAsync(
             Event.WellKnown.Agent.CompactingStarted with { Id = _dataContextScope.GetCurrentSessionId() },

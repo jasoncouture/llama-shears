@@ -4,7 +4,6 @@ using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,17 +14,18 @@ namespace LlamaShears.UnitTests.Agent.Core;
 public sealed class AgentIterationRunnerTests
 {
     [Test]
-    public async Task PrependsSystemPromptToTheModelPrompt()
+    public async Task SendsTheBagPromptToInference()
     {
         var (runner, inference, agentContext) = BuildRunner();
-        var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
+        var prompt = new ModelPrompt(
+            [new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch)]);
         var context = new AgentPipelineContext(
             agentContext,
             [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
             CancellationToken.None)
         {
             CorrelationId = Guid.CreateVersion7(),
-            SystemPrompt = system,
+            Prompt = prompt,
         };
         ModelPrompt? sent = null;
         inference
@@ -38,36 +38,7 @@ public sealed class AgentIterationRunnerTests
 
         await runner.RunAsync(context);
 
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns[0]).IsEqualTo(system);
-        await Assert.That(sent.Turns[1].Content).IsEqualTo("remembered");
-    }
-
-    [Test]
-    public async Task OmitsSystemTurnWhenBagHasNone()
-    {
-        var (runner, inference, agentContext) = BuildRunner();
-        var context = new AgentPipelineContext(
-            agentContext,
-            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
-            CancellationToken.None)
-        {
-            CorrelationId = Guid.CreateVersion7(),
-        };
-        ModelPrompt? sent = null;
-        inference
-            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                sent = call.Arg<ModelPrompt>();
-                return new InferenceOutcome("", "ok", null, [], []);
-            });
-
-        await runner.RunAsync(context);
-
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns[0].Role).IsEqualTo(ModelRole.User);
-        await Assert.That(sent.Turns[0].Content).IsEqualTo("remembered");
+        await Assert.That(sent).IsEqualTo(prompt);
     }
 
     [Test]
@@ -75,6 +46,7 @@ public sealed class AgentIterationRunnerTests
     {
         var (runner, inference, agentContext) = BuildRunner();
         var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
+        var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
         var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
         var context = new AgentPipelineContext(
             agentContext,
@@ -82,8 +54,8 @@ public sealed class AgentIterationRunnerTests
             CancellationToken.None)
         {
             CorrelationId = Guid.CreateVersion7(),
-            SystemPrompt = system,
             EphemeralContext = ephemeral,
+            Prompt = new ModelPrompt([system, remembered]),
         };
         ModelPrompt? sent = null;
         inference
@@ -99,17 +71,16 @@ public sealed class AgentIterationRunnerTests
         await Assert.That(sent).IsNotNull();
         await Assert.That(sent!.Turns[0]).IsEqualTo(system);
         await Assert.That(sent.Turns[1]).IsEqualTo(ephemeral);
-        await Assert.That(sent.Turns[2].Content).IsEqualTo("remembered");
+        await Assert.That(sent.Turns[2]).IsEqualTo(remembered);
     }
 
     [Test]
     public async Task SkipsEphemeralWhenPromptDoesNotEndWithUser()
     {
         var (runner, inference, _) = BuildRunner();
+        var assistant = new ModelTurn(ModelRole.Assistant, "done", DateTimeOffset.UnixEpoch);
         var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
-        IAgentContext agentContext = new FakeAgentContext(
-            "alice",
-            [new ModelTurn(ModelRole.Assistant, "done", DateTimeOffset.UnixEpoch)]);
+        IAgentContext agentContext = new FakeAgentContext("alice", [assistant]);
         var context = new AgentPipelineContext(
             agentContext,
             [new ModelTurn(ModelRole.Tool, "ok", DateTimeOffset.UnixEpoch)],
@@ -117,6 +88,7 @@ public sealed class AgentIterationRunnerTests
         {
             CorrelationId = Guid.CreateVersion7(),
             EphemeralContext = ephemeral,
+            Prompt = new ModelPrompt([assistant]),
         };
         ModelPrompt? sent = null;
         inference
@@ -138,6 +110,7 @@ public sealed class AgentIterationRunnerTests
     public async Task InsertsEphemeralOnceAcrossEmptyResponseRetries()
     {
         var (runner, inference, agentContext) = BuildRunner();
+        var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
         var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
         var context = new AgentPipelineContext(
             agentContext,
@@ -146,6 +119,7 @@ public sealed class AgentIterationRunnerTests
         {
             CorrelationId = Guid.CreateVersion7(),
             EphemeralContext = ephemeral,
+            Prompt = new ModelPrompt([remembered]),
         };
         var sent = new List<ModelPrompt>();
         inference
@@ -165,6 +139,22 @@ public sealed class AgentIterationRunnerTests
         await Assert.That(sent[1].Turns.Count(turn => turn.Ephemeral)).IsEqualTo(1);
         await Assert.That(sent[1].Turns.Count).IsEqualTo(sent[0].Turns.Count + 1);
         await Assert.That(sent[1].Turns[^1].Role).IsEqualTo(ModelRole.User);
+    }
+
+    [Test]
+    public async Task ThrowsWhenTheBagHasNoPrompt()
+    {
+        var (runner, _, agentContext) = BuildRunner();
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+        };
+
+        await Assert.That(async () => await runner.RunAsync(context))
+            .Throws<InvalidOperationException>();
     }
 
     private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext) BuildRunner()
@@ -188,7 +178,6 @@ public sealed class AgentIterationRunnerTests
         IAgentIterationRunner runner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
             TimeProvider.System,
-            Substitute.For<IEventBus>(),
             dataScope,
             provider.GetRequiredService<IServiceScopeFactory>());
         return (runner, inference, agentContext);

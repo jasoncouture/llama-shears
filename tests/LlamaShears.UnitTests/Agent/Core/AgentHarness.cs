@@ -74,7 +74,6 @@ internal static class AgentHarness
         var iterationRunner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
             timeProvider,
-            bus,
             dataScope,
             iterationProvider.GetRequiredService<IServiceScopeFactory>());
 
@@ -98,7 +97,7 @@ internal static class AgentHarness
                 new AgentStateTracker(dataScope),
                 dataScope,
                 timeProvider),
-            new CompactionMiddleware(compactor, contextProvider, dataScope),
+            new CompactionMiddleware(compactor, contextProvider, bus, dataScope),
             new RunIterationMiddleware(iterationRunner),
         ]);
 

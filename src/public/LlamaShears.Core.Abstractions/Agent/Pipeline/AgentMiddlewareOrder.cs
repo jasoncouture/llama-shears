@@ -34,7 +34,7 @@ public static class AgentMiddlewareOrder
     /// <summary>Render the per-turn ephemeral prompt-context turn onto the bag.</summary>
     public const int EphemeralContext = 8000;
 
-    /// <summary>Compact persisted context after the iteration finishes.</summary>
+    /// <summary>Compact the prompt before the iteration runs.</summary>
     public const int Compaction = 9000;
 
     /// <summary>Invoke <see cref="IAgentIterationRunner"/>.</summary>
