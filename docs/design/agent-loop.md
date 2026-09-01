@@ -49,7 +49,7 @@ Tool-result turns are enqueued after a non-interrupted iteration by `ToolResultE
 
 ## Per-batch onion
 
-Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 7000` is inside iteration). Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
+Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 8000` is inside iteration). Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
 
 ```
 IAgentPipeline
@@ -59,7 +59,8 @@ IAgentPipeline
   4000 AgentLockMiddleware              before: IAgentLock.AcquireLockAsync; after: dispose lock
   5000 InterruptScopeMiddleware         before: linked CTS, context.TurnToken, IActiveTurnCancellation.Register; after: unregister
   6000 ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
-  7000 RunIterationMiddleware           before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
+  7000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt (not persisted)
+  8000 RunIterationMiddleware           before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
 ```
 
 The terminal is a no-op. The innermost step must do the work (and may still call `next`). Skipping `next` short-circuits the rest of the chain.
@@ -77,7 +78,7 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 
 1. Open a nested DI scope with the turn's data, stamp `IAgentStateTracker` (channel, correlation id, session).
 2. Publish each inbound batch turn as `agent:turn:<session>` (this is what `AgentTurnContextPersister` writes to `current.json`).
-3. Build `ModelPrompt` from persisted context turns.
+3. Build `ModelPrompt` from `context.SystemPrompt` (if present) plus persisted context turns.
 4. `IContextCompactor.CompactAsync(..., force: false)` — usually a no-op; see [compaction.md](compaction.md).
 5. Discover MCP tools and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), using `TurnToken` so interrupt cancels inference.
 6. On interrupt: return `IterationOutcome(Interrupted: true)` and do **not** produce tool-result turns.
@@ -87,9 +88,9 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 
 ## Inference (still a separate engine)
 
-[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) is **out of this split**. It still:
+[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) is **out of this split**. The agent-loop system prompt lives on `SystemPromptMiddleware`; callers such as the compactor still pass `PromptOptions.SystemPromptTemplate`. It still:
 
-- Resolves the system prompt and injects the ephemeral prompt-context block ([prompt-context.md](prompt-context.md)).
+- Injects the ephemeral prompt-context block ([prompt-context.md](prompt-context.md)).
 - Searches memories once per `RunAsync` (best-effort; missing workspace or embedding model → empty).
 - Streams `ILanguageModel.PromptAsync`, publishes `agent:message` / `agent:thought` fragments with the iteration's correlation id, and dispatches tool calls as their fragments land ([mcp.md](mcp.md)).
 - Caps consecutive tool-call rounds (`ConsecutiveToolCallLimit`, currently 15) inside that single `RunAsync`.
@@ -113,7 +114,7 @@ Intake starting in `StartAsync` (before `agent:started`) is slightly earlier tha
 
 ## What's *not* in the loop owner
 
-- **Lock / interrupt CTS / activity / correlation / tool re-enqueue / iteration.** Middleware.
+- **Lock / interrupt CTS / activity / correlation / tool re-enqueue / system prompt / iteration.** Middleware.
 - **Channel / interrupt / shutdown / config-reload handlers.** `IAgentService`.
 - **`Tools.TurnLimit`.** That knob is gone. Multi-step tool use is queue → onion → enqueue tool turns → loop. Consecutive tool-call bounding lives on `InferenceRunner`.
 - **`IAgent.LockAsync` / `RequestCompactionAsync`.** Those methods are gone. Lock through `IAgentLock` / `IAgentLockManager`. Compaction through `CompactionAgentService` / `IContextCompactor`.
