@@ -1,117 +1,59 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
-using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
-using LlamaShears.Core.Abstractions.Events.Channel;
-using LlamaShears.Core.Abstractions.Provider;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
-public sealed partial class Agent :
-    IAgent,
-    IEventHandler<ChannelMessage>,
-    IEventHandler<AgentInterruptRequest>,
-    IEventHandler<AgentShutdownRequest>,
-    IEventHandler<ConfigurationChangedNotification>,
-    IAsyncDisposable
+public sealed partial class Agent : IAgent, IAsyncDisposable
 {
     private readonly ILogger _logger;
     private readonly IContextStore _contextStore;
     private readonly TimeProvider _time;
     private readonly ISessionQueue _sessionQueue;
-    private readonly CancellationTokenSource _shutdown;
-    private readonly IEventBus _bus;
-    private readonly Lock _interruptLock = new Lock();
-    private CancellationTokenSource? _activeTurnCancellationTokenSource;
-    private readonly IEventBus _eventPublisher;
+    private readonly IEventBus _eventBus;
     private readonly IDataContextScope _dataScope;
-    private readonly IAgentLock _agentLock;
-    private readonly IAgentIterationRunner _iterationRunner;
+    private readonly IAgentPipeline _pipeline;
+    private readonly IAgentLifetime _lifetime;
     private readonly ImmutableArray<IAgentService> _agentServices;
     private int _disposed;
-    private bool _started = false;
-    private readonly TaskCompletionSource _loopStatus = new TaskCompletionSource();
-    private static readonly ActivitySource _agentActivitySource = Telemetry.CreateActivitySourceForType<Agent>();
-    SessionPath _sessionPath;
-
+    private bool _started;
+    private readonly TaskCompletionSource _loopStatus = new();
+    private readonly SessionPath _sessionPath;
 
     public Agent(
         IContextStore contextStore,
         ILogger<Agent> logger,
-        IEventBus bus,
+        IEventBus eventBus,
         TimeProvider timeProvider,
-        IEventBus eventPublisher,
         IDataContextScope dataScope,
-        IAgentLock agentLock,
         ISessionFactory sessionFactory,
-        IAgentIterationRunner iterationRunner,
+        IAgentPipeline pipeline,
+        IAgentLifetime lifetime,
         IEnumerable<IAgentService> agentServices)
     {
         _sessionPath = dataScope.GetSessionPath();
         _logger = logger;
         _contextStore = contextStore;
-        _eventPublisher = eventPublisher;
+        _eventBus = eventBus;
         _time = timeProvider;
         _dataScope = dataScope;
-        _agentLock = agentLock;
-        _iterationRunner = iterationRunner;
+        _pipeline = pipeline;
+        _lifetime = lifetime;
         _agentServices = [.. agentServices];
         _sessionQueue = sessionFactory.Get(_sessionPath.Current);
-        _shutdown = new CancellationTokenSource();
-        _bus = bus;
     }
 
-    private async Task PublishLifecycleEventAsync(EventType type, CancellationToken cancellationToken)
-    {
-        var agentConfig = _dataScope.GetAgentConfig();
-        var sessionId = _dataScope.GetCurrentSessionId();
-        var eventInformation = new AgentLifecycleEvent(agentConfig, sessionId);
-        type = type with { Id = _dataScope.GetCurrentSessionId() };
-        await _eventPublisher.PublishAsync(type, eventInformation, cancellationToken);
-    }
-
-    private IAsyncDisposable SubscribeToEvents()
-    {
-        var disposable = DisposableList.Create().And(_bus.Subscribe<AgentShutdownRequest>(
-            Event.WellKnown.Command.AgentShutdown with { Id = _sessionPath.Current },
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true));
-
-        disposable = disposable.And(_bus.Subscribe<AgentShutdownRequest>(
-            Event.WellKnown.Command.AgentShutdown,
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true));
-
-        disposable.And(_bus.Subscribe<ChannelMessage>(
-            Event.WellKnown.Channel.Message with { Id = _sessionPath.Current },
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true));
-        disposable.And(_bus.Subscribe<AgentInterruptRequest>(
-            Event.WellKnown.Command.InterruptAgent with { Id = _sessionPath.Current },
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true));
-        disposable.And(_bus.Subscribe<ConfigurationChangedNotification>(
-            Event.WellKnown.Lifecycle.Update with { Id = _dataScope.GetAgentConfig().Id },
-            EventDeliveryMode.Awaited,
-            this,
-            preserveSubscriberExecutionContext: true));
-
-        return disposable;
-    }
-
+    /// <inheritdoc />
     public async Task RunAsync()
     {
-        var cancellationToken = _shutdown.Token;
+        var cancellationToken = _lifetime.Stopping;
         var agentContext = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
 
         using var shutdownTimeoutCancellationTokenSource = new CancellationTokenSource();
@@ -125,7 +67,7 @@ public sealed partial class Agent :
                 {
                     await agentService.StartAsync(cancellationToken);
                 }
-                
+
                 await RunIterationsAsync(agentContext, cancellationToken);
             }
             finally
@@ -159,89 +101,37 @@ public sealed partial class Agent :
         }
     }
 
-    public ValueTask HandleAsync(IEventEnvelope<AgentInterruptRequest> envelope, CancellationToken cancellationToken)
-    {
-        CancellationTokenSource? cancellationTokenSource;
-        lock (_interruptLock)
-        {
-            cancellationTokenSource = _activeTurnCancellationTokenSource;
-        }
-
-        cancellationTokenSource?.Cancel();
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask HandleAsync(IEventEnvelope<ConfigurationChangedNotification> envelope, CancellationToken cancellationToken)
-    {
-        if (envelope.Data?.UpdatedConfig is { } updated)
-        {
-            _dataScope.SetItem(AgentConfig.DataKey, updated);
-            LogConfigReloaded(_sessionPath.Current, updated.Hash);
-        }
-        return ValueTask.CompletedTask;
-    }
-
-    public async ValueTask HandleAsync(IEventEnvelope<AgentShutdownRequest> envelope, CancellationToken cancellationToken)
-    {
-        if (_shutdown.IsCancellationRequested) return;
-        if (envelope.Data?.SessionId is not null)
-        {
-            var ownSessionId = _dataScope.GetCurrentSessionId();
-            if (envelope.Data.SessionId != ownSessionId)
-            {
-                return;
-            }
-        }
-        await ShutdownLoopAsync(false);
-    }
-
-    private async ValueTask ShutdownLoopAsync(bool wait)
-    {
-        if (!_shutdown.IsCancellationRequested)
-        {
-            await _shutdown.CancelAsync();
-        }
-        if (!_started) _loopStatus.TrySetResult();
-        if (_started && wait)
-        {
-            await _loopStatus.Task.ConfigureAwait(false);
-        }
-    }
-
+    /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
-        await ShutdownLoopAsync(true).ConfigureAwait(false);
-        _shutdown.Dispose();
-    }
 
-    public async ValueTask HandleAsync(IEventEnvelope<ChannelMessage> envelope, CancellationToken cancellationToken)
-    {
-        var data = envelope.Data;
-        if (data is null)
+        _lifetime.Stop();
+        if (!_started)
         {
-            return;
+            _loopStatus.TrySetResult();
         }
 
-        var turn = new ModelTurn(
-            ModelRole.User,
-            data.Text,
-            data.Timestamp,
-            ChannelId: data.ChannelId)
+        if (_started)
         {
-            Attachments = data.Attachments,
-        };
-        await _sessionQueue.EnqueueAsync(turn, cancellationToken);
+            await _loopStatus.Task.ConfigureAwait(false);
+        }
+    }
+
+    private async Task PublishLifecycleEventAsync(EventType type, CancellationToken cancellationToken)
+    {
+        var agentConfig = _dataScope.GetAgentConfig();
+        var sessionId = _dataScope.GetCurrentSessionId();
+        var eventInformation = new AgentLifecycleEvent(agentConfig, sessionId);
+        type = type with { Id = _dataScope.GetCurrentSessionId() };
+        await _eventBus.PublishAsync(type, eventInformation, cancellationToken);
     }
 
     private async Task RunIterationsAsync(IAgentContext agentContext, CancellationToken cancellationToken)
     {
-        // It doesn't make sense to subscribe to events before we're up and running, and likewise, it doesn't make sense to keep listening after we've stopped.
-        // So instead of doing subscriptions in the constructor, do it here instead.
-        await using var subscriptions = SubscribeToEvents();
         await PublishLifecycleEventAsync(Event.WellKnown.Agent.Started, cancellationToken);
         using var loggingScope = _logger.BeginScope("{Session}", _sessionPath.Current);
         using var eventCancellationTokenSource = new CancellationTokenSource();
@@ -250,7 +140,7 @@ public sealed partial class Agent :
             ((CancellationTokenSource)tokenSource!).CancelAfter(TimeSpan.FromSeconds(5));
         }, eventCancellationTokenSource);
 
-        var isIdle = true; // We intentionally don't send the first idle event. Since we aren't "idle", we are "started".
+        var isIdle = true;
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -260,67 +150,21 @@ public sealed partial class Agent :
                     await PublishLifecycleEventAsync(Event.WellKnown.Agent.Idle, eventCancellationTokenSource.Token);
                     isIdle = true;
                 }
-                var batch = await _sessionQueue.DequeueBatchAsync(cancellationToken);
 
+                var batch = await _sessionQueue.DequeueBatchAsync(cancellationToken);
                 if (batch.IsDefaultOrEmpty)
                 {
                     return;
                 }
-                using var activity = _agentActivitySource.StartActivity(name: $"chat {_dataScope.GetModelConfiguration().Id}", kind: ActivityKind.Client, tags: GetAgentTags());
+
                 if (isIdle)
                 {
                     await PublishLifecycleEventAsync(Event.WellKnown.Agent.Busy, eventCancellationTokenSource.Token);
                     isIdle = false;
                 }
 
-                var correlationId = Guid.CreateVersion7();
-                using var innerLoggingScope = _logger.BeginScope("{AgentTurnId}", correlationId);
-                using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
-                activity?.AddEvent(new ActivityEvent("lock acquired"));
-                using var turnCancellationTokenSource =
-                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                lock (_interruptLock)
-                {
-                    _activeTurnCancellationTokenSource = turnCancellationTokenSource;
-                }
-
-                try
-                {
-                    var outcome = await _iterationRunner.RunAsync(
-                        agentContext,
-                        batch,
-                        correlationId,
-                        cancellationToken,
-                        turnCancellationTokenSource.Token);
-                    if (outcome.Interrupted)
-                    {
-                        LogTurnInterrupted(_sessionPath.Current, correlationId);
-                    }
-                    else
-                    {
-                        foreach (var toolTurn in outcome.ToolResultTurns)
-                        {
-                            await _sessionQueue.EnqueueAsync(toolTurn, cancellationToken);
-                        }
-                    }
-                }
-                catch (OperationCanceledException) when (turnCancellationTokenSource.IsCancellationRequested &&
-                                                         !cancellationToken.IsCancellationRequested)
-                {
-                    LogTurnInterrupted(_sessionPath.Current, correlationId);
-                }
-                catch (Exception ex)
-                {
-                    activity?.AddException(ex);
-                    activity?.SetStatus(ActivityStatusCode.Error);
-                }
-                finally
-                {
-                    lock (_interruptLock)
-                    {
-                        _activeTurnCancellationTokenSource = null;
-                    }
-                }
+                var context = new AgentPipelineContext(agentContext, batch, cancellationToken);
+                await _pipeline.InvokeAsync(context, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -329,40 +173,15 @@ public sealed partial class Agent :
             }
             catch (Exception ex)
             {
-
                 LogProcessOnceFailed(_sessionPath.Current, ex);
             }
         }
     }
 
-    private IEnumerable<KeyValuePair<string, object?>>? GetAgentTags()
-    {
-        var agentId = _dataScope.GetAgentConfig().Id;
-        var sessionId = _dataScope.GetCurrentSessionId();
-        var modelId = _dataScope.GetModelConfiguration().Id;
-        var conversationId = sessionId.ToString();
-        if (sessionId.IsDefault) conversationId = $"{sessionId.AgentId}:{sessionId.Name}";
-        yield return new KeyValuePair<string, object?>("gen_ai.request.model", modelId.ToString());
-        yield return new KeyValuePair<string, object?>("gen_ai.system", "llamashears");
-        yield return new KeyValuePair<string, object?>("gen_ai.operation.name", "chat");
-        yield return new KeyValuePair<string, object?>("gen_ai.agent.id", agentId);
-        yield return new KeyValuePair<string, object?>("gen_ai.agent.name", agentId);
-        yield return new KeyValuePair<string, object?>("gen_ai.agent.version", _agentActivitySource.Version);
-        yield return new KeyValuePair<string, object?>("gen_ai.conversation.id", conversationId);
-    }
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' is stopping.")]
     private partial void LogAgentStopping(SessionId session);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{Session}' picked up new config (hash '{ConfigHash}').")]
-    private partial void LogConfigReloaded(SessionId session, string configHash);
 
     [LoggerMessage(Level = LogLevel.Error,
         Message = "Agent '{Session}' failed to process turn; will retry on next signal.")]
     private partial void LogProcessOnceFailed(SessionId session, Exception ex);
-
-    [LoggerMessage(Level = LogLevel.Information,
-        Message =
-            "Agent '{Session}' turn '{CorrelationId}' interrupted; partial fragments dropped, agent remains live.")]
-    private partial void LogTurnInterrupted(SessionId session, Guid correlationId);
 }

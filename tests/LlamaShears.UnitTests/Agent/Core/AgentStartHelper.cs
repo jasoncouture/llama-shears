@@ -1,3 +1,4 @@
+using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
@@ -6,7 +7,7 @@ namespace LlamaShears.UnitTests.Agent.Core;
 
 internal static class AgentStartHelper
 {
-    public static async Task StartAndWaitAsync(IEventBus bus, SessionId session, LlamaShears.Core.Agent agent)
+    public static async Task StartAndWaitAsync(IEventBus bus, SessionId session, IAgent agent)
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = bus.Subscribe<AgentLifecycleEvent>(

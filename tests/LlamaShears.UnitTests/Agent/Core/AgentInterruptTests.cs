@@ -1,23 +1,16 @@
 using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
-using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Sessions;
-using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -77,77 +70,19 @@ public sealed class AgentInterruptTests
             new ChannelMessage(text, TestChannelId, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
-    private async Task<LlamaShears.Core.Agent> BuildAgent(
+    private Task<LlamaShears.Core.Agent> BuildAgent(
         string id,
         SessionId session,
         IServiceProvider services,
         IAgentContext agentContext,
         ILanguageModel model)
-    {
-        var compactor = Substitute.For<IContextCompactor>();
-        compactor.CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
-        var contextProvider = Substitute.For<IAgentContextProvider>();
-        contextProvider.CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));
-        var publisher = services.GetRequiredService<IEventBus>();
-        var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, id);
-        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig, session);
-        services.GetRequiredService<IDataContextFactory>().Current = dataContextFactory.Current;
-        var agentServices = new ServiceCollection();
-        agentServices.AddSingleton(dataContextFactory.Current!);
-        agentServices.AddSingleton(compactor);
-        agentServices.AddSingleton(model);
-        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
-        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
-        agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
-        agentServices.AddMemoryCache();
-        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
-            publisher,
-            Substitute.For<IToolCallDispatcher>(),
-            TimeProvider.System,
-            Substitute.For<IPromptContextProvider>(),
-            BuildStubSystemPromptProvider(),
-            TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory.Current!,
+        => AgentHarness.StartAsync(
+            id,
+            session,
+            services,
+            agentContext,
             model,
-            NullLogger<InferenceRunner>.Instance));
-        var agentProvider = agentServices.BuildServiceProvider();
-        var contextStore = new FakeContextStore().With(session, agentContext);
-        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var iterationRunner = new AgentIterationRunner(
-            NullLogger<AgentIterationRunner>.Instance,
-            timeProvider,
-            publisher,
-            dataContextFactory.Current!,
-            agentProvider.GetRequiredService<IServiceScopeFactory>(),
-            contextProvider);
-        var agent = new LlamaShears.Core.Agent(
-            contextStore: contextStore,
-            logger: NullLogger<LlamaShears.Core.Agent>.Instance,
-            bus: services.GetRequiredService<IEventBus>(),
-            timeProvider: timeProvider,
-            eventPublisher: publisher,
-            dataScope: dataContextFactory.Current!,
-            agentLock: new AgentLock(_lockManager, dataContextFactory.Current!),
-            sessionFactory: services.GetRequiredService<ISessionFactory>(),
-            iterationRunner: iterationRunner,
-            agentServices: []);
-        await AgentStartHelper.StartAndWaitAsync(services.GetRequiredService<IEventBus>(), session, agent);
-        return agent;
-    }
-
-    private static ISystemPromptProvider BuildStubSystemPromptProvider()
-    {
-        var stub = Substitute.For<ISystemPromptProvider>();
-        stub.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult("system"));
-        return stub;
-    }
+            lockManager: _lockManager);
 
     private static ServiceProvider BuildServices()
     {

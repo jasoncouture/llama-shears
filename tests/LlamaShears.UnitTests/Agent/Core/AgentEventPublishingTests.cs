@@ -1,23 +1,14 @@
-using LlamaShears.Core;
-using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Events.Channel;
-using LlamaShears.Core.Abstractions.PromptContext;
-using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Eventing;
 using LlamaShears.Core.Eventing.Extensions;
 using LlamaShears.Core.Persistence;
 using LlamaShears.Core.Sessions;
-using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
 namespace LlamaShears.UnitTests.Agent.Core;
@@ -127,49 +118,13 @@ public sealed class AgentEventPublishingTests
         var ctx = await provider.GetRequiredService<IContextStore>().OpenAsync(session, CancellationToken.None);
 
         using var captureChannel = new CapturingTurnSubscriber(bus, session);
-        var resolvedConfig = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, agentId);
-        var dataContextFactory = TestAgentConfigs.DataContextFactoryWith(resolvedConfig, session);
-        provider.GetRequiredService<IDataContextFactory>().Current = dataContextFactory.Current;
-        var agentServices = new ServiceCollection();
-        agentServices.AddSingleton(dataContextFactory.Current!);
-        agentServices.AddSingleton(BuildNoOpCompactor());
-        agentServices.AddSingleton<ILanguageModel>(model);
-        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
-        agentServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
-        agentServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataContextFactory.Current!));
-        agentServices.AddMemoryCache();
-        agentServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
-            capturing,
-            Substitute.For<IToolCallDispatcher>(),
-            TimeProvider.System,
-            Substitute.For<IPromptContextProvider>(),
-            BuildStubSystemPromptProvider(),
-            TestAgentConfigs.EmptyMemorySearcher(),
-            dataContextFactory.Current!,
+        await using var agent = await AgentHarness.StartAsync(
+            agentId,
+            session,
+            provider,
+            ctx,
             model,
-            NullLogger<InferenceRunner>.Instance));
-        var agentProvider = agentServices.BuildServiceProvider();
-        var contextStore = new FakeContextStore().With(session, ctx);
-        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var iterationRunner = new AgentIterationRunner(
-            NullLogger<AgentIterationRunner>.Instance,
-            timeProvider,
-            capturing,
-            dataContextFactory.Current!,
-            agentProvider.GetRequiredService<IServiceScopeFactory>(),
-            BuildContextProvider(agentId));
-        await using var agent = new LlamaShears.Core.Agent(
-            contextStore: contextStore,
-            logger: NullLogger<LlamaShears.Core.Agent>.Instance,
-            bus: bus,
-            timeProvider: timeProvider,
-            eventPublisher: capturing,
-            dataScope: dataContextFactory.Current!,
-            agentLock: new AgentLock(new AgentLockManager(), dataContextFactory.Current!),
-            sessionFactory: provider.GetRequiredService<ISessionFactory>(),
-            iterationRunner: iterationRunner,
-            agentServices: []);
-        await AgentStartHelper.StartAndWaitAsync(bus, session, agent);
+            eventBus: capturing);
 
         await capturing.PublishAsync(
             Event.WellKnown.Channel.Message with { Id = session },
@@ -192,34 +147,6 @@ public sealed class AgentEventPublishingTests
         var provider = services.BuildServiceProvider();
         provider.GetRequiredService<AgentTurnContextPersister>();
         return provider;
-    }
-
-    private static IContextCompactor BuildNoOpCompactor()
-    {
-        var compactor = Substitute.For<IContextCompactor>();
-        compactor.CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
-        return compactor;
-    }
-
-    private static IAgentContextProvider BuildContextProvider(string agentId)
-    {
-        var contextProvider = Substitute.For<IAgentContextProvider>();
-        contextProvider.CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(agentId)));
-        return contextProvider;
-    }
-
-    private static ISystemPromptProvider BuildStubSystemPromptProvider()
-    {
-        var stub = Substitute.For<ISystemPromptProvider>();
-        stub.GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult("system"));
-        return stub;
     }
 
     /// <summary>
