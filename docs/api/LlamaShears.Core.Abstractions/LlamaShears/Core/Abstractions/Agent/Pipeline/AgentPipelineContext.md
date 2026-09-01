@@ -29,9 +29,9 @@ iteration. Empty until correlation-scope middleware assigns one.
 
 Per-turn prompt-context turn for this batch. `null`
 until ephemeral-context middleware renders it, or when the
-template is empty. Not persisted; the iteration inserts it
-once, immediately before the last user cluster when
-[AgentPipelineContext](AgentPipelineContext.md).`Prompt` ends in a user turn.
+template is empty. Not persisted; that middleware also inserts
+it into [AgentPipelineContext](AgentPipelineContext.md).`Prompt` immediately before the last user
+cluster when the compacted prompt ends in a user turn.
 
 ### `Outcome`
 
@@ -40,10 +40,10 @@ the run-iteration step completes (or the chain short-circuits).
 
 ### `Prompt`
 
-Compacted model prompt for this batch. `null`
-until compaction middleware builds it (and possibly rewrites
-it). The iteration sends this, after inserting
-[AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`.
+Model prompt for this batch. `null` until
+compaction middleware builds it (and possibly rewrites it).
+Ephemeral-context middleware may then insert
+[AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`. The iteration sends this as-is.
 
 ### `ShutdownToken`
 

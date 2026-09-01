@@ -26,8 +26,8 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.InterruptScope,
             AgentMiddlewareOrder.ToolResultEnqueue,
             AgentMiddlewareOrder.SystemPrompt,
-            AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.Compaction,
+            AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
         ];
 
@@ -51,17 +51,17 @@ public sealed class AgentMiddlewareOrderTests
                 Substitute.For<ISystemPromptProvider>(),
                 PipelineTestContext.ScopeFor(),
                 TimeProvider.System),
+            new CompactionMiddleware(
+                Substitute.For<IContextCompactor>(),
+                Substitute.For<IAgentContextProvider>(),
+                Substitute.For<IEventBus>(),
+                PipelineTestContext.ScopeFor()),
             new EphemeralContextMiddleware(
                 Substitute.For<IPromptContextProvider>(),
                 Substitute.For<IMemorySearcher>(),
                 Substitute.For<IAgentStateTracker>(),
                 PipelineTestContext.ScopeFor(),
                 TimeProvider.System),
-            new CompactionMiddleware(
-                Substitute.For<IContextCompactor>(),
-                Substitute.For<IAgentContextProvider>(),
-                Substitute.For<IEventBus>(),
-                PipelineTestContext.ScopeFor()),
             new RunIterationMiddleware(Substitute.For<IAgentIterationRunner>()),
         ];
 
@@ -74,8 +74,8 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.InterruptScope,
             AgentMiddlewareOrder.ToolResultEnqueue,
             AgentMiddlewareOrder.SystemPrompt,
-            AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.Compaction,
+            AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
         ];
 

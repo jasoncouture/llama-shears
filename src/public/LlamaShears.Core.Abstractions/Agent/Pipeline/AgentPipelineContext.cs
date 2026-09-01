@@ -75,17 +75,17 @@ public sealed class AgentPipelineContext
     /// <summary>
     /// Per-turn prompt-context turn for this batch. <see langword="null"/>
     /// until ephemeral-context middleware renders it, or when the
-    /// template is empty. Not persisted; the iteration inserts it
-    /// once, immediately before the last user cluster when
-    /// <see cref="Prompt"/> ends in a user turn.
+    /// template is empty. Not persisted; that middleware also inserts
+    /// it into <see cref="Prompt"/> immediately before the last user
+    /// cluster when the compacted prompt ends in a user turn.
     /// </summary>
     public ModelTurn? EphemeralContext { get; set; }
 
     /// <summary>
-    /// Compacted model prompt for this batch. <see langword="null"/>
-    /// until compaction middleware builds it (and possibly rewrites
-    /// it). The iteration sends this, after inserting
-    /// <see cref="EphemeralContext"/>.
+    /// Model prompt for this batch. <see langword="null"/> until
+    /// compaction middleware builds it (and possibly rewrites it).
+    /// Ephemeral-context middleware may then insert
+    /// <see cref="EphemeralContext"/>. The iteration sends this as-is.
     /// </summary>
     public ModelPrompt? Prompt { get; set; }
 

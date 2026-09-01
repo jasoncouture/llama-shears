@@ -63,9 +63,44 @@ public sealed class EphemeralContextMiddleware : IAgentMiddleware
                 body,
                 _time.GetLocalNow(),
                 Ephemeral: true);
+            context.Prompt = WithEphemeral(
+                context.Prompt ?? throw new InvalidOperationException(
+                    "Compaction middleware must set AgentPipelineContext.Prompt before ephemeral insert."),
+                context.EphemeralContext);
         }
 
         await next.Invoke(context, cancellationToken);
+    }
+
+    private static ModelPrompt WithEphemeral(ModelPrompt prompt, ModelTurn ephemeral)
+    {
+        if (prompt.Turns.Count == 0 || prompt.Turns[^1].Role != ModelRole.User)
+        {
+            return prompt;
+        }
+
+        return new ModelPrompt(InsertAfterLastNonUser(prompt.Turns, ephemeral));
+    }
+
+    private static int GetLastUserMessageIndex(IEnumerable<ModelTurn> turns)
+    {
+        return turns.Select((item, index) => (item, index))
+            .Reverse()
+            .TakeWhile(i => i.item.Role == ModelRole.User)
+            .Select(i => i.index)
+            .DefaultIfEmpty(0)
+            .Last();
+    }
+
+    private static ImmutableArray<ModelTurn> InsertAfterLastNonUser(IReadOnlyList<ModelTurn> turns, ModelTurn ephemeral)
+    {
+        var insertAt = GetLastUserMessageIndex(turns);
+        if (insertAt == 0)
+        {
+            insertAt = turns.Count;
+        }
+
+        return [.. turns.Take(insertAt), ephemeral, .. turns.Skip(insertAt)];
     }
 
     private static IEnumerable<string> GetMemorySearchQueries(IEnumerable<ModelTurn> turns)
@@ -73,7 +108,7 @@ public sealed class EphemeralContextMiddleware : IAgentMiddleware
         return turns.Reverse().Aggregate(
             new PromptSearchState(false, false, []),
             AggregateMemoryMessages,
-            state => state.Turns.Select(i => i.Content));
+            state => state.Turns.Select(i => i.Content).Distinct());
 
         static PromptSearchState AggregateMemoryMessages(PromptSearchState state, ModelTurn turn)
         {

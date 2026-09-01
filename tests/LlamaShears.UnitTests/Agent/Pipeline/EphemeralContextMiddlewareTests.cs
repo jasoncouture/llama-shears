@@ -32,10 +32,14 @@ public sealed class EphemeralContextMiddlewareTests
             new AgentStateTracker(scope),
             scope,
             time);
+        var remembered = new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch);
         var context = new AgentPipelineContext(
-            new FakeAgentContext("alice", [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
+            new FakeAgentContext("alice", [remembered]),
             [new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UnixEpoch)],
-            CancellationToken.None);
+            CancellationToken.None)
+        {
+            Prompt = new ModelPrompt([remembered]),
+        };
         var nextCalled = false;
 
         await middleware.InvokeAsync(
@@ -53,6 +57,9 @@ public sealed class EphemeralContextMiddlewareTests
         await Assert.That(context.EphemeralContext.Content).IsEqualTo("<system>now</system>");
         await Assert.That(context.EphemeralContext.Ephemeral).IsTrue();
         await Assert.That(context.EphemeralContext.Timestamp).IsEqualTo(DateTimeOffset.UnixEpoch);
+        await Assert.That(context.Prompt).IsNotNull();
+        await Assert.That(context.Prompt!.Turns[0]).IsEqualTo(remembered);
+        await Assert.That(context.Prompt.Turns[1]).IsEqualTo(context.EphemeralContext);
         await searcher.Received().SearchAsync(
             "alice",
             "hello",
@@ -95,6 +102,7 @@ public sealed class EphemeralContextMiddlewareTests
             CancellationToken.None)
         {
             CorrelationId = correlation,
+            Prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
         };
 
         await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
@@ -153,6 +161,7 @@ public sealed class EphemeralContextMiddlewareTests
             CancellationToken.None)
         {
             TurnToken = turn.Token,
+            Prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
         };
 
         await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
@@ -167,5 +176,131 @@ public sealed class EphemeralContextMiddlewareTests
             Arg.Any<string?>(),
             Arg.Any<IReadOnlyDictionary<string, object?>>(),
             turn.Token);
+    }
+
+    [Test]
+    public async Task SearchesEachQueryOnceWhenTurnsAlreadyIncludeTheBatch()
+    {
+        var searcher = Substitute.For<IMemorySearcher>();
+        searcher
+            .SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<double?>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<IReadOnlyList<MemorySearchResult>>([]));
+        var provider = Substitute.For<IPromptContextProvider>();
+        provider
+            .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("now"));
+        var scope = PipelineTestContext.ScopeFor();
+        IAgentMiddleware middleware = new EphemeralContextMiddleware(
+            provider,
+            searcher,
+            new AgentStateTracker(scope),
+            scope,
+            TimeProvider.System);
+        var user = new ModelTurn(ModelRole.User, "hello", DateTimeOffset.UnixEpoch);
+        var context = new AgentPipelineContext(
+            new FakeAgentContext("alice", [user]),
+            [user],
+            CancellationToken.None)
+        {
+            Prompt = new ModelPrompt([user]),
+        };
+
+        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
+
+        await searcher.Received(1).SearchAsync(
+            "alice",
+            "hello",
+            null,
+            null,
+            context.TurnToken);
+    }
+
+    [Test]
+    public async Task InsertsIntoTheBagPromptBeforeTheLastUserTurn()
+    {
+        var provider = Substitute.For<IPromptContextProvider>();
+        provider
+            .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("now"));
+        var time = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var scope = PipelineTestContext.ScopeFor();
+        IAgentMiddleware middleware = new EphemeralContextMiddleware(
+            provider,
+            TestAgentConfigs.EmptyMemorySearcher(),
+            new AgentStateTracker(scope),
+            scope,
+            time);
+        var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
+        var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
+        var context = new AgentPipelineContext(
+            new FakeAgentContext("alice", [remembered]),
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            Prompt = new ModelPrompt([system, remembered]),
+        };
+
+        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
+
+        await Assert.That(context.Prompt).IsNotNull();
+        await Assert.That(context.Prompt!.Turns[0]).IsEqualTo(system);
+        await Assert.That(context.Prompt.Turns[1]).IsEqualTo(context.EphemeralContext);
+        await Assert.That(context.Prompt.Turns[2]).IsEqualTo(remembered);
+    }
+
+    [Test]
+    public async Task SkipsInsertWhenPromptDoesNotEndWithUser()
+    {
+        var provider = Substitute.For<IPromptContextProvider>();
+        provider
+            .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("now"));
+        var scope = PipelineTestContext.ScopeFor();
+        IAgentMiddleware middleware = new EphemeralContextMiddleware(
+            provider,
+            TestAgentConfigs.EmptyMemorySearcher(),
+            new AgentStateTracker(scope),
+            scope,
+            TimeProvider.System);
+        var assistant = new ModelTurn(ModelRole.Assistant, "done", DateTimeOffset.UnixEpoch);
+        var context = new AgentPipelineContext(
+            new FakeAgentContext("alice", [assistant]),
+            [new ModelTurn(ModelRole.Tool, "ok", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            Prompt = new ModelPrompt([assistant]),
+        };
+
+        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
+
+        await Assert.That(context.EphemeralContext).IsNotNull();
+        await Assert.That(context.Prompt!.Turns.Select(turn => turn.Role).ToArray())
+            .IsEquivalentTo([ModelRole.Assistant]);
+    }
+
+    [Test]
+    public async Task ThrowsWhenTheTemplateRenderedAndTheBagHasNoPrompt()
+    {
+        var provider = Substitute.For<IPromptContextProvider>();
+        provider
+            .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("now"));
+        var scope = PipelineTestContext.ScopeFor();
+        IAgentMiddleware middleware = new EphemeralContextMiddleware(
+            provider,
+            TestAgentConfigs.EmptyMemorySearcher(),
+            new AgentStateTracker(scope),
+            scope,
+            TimeProvider.System);
+        var context = new AgentPipelineContext(
+            new FakeAgentContext("alice"),
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None);
+
+        await Assert.That(async () => await middleware.InvokeAsync(
+                context,
+                (_, _) => Task.CompletedTask,
+                CancellationToken.None))
+            .Throws<InvalidOperationException>();
     }
 }

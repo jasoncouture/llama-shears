@@ -91,13 +91,13 @@ internal static class AgentHarness
             new InterruptScopeMiddleware(activeTurn),
             new ToolResultEnqueueMiddleware(sessionQueue),
             new SystemPromptMiddleware(systemPrompt, dataScope, timeProvider),
+            new CompactionMiddleware(compactor, contextProvider, bus, dataScope),
             new EphemeralContextMiddleware(
                 promptContext,
                 memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
                 new AgentStateTracker(dataScope),
                 dataScope,
                 timeProvider),
-            new CompactionMiddleware(compactor, contextProvider, bus, dataScope),
             new RunIterationMiddleware(iterationRunner),
         ]);
 

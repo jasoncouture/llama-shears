@@ -19,7 +19,7 @@ Hold [IAgentLock](../IAgentLock.md) across the rest of the turn.
 
 ### `Compaction`
 
-Compact the prompt before the iteration runs.
+Publish the inbound batch, build and compact `Prompt`.
 
 ### `CorrelationScope`
 
@@ -27,7 +27,7 @@ Assign a correlation id and logger scope.
 
 ### `EphemeralContext`
 
-Render the per-turn ephemeral prompt-context turn onto the bag.
+Render the ephemeral turn and insert it into `Prompt`.
 
 ### `InterruptScope`
 

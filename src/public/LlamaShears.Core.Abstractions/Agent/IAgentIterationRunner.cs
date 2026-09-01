@@ -4,13 +4,12 @@ namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>
 /// Runs a single agent iteration from the pipeline bag: takes
-/// <see cref="AgentPipelineContext.Prompt"/> (built by compaction
-/// middleware), inserts <see cref="AgentPipelineContext.EphemeralContext"/>
-/// once, invokes the language model (with the empty-response retry),
-/// persists the model's output via the active context store, and
-/// returns any tool-result turns the caller should feed back on the
-/// next iteration. Knows nothing about session queues, agent locks,
-/// or interrupt subscriptions.
+/// <see cref="AgentPipelineContext.Prompt"/> (compaction plus
+/// ephemeral insert already applied), invokes the language model
+/// (with the empty-response retry), persists the model's output via
+/// the active context store, and returns any tool-result turns the
+/// caller should feed back on the next iteration. Knows nothing
+/// about session queues, agent locks, or interrupt subscriptions.
 /// </summary>
 public interface IAgentIterationRunner
 {
@@ -23,9 +22,8 @@ public interface IAgentIterationRunner
     /// The per-batch bag. Reads <see cref="AgentPipelineContext.AgentContext"/>,
     /// <see cref="AgentPipelineContext.Batch"/>,
     /// <see cref="AgentPipelineContext.CorrelationId"/>,
-    /// <see cref="AgentPipelineContext.TurnToken"/>,
-    /// <see cref="AgentPipelineContext.Prompt"/>, and
-    /// <see cref="AgentPipelineContext.EphemeralContext"/>.
+    /// <see cref="AgentPipelineContext.TurnToken"/>, and
+    /// <see cref="AgentPipelineContext.Prompt"/>.
     /// The run-iteration middleware stores the returned
     /// <see cref="IterationOutcome"/> on the bag.
     /// </param>

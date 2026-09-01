@@ -31,11 +31,11 @@ public static class AgentMiddlewareOrder
     /// <summary>Render the persistent system-prompt turn onto the bag.</summary>
     public const int SystemPrompt = 7000;
 
-    /// <summary>Render the per-turn ephemeral prompt-context turn onto the bag.</summary>
-    public const int EphemeralContext = 8000;
+    /// <summary>Publish the inbound batch, build and compact <c>Prompt</c>.</summary>
+    public const int Compaction = 8000;
 
-    /// <summary>Compact the prompt before the iteration runs.</summary>
-    public const int Compaction = 9000;
+    /// <summary>Render the ephemeral turn and insert it into <c>Prompt</c>.</summary>
+    public const int EphemeralContext = 9000;
 
     /// <summary>Invoke <see cref="IAgentIterationRunner"/>.</summary>
     public const int RunIteration = 10000;

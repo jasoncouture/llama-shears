@@ -42,84 +42,19 @@ public sealed class AgentIterationRunnerTests
     }
 
     [Test]
-    public async Task InsertsEphemeralBeforeTheLastUserTurn()
+    public async Task AppendsEmptyResponseRetryWithoutChangingExistingTurns()
     {
         var (runner, inference, agentContext) = BuildRunner();
-        var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
         var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
         var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
+        var prompt = new ModelPrompt([ephemeral, remembered]);
         var context = new AgentPipelineContext(
             agentContext,
             [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
             CancellationToken.None)
         {
             CorrelationId = Guid.CreateVersion7(),
-            EphemeralContext = ephemeral,
-            Prompt = new ModelPrompt([system, remembered]),
-        };
-        ModelPrompt? sent = null;
-        inference
-            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                sent = call.Arg<ModelPrompt>();
-                return new InferenceOutcome("", "ok", null, [], []);
-            });
-
-        await runner.RunAsync(context);
-
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns[0]).IsEqualTo(system);
-        await Assert.That(sent.Turns[1]).IsEqualTo(ephemeral);
-        await Assert.That(sent.Turns[2]).IsEqualTo(remembered);
-    }
-
-    [Test]
-    public async Task SkipsEphemeralWhenPromptDoesNotEndWithUser()
-    {
-        var (runner, inference, _) = BuildRunner();
-        var assistant = new ModelTurn(ModelRole.Assistant, "done", DateTimeOffset.UnixEpoch);
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
-        IAgentContext agentContext = new FakeAgentContext("alice", [assistant]);
-        var context = new AgentPipelineContext(
-            agentContext,
-            [new ModelTurn(ModelRole.Tool, "ok", DateTimeOffset.UnixEpoch)],
-            CancellationToken.None)
-        {
-            CorrelationId = Guid.CreateVersion7(),
-            EphemeralContext = ephemeral,
-            Prompt = new ModelPrompt([assistant]),
-        };
-        ModelPrompt? sent = null;
-        inference
-            .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                sent = call.Arg<ModelPrompt>();
-                return new InferenceOutcome("", "ok", null, [], []);
-            });
-
-        await runner.RunAsync(context);
-
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns.Select(turn => turn.Role).ToArray())
-            .IsEquivalentTo([ModelRole.Assistant]);
-    }
-
-    [Test]
-    public async Task InsertsEphemeralOnceAcrossEmptyResponseRetries()
-    {
-        var (runner, inference, agentContext) = BuildRunner();
-        var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
-        var ephemeral = new ModelTurn(ModelRole.SystemEphemeral, "now", DateTimeOffset.UnixEpoch, Ephemeral: true);
-        var context = new AgentPipelineContext(
-            agentContext,
-            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
-            CancellationToken.None)
-        {
-            CorrelationId = Guid.CreateVersion7(),
-            EphemeralContext = ephemeral,
-            Prompt = new ModelPrompt([remembered]),
+            Prompt = prompt,
         };
         var sent = new List<ModelPrompt>();
         inference
@@ -135,9 +70,9 @@ public sealed class AgentIterationRunnerTests
         await runner.RunAsync(context);
 
         await Assert.That(sent.Count).IsEqualTo(2);
-        await Assert.That(sent[0].Turns.Count(turn => turn.Ephemeral)).IsEqualTo(1);
+        await Assert.That(sent[0]).IsEqualTo(prompt);
         await Assert.That(sent[1].Turns.Count(turn => turn.Ephemeral)).IsEqualTo(1);
-        await Assert.That(sent[1].Turns.Count).IsEqualTo(sent[0].Turns.Count + 1);
+        await Assert.That(sent[1].Turns.Count).IsEqualTo(prompt.Turns.Count + 1);
         await Assert.That(sent[1].Turns[^1].Role).IsEqualTo(ModelRole.User);
     }
 
