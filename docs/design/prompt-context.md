@@ -57,7 +57,7 @@ The bundled prompt at [`src/LlamaShears/content/templates/workspace/system/DEFAU
 
 ### What it is
 
-`Agent.InjectPromptContextAsync` calls `_promptContext.GetAsync(_config.PromptContext, parameters, cancellationToken)` once per *iteration*, finds the most recent `User`-roled turn in the prompt, and inserts a `SystemEphemeral`-roled turn immediately before it.
+`EphemeralContextMiddleware` stamps `IAgentStateTracker` from the inbound batch (so `PROMPT.md` can read `agent_state`), then calls `IPromptContextProvider.GetAsync(config.PromptContext, scope.Snapshot(), context.TurnToken)` once per batch (after a memory search over persisted turns plus the inbound batch), and stores the result as `AgentPipelineContext.EphemeralContext`. The iteration inserts that `SystemEphemeral`-roled turn immediately before the last user cluster when the (post-compaction) prompt ends in a user turn.
 
 This block is the framework's single coherent place to inject *everything that's true right now* without having to chain it through the persistent context:
 
