@@ -36,6 +36,7 @@ public sealed partial class InferenceRunner : IInferenceRunner
         PromptOptions? options,
         SessionId sessionId,
         Guid correlationId,
+        string? channelId,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prompt);
@@ -46,7 +47,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
             throw new ArgumentException("Prompt must contain at least one turn.", nameof(prompt));
         }
 
-        var channelId = prompt.Turns[^1].ChannelId;
         var emitTurns = options?.EmitTurns ?? false;
 
         var thinking = new StringBuilder();

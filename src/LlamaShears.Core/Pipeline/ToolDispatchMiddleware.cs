@@ -25,11 +25,6 @@ public sealed class ToolDispatchMiddleware : IAgentMiddleware
             var session = context.SessionId
                 ?? throw new InvalidOperationException(
                     "Run-iteration middleware must set AgentPipelineContext.SessionId before tool dispatch.");
-            var channelId = context.Prompt?.Turns is { Count: > 0 } turns
-                ? turns[^1].ChannelId
-                : context.Batch is { IsDefaultOrEmpty: false }
-                    ? context.Batch[^1].ChannelId
-                    : null;
             var turnSessionId = context.Batch is { IsDefaultOrEmpty: false }
                 ? context.Batch[^1].SessionId
                 : null;
@@ -38,7 +33,7 @@ public sealed class ToolDispatchMiddleware : IAgentMiddleware
                 context.Tools,
                 session,
                 context.CorrelationId,
-                channelId,
+                context.ChannelId,
                 turnSessionId,
                 context.TurnToken,
                 context.ShutdownToken);

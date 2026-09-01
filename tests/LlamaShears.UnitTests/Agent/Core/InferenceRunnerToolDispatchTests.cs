@@ -38,6 +38,7 @@ public sealed class InferenceRunnerToolDispatchTests
             options: new PromptOptions(Tools: BuildToolsAdvertisement()),
             sessionId: new SessionId("alice", SessionId.DefaultSessionName),
             correlationId: Guid.CreateVersion7(),
+            channelId: "test",
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(3);
@@ -65,6 +66,7 @@ public sealed class InferenceRunnerToolDispatchTests
             options: null,
             sessionId: new SessionId("alice", SessionId.DefaultSessionName),
             correlationId: Guid.CreateVersion7(),
+            channelId: "test",
             cancellationToken: CancellationToken.None);
 
         await Assert.That(outcome.ToolCalls.Length).IsEqualTo(1);

@@ -7,7 +7,8 @@ dequeued batch. The loop owner constructs it; middleware fill
 [AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`,
 [AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, [AgentPipelineContext](AgentPipelineContext.md).`EphemeralContext`,
 [AgentPipelineContext](AgentPipelineContext.md).`Prompt`, [AgentPipelineContext](AgentPipelineContext.md).`SessionId`,
-[AgentPipelineContext](AgentPipelineContext.md).`Tools`, and [AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
+[AgentPipelineContext](AgentPipelineContext.md).`ChannelId`, [AgentPipelineContext](AgentPipelineContext.md).`Tools`, and
+[AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
 
 ## Properties
 
@@ -20,6 +21,12 @@ any turn the iteration persists land here.
 
 Inbound turns for this iteration. Middleware may replace the
 array (filter, coalesce) before the iteration runner sees it.
+
+### `ChannelId`
+
+Channel this batch arrived on. `null` until
+run-iteration middleware copies it from the inbound batch.
+The iteration passes it to inference for fragment routing.
 
 ### `CorrelationId`
 

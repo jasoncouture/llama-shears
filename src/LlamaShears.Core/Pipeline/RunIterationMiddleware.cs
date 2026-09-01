@@ -26,6 +26,10 @@ public sealed class RunIterationMiddleware : IAgentMiddleware
         CancellationToken cancellationToken)
     {
         context.SessionId = _dataScope.GetCurrentSessionId();
+        if (!context.Batch.IsDefaultOrEmpty)
+        {
+            context.ChannelId = context.Batch[^1].ChannelId;
+        }
         context.Outcome = await _iterationRunner.RunAsync(context);
         await next.Invoke(context, cancellationToken);
     }

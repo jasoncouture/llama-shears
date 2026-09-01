@@ -249,6 +249,7 @@ public sealed partial class ContextCompactor : IContextCompactor
                 options: options,
                 sessionId: _dataContextScope.GetCurrentSessionId(),
                 correlationId: _dataContextScope.GetCorrelationId(),
+                channelId: prompt.Turns[^1].ChannelId,
                 cancellationToken: cancellationToken);
 
             if (outcome.Interrupted)

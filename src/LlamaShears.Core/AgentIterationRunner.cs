@@ -50,7 +50,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
         bundle.ServiceProvider.GetRequiredService<IAgentStateTracker>()
             .SetState(
-                batch[^1].ChannelId ?? DefaultChannel,
+                context.ChannelId ?? DefaultChannel,
                 correlationId: correlationId,
                 sessionId: batch[^1].SessionId);
         var agentId = _dataScope.GetAgentConfig().Id;
@@ -74,6 +74,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
                 options: promptOptions,
                 sessionId: session,
                 correlationId: correlationId,
+                channelId: context.ChannelId,
                 cancellationToken: turnCancellationToken);
             if (outcome.Interrupted)
             {
@@ -101,7 +102,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
                     .. prompt.Turns,
                     new ModelTurn(ModelRole.User,
                         $"<SYSTEM>ERROR: You must reply with content, or a tool. Please try again. If you do not wish to respond, please reply with exactly: {Sentinel.NoResponse}</SYSTEM>",
-                        _time.GetLocalNow(), prompt.Turns[^1].ChannelId)
+                        _time.GetLocalNow(), context.ChannelId)
                 ]
             };
         }

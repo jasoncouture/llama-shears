@@ -14,7 +14,7 @@ namespace LlamaShears.UnitTests.Agent.Core;
 public sealed class AgentIterationRunnerTests
 {
     [Test]
-    public async Task SendsTheBagPromptSessionAndCorrelationToInference()
+    public async Task SendsTheBagPromptSessionCorrelationAndChannelToInference()
     {
         var (runner, inference, agentContext, session) = BuildRunner();
         var prompt = new ModelPrompt(
@@ -22,12 +22,13 @@ public sealed class AgentIterationRunnerTests
         var correlation = Guid.CreateVersion7();
         var context = new AgentPipelineContext(
             agentContext,
-            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch, ChannelId: "telegram:1")],
             CancellationToken.None)
         {
             CorrelationId = correlation,
             Prompt = prompt,
             SessionId = session,
+            ChannelId = "telegram:1",
         };
         ModelPrompt? sent = null;
         inference
@@ -36,6 +37,7 @@ public sealed class AgentIterationRunnerTests
                 Arg.Any<PromptOptions?>(),
                 Arg.Any<SessionId>(),
                 Arg.Any<Guid>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -51,6 +53,7 @@ public sealed class AgentIterationRunnerTests
             Arg.Any<PromptOptions?>(),
             session,
             correlation,
+            "telegram:1",
             Arg.Any<CancellationToken>());
     }
 
@@ -65,6 +68,7 @@ public sealed class AgentIterationRunnerTests
                 Arg.Any<PromptOptions?>(),
                 Arg.Any<SessionId>(),
                 Arg.Any<Guid>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(new InferenceOutcome("", "", null, [call]));
         var context = new AgentPipelineContext(
@@ -107,6 +111,7 @@ public sealed class AgentIterationRunnerTests
                 Arg.Any<PromptOptions?>(),
                 Arg.Any<SessionId>(),
                 Arg.Any<Guid>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(call =>
             {

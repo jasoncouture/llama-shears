@@ -6,13 +6,13 @@ Streams a single model prompt, emits per-fragment events, and
 optionally emits the resulting Thought / Assistant turn events.
 Collects tool calls the model emitted but does not dispatch them.
 Lifts the inference loop out of the context compactor and the
-agent so both can share it. Callers pass the session and
-correlation used to key published events; the runner does not
-read them from the ambient data scope.
+agent so both can share it. Callers pass the session,
+correlation, and channel used to key published events; the
+runner does not read them from the prompt or the data scope.
 
 ## Methods
 
-### `RunAsync`([ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, [SessionId](../Agent/Sessions/SessionId.md) sessionId, Guid correlationId, CancellationToken cancellationToken)
+### `RunAsync`([ModelPrompt](ModelPrompt.md) prompt, [PromptOptions](PromptOptions.md) options, [SessionId](../Agent/Sessions/SessionId.md) sessionId, Guid correlationId, string channelId, CancellationToken cancellationToken)
 
 Runs `prompt` through the scope's language
 model and publishes message/thought fragment events keyed at

@@ -24,8 +24,9 @@ wiring. Dispatch middleware acts on returned tool calls.
 [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Batch`,
 [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`CorrelationId`,
 [AgentPipelineContext](Pipeline/AgentPipelineContext.md).`TurnToken`,
-[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Prompt`, and
-[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`SessionId`.
+[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`Prompt`,
+[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`SessionId`, and
+[AgentPipelineContext](Pipeline/AgentPipelineContext.md).`ChannelId`.
 The run-iteration middleware stores the returned
 [IterationOutcome](IterationOutcome.md) on the bag.
 
