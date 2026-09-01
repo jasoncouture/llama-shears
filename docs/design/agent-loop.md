@@ -49,22 +49,22 @@ Tool-result turns are enqueued after a non-interrupted iteration by `ToolResultE
 
 ## Per-batch onion
 
-First registered middleware is **outermost**. `AddAgentRuntime` registers the defaults in this order. Plugins that `AddAgentMiddleware<T>()` after `AddCore` land **inner** (closest to the iteration).
+Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 7000` is inside iteration). Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
 
 ```
 IAgentPipeline
-  TurnExceptionMiddleware          after: swallow interrupt OCE and other turn failures; rethrow shutdown OCE
-  AgentActivityMiddleware          before: start `chat {model}` + gen_ai.* tags; after: dispose; stamp error on thrown exceptions
-  CorrelationScopeMiddleware       before: Guid v7 + logger scope {AgentTurnId}
-  AgentLockMiddleware              before: IAgentLock.AcquireLockAsync; after: dispose lock
-  InterruptScopeMiddleware         before: linked CTS, context.TurnToken, IActiveTurnCancellation.Register; after: unregister
-  ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
-  RunIterationMiddleware           before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
+  1000 TurnExceptionMiddleware          after: swallow interrupt OCE and other turn failures; rethrow shutdown OCE
+  2000 AgentActivityMiddleware          before: start `chat {model}` + gen_ai.* tags; after: dispose; stamp error on thrown exceptions
+  3000 CorrelationScopeMiddleware       before: Guid v7 + logger scope {AgentTurnId}
+  4000 AgentLockMiddleware              before: IAgentLock.AcquireLockAsync; after: dispose lock
+  5000 InterruptScopeMiddleware         before: linked CTS, context.TurnToken, IActiveTurnCancellation.Register; after: unregister
+  6000 ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
+  7000 RunIterationMiddleware           before: IAgentIterationRunner.RunAsync → context.Outcome; then next (no-op terminal)
 ```
 
 The terminal is a no-op. The innermost step must do the work (and may still call `next`). Skipping `next` short-circuits the rest of the chain.
 
-Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register with `AddAgentMiddleware<T>()` — it `TryAddEnumerable`s the step and idempotently registers `IAgentPipeline`.
+Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register with `AddAgentMiddleware<T>()` — it `TryAddEnumerable`s the step and idempotently registers `IAgentPipeline`. Position the step with `T.Order` (use `AgentMiddlewareOrder` as landmarks).
 
 ### Seams the onion shares with inbound services
 

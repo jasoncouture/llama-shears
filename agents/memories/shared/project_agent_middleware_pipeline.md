@@ -1,12 +1,12 @@
 ---
 name: Agent turn middleware pipeline
-description: Public onion around each dequeued batch; registration order is outer-to-inner; IActiveTurnCancellation / IAgentLifetime seams; inference runner is a later cleanup
+description: Public onion around each dequeued batch; IAgentMiddleware.Order (built-ins 1000 apart) is outer-to-inner; IActiveTurnCancellation / IAgentLifetime seams; inference runner is a later cleanup
 type: project
 ---
 
 `Agent` is the loop owner only: open context, start/stop `IAgentService`, Idle/Busy around `DequeueBatchAsync`, build `AgentPipelineContext`, `IAgentPipeline.InvokeAsync`. It does not implement `IEventHandler<>`, hold the agent lock, or own a turn CTS.
 
-Per-batch work is a public onion under `LlamaShears.Core.Abstractions.Agent.Pipeline`. First registered `IAgentMiddleware` is **outermost**. `AddAgentMiddleware<T>()` is `TryAddEnumerable(Scoped<IAgentMiddleware, T>)` plus idempotent `TryAddScoped<IAgentPipeline, AgentPipeline>`. Host defaults in `AddAgentRuntime`, outer-to-inner: exception → activity → correlation → lock → interrupt scope → tool re-enqueue → run iteration. Plugins that `AddAgentMiddleware<T>()` after `AddCore` land inner (closest to `IAgentIterationRunner`). The terminal is a no-op; the innermost step must do the work.
+Per-batch work is a public onion under `LlamaShears.Core.Abstractions.Agent.Pipeline`. `IAgentMiddleware.Order` is **outer-to-inner** (lowest outermost). Built-ins use `AgentMiddlewareOrder` spaced 1000: TurnException 1000, AgentActivity 2000, CorrelationScope 3000, AgentLock 4000, InterruptScope 5000, ToolResultEnqueue 6000, RunIteration 7000. Plugins pick a value in a gap (or `< 1000` / `> 7000`). Equal orders keep enumeration order. `AddAgentMiddleware<T>()` is `TryAddEnumerable(Scoped<IAgentMiddleware, T>)` plus idempotent `TryAddScoped<IAgentPipeline, AgentPipeline>` — registration sequence is not the fold. The terminal is a no-op; the innermost step must do the work.
 
 Inbound events are **not** middleware. They are `IAgentService` (same as heartbeat / cron / compaction): `ChannelMessageIntakeService`, `AgentInterruptService`, `AgentShutdownService`, `AgentConfigReloadService`. Subscribe in `StartAsync`, dispose in `StopAsync`.
 
