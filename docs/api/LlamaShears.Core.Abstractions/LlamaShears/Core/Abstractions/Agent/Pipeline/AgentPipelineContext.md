@@ -4,8 +4,8 @@ Assembly: `LlamaShears.Core.Abstractions`
 
 Mutable bag handed to every [IAgentMiddleware](IAgentMiddleware.md) for one
 dequeued batch. The loop owner constructs it; middleware fill
-[AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`, and
-[AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
+[AgentPipelineContext](AgentPipelineContext.md).`CorrelationId`, [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`,
+[AgentPipelineContext](AgentPipelineContext.md).`SystemPrompt`, and [AgentPipelineContext](AgentPipelineContext.md).`Outcome` as they run.
 
 ## Properties
 
@@ -34,6 +34,12 @@ the run-iteration step completes (or the chain short-circuits).
 Loop-level cancellation. Outlives a turn interrupt — tail
 persistence that must finish after interrupt uses this, not
 [AgentPipelineContext](AgentPipelineContext.md).`TurnToken`.
+
+### `SystemPrompt`
+
+Persistent system-prompt turn for this batch. `null`
+until system-prompt middleware renders it. Not persisted; the
+iteration prepends it to the model prompt only.
 
 ### `TurnToken`
 

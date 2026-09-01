@@ -18,6 +18,7 @@ public sealed class AgentPipelineContextTests
         await Assert.That(context.ShutdownToken).IsEqualTo(shutdown.Token);
         await Assert.That(context.CorrelationId).IsEqualTo(Guid.Empty);
         await Assert.That(context.Outcome).IsNull();
+        await Assert.That(context.SystemPrompt).IsNull();
     }
 
     [Test]

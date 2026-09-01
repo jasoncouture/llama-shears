@@ -1,6 +1,7 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Pipeline;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -20,10 +21,11 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.AgentLock,
             AgentMiddlewareOrder.InterruptScope,
             AgentMiddlewareOrder.ToolResultEnqueue,
+            AgentMiddlewareOrder.SystemPrompt,
             AgentMiddlewareOrder.RunIteration,
         ];
 
-        await Assert.That(orders).IsEquivalentTo([1000, 2000, 3000, 4000, 5000, 6000, 7000]);
+        await Assert.That(orders).IsEquivalentTo([1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]);
     }
 
     [Test]
@@ -39,6 +41,10 @@ public sealed class AgentMiddlewareOrderTests
             new AgentLockMiddleware(Substitute.For<IAgentLock>()),
             new InterruptScopeMiddleware(Substitute.For<IActiveTurnCancellation>()),
             new ToolResultEnqueueMiddleware(Substitute.For<ISessionQueue>()),
+            new SystemPromptMiddleware(
+                Substitute.For<ISystemPromptProvider>(),
+                PipelineTestContext.ScopeFor(),
+                TimeProvider.System),
             new RunIterationMiddleware(Substitute.For<IAgentIterationRunner>()),
         ];
 
@@ -50,6 +56,7 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.AgentLock,
             AgentMiddlewareOrder.InterruptScope,
             AgentMiddlewareOrder.ToolResultEnqueue,
+            AgentMiddlewareOrder.SystemPrompt,
             AgentMiddlewareOrder.RunIteration,
         ];
 

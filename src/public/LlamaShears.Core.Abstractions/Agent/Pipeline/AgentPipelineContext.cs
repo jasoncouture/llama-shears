@@ -7,8 +7,8 @@ namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
 /// <summary>
 /// Mutable bag handed to every <see cref="IAgentMiddleware"/> for one
 /// dequeued batch. The loop owner constructs it; middleware fill
-/// <see cref="CorrelationId"/>, <see cref="TurnToken"/>, and
-/// <see cref="Outcome"/> as they run.
+/// <see cref="CorrelationId"/>, <see cref="TurnToken"/>,
+/// <see cref="SystemPrompt"/>, and <see cref="Outcome"/> as they run.
 /// </summary>
 public sealed class AgentPipelineContext
 {
@@ -63,6 +63,13 @@ public sealed class AgentPipelineContext
     /// installs a linked source.
     /// </summary>
     public CancellationToken TurnToken { get; set; }
+
+    /// <summary>
+    /// Persistent system-prompt turn for this batch. <see langword="null"/>
+    /// until system-prompt middleware renders it. Not persisted; the
+    /// iteration prepends it to the model prompt only.
+    /// </summary>
+    public ModelTurn? SystemPrompt { get; set; }
 
     /// <summary>
     /// Result of the iteration runner. <see langword="null"/> until

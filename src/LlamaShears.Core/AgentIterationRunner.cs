@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
@@ -42,13 +43,15 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         _agentContextProvider = agentContextProvider;
     }
 
-    public async Task<IterationOutcome> RunAsync(
-        IAgentContext context,
-        ImmutableArray<ModelTurn> batch,
-        Guid correlationId,
-        CancellationToken outerCancellationToken,
-        CancellationToken turnCancellationToken)
+    public async Task<IterationOutcome> RunAsync(AgentPipelineContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+        var batch = context.Batch;
+        var correlationId = context.CorrelationId;
+        var outerCancellationToken = context.ShutdownToken;
+        var turnCancellationToken = context.TurnToken;
+        var agentContext = context.AgentContext;
+
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
         var sessionId = batch[^1].SessionId;
@@ -66,7 +69,9 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
                 outerCancellationToken);
         }
 
-        var prompt = new ModelPrompt([.. context.Turns]);
+        var prompt = context.SystemPrompt is { } systemPrompt
+            ? new ModelPrompt([systemPrompt, .. agentContext.Turns])
+            : new ModelPrompt([.. agentContext.Turns]);
         var agentContextSnapshot =
             await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetCurrentSessionId(), turnCancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Agent context provider returned null for running agent '{agentId}'.");
@@ -79,10 +84,11 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             .CompactAsync(agentContextSnapshot, prompt, force: false, turnCancellationToken);
         var servers = serverRegistry.Resolve(_dataScope.GetAgentConfig().ModelContextProtocolServers);
         var tools = await toolDiscovery.DiscoverAsync(servers.Keys, turnCancellationToken);
-        var systemPromptTemplate = _dataScope.GetAgentConfig().SystemPrompt;
-        var promptOptions = systemPromptTemplate is null
-            ? new PromptOptions(Tools: tools, InjectEphemeralContext: true, EmitTurns: true)
-            : new PromptOptions(Tools: tools, InjectEphemeralContext: true, EmitTurns: true, SystemPromptTemplate: systemPromptTemplate);
+        var promptOptions = new PromptOptions(
+            Tools: tools,
+            InjectEphemeralContext: true,
+            EmitTurns: true,
+            SystemPromptTemplate: null);
 
         InferenceOutcome outcome;
         var emptyAttempt = 0;
@@ -130,7 +136,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
 
         if (outcome.TokenCount is { } tokens)
         {
-            await context.AppendAsync(new ModelTokenInformationContextEntry(tokens, _time.GetLocalNow()), publishToken);
+            await agentContext.AppendAsync(new ModelTokenInformationContextEntry(tokens, _time.GetLocalNow()), publishToken);
         }
 
         if (outcome.Interrupted)

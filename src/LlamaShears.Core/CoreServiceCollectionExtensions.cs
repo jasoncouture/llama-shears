@@ -275,6 +275,7 @@ public static class CoreServiceCollectionExtensions
         services.AddAgentMiddleware<AgentLockMiddleware>();
         services.AddAgentMiddleware<InterruptScopeMiddleware>();
         services.AddAgentMiddleware<ToolResultEnqueueMiddleware>();
+        services.AddAgentMiddleware<SystemPromptMiddleware>();
         services.AddAgentMiddleware<RunIterationMiddleware>();
         services.AddAgentService<ChannelMessageIntakeService>();
         services.AddAgentService<AgentInterruptService>();

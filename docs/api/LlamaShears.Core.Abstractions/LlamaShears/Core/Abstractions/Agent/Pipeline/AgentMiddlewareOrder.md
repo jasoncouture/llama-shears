@@ -29,6 +29,10 @@ Install the linked turn cancellation token.
 
 Invoke [IAgentIterationRunner](../IAgentIterationRunner.md).
 
+### `SystemPrompt`
+
+Render the persistent system-prompt turn onto the bag.
+
 ### `ToolResultEnqueue`
 
 Re-enqueue tool-result turns when the iteration was not interrupted.

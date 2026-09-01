@@ -35,11 +35,14 @@ internal sealed class ScriptedLanguageModel : ILanguageModel
 
     public int PromptInvocations => Volatile.Read(ref _invocations);
 
+    public ModelPrompt? LastPrompt { get; private set; }
+
     public async IAsyncEnumerable<IModelResponseFragment> PromptAsync(
         ModelPrompt prompt,
         PromptOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        LastPrompt = prompt;
         Interlocked.Increment(ref _invocations);
         foreach (var fragment in _fragments)
         {

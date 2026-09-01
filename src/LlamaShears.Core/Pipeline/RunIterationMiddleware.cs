@@ -21,12 +21,7 @@ public sealed class RunIterationMiddleware : IAgentMiddleware
         AgentMiddlewareDelegate next,
         CancellationToken cancellationToken)
     {
-        context.Outcome = await _iterationRunner.RunAsync(
-            context.AgentContext,
-            context.Batch,
-            context.CorrelationId,
-            context.ShutdownToken,
-            context.TurnToken);
+        context.Outcome = await _iterationRunner.RunAsync(context);
         await next.Invoke(context, cancellationToken);
     }
 }

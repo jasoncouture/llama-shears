@@ -1,51 +1,33 @@
-using System.Collections.Immutable;
-using LlamaShears.Core.Abstractions.Agent.Persistence;
-using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Abstractions.Agent.Pipeline;
 
 namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>
-/// Runs a single agent iteration: builds the prompt from the supplied
-/// context and turn batch, invokes the language model (with the
-/// empty-response retry), persists the model's output via the active
-/// context store, and returns any tool-result turns the caller should
-/// feed back on the next iteration. Knows nothing about session queues,
-/// agent locks, or interrupt subscriptions — those concerns belong to
-/// the surrounding loop owner.
+/// Runs a single agent iteration from the pipeline bag: builds the
+/// prompt (including <see cref="AgentPipelineContext.SystemPrompt"/>),
+/// invokes the language model (with the empty-response retry),
+/// persists the model's output via the active context store, and
+/// returns any tool-result turns the caller should feed back on the
+/// next iteration. Knows nothing about session queues, agent locks,
+/// or interrupt subscriptions — those concerns belong to the
+/// surrounding onion.
 /// </summary>
 public interface IAgentIterationRunner
 {
     /// <summary>
-    /// Runs one iteration. The caller is responsible for any lock
-    /// acquisition, interrupt-token wiring, and acting on returned
-    /// tool-result turns.
+    /// Runs one iteration from <paramref name="context"/>. The caller
+    /// is responsible for any lock acquisition, interrupt-token
+    /// wiring, and acting on returned tool-result turns.
     /// </summary>
     /// <param name="context">
-    /// Live context for the session being driven. Token usage and any
-    /// turn the inference path persists land here.
+    /// The per-batch bag. Reads <see cref="AgentPipelineContext.AgentContext"/>,
+    /// <see cref="AgentPipelineContext.Batch"/>,
+    /// <see cref="AgentPipelineContext.CorrelationId"/>,
+    /// <see cref="AgentPipelineContext.ShutdownToken"/>,
+    /// <see cref="AgentPipelineContext.TurnToken"/>, and
+    /// <see cref="AgentPipelineContext.SystemPrompt"/>.
+    /// The run-iteration middleware stores the returned
+    /// <see cref="IterationOutcome"/> on the bag.
     /// </param>
-    /// <param name="batch">
-    /// Input turns for this iteration (typically the freshly dequeued
-    /// user/tool turns).
-    /// </param>
-    /// <param name="correlationId">
-    /// Correlation id stamped on every event published during the
-    /// iteration. Lets subscribers tie streamed fragments back to the
-    /// inbound batch.
-    /// </param>
-    /// <param name="outerCancellationToken">
-    /// Cancellation that should outlive an interrupt — used for tail
-    /// persistence work that must finish even after the turn was
-    /// interrupted.
-    /// </param>
-    /// <param name="turnCancellationToken">
-    /// Cancellation linked to interrupt signals; cancelling this stops
-    /// the inference itself.
-    /// </param>
-    Task<IterationOutcome> RunAsync(
-        IAgentContext context,
-        ImmutableArray<ModelTurn> batch,
-        Guid correlationId,
-        CancellationToken outerCancellationToken,
-        CancellationToken turnCancellationToken);
+    Task<IterationOutcome> RunAsync(AgentPipelineContext context);
 }

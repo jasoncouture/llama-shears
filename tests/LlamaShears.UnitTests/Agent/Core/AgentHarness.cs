@@ -58,18 +58,19 @@ internal static class AgentHarness
         iterationServices.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
         iterationServices.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataScope));
         iterationServices.AddMemoryCache();
+        var systemPrompt = BuildStubSystemPromptProvider();
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
         iterationServices.AddSingleton<IInferenceRunner>(new InferenceRunner(
             bus,
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
-            BuildStubSystemPromptProvider(),
+            systemPrompt,
             memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
             dataScope,
             model,
             NullLogger<InferenceRunner>.Instance));
         var iterationProvider = iterationServices.BuildServiceProvider();
-        var timeProvider = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
         var iterationRunner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
             timeProvider,
@@ -91,6 +92,7 @@ internal static class AgentHarness
             new AgentLockMiddleware(agentLock),
             new InterruptScopeMiddleware(activeTurn),
             new ToolResultEnqueueMiddleware(sessionQueue),
+            new SystemPromptMiddleware(systemPrompt, dataScope, timeProvider),
             new RunIterationMiddleware(iterationRunner),
         ]);
 

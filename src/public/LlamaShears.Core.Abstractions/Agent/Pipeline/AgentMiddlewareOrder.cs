@@ -28,6 +28,9 @@ public static class AgentMiddlewareOrder
     /// <summary>Re-enqueue tool-result turns when the iteration was not interrupted.</summary>
     public const int ToolResultEnqueue = 6000;
 
+    /// <summary>Render the persistent system-prompt turn onto the bag.</summary>
+    public const int SystemPrompt = 7000;
+
     /// <summary>Invoke <see cref="IAgentIterationRunner"/>.</summary>
-    public const int RunIteration = 7000;
+    public const int RunIteration = 8000;
 }

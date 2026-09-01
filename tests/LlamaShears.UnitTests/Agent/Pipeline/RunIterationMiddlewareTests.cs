@@ -1,7 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
-using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
-using LlamaShears.Core.Abstractions.Provider;
 using LlamaShears.Core.Pipeline;
 using NSubstitute;
 
@@ -14,13 +12,7 @@ public sealed class RunIterationMiddlewareTests
     {
         var runner = Substitute.For<IAgentIterationRunner>();
         var expected = new IterationOutcome(Interrupted: false, ToolResultTurns: []);
-        runner.RunAsync(
-                Arg.Any<IAgentContext>(),
-                Arg.Any<System.Collections.Immutable.ImmutableArray<ModelTurn>>(),
-                Arg.Any<Guid>(),
-                Arg.Any<CancellationToken>(),
-                Arg.Any<CancellationToken>())
-            .Returns(expected);
+        runner.RunAsync(Arg.Any<AgentPipelineContext>()).Returns(expected);
         IAgentMiddleware middleware = new RunIterationMiddleware(runner);
         var context = PipelineTestContext.Create();
         context.CorrelationId = Guid.CreateVersion7();
@@ -37,11 +29,6 @@ public sealed class RunIterationMiddlewareTests
 
         await Assert.That(context.Outcome).IsEqualTo(expected);
         await Assert.That(nextCalled).IsTrue();
-        await runner.Received(1).RunAsync(
-            context.AgentContext,
-            context.Batch,
-            context.CorrelationId,
-            context.ShutdownToken,
-            context.TurnToken);
+        await runner.Received(1).RunAsync(context);
     }
 }
