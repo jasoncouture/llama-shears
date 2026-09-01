@@ -182,7 +182,6 @@ public sealed class ContextCompactorTests
             Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
-            systemPrompt,
             Substitute.For<IMemorySearcher>(),
             dataScope,
             model,
@@ -199,7 +198,19 @@ public sealed class ContextCompactorTests
         templateRenderer.RenderAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("compaction-kicker"));
         var stateTracker = new AgentStateTracker(dataScope);
-        return new ContextCompactor(store, stateTracker, runner, publisher, serverRegistry, toolDiscovery, locator, templateRenderer, dataScope, NullLogger<ContextCompactor>.Instance);
+        return new ContextCompactor(
+            store,
+            stateTracker,
+            runner,
+            publisher,
+            serverRegistry,
+            toolDiscovery,
+            locator,
+            templateRenderer,
+            systemPrompt,
+            TimeProvider.System,
+            dataScope,
+            NullLogger<ContextCompactor>.Instance);
     }
 
     private static AgentContext BuildAgentContext(ModelPrompt prompt, ModelConfiguration config)

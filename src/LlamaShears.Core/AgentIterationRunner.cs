@@ -87,8 +87,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         var promptOptions = new PromptOptions(
             Tools: tools,
             InjectEphemeralContext: true,
-            EmitTurns: true,
-            SystemPromptTemplate: null);
+            EmitTurns: true);
 
         InferenceOutcome outcome;
         var emptyAttempt = 0;

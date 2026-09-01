@@ -9,7 +9,6 @@ using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Memory;
 using LlamaShears.Core.Abstractions.PromptContext;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Abstractions.SystemPrompt;
 using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +23,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
     private readonly IToolCallDispatcher _toolDispatcher;
     private readonly TimeProvider _time;
     private readonly IPromptContextProvider _promptContext;
-    private readonly ISystemPromptProvider _systemPrompt;
     private readonly IMemorySearcher _memorySearcher;
     private readonly IDataContextScope _dataScope;
     private readonly ILanguageModel _model;
@@ -35,7 +33,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         IToolCallDispatcher toolDispatcher,
         TimeProvider time,
         IPromptContextProvider promptContext,
-        ISystemPromptProvider systemPrompt,
         IMemorySearcher memorySearcher,
         IDataContextScope dataScope,
         ILanguageModel model,
@@ -45,7 +42,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         _toolDispatcher = toolDispatcher;
         _time = time;
         _promptContext = promptContext;
-        _systemPrompt = systemPrompt;
         _memorySearcher = memorySearcher;
         _dataScope = dataScope;
         _model = model;
@@ -70,13 +66,6 @@ public sealed partial class InferenceRunner : IInferenceRunner
         var correlationId = state.CorrelationId;
         var channelId = prompt.Turns[^1].ChannelId;
         var emitTurns = options?.EmitTurns ?? false;
-
-        if (options?.SystemPromptTemplate is { } systemTemplate)
-        {
-            var systemBody = await _systemPrompt.GetAsync(systemTemplate, _dataScope.Snapshot(), cancellationToken);
-            var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
-            prompt = new ModelPrompt([systemTurn, .. prompt.Turns]);
-        }
 
         if (options is { InjectEphemeralContext: true })
         {

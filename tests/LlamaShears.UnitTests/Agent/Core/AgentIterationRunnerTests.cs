@@ -16,7 +16,7 @@ namespace LlamaShears.UnitTests.Agent.Core;
 public sealed class AgentIterationRunnerTests
 {
     [Test]
-    public async Task PrependsSystemPromptAndSkipsInferenceTemplate()
+    public async Task PrependsSystemPromptToTheModelPrompt()
     {
         var (runner, inference, agentContext) = BuildRunner();
         var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
@@ -29,13 +29,11 @@ public sealed class AgentIterationRunnerTests
             SystemPrompt = system,
         };
         ModelPrompt? sent = null;
-        PromptOptions? options = null;
         inference
             .RunAsync(Arg.Any<ModelPrompt>(), Arg.Any<PromptOptions?>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 sent = call.Arg<ModelPrompt>();
-                options = call.Arg<PromptOptions?>();
                 return new InferenceOutcome("", "ok", null, [], []);
             });
 
@@ -44,7 +42,6 @@ public sealed class AgentIterationRunnerTests
         await Assert.That(sent).IsNotNull();
         await Assert.That(sent!.Turns[0]).IsEqualTo(system);
         await Assert.That(sent.Turns[1].Content).IsEqualTo("remembered");
-        await Assert.That(options!.SystemPromptTemplate).IsNull();
     }
 
     [Test]

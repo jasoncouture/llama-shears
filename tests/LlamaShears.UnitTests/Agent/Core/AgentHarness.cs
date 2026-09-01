@@ -65,7 +65,6 @@ internal static class AgentHarness
             dispatcher ?? Substitute.For<IToolCallDispatcher>(),
             TimeProvider.System,
             Substitute.For<IPromptContextProvider>(),
-            systemPrompt,
             memorySearcher ?? TestAgentConfigs.EmptyMemorySearcher(),
             dataScope,
             model,

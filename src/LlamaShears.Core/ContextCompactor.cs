@@ -36,6 +36,8 @@ public sealed partial class ContextCompactor : IContextCompactor
     private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
     private readonly ITemplateFileLocator _locator;
     private readonly ITemplateRenderer _templateRenderer;
+    private readonly ISystemPromptProvider _systemPrompt;
+    private readonly TimeProvider _time;
     private readonly IDataContextScope _dataContextScope;
     private readonly ILogger<ContextCompactor> _logger;
 
@@ -47,6 +49,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         IModelContextProtocolToolDiscovery toolDiscovery,
         ITemplateFileLocator locator,
         ITemplateRenderer templateRenderer,
+        ISystemPromptProvider systemPrompt,
+        TimeProvider time,
         IDataContextScope dataContextScope,
         ILogger<ContextCompactor> logger)
     {
@@ -58,6 +62,8 @@ public sealed partial class ContextCompactor : IContextCompactor
         _toolDiscovery = toolDiscovery;
         _locator = locator;
         _templateRenderer = templateRenderer;
+        _systemPrompt = systemPrompt;
+        _time = time;
         _dataContextScope = dataContextScope;
         _logger = logger;
     }
@@ -223,14 +229,18 @@ public sealed partial class ContextCompactor : IContextCompactor
         var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
         var options = new PromptOptions(
             TokenLimit: summaryCap,
-            Tools: tools,
-            SystemPromptTemplate: CompactionTemplateFileName);
+            Tools: tools);
+        var systemBody = await _systemPrompt.GetAsync(
+            CompactionTemplateFileName,
+            SnapshotScope(),
+            cancellationToken);
+        var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
 
         var toolCallingTurns = 0;
 
         while (true)
         {
-            var summarizationPrompt = new ModelPrompt(historyTurns);
+            var summarizationPrompt = new ModelPrompt([systemTurn, .. historyTurns]);
             var outcome = await _inferenceRunner.RunAsync(
                 prompt: summarizationPrompt,
                 options: options,
