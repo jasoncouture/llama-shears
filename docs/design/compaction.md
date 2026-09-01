@@ -9,7 +9,7 @@ When triggered, compaction:
 1. Calls the model with the current context (excluding the trailing user message, if any) plus a final `User`-role instruction asking it to summarize what came before.
 2. Replaces the on-disk and in-memory context with `[system, summary, last-user-turn?]`. The system prompt is reconstructed each iteration anyway and is *not* persisted, so the persisted form is `[summary, last-user-turn?]`.
 3. Archives the old `current.json` to `<unix-ms>.json` (see [persistence.md](persistence.md)).
-4. Returns a rewritten `ModelPrompt` for the in-flight iteration to use.
+4. Returns a rewritten `ModelPrompt`. Per-turn auto-compaction runs **after** inference, so the return value is not fed back into the call that just finished — it rewrites persisted context for the next turn.
 
 The summary is an `Assistant`-role turn — written *to itself*, with the framing "this summary will be your only memory of what came before." Empirically that produces tighter, less ceremonial summaries than asking it to write for an audience.
 
@@ -17,12 +17,13 @@ The summary is an `Assistant`-role turn — written *to itself*, with the framin
 
 ### Auto-compaction (per-iteration, soft)
 
-Every iteration of the agent loop calls `_compactor.CompactAsync(snapshot, prompt, model, modelConfig, force: false, cancellationToken)`. With `force: false` the compactor short-circuits unless **all** of the following hold:
+[`CompactionMiddleware`](../../src/LlamaShears.Core/Pipeline/CompactionMiddleware.cs) (order 9000) wraps iteration and calls `IContextCompactor.CompactAsync(snapshot, persistedTurns, force: false)` **after** `IAgentIterationRunner` returns. It skips when the outcome is missing or interrupted. With `force: false` the compactor short-circuits unless **all** of the following hold:
 
-- `prompt.Turns.Count >= 5` (one system + at least two user + two assistant — below this the cost of a summarization call isn't worth what it would save).
+- `prompt.Turns.Count >= 5` (below this the cost of a summarization call isn't worth what it would save).
 - `ModelConfiguration.ContextLength` is set on the agent (no configured window → no budget to enforce).
 - `agentContext.LanguageModel.ContextWindowTokenCount + predictBudget >= window`.
-- The trailing turn is `User` or `FrameworkUser` (auto-compaction's rebuild assumes a user-anchored prompt; if the trailing turn is something else, auto-compaction skips).
+
+The rebuild keeps a trailing `User` / `FrameworkUser` turn when that is what the persisted log ends on; after a completed model turn the log usually ends on `Assistant`, so the rebuilt context is `[summary]`.
 
 Where `predictBudget` is:
 
