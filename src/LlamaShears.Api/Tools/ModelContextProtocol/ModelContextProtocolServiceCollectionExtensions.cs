@@ -1,4 +1,5 @@
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
+using LlamaShears.Api.Tools.ModelContextProtocol.Discord;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
 using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
 using LlamaShears.Api.Tools.ModelContextProtocol.Session;
@@ -24,6 +25,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.TryAddSingleton<IInternalModelContextProtocolServer, InternalModelContextProtocolServer>();
         services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
+        services.AddDiscordWebhookTools();
 
         services
             .AddPathExpander()
@@ -49,7 +51,8 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<TodoTools>()
             .WithTools<ShellTools>()
             .WithTools<SkillTools>()
-            .WithTools<SessionTools>();
+            .WithTools<SessionTools>()
+            .WithTools<DiscordTools>();
 
         return services;
     }
