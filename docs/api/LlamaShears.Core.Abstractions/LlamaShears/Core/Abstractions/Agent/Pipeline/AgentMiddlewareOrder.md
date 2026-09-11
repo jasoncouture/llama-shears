@@ -3,9 +3,11 @@
 Assembly: `LlamaShears.Core.Abstractions`
 
 Well-known [IAgentMiddleware](IAgentMiddleware.md).`Order` values for the
-default onion. Lowest is outermost. Built-ins are spaced 1000
-apart so a plugin can sit in any gap (or outside the range)
-without colliding.
+default onion. Lowest is outermost. Most built-ins are spaced
+1000 apart so a plugin can sit in any gap (or outside the
+range) without colliding. [AgentMiddlewareOrder](AgentMiddlewareOrder.md).`ToolLoopLimit` occupies
+the gap between [AgentMiddlewareOrder](AgentMiddlewareOrder.md).`RunIteration` and
+[AgentMiddlewareOrder](AgentMiddlewareOrder.md).`ToolDispatch`.
 
 ## Fields
 
@@ -48,6 +50,11 @@ Render the persistent system-prompt turn onto the bag.
 ### `ToolDispatch`
 
 Dispatch `Outcome.ToolCalls` and write `ToolResultTurns`.
+
+### `ToolLoopLimit`
+
+Drop leftover tool calls when [IToolLoopBudget](IToolLoopBudget.md).`IsFinal`
+so dispatch does not re-enqueue after the last allowed round.
 
 ### `ToolResultEnqueue`
 

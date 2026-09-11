@@ -64,14 +64,18 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentTokenStore](LlamaShears/Core/Abstractions/Agent/IAgentTokenStore.md)
 - [ILockScope](LlamaShears/Core/Abstractions/Agent/ILockScope.md)
 - [IPromptedAgentSpawner](LlamaShears/Core/Abstractions/Agent/IPromptedAgentSpawner.md)
+- [ISubagentRunner](LlamaShears/Core/Abstractions/Agent/ISubagentRunner.md)
 - [ITransientAgent](LlamaShears/Core/Abstractions/Agent/ITransientAgent.md)
 - [ITransientAgentFactory](LlamaShears/Core/Abstractions/Agent/ITransientAgentFactory.md)
 - [ITransientAgentSpawner](LlamaShears/Core/Abstractions/Agent/ITransientAgentSpawner.md)
 - [IterationOutcome](LlamaShears/Core/Abstractions/Agent/IterationOutcome.md)
 - [PromptedAgentStartInformation](LlamaShears/Core/Abstractions/Agent/PromptedAgentStartInformation.md)
 - [SaveAgentConfigResult](LlamaShears/Core/Abstractions/Agent/SaveAgentConfigResult.md)
+- [SubagentRunRequest](LlamaShears/Core/Abstractions/Agent/SubagentRunRequest.md)
+- [SubagentRunResult](LlamaShears/Core/Abstractions/Agent/SubagentRunResult.md)
 - [SystemTick](LlamaShears/Core/Abstractions/Agent/SystemTick.md)
 - [TransientAgentInitialPrompt](LlamaShears/Core/Abstractions/Agent/TransientAgentInitialPrompt.md)
+- [TransientAgentReportPolicy](LlamaShears/Core/Abstractions/Agent/TransientAgentReportPolicy.md)
 
 ## LlamaShears.Core.Abstractions.Agent.Persistence
 
@@ -90,6 +94,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IAgentLifetime](LlamaShears/Core/Abstractions/Agent/Pipeline/IAgentLifetime.md)
 - [IAgentMiddleware](LlamaShears/Core/Abstractions/Agent/Pipeline/IAgentMiddleware.md)
 - [IAgentPipeline](LlamaShears/Core/Abstractions/Agent/Pipeline/IAgentPipeline.md)
+- [IToolLoopBudget](LlamaShears/Core/Abstractions/Agent/Pipeline/IToolLoopBudget.md)
 
 ## LlamaShears.Core.Abstractions.Agent.SaveAgentConfigResult
 
