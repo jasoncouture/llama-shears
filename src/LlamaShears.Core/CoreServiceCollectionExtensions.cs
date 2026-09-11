@@ -270,6 +270,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddScoped<IActiveTurnCancellation, ActiveTurnCancellation>();
         services.TryAddScoped<IAgentLifetime, AgentLifetime>();
         services.TryAddScoped<IAgentIterationRunner, AgentIterationRunner>();
+        services.TryAddScoped<IToolLoopBudget, ToolLoopBudget>();
         services.AddAgentMiddleware<TurnExceptionMiddleware>();
         services.AddAgentMiddleware<AgentActivityMiddleware>();
         services.AddAgentMiddleware<CorrelationScopeMiddleware>();
@@ -280,6 +281,7 @@ public static class CoreServiceCollectionExtensions
         services.AddAgentMiddleware<CompactionMiddleware>();
         services.AddAgentMiddleware<EphemeralContextMiddleware>();
         services.AddAgentMiddleware<RunIterationMiddleware>();
+        services.AddAgentMiddleware<ToolLoopLimitMiddleware>();
         services.AddAgentMiddleware<ToolDispatchMiddleware>();
         services.AddAgentMiddleware<StripImageAttachmentsMiddleware>();
         services.AddAgentService<ChannelMessageIntakeService>();

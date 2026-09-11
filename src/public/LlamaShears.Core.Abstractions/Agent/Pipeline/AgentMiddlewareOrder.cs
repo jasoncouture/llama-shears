@@ -4,9 +4,11 @@ namespace LlamaShears.Core.Abstractions.Agent.Pipeline;
 
 /// <summary>
 /// Well-known <see cref="IAgentMiddleware.Order"/> values for the
-/// default onion. Lowest is outermost. Built-ins are spaced 1000
-/// apart so a plugin can sit in any gap (or outside the range)
-/// without colliding.
+/// default onion. Lowest is outermost. Most built-ins are spaced
+/// 1000 apart so a plugin can sit in any gap (or outside the
+/// range) without colliding. <see cref="ToolLoopLimit"/> occupies
+/// the gap between <see cref="RunIteration"/> and
+/// <see cref="ToolDispatch"/>.
 /// </summary>
 public static class AgentMiddlewareOrder
 {
@@ -39,6 +41,12 @@ public static class AgentMiddlewareOrder
 
     /// <summary>Invoke <see cref="IAgentIterationRunner"/>.</summary>
     public const int RunIteration = 10000;
+
+    /// <summary>
+    /// Drop leftover tool calls when <see cref="IToolLoopBudget.IsFinal"/>
+    /// so dispatch does not re-enqueue after the last allowed round.
+    /// </summary>
+    public const int ToolLoopLimit = 10500;
 
     /// <summary>Dispatch <c>Outcome.ToolCalls</c> and write <c>ToolResultTurns</c>.</summary>
     public const int ToolDispatch = 11000;

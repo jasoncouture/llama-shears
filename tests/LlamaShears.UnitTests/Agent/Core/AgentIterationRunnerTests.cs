@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
@@ -5,6 +6,8 @@ using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Provider;
+using LlamaShears.Core.Pipeline;
+using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -165,7 +168,96 @@ public sealed class AgentIterationRunnerTests
             .Throws<InvalidOperationException>();
     }
 
-    private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext, SessionId Session) BuildRunner()
+    [Test]
+    public async Task StripsToolsAndDropsCallsWhenBudgetIsFinal()
+    {
+        var discovery = Substitute.For<IModelContextProtocolToolDiscovery>();
+        discovery.DiscoverAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<ImmutableArray<ToolGroup>>([new ToolGroup("llamashears", [])]));
+        var budget = Substitute.For<IToolLoopBudget>();
+        budget.IsFinal.Returns(true);
+        var (runner, inference, agentContext, session) = BuildRunner(budget, discovery);
+        PromptOptions? options = null;
+        inference
+            .RunAsync(
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<PromptOptions?>(),
+                Arg.Any<SessionId>(),
+                Arg.Any<Guid>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                options = call.Arg<PromptOptions?>();
+                return new InferenceOutcome(
+                    "",
+                    "",
+                    null,
+                    [new ToolCall("llamashears", "file_read", "{}", "1")]);
+            });
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            Prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
+            SessionId = session,
+        };
+
+        var outcome = await runner.RunAsync(context);
+
+        await Assert.That(options!.Tools.IsDefaultOrEmpty).IsTrue();
+        await Assert.That(context.Tools.IsDefaultOrEmpty).IsTrue();
+        await Assert.That(outcome.ToolCalls.IsDefaultOrEmpty).IsTrue();
+        await discovery.DidNotReceive().DiscoverAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>());
+        budget.Received(1).ObserveBatch(Arg.Any<ImmutableArray<ModelTurn>>());
+    }
+
+    [Test]
+    public async Task PassesDiscoveredToolsWhenBudgetAllows()
+    {
+        var group = new ToolGroup("llamashears", []);
+        var discovery = Substitute.For<IModelContextProtocolToolDiscovery>();
+        discovery.DiscoverAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<ImmutableArray<ToolGroup>>([group]));
+        var budget = Substitute.For<IToolLoopBudget>();
+        budget.IsFinal.Returns(false);
+        var (runner, inference, agentContext, session) = BuildRunner(budget, discovery);
+        PromptOptions? options = null;
+        inference
+            .RunAsync(
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<PromptOptions?>(),
+                Arg.Any<SessionId>(),
+                Arg.Any<Guid>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                options = call.Arg<PromptOptions?>();
+                return new InferenceOutcome("", "ok", null, []);
+            });
+        var context = new AgentPipelineContext(
+            agentContext,
+            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+            CancellationToken.None)
+        {
+            CorrelationId = Guid.CreateVersion7(),
+            Prompt = new ModelPrompt([new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)]),
+            SessionId = session,
+        };
+
+        await runner.RunAsync(context);
+
+        await Assert.That(options!.Tools.Length).IsEqualTo(1);
+        await Assert.That(options.Tools[0]).IsEqualTo(group);
+        await Assert.That(context.Tools[0]).IsEqualTo(group);
+    }
+
+    private static (IAgentIterationRunner Runner, IInferenceRunner Inference, IAgentContext AgentContext, SessionId Session) BuildRunner(
+        IToolLoopBudget? budget = null,
+        IModelContextProtocolToolDiscovery? discovery = null)
     {
         var config = TestAgentConfigs.WithHeartbeat(TimeSpan.Zero, "alice");
         var session = new SessionId(config.Id, SessionId.DefaultSessionName);
@@ -176,7 +268,7 @@ public sealed class AgentIterationRunnerTests
         services.AddSingleton<IDataContextScope>(dataScope);
         services.AddSingleton(inference);
         services.AddSingleton(TestAgentConfigs.BuildEmptyServerRegistry());
-        services.AddSingleton(TestAgentConfigs.BuildEmptyToolDiscovery());
+        services.AddSingleton(discovery ?? TestAgentConfigs.BuildEmptyToolDiscovery());
         services.AddSingleton<IAgentStateTracker>(new AgentStateTracker(dataScope));
         var provider = services.BuildServiceProvider();
 
@@ -187,7 +279,8 @@ public sealed class AgentIterationRunnerTests
             NullLogger<AgentIterationRunner>.Instance,
             TimeProvider.System,
             dataScope,
-            provider.GetRequiredService<IServiceScopeFactory>());
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            budget ?? new ToolLoopBudget(dataScope));
         return (runner, inference, agentContext, session);
     }
 }

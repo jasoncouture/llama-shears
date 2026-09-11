@@ -19,17 +19,20 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
     private readonly TimeProvider _time;
     private readonly IDataContextScope _dataScope;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IToolLoopBudget _toolLoopBudget;
 
     public AgentIterationRunner(
         ILogger<AgentIterationRunner> logger,
         TimeProvider time,
         IDataContextScope dataScope,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IToolLoopBudget toolLoopBudget)
     {
         _logger = logger;
         _time = time;
         _dataScope = dataScope;
         _scopeFactory = scopeFactory;
+        _toolLoopBudget = toolLoopBudget;
     }
 
     public async Task<IterationOutcome> RunAsync(AgentPipelineContext context)
@@ -46,6 +49,9 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
             ?? throw new InvalidOperationException(
                 "Run-iteration middleware must set AgentPipelineContext.SessionId before the iteration runs.");
 
+        _toolLoopBudget.ObserveBatch(batch);
+        var stripTools = _toolLoopBudget.IsFinal;
+
         await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
         bundle.ServiceScope.ApplyScopeData(turnCancellationToken);
         bundle.ServiceProvider.GetRequiredService<IAgentStateTracker>()
@@ -58,7 +64,9 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         var serverRegistry = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolServerRegistry>();
         var toolDiscovery = bundle.ServiceProvider.GetRequiredService<IModelContextProtocolToolDiscovery>();
         var servers = serverRegistry.Resolve(_dataScope.GetAgentConfig().ModelContextProtocolServers);
-        var tools = await toolDiscovery.DiscoverAsync(servers.Keys, turnCancellationToken);
+        var tools = stripTools
+            ? []
+            : await toolDiscovery.DiscoverAsync(servers.Keys, turnCancellationToken);
         context.Tools = tools;
         var promptOptions = new PromptOptions(
             Tools: tools,
@@ -119,7 +127,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         return new IterationOutcome(
             Interrupted: outcome.Interrupted,
             ToolResultTurns: [],
-            ToolCalls: outcome.ToolCalls);
+            ToolCalls: stripTools ? [] : outcome.ToolCalls);
     }
 
     [LoggerMessage(Level = LogLevel.Warning,

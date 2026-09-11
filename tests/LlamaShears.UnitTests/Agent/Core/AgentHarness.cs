@@ -74,11 +74,13 @@ internal static class AgentHarness
             model,
             NullLogger<InferenceRunner>.Instance));
         var iterationProvider = iterationServices.BuildServiceProvider();
+        IToolLoopBudget toolLoopBudget = new ToolLoopBudget(dataScope);
         var iterationRunner = new AgentIterationRunner(
             NullLogger<AgentIterationRunner>.Instance,
             timeProvider,
             dataScope,
-            iterationProvider.GetRequiredService<IServiceScopeFactory>());
+            iterationProvider.GetRequiredService<IServiceScopeFactory>(),
+            toolLoopBudget);
 
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var sessionQueue = sessionFactory.Get(session);
@@ -102,6 +104,7 @@ internal static class AgentHarness
                 dataScope,
                 timeProvider),
             new RunIterationMiddleware(iterationRunner, dataScope),
+            new ToolLoopLimitMiddleware(toolLoopBudget),
             new ToolDispatchMiddleware(toolExecutor),
             new StripImageAttachmentsMiddleware(),
         ]);

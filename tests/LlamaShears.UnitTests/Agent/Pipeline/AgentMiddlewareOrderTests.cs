@@ -69,6 +69,7 @@ public sealed class AgentMiddlewareOrderTests
             new RunIterationMiddleware(
                 Substitute.For<IAgentIterationRunner>(),
                 PipelineTestContext.ScopeFor()),
+            new ToolLoopLimitMiddleware(Substitute.For<IToolLoopBudget>()),
             new ToolDispatchMiddleware(
                 new ToolCallExecutor(
                     Substitute.For<IEventBus>(),
@@ -90,6 +91,7 @@ public sealed class AgentMiddlewareOrderTests
             AgentMiddlewareOrder.Compaction,
             AgentMiddlewareOrder.EphemeralContext,
             AgentMiddlewareOrder.RunIteration,
+            AgentMiddlewareOrder.ToolLoopLimit,
             AgentMiddlewareOrder.ToolDispatch,
             AgentMiddlewareOrder.StripImageAttachments,
         ];
