@@ -134,14 +134,13 @@ public sealed class AgentHeartbeatServiceTests
             TransientAgentFactory = Substitute.For<ITransientAgentFactory>();
             TransientAgentFactory.CreateTransientAgent(
                     Arg.Any<AgentConfig>(),
-                    Arg.Any<string>(),
+                    Arg.Any<SessionId>(),
                     Arg.Any<ModelTurn>(),
                     Arg.Any<IEnumerable<KeyValuePair<string, object?>>>(),
                     Arg.Any<CancellationToken>())
                 .Returns(call =>
                 {
-                    var name = (string)call[1]!;
-                    var child = new SessionId(Config.Id, name);
+                    var child = call.Arg<SessionId>();
                     var parentPath = new SessionPath(ParentSession);
                     var path = parentPath.CreateChildSession(child);
                     LastHeartbeatSession = child;
@@ -171,7 +170,7 @@ public sealed class AgentHeartbeatServiceTests
             {
                 var handle = await TransientAgentFactory.CreateTransientAgent(
                     info.Config,
-                    info.Id.Name,
+                    info.Id,
                     info.InitialPrompt with { ChannelId = $"subagent:{info.Id.Name}" },
                     info.ContextData ?? [],
                     ct);

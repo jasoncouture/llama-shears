@@ -130,9 +130,10 @@ public sealed class SubagentRunner : ISubagentRunner
                 return ValueTask.CompletedTask;
             });
 
+        AgentHandle handle;
         try
         {
-            await _spawner.CreateAsync(startInfo, cancellationToken);
+            handle = await _spawner.CreateAsync(startInfo, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -147,6 +148,19 @@ public sealed class SubagentRunner : ISubagentRunner
                 Output: null,
                 TimedOut: false,
                 Error: $"Failed to start sub-agent: {ex.Message}",
+                Started: false);
+        }
+
+        if (handle.SessionPath.Current != childSession)
+        {
+            await PublishStopAsync(handle.SessionPath.Current, cancellationToken);
+            return new SubagentRunResult(
+                Ok: false,
+                SessionId: handle.SessionPath.Current.ToString(),
+                Awaited: request.AwaitResult,
+                Output: null,
+                TimedOut: false,
+                Error: "Failed to start sub-agent: child session id does not match the awaited session.",
                 Started: false);
         }
 

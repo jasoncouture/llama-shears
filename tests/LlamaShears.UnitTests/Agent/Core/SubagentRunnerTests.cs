@@ -260,6 +260,43 @@ public sealed class SubagentRunnerTests
     }
 
     [Test]
+    public async Task RemintedChildSessionIdIsRefusedAndStopped()
+    {
+        using var harness = Harness.Create();
+        AgentStopRequest? stop = null;
+        using var stopSub = harness.Bus.Subscribe<AgentStopRequest>(
+            $"{Event.WellKnown.Command.AgentStop}:+",
+            EventDeliveryMode.Awaited,
+            (envelope, _) =>
+            {
+                stop = envelope.Data;
+                return ValueTask.CompletedTask;
+            });
+        harness.Spawner
+            .CreateAsync(Arg.Any<PromptedAgentStartInformation>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var info = call.Arg<PromptedAgentStartInformation>();
+                harness.LastStart = info;
+                var reminted = SessionId.CreateFor(info.Id.AgentId, info.Id.Name);
+                var path = info.ParentSessionPath.CreateChildSession(reminted);
+                var serviceScope = new AsyncServiceScope(Substitute.For<IServiceScope>());
+                return new ValueTask<AgentHandle>(
+                    new AgentHandle(path, "hash", serviceScope, ExecutionContext.Capture()!, typeof(IAgent)));
+            });
+
+        var result = await harness.Runner.RunAsync(
+            new SubagentRunRequest("do the work"),
+            CancellationToken.None);
+
+        await Assert.That(result.Ok).IsFalse();
+        await Assert.That(result.Started).IsFalse();
+        await Assert.That(result.Error).Contains("does not match");
+        await Assert.That(stop).IsNotNull();
+        await Assert.That(stop!.SessionId).IsNotEqualTo(harness.LastStart!.Id);
+    }
+
+    [Test]
     public async Task SpawnFailureReturnsError()
     {
         using var harness = Harness.Create();

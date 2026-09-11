@@ -53,7 +53,7 @@ public class PromptedAgentSpawner : IPromptedAgentSpawner
 
         var handle = await _transientAgentFactory.CreateTransientAgent(
             startInfo.Config,
-            startInfo.Id.Name,
+            startInfo.Id,
             startInfo.InitialPrompt with { ChannelId = $"subagent:{startInfo.Id.Name}" },
             startInfo.ContextData!,
             cancellationToken);
