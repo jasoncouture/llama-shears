@@ -52,7 +52,7 @@ public sealed class AgentInterruptTests
         await PublishInterruptAsync(publisher, session);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-        using var idle = await _lockManager.AcquireLockAsync("alice", timeout.Token);
+        using var idle = await _lockManager.AcquireLockAsync(session.ToString(), timeout.Token);
     }
 
     private static ValueTask PublishInterruptAsync(IEventBus publisher, SessionId session)

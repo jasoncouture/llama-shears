@@ -8,10 +8,10 @@ public sealed class AgentLockManager : IAgentLockManager
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores =
         new(StringComparer.Ordinal);
 
-    public async ValueTask<ILockScope> AcquireLockAsync(string agentId, CancellationToken cancellationToken)
+    public async ValueTask<ILockScope> AcquireLockAsync(string key, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
-        var semaphore = _semaphores.GetOrAdd(agentId, static _ => new SemaphoreSlim(1, 1));
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var semaphore = _semaphores.GetOrAdd(key, static _ => new SemaphoreSlim(1, 1));
         await semaphore.WaitAsync(cancellationToken);
         return new LockScope(semaphore);
     }

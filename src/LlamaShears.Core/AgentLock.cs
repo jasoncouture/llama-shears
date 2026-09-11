@@ -1,4 +1,5 @@
 using LlamaShears.Core.Abstractions.Agent;
+using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 
 namespace LlamaShears.Core;
@@ -15,5 +16,5 @@ public sealed class AgentLock : IAgentLock
     }
 
     public ValueTask<ILockScope> AcquireLockAsync(CancellationToken cancellationToken)
-        => _manager.AcquireLockAsync(_dataScope.GetAgentConfig().Id, cancellationToken);
+        => _manager.AcquireLockAsync(_dataScope.GetCurrentSessionId().ToString(), cancellationToken);
 }

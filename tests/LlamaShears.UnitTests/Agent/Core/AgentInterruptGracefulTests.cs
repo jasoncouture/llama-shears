@@ -41,7 +41,7 @@ public sealed class AgentInterruptGracefulTests
         await PublishInterruptAsync(publisher, session);
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-        using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
+        using var idle = await _lockManager.AcquireLockAsync(session.ToString(), lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
         await Assert.That(assistantTurns).Count().IsEqualTo(1);
@@ -68,7 +68,7 @@ public sealed class AgentInterruptGracefulTests
         await PublishInterruptAsync(publisher, session);
 
         using var lockTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-        using var idle = await _lockManager.AcquireLockAsync("alice", lockTimeout.Token);
+        using var idle = await _lockManager.AcquireLockAsync(session.ToString(), lockTimeout.Token);
 
         var assistantTurns = ctx.Turns.Where(t => t.Role == ModelRole.Assistant).ToArray();
         await Assert.That(assistantTurns).Count().IsEqualTo(1);
