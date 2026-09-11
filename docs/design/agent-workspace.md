@@ -30,7 +30,7 @@ The host's bundled templates live next door at `<Templates>/workspace/`, which i
 | `HEARTBEAT.md` | Periodic heartbeat instructions (see [heartbeat.md](heartbeat.md); not yet wired). |
 | `TOOLS.md` | The agent's own reference notes about how its tools work. |
 | `MEMORY.md` | Short-term memory storage. |
-| `AGENTS.md` | Reference notes for sub-agents (sub-agent spawning is anticipated, not yet wired). |
+| `AGENTS.md` | Agent-authored notes for helpers and playbooks. On-demand children use `system/SUBAGENT.md` via `subagent_run`, not this file. |
 | `memory/YYYY-MM-DD/<unix-seconds>.md` | Long-term memory entries. The vector index lives at `system/.memory.db`. See [memory.md](memory.md). |
 | `system/DEFAULT.md` | Top-level system prompt template for the agent's primary loop. |
 | `system/MINIMAL.md` | Stripped-down system prompt template for short-lived or headless runs (cron, batch, single-shot tasks). |
