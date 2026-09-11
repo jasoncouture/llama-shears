@@ -400,6 +400,179 @@ public sealed class HttpToolsTests
         await Assert.That(Directory.GetFiles(temp.Root).Length).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task SaveAsTimeoutCreatesNoTargetFile()
+    {
+        using var temp = TempWorkspace.Create();
+        var tool = CreateTool(new HangingBodyHandler(), workspace: temp.Workspace);
+
+        var result = await tool.Request(
+            "https://example.com/slow.bin",
+            saveAs: "fresh.bin",
+            timeoutSeconds: 1,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Completed).IsFalse();
+        await Assert.That(result.TimedOut).IsTrue();
+        await Assert.That(result.SavedPath).IsNull();
+        await Assert.That(File.Exists(temp.PathOf("fresh.bin"))).IsFalse();
+        await Assert.That(Directory.GetFiles(temp.Root).Length).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task SaveAsFailureKeepsHttpOkAndSetsSaveError()
+    {
+        using var temp = TempWorkspace.Create();
+        await File.WriteAllTextAsync(temp.PathOf("notadir"), "file");
+        var tool = CreateTool(
+            new RecordingHandler(HttpStatusCode.OK, "payload", "text/plain"),
+            workspace: temp.Workspace);
+
+        var result = await tool.Request(
+            "https://example.com/x",
+            saveAs: "notadir/out.bin",
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Completed).IsTrue();
+        await Assert.That(result.Ok).IsTrue();
+        await Assert.That(result.Status).IsEqualTo(200);
+        await Assert.That(result.Body).IsEqualTo("payload");
+        await Assert.That(result.Error).IsNull();
+        await Assert.That(result.SaveError).Contains("saving");
+        await Assert.That(result.SavedPath).IsNull();
+        await Assert.That(File.Exists(temp.PathOf("notadir", "out.bin"))).IsFalse();
+    }
+
+    [Test]
+    public async Task RefusesContentHeadersWithoutABody()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.OK, "x");
+        var tool = CreateTool(handler);
+
+        var result = await tool.Request(
+            "https://example.com/",
+            headers: new Dictionary<string, string> { ["Content-Type"] = "application/json" },
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Completed).IsFalse();
+        await Assert.That(result.Error).Contains("Content-Type");
+        await Assert.That(result.Error).Contains("request body");
+        await Assert.That(handler.LastRequest).IsNull();
+    }
+
+    [Test]
+    public async Task ExactInlineCapIsNotTruncated()
+    {
+        var payload = new string('a', HttpTools.MaxResponseBodyBytes);
+        var tool = CreateTool(new RecordingHandler(HttpStatusCode.OK, payload, "text/plain"));
+
+        var result = await tool.Request("https://example.com/exact", cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Truncated).IsFalse();
+        await Assert.That(result.Body).IsEqualTo(payload);
+    }
+
+    [Test]
+    public async Task OneBytePastInlineCapIsTruncated()
+    {
+        var payload = new string('a', HttpTools.MaxResponseBodyBytes + 1);
+        var tool = CreateTool(new RecordingHandler(HttpStatusCode.OK, payload, "text/plain"));
+
+        var result = await tool.Request("https://example.com/plus-one", cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Truncated).IsTrue();
+        await Assert.That(result.Body!.Length).IsEqualTo(HttpTools.MaxResponseBodyBytes);
+    }
+
+    [Test]
+    public async Task InlinePreviewDoesNotReadTheWholeBody()
+    {
+        var stream = new GeneratedReadStream(HttpTools.MaxResponseBodyBytes * 4);
+        var tool = CreateTool(new StreamBodyHandler(stream, "text/plain"));
+
+        var result = await tool.Request("https://example.com/huge", cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Truncated).IsTrue();
+        await Assert.That(result.Body!.Length).IsEqualTo(HttpTools.MaxResponseBodyBytes);
+        await Assert.That(stream.BytesRead).IsLessThanOrEqualTo(HttpTools.MaxResponseBodyBytes + 8192);
+        await Assert.That(stream.BytesRead).IsLessThan((int)stream.Length);
+    }
+
+    [Test]
+    public async Task HeadDoesNotReadTheResponseBody()
+    {
+        var stream = new MustNotReadStream();
+        var tool = CreateTool(new StreamBodyHandler(stream, "text/plain"));
+
+        var result = await tool.Request(
+            "https://example.com/meta",
+            method: "HEAD",
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Completed).IsTrue();
+        await Assert.That(result.Ok).IsTrue();
+        await Assert.That(result.Body).IsNull();
+        await Assert.That(result.Truncated).IsFalse();
+    }
+
+    [Test]
+    public async Task HeadDoesNotWriteSaveAs()
+    {
+        using var temp = TempWorkspace.Create();
+        var tool = CreateTool(
+            new StreamBodyHandler(new MustNotReadStream(), "application/octet-stream"),
+            workspace: temp.Workspace);
+
+        var result = await tool.Request(
+            "https://example.com/meta",
+            method: "HEAD",
+            saveAs: "should-not-exist.bin",
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Completed).IsTrue();
+        await Assert.That(result.SavedPath).IsNull();
+        await Assert.That(File.Exists(temp.PathOf("should-not-exist.bin"))).IsFalse();
+    }
+
+    [Test]
+    public async Task OctetStreamWithoutNulIsInlined()
+    {
+        var tool = CreateTool(new RecordingHandler(HttpStatusCode.OK, """{"ok":true}""", "application/octet-stream"));
+
+        var result = await tool.Request("https://example.com/json.bin", cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Binary).IsFalse();
+        await Assert.That(result.Body).IsEqualTo("""{"ok":true}""");
+    }
+
+    [Test]
+    public async Task JsonContentTypeWithNulIsBinary()
+    {
+        var tool = CreateTool(new RecordingHandler(HttpStatusCode.OK, [0x7B, 0x00, 0x7D], "application/json"));
+
+        var result = await tool.Request("https://example.com/weird", cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Binary).IsTrue();
+        await Assert.That(result.Body).IsNull();
+    }
+
+    [Test]
+    public async Task TruncatedUtf8DropsAnIncompleteTrailingSequence()
+    {
+        var payload = new byte[HttpTools.MaxResponseBodyBytes + 2];
+        Array.Fill(payload, (byte)'x');
+        payload[HttpTools.MaxResponseBodyBytes - 1] = 0xC3;
+        payload[HttpTools.MaxResponseBodyBytes] = 0xA4;
+        payload[HttpTools.MaxResponseBodyBytes + 1] = (byte)'y';
+        var tool = CreateTool(new RecordingHandler(HttpStatusCode.OK, payload, "text/plain"));
+
+        var result = await tool.Request("https://example.com/utf8", cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Truncated).IsTrue();
+        await Assert.That(result.Body).IsEqualTo(new string('x', HttpTools.MaxResponseBodyBytes - 1));
+        await Assert.That(result.Body!.Contains('\uFFFD')).IsFalse();
+    }
+
     private static HttpTools CreateTool(
         HttpMessageHandler handler,
         string? agentId = "alice",
@@ -531,5 +704,119 @@ public sealed class HttpToolsTests
         {
             throw new HttpRequestException("connection reset");
         }
+    }
+
+    private sealed class StreamBodyHandler : HttpMessageHandler
+    {
+        private readonly Stream _body;
+        private readonly string _contentType;
+
+        public StreamBodyHandler(Stream body, string contentType)
+        {
+            _body = body;
+            _contentType = contentType;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(_body),
+            };
+            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_contentType);
+            return Task.FromResult(response);
+        }
+    }
+
+    private sealed class GeneratedReadStream : Stream
+    {
+        public GeneratedReadStream(int length)
+        {
+            Length = length;
+        }
+
+        public int BytesRead { get; private set; }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length { get; }
+
+        public override long Position
+        {
+            get => BytesRead;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin)
+            => throw new NotSupportedException();
+
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var remaining = (int)Length - BytesRead;
+            if (remaining <= 0)
+            {
+                return ValueTask.FromResult(0);
+            }
+
+            var n = Math.Min(buffer.Length, remaining);
+            buffer.Span[..n].Fill((byte)'a');
+            BytesRead += n;
+            return ValueTask.FromResult(n);
+        }
+    }
+
+    private sealed class MustNotReadStream : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => 0;
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => throw new InvalidOperationException("HEAD must not read the body.");
+
+        public override long Seek(long offset, SeekOrigin origin)
+            => throw new NotSupportedException();
+
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("HEAD must not read the body.");
     }
 }

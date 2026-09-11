@@ -19,4 +19,5 @@ public sealed record HttpRequestResult(
     string? SavedPath = null,
     int? SavedBytes = null,
     bool SavedTruncated = false,
+    string? SaveError = null,
     string? Error = null) : IToolResponse;

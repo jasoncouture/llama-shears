@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
@@ -69,7 +70,7 @@ public sealed partial class HttpTools
     }
 
     [McpServerTool(Name = "http_request", Destructive = false, OpenWorld = true)]
-    [Description("Performs an HTTP request and returns status, reasonPhrase, response headers, contentType, and body as JSON. Use this instead of shell_run + curl. Allowed methods: GET, HEAD, POST, PUT, PATCH, DELETE. URL must be http or https. Optional headers are a string map (do not set Host or Content-Length). Optional body is raw text; GET/HEAD refuse a body. If body is set and Content-Type is omitted, application/json is used when the body looks like JSON, otherwise text/plain. Timeout defaults to 30s (max 120). Response bodies inline are capped at 64 KiB (truncated=true) and omitted when binary (binary=true). Pass saveAs to write the full body (text or binary) into the workspace — same write confinement as file_write (no system/, no escape, protection policy). Save cap is 512 MiB (savedTruncated=true if cut). Existing files are refused unless overwrite=true. HTTP error statuses complete the call with ok=false — they are not tool failures. Transport/timeout failures set error.")]
+    [Description("Performs an HTTP request and returns status, reasonPhrase, response headers, contentType, and body as JSON. Use this instead of shell_run + curl. Allowed methods: GET, HEAD, POST, PUT, PATCH, DELETE. URL must be http or https. Optional headers are a string map (do not set Host or Content-Length). Content headers such as Content-Type require a body — they are refused on GET/HEAD. Optional body is raw text; GET/HEAD refuse a body. If body is set and Content-Type is omitted, application/json is used when the body looks like JSON, otherwise text/plain. Timeout defaults to 30s (max 120). HEAD, 204, and 304 skip the response body. Inline text is capped at 64 KiB (truncated=true only when more bytes remain) and omitted when binary (binary=true). Binary is decided by sniffing NULs first, then the Content-Type (image/audio/video/pdf/zip). application/octet-stream is not forced binary — sniff it. Pass saveAs to write the full body (text or binary) into the workspace — same write confinement as file_write (no system/, no escape, protection policy). Save writes a sibling temp then File.Move. Save cap is 512 MiB (savedTruncated=true if cut). Existing files are refused unless overwrite=true. HTTP error statuses complete the call with ok=false — they are not tool failures. Transport/timeout failures set error. A failed save sets saveError and leaves ok as the HTTP status — do not treat error as a save problem.")]
     public async Task<HttpRequestResult> Request(
         [Description("Absolute http or https URL.")]
         string url,
@@ -197,7 +198,11 @@ public sealed partial class HttpTools
             {
                 if (_contentHeaders.Contains(name))
                 {
-                    request.Content ??= new StringContent(string.Empty, Encoding.UTF8);
+                    if (request.Content is null)
+                    {
+                        return Fail($"Refused: header '{name}' cannot be set without a request body.", url);
+                    }
+
                     request.Content.Headers.Remove(name);
                     if (!request.Content.Headers.TryAddWithoutValidation(name, value))
                     {
@@ -221,16 +226,16 @@ public sealed partial class HttpTools
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
                 timeout.Token);
-            var read = await ReadBodyAsync(response, savePath, timeout.Token);
+            var read = await ReadBodyAsync(response, savePath, skipBody: verb is "HEAD", timeout.Token);
             clock.Stop();
             var elapsed = (int)Math.Min(clock.ElapsedMilliseconds, int.MaxValue);
             if (read.SaveError is not null)
             {
                 LogSaveFailed(workspace.AgentId, saveAs!, read.SaveError);
             }
-            else if (savePath is not null)
+            else if (read.SavedBytes is not null)
             {
-                LogSaved(workspace.AgentId, saveAs!, read.SavedBytes ?? 0, read.SavedTruncated);
+                LogSaved(workspace.AgentId, saveAs!, read.SavedBytes.Value, read.SavedTruncated);
             }
 
             LogCompleted(workspace.AgentId, verb, uri.Host, (int)response.StatusCode, read.Truncated, read.Binary);
@@ -247,10 +252,11 @@ public sealed partial class HttpTools
                 Binary: read.Binary,
                 TimedOut: false,
                 ElapsedMilliseconds: elapsed,
-                SavedPath: read.SaveError is null ? saveAs : null,
-                SavedBytes: read.SaveError is null ? read.SavedBytes : null,
+                SavedPath: read.SavedBytes is not null ? saveAs : null,
+                SavedBytes: read.SavedBytes,
                 SavedTruncated: read.SavedTruncated,
-                Error: read.SaveError);
+                SaveError: read.SaveError,
+                Error: null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -326,34 +332,61 @@ public sealed partial class HttpTools
     private static async Task<HttpBodyRead> ReadBodyAsync(
         HttpResponseMessage response,
         string? savePath,
+        bool skipBody,
         CancellationToken cancellationToken)
     {
         var contentType = response.Content.Headers.ContentType?.ToString();
+        if (skipBody || ShouldSkipBody(response))
+        {
+            return new HttpBodyRead(
+                Body: null,
+                Truncated: false,
+                Binary: false,
+                ContentType: contentType,
+                SavedBytes: null,
+                SavedTruncated: false,
+                SaveError: null);
+        }
+
         await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var preview = new MemoryStream();
         FileStream? save = null;
         string? tempPath = null;
         var savedBytes = 0;
         var savedTruncated = false;
+        var gotMore = false;
         string? saveError = null;
         try
         {
             if (savePath is not null)
             {
-                var parent = Path.GetDirectoryName(savePath);
-                if (!string.IsNullOrEmpty(parent))
+                try
                 {
-                    Directory.CreateDirectory(parent);
-                }
+                    var parent = Path.GetDirectoryName(savePath);
+                    if (!string.IsNullOrEmpty(parent))
+                    {
+                        Directory.CreateDirectory(parent);
+                    }
 
-                tempPath = SiblingTempPath(savePath);
-                save = new FileStream(
-                    tempPath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 8192,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    tempPath = SiblingTempPath(savePath);
+                    save = new FileStream(
+                        tempPath,
+                        FileMode.CreateNew,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize: 8192,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    saveError = $"HTTP succeeded but saving '{savePath}' failed: {ex.Message}";
+                    save = null;
+                    if (tempPath is not null)
+                    {
+                        TryDelete(tempPath);
+                        tempPath = null;
+                    }
+                }
             }
 
             var buffer = new byte[8192];
@@ -369,11 +402,19 @@ public sealed partial class HttpTools
                 {
                     var toPreview = (int)Math.Min(read, MaxResponseBodyBytes - preview.Length);
                     preview.Write(buffer, 0, toPreview);
+                    if (toPreview < read)
+                    {
+                        gotMore = true;
+                    }
+                }
+                else
+                {
+                    gotMore = true;
                 }
 
                 if (save is null)
                 {
-                    if (preview.Length >= MaxResponseBodyBytes)
+                    if (gotMore)
                     {
                         break;
                     }
@@ -437,15 +478,70 @@ public sealed partial class HttpTools
         }
 
         var binary = IsBinary(contentType, previewBytes);
-        var inlineTruncated = !binary && previewBytes.Length >= MaxResponseBodyBytes;
+        var inlineTruncated = !binary && gotMore;
         return new HttpBodyRead(
-            Body: binary ? null : Encoding.UTF8.GetString(previewBytes),
+            Body: binary ? null : DecodeUtf8(previewBytes, inlineTruncated),
             Truncated: inlineTruncated,
             Binary: binary,
             ContentType: contentType,
             SavedBytes: savePath is null || saveError is not null ? null : savedBytes,
             SavedTruncated: savedTruncated,
             SaveError: saveError);
+    }
+
+    private static bool ShouldSkipBody(HttpResponseMessage response)
+        => response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotModified;
+
+    private static string DecodeUtf8(byte[] bytes, bool mayBeIncomplete)
+    {
+        var length = mayBeIncomplete ? CompleteUtf8Length(bytes) : bytes.Length;
+        return Encoding.UTF8.GetString(bytes, 0, length);
+    }
+
+    private static int CompleteUtf8Length(byte[] bytes)
+    {
+        if (bytes.Length == 0)
+        {
+            return 0;
+        }
+
+        if (bytes[^1] < 0x80)
+        {
+            return bytes.Length;
+        }
+
+        var continuations = 0;
+        var leadIndex = bytes.Length - 1;
+        while (leadIndex >= 0 && (bytes[leadIndex] & 0xC0) == 0x80)
+        {
+            continuations++;
+            leadIndex--;
+            if (continuations > 3)
+            {
+                return bytes.Length;
+            }
+        }
+
+        if (leadIndex < 0)
+        {
+            return 0;
+        }
+
+        var needed = bytes[leadIndex] switch
+        {
+            >= 0xF8 => -1,
+            >= 0xF0 => 3,
+            >= 0xE0 => 2,
+            >= 0xC2 => 1,
+            _ => -1,
+        };
+
+        if (needed < 0 || continuations > needed)
+        {
+            return leadIndex;
+        }
+
+        return continuations == needed ? bytes.Length : leadIndex;
     }
 
     private static string SiblingTempPath(string destination)
@@ -477,31 +573,32 @@ public sealed partial class HttpTools
 
     private static bool IsBinary(string? contentType, byte[] bytes)
     {
-        if (contentType is not null)
+        var inspect = Math.Min(bytes.Length, 512);
+        if (bytes.AsSpan(0, inspect).Contains((byte)0))
         {
-            var media = contentType.Split(';', 2)[0].Trim();
-            if (media.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
-                || media.Contains("json", StringComparison.OrdinalIgnoreCase)
-                || media.Contains("xml", StringComparison.OrdinalIgnoreCase)
-                || media.Contains("javascript", StringComparison.OrdinalIgnoreCase)
-                || media.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            if (media.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
-                || media.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
-                || media.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
-                || media.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase)
-                || media.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
-                || media.Equals("application/zip", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            return true;
         }
 
-        var inspect = Math.Min(bytes.Length, 512);
-        return bytes.AsSpan(0, inspect).Contains((byte)0);
+        if (contentType is null)
+        {
+            return false;
+        }
+
+        var media = contentType.Split(';', 2)[0].Trim();
+        if (media.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
+            || media.Contains("json", StringComparison.OrdinalIgnoreCase)
+            || media.Contains("xml", StringComparison.OrdinalIgnoreCase)
+            || media.Contains("javascript", StringComparison.OrdinalIgnoreCase)
+            || media.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return media.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            || media.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
+            || media.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+            || media.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+            || media.Equals("application/zip", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ImmutableDictionary<string, string> FlattenHeaders(HttpResponseMessage response)

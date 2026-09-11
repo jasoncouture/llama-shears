@@ -13,11 +13,17 @@ public static class HttpRequestServiceCollectionExtensions
                 client.Timeout = TimeSpan.FromSeconds(HttpTools.MaxTimeoutSeconds);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("LlamaShears");
             })
-            .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
-            {
-                AllowAutoRedirect = true,
-                MaxAutomaticRedirections = 10,
-            });
+            .ConfigurePrimaryHttpMessageHandler(CreatePrimaryHandler);
         return services;
+    }
+
+    public static SocketsHttpHandler CreatePrimaryHandler()
+    {
+        return new SocketsHttpHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 10,
+            UseCookies = false,
+        };
     }
 }
