@@ -19,7 +19,7 @@ public sealed partial class HttpTools
     public const int MaxTimeoutSeconds = 120;
     public const int MaxRequestBodyBytes = 256 * 1024;
     public const int MaxResponseBodyBytes = 64 * 1024;
-    public const int MaxSaveBytes = 16 * 1024 * 1024;
+    public const int MaxSaveBytes = 512 * 1024 * 1024;
     public const int MaxHeaderCount = 32;
 
     private static readonly HashSet<string> _allowedMethods =
@@ -69,7 +69,7 @@ public sealed partial class HttpTools
     }
 
     [McpServerTool(Name = "http_request", Destructive = false, OpenWorld = true)]
-    [Description("Performs an HTTP request and returns status, reasonPhrase, response headers, contentType, and body as JSON. Use this instead of shell_run + curl. Allowed methods: GET, HEAD, POST, PUT, PATCH, DELETE. URL must be http or https. Optional headers are a string map (do not set Host or Content-Length). Optional body is raw text; GET/HEAD refuse a body. If body is set and Content-Type is omitted, application/json is used when the body looks like JSON, otherwise text/plain. Timeout defaults to 30s (max 120). Response bodies inline are capped at 64 KiB (truncated=true) and omitted when binary (binary=true). Pass saveAs to write the full body (text or binary) into the workspace — same write confinement as file_write (no system/, no escape, protection policy). Save cap is 16 MiB (savedTruncated=true if cut). Existing files are refused unless overwrite=true. HTTP error statuses complete the call with ok=false — they are not tool failures. Transport/timeout failures set error.")]
+    [Description("Performs an HTTP request and returns status, reasonPhrase, response headers, contentType, and body as JSON. Use this instead of shell_run + curl. Allowed methods: GET, HEAD, POST, PUT, PATCH, DELETE. URL must be http or https. Optional headers are a string map (do not set Host or Content-Length). Optional body is raw text; GET/HEAD refuse a body. If body is set and Content-Type is omitted, application/json is used when the body looks like JSON, otherwise text/plain. Timeout defaults to 30s (max 120). Response bodies inline are capped at 64 KiB (truncated=true) and omitted when binary (binary=true). Pass saveAs to write the full body (text or binary) into the workspace — same write confinement as file_write (no system/, no escape, protection policy). Save cap is 512 MiB (savedTruncated=true if cut). Existing files are refused unless overwrite=true. HTTP error statuses complete the call with ok=false — they are not tool failures. Transport/timeout failures set error.")]
     public async Task<HttpRequestResult> Request(
         [Description("Absolute http or https URL.")]
         string url,
