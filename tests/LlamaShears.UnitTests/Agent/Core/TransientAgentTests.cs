@@ -156,6 +156,22 @@ public sealed class TransientAgentTests
     }
 
     [Test]
+    public async Task ReportPolicyFalseSuppressesAutoForward()
+    {
+        Setup(reportToParent: false);
+        var assistant = new ModelTurn(ModelRole.Assistant, "collected by caller", _now);
+
+        await _agent.HandleAsync(Envelope(assistant), CancellationToken.None);
+        await _agent.RunAsync();
+
+        await _bus.DidNotReceive().PublishAsync(
+            Arg.Is<EventType>(t => t.Component == Event.WellKnown.Channel.Message.Component),
+            Arg.Any<ChannelMessage>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task SessionSendToolSuppressesAutoForward()
     {
         Setup();
@@ -272,13 +288,19 @@ public sealed class TransientAgentTests
             Arg.Any<CancellationToken>());
     }
 
-    private void Setup(ModelTurn? prompt = null, SessionPath? path = null)
+    private void Setup(ModelTurn? prompt = null, SessionPath? path = null, bool? reportToParent = null)
     {
         _path = path ?? BuildChildPath();
         prompt ??= SamplePrompt();
         _scope = new FakeDataContextScope(_path.Current);
         ((IDataContextScope)_scope).SetItem(SessionPath.DataKey, _path);
         ((IDataContextScope)_scope).SetItem(TransientAgentInitialPrompt.DataKey, new TransientAgentInitialPrompt(prompt));
+        if (reportToParent is { } report)
+        {
+            ((IDataContextScope)_scope).SetItem(
+                TransientAgentReportPolicy.DataKey,
+                new TransientAgentReportPolicy(report));
+        }
 
         _inner = Substitute.For<IAgent>();
         _inner.RunAsync().Returns(Task.CompletedTask);

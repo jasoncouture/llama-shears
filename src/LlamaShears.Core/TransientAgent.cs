@@ -20,6 +20,7 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
     private readonly EventType _turnEvent;
     private readonly ModelTurn _modelTurn;
     private bool _messageToolCalled = false;
+    private readonly bool _reportToParent;
     private ModelTurn? _lastAgentMessage;
     private readonly ChannelMessage _channelMessageTemplate;
     private readonly AgentStopRequest _agentStopRequest;
@@ -44,6 +45,10 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
                 : throw new InvalidOperationException("Transient agents require an initial prompt");
 
         dataScope.Remove(TransientAgentInitialPrompt.DataKey);
+        _reportToParent = !dataScope.TryGetValue<TransientAgentReportPolicy>(
+                TransientAgentReportPolicy.DataKey,
+                out var policy)
+            || policy.ReportToParent;
         _agent = agent;
         _eventBus = eventBus;
         _sessionQueue = sessionQueue;
@@ -66,6 +71,7 @@ public sealed class TransientAgent : ITransientAgent, IEventHandler<AgentLifecyc
 
     private async ValueTask SendMessageToParentAsync()
     {
+        if (!_reportToParent) return;
         if (_messageToolCalled) return;
         if (_lastAgentMessage is null) return;
         if (string.IsNullOrEmpty(_lastAgentMessage.Content)) return;
