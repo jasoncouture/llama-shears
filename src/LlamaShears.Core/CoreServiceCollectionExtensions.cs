@@ -292,6 +292,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddScoped<ITransientAgent, TransientAgent>();
         services.TryAddScoped<ITransientAgentFactory, TransientAgentFactory>();
         services.TryAddScoped<IPromptedAgentSpawner, PromptedAgentSpawner>();
+        services.TryAddScoped<ISubagentRunner, SubagentRunner>();
         services.AddAgentService<AgentHeartbeatService>();
         return services;
     }
