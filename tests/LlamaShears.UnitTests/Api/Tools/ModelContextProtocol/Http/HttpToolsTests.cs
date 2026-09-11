@@ -292,6 +292,7 @@ public sealed class HttpToolsTests
         await Assert.That(result.SavedBytes).IsEqualTo(payload.Length);
         await Assert.That(result.SavedTruncated).IsFalse();
         await Assert.That(await File.ReadAllBytesAsync(temp.PathOf("downloads", "logo.png"))).IsEquivalentTo(payload);
+        await Assert.That(Directory.GetFiles(temp.PathOf("downloads")).Length).IsEqualTo(1);
     }
 
     [Test]
@@ -375,6 +376,28 @@ public sealed class HttpToolsTests
         await Assert.That(overwritten.Error).IsNull();
         await Assert.That(overwritten.SavedPath).IsEqualTo("kept.bin");
         await Assert.That(await File.ReadAllTextAsync(temp.PathOf("kept.bin"))).IsEqualTo("new");
+        await Assert.That(Directory.GetFiles(temp.Root).Length).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SaveAsTimeoutDuringBodyLeavesTheExistingFile()
+    {
+        using var temp = TempWorkspace.Create();
+        await File.WriteAllTextAsync(temp.PathOf("kept.bin"), "original");
+        var tool = CreateTool(new HangingBodyHandler(), workspace: temp.Workspace);
+
+        var result = await tool.Request(
+            "https://example.com/slow.bin",
+            saveAs: "kept.bin",
+            overwrite: true,
+            timeoutSeconds: 1,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result.Completed).IsFalse();
+        await Assert.That(result.TimedOut).IsTrue();
+        await Assert.That(result.SavedPath).IsNull();
+        await Assert.That(await File.ReadAllTextAsync(temp.PathOf("kept.bin"))).IsEqualTo("original");
+        await Assert.That(Directory.GetFiles(temp.Root).Length).IsEqualTo(1);
     }
 
     private static HttpTools CreateTool(
@@ -443,6 +466,60 @@ public sealed class HttpToolsTests
         {
             await Task.Delay(Timeout.Infinite, cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK);
+        }
+    }
+
+    private sealed class HangingBodyHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new HangingStream()),
+            };
+            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            return Task.FromResult(response);
+        }
+    }
+
+    private sealed class HangingStream : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin)
+            => throw new NotSupportedException();
+
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return 0;
         }
     }
 

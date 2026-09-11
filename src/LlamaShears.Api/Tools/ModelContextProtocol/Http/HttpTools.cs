@@ -332,6 +332,7 @@ public sealed partial class HttpTools
         await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var preview = new MemoryStream();
         FileStream? save = null;
+        string? tempPath = null;
         var savedBytes = 0;
         var savedTruncated = false;
         string? saveError = null;
@@ -345,9 +346,10 @@ public sealed partial class HttpTools
                     Directory.CreateDirectory(parent);
                 }
 
+                tempPath = SiblingTempPath(savePath);
                 save = new FileStream(
-                    savePath,
-                    FileMode.Create,
+                    tempPath,
+                    FileMode.CreateNew,
                     FileAccess.Write,
                     FileShare.None,
                     bufferSize: 8192,
@@ -395,6 +397,14 @@ public sealed partial class HttpTools
                 await save.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                 savedBytes += read;
             }
+
+            if (save is not null && tempPath is not null && savePath is not null)
+            {
+                await save.DisposeAsync();
+                save = null;
+                File.Move(tempPath, savePath, overwrite: true);
+                tempPath = null;
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -406,11 +416,11 @@ public sealed partial class HttpTools
             {
                 await save.DisposeAsync();
             }
-        }
 
-        if (saveError is not null && savePath is not null)
-        {
-            TryDelete(savePath);
+            if (tempPath is not null)
+            {
+                TryDelete(tempPath);
+            }
         }
 
         var previewBytes = preview.ToArray();
@@ -436,6 +446,16 @@ public sealed partial class HttpTools
             SavedBytes: savePath is null || saveError is not null ? null : savedBytes,
             SavedTruncated: savedTruncated,
             SaveError: saveError);
+    }
+
+    private static string SiblingTempPath(string destination)
+    {
+        var directory = Path.GetDirectoryName(destination);
+        var name = Path.GetFileName(destination);
+        var tempName = $".{name}.{Guid.NewGuid():N}.tmp";
+        return string.IsNullOrEmpty(directory)
+            ? tempName
+            : Path.Combine(directory, tempName);
     }
 
     private static void TryDelete(string path)
