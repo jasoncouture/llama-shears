@@ -22,6 +22,14 @@ You will need:
 
     (`__` maps to the `:` config separator. Compose loads this automatically.)
 
+    To let agents post to Discord, add named Incoming Webhooks in the same file:
+
+    ```env
+    Discord__Webhooks__alerts=https://discord.com/api/webhooks/<id>/<token>
+    ```
+
+    The agent sees the name (`alerts`) via `discord_list` / `discord_send`, never the URL.
+
 2. **Bring it up.**
 
     ```sh

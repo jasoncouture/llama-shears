@@ -12,18 +12,16 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
 `WebApplicationExtensions.UseApi` mounts the MCP server with `app.MapMcp("/mcp")`. The MCP machinery is `ModelContextProtocol.AspNetCore`; the host configures it in `ModelContextProtocolServiceCollectionExtensions.AddModelContextProtocol`:
 
 ```csharp
-services.AddMcpServer()
-    .WithHttpTransport()
-    .WithTools<ReadFileTool>()
-    .WithTools<ListFilesTool>()
-    .WithTools<WriteFileTool>()
-    .WithTools<AppendFileTool>()
-    .WithTools<DeleteFileTool>()
-    .WithTools<RegexReplaceFileTool>()
-    .WithTools<GrepTool>()
-    .WithTools<StoreMemoryTool>()
-    .WithTools<SearchMemoryTool>()
-    .WithTools<IndexMemoryTool>();
+        services.AddMcpServer()
+            .WithHttpTransport()
+            .WithTools<FileTools>()
+            .WithTools<MemoryTools>()
+            .WithTools<CronTools>()
+            .WithTools<TodoTools>()
+            .WithTools<ShellTools>()
+            .WithTools<SkillTools>()
+            .WithTools<SessionTools>()
+            .WithTools<DiscordTools>();
 ```
 
 Tool names follow a `<category>_<action>` convention so they group naturally in the model's tool listing:
@@ -32,8 +30,20 @@ Tool names follow a `<category>_<action>` convention so they group naturally in 
 |------|---------|
 | `file_read`, `file_list`, `file_write`, `file_append`, `file_delete`, `file_regex_replace`, `file_grep` | Filesystem operations. Relative paths resolve against the agent's workspace; absolute paths are honored. See *Filesystem tools* below. |
 | `memory_store`, `memory_search`, `memory_index` | Memory operations. See [memory.md](memory.md). |
+| `discord_list`, `discord_send` | Post to operator-configured Discord webhooks. See *Discord webhooks* below. |
 
 The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__file_read`, `llamashears__memory_store`, etc.
+
+### Discord webhooks
+
+[`DiscordTools`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/Discord/DiscordTools.cs) posts to Discord Incoming Webhooks. The model never supplies a URL.
+
+- **Config.** Bind `Discord:Webhooks` (a name → URL map) from `appsettings` or env vars such as `Discord__Webhooks__alerts=https://discord.com/api/webhooks/...`. Names are what `discord_list` returns and what `discord_send` accepts. URLs stay on the host.
+- **Validation.** Startup (`DiscordWebhookOptionsValidator`) and send-time both require `https://discord.com` or `discordapp.com` `/api/webhooks/{id}/{token}` (optional `/api/vN`). Query strings, fragments, and other hosts are refused so a mis-typed config cannot become SSRF.
+- **Send.** `discord_send` POSTs `{ content, optional username, allowed_mentions.parse = [] }` with `wait=true`. Content max 2000; username max 80. `@everyone` / `@here` / role / user parses are disabled. HTTP failures return status (and Retry-After on 429) without echoing the URL.
+- **Auth.** Same as other bundled tools: an authenticated agent on the request. No webhooks configured, unknown name, or multiple webhooks without a name is a loud refuse.
+
+Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
 
 ### Filesystem tools
 

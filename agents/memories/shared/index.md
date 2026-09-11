@@ -24,3 +24,4 @@
 - [Framework-first is intentional](project_framework_first_is_intentional.md) — substrate-before-agent-loop is deliberate sequencing to avoid retrofit debt; don't critique scaffolding-to-feature ratio
 - [PR coverage-delta auto-flagging is planned](project_coverage_delta_flagging.md) — coverage measured per PR, decrease flags for review (non-blocking); do not add manual "tests" sections to PR templates
 - [Storage moves from EF/DB to chunked JSON on disk](project_storage_disk_json.md) — EF and the DB are being removed; atomic chunked JSON files; active conversation = folder placement, archive = `mv`
+- [Discord webhooks are named host config](project_discord_webhooks.md) — `discord_list` / `discord_send`; URLs live in `Discord:Webhooks` (env `.local.env`); model never supplies or sees a URL; only `discord.com` / `discordapp.com` webhook paths; mentions parse disabled
