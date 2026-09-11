@@ -6,6 +6,7 @@ using LlamaShears.Api.Tools.ModelContextProtocol.Memory;
 using LlamaShears.Api.Tools.ModelContextProtocol.Session;
 using LlamaShears.Api.Tools.ModelContextProtocol.Shell;
 using LlamaShears.Api.Tools.ModelContextProtocol.Skills;
+using LlamaShears.Api.Tools.ModelContextProtocol.Subagent;
 using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Paths;
@@ -54,6 +55,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<ShellTools>()
             .WithTools<SkillTools>()
             .WithTools<SessionTools>()
+            .WithTools<SubagentTools>()
             .WithTools<DiscordTools>()
             .WithTools<HttpTools>();
 
