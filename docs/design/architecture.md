@@ -112,7 +112,7 @@ LlamaShears is filesystem-first. There is no relational database; everything an 
 | `<workspace>/system/.memory.db` | sqlite-vec vector index, keyed by SHA-256 of file contents. Derived from `memory/`; never authoritative — files are source of truth. Auto-rebuilds on vector-dimension mismatch. |
 | `<workspace>/{BOOTSTRAP,IDENTITY,SOUL,USER,HEARTBEAT,TOOLS,MEMORY}.md` | Conventional workspace files. `BOOTSTRAP` / `IDENTITY` / `SOUL` are now consumed as part of the system prompt rather than the per-turn ephemeral block. See [agent-workspace.md](agent-workspace.md). |
 | `<workspace>/system/{DEFAULT,MINIMAL,SUBAGENT}.md` | Per-agent system-prompt overrides; absence falls back to the bundled default. See [prompt-context.md](prompt-context.md). |
-| `<workspace>/system/context/PROMPT.md` | Per-agent override for the per-turn ephemeral context block. |
+| `<workspace>/system/context/{PROMPT,SUBAGENT}.md` | Per-agent override for the per-turn ephemeral context block. `subagent_run` children use `SUBAGENT`. |
 
 The `<Templates>` tree is the seed for new workspaces. Editing it changes what *new* agents inherit; existing agents already have their own copy. See [paths.md](paths.md) for the configuration surface and [agent-workspace.md](agent-workspace.md) for the seeding rules.
 

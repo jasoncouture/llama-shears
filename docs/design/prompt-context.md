@@ -51,7 +51,7 @@ The bundled prompt at [`src/LlamaShears/content/templates/workspace/system/DEFAU
 
 `MINIMAL.md` is a stripped-down variant for headless runs that don't need the full persona scaffolding (cron tasks, single-shot batch work). Selection is per-agent via `AgentConfig.SystemPrompt: "MINIMAL"`.
 
-`SUBAGENT.md` is the seed for sub-agent prompts; sub-agent spawning isn't implemented yet.
+`SUBAGENT.md` is the system-prompt template for on-demand children spawned by `subagent_run` ([`ISubagentRunner`](../../src/public/LlamaShears.Core.Abstractions/Agent/ISubagentRunner.cs) overlays `SystemPrompt` / `PromptContext` to `SUBAGENT.md`). The bundled files live at [`src/LlamaShears/content/templates/workspace/system/SUBAGENT.md`](../../src/LlamaShears/content/templates/workspace/system/SUBAGENT.md) and [`src/LlamaShears/content/templates/workspace/system/context/SUBAGENT.md`](../../src/LlamaShears/content/templates/workspace/system/context/SUBAGENT.md). The child shares the parent's workspace; it is not a separate sandbox.
 
 ## The ephemeral prompt-context block
 

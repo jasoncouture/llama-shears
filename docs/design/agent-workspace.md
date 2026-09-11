@@ -34,8 +34,9 @@ The host's bundled templates live next door at `<Templates>/workspace/`, which i
 | `memory/YYYY-MM-DD/<unix-seconds>.md` | Long-term memory entries. The vector index lives at `system/.memory.db`. See [memory.md](memory.md). |
 | `system/DEFAULT.md` | Top-level system prompt template for the agent's primary loop. |
 | `system/MINIMAL.md` | Stripped-down system prompt template for short-lived or headless runs (cron, batch, single-shot tasks). |
-| `system/SUBAGENT.md` | System prompt template used when the agent spawns a sub-agent. |
+| `system/SUBAGENT.md` | System prompt template for on-demand `subagent_run` children. |
 | `system/context/PROMPT.md` | Template for the per-turn ephemeral context block injected before the user turn. See [prompt-context.md](prompt-context.md). |
+| `system/context/SUBAGENT.md` | Ephemeral context template for `subagent_run` children (runtime metadata; do not impersonate the parent). |
 
 All conventional files are optional — every one of them may be missing, and the framework treats absence as "nothing to inject" or "fall back to the framework default," depending on the file (see *What the framework does with these files*).
 
@@ -48,7 +49,7 @@ The framework's job is to deliver the right file content into the agent's prompt
 | `BOOTSTRAP.md` | Read on every prompt and rendered into the ephemeral block (first, ahead of `IDENTITY.md` / `SOUL.md`) for as long as it exists. The agent is expected to delete the file once bootstrap is complete. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
 | `IDENTITY.md`, `SOUL.md` | If present, rendered into the per-turn ephemeral context block — every iteration, every batch. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
 | `system/DEFAULT.md`, `system/MINIMAL.md`, `system/SUBAGENT.md` | Rendered (Scriban) and used as the agent's system prompt. Selection: `AgentConfig.SystemPrompt` (defaults to `DEFAULT`). Fallback chain: workspace `<name>.md` → workspace `DEFAULT.md` → bundled `<name>.md` → bundled `DEFAULT.md`. | [`FilesystemSystemPromptProvider`](../../src/LlamaShears.Core/SystemPrompt/FilesystemSystemPromptProvider.cs) |
-| `system/context/PROMPT.md` | Renders the per-turn ephemeral block. Same fallback chain as the system prompt. | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
+| `system/context/PROMPT.md`, `system/context/SUBAGENT.md` | Renders the per-turn ephemeral block. Same fallback chain as the system prompt. Selection: `AgentConfig.PromptContext` (defaults to `PROMPT`; `subagent_run` overlays `SUBAGENT`). | [`FilesystemPromptContextProvider`](../../src/LlamaShears.Core/PromptContext/FilesystemPromptContextProvider.cs) |
 | `memory/**/*.md` | Source of truth for long-term memory. The framework keeps a SQLite vector index at `system/.memory.db` in sync via on-write indexing and a periodic reconciliation scanner. | [`SqliteMemoryService`](../../src/LlamaShears.Core/Memory/SqliteMemoryService.cs) + [`MemoryIndexerBackgroundService`](../../src/LlamaShears.Core/Memory/MemoryIndexerBackgroundService.cs) |
 | `system/.memory.db` | Framework-owned SQLite database. Derived; agents must not modify it directly. |  |
 | `HEARTBEAT.md`, `USER.md`, `TOOLS.md`, `MEMORY.md`, `AGENTS.md`, anything else | Not currently read by the framework. Available to the agent through its filesystem tools (`file_read`, `file_write`, `file_grep`, …); the agent decides when to consult them. The system prompt and the ephemeral context block list other root-level `.md` files by *name* so the model knows what's there. | — |
@@ -117,5 +118,5 @@ The mechanics — how store/search/reconcile actually run, which embedding model
 - **`HEARTBEAT.md` consumer.** The conventional file exists and is template-seeded; nothing reads it yet. See [heartbeat.md](heartbeat.md).
 - **`USER.md` lifecycle.** The convention is "agent's notes about its user." There's no framework behavior tied to it today. Whether the framework should surface it into the ephemeral context block by default (the way it does for `IDENTITY.md` and `SOUL.md`) is undecided.
 - **`MEMORY.md` lifecycle.** Recorded as "short-term memory storage." Currently agent-managed; whether the framework eventually reads, writes, or compacts it is TBD.
-- **Sub-agent workspaces.** `system/SUBAGENT.md` is in the seed; sub-agent spawning isn't wired. When it is, where the sub-agent's workspace lives (a subdirectory of the parent's? a sibling under `<Workspace>`?) is undecided.
+- **Per-child workspaces.** `subagent_run` children share the parent's workspace, memory, todos, and MCP allowlist (same as cron / heartbeat). A separate child sandbox is out of scope.
 - **Multi-agent collisions.** Whether two agents can share a workspace (or a `memory/` tree) is undecided. Default assumption: each agent gets its own.

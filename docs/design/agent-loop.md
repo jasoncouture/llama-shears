@@ -49,7 +49,7 @@ Tool-result turns are enqueued after a non-interrupted iteration by `ToolResultE
 
 ## Per-batch onion
 
-Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 12000` is inside image-strip). Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
+Each step has an explicit [`IAgentMiddleware.Order`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IAgentMiddleware.cs). Lowest is **outermost**. Most built-ins use [`AgentMiddlewareOrder`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/AgentMiddlewareOrder.cs) values spaced 1000 apart so a plugin can sit in any gap — or outside the range (`Order < 1000` is outside the exception boundary; `Order > 12000` is inside image-strip). `ToolLoopLimit` (10500) occupies the RunIteration / ToolDispatch gap. Equal orders keep enumeration order. `AddAgentRuntime` registration sequence is not what the fold uses.
 
 ```
 IAgentPipeline
@@ -63,6 +63,7 @@ IAgentPipeline
   8000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
   9000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext; insert into Prompt
   10000 RunIterationMiddleware          before: copy SessionId from the data scope and ChannelId from the batch, IAgentIterationRunner.RunAsync → context.Outcome; then next; finally: StripImageAttachments (so a failed infer cannot leave images in live context)
+  10500 ToolLoopLimitMiddleware         before: drop leftover Outcome.ToolCalls when IToolLoopBudget.IsFinal so dispatch does not re-enqueue after the last allowed round
   11000 ToolDispatchMiddleware          before: dispatch Outcome.ToolCalls, write ToolResultTurns; then next
   12000 StripImageAttachmentsMiddleware after: drop image attachments from IAgentContext (Prompt already sent)
 ```
@@ -78,12 +79,12 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 
 ## One iteration (`IAgentIterationRunner`)
 
-[`AgentIterationRunner.RunAsync`](../../src/LlamaShears.Core/AgentIterationRunner.cs) is one model call, not a TurnLimit inner loop:
+[`AgentIterationRunner.RunAsync`](../../src/LlamaShears.Core/AgentIterationRunner.cs) is one model call. The per-session [`IToolLoopBudget`](../../src/public/LlamaShears.Core.Abstractions/Agent/Pipeline/IToolLoopBudget.cs) counts rounds since the last inbound user / framework-user batch (`AgentConfig.Tools.TurnLimit`; **0 = unlimited**):
 
 1. Open a nested DI scope with the turn's data, stamp `IAgentStateTracker` (channel, correlation id, session).
 2. Take `context.Prompt` (required; compaction wrote it and ephemeral middleware may have inserted into it) and `context.SessionId` (required; run-iteration middleware copied it from the data scope). Empty-response retries append a user kicker onto that same prompt — they do not re-insert ephemeral.
-3. Discover MCP tools onto `context.Tools` and run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), passing `SessionId`, `CorrelationId`, and `ChannelId` so the runner does not read the prompt or the data scope. `TurnToken` cancels inference on interrupt.
-4. Return `IterationOutcome` with the model's `ToolCalls` and empty `ToolResultTurns`. `ToolDispatchMiddleware` executes the calls (including after interrupt, so history stays paired) and writes the result turns. `ToolResultEnqueueMiddleware` enqueues those turns only when the turn was not interrupted.
+3. Observe the inbound batch on `IToolLoopBudget`. Discover MCP tools onto `context.Tools` unless this is the final counted iteration (then the catalog is empty). Run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), passing `SessionId`, `CorrelationId`, and `ChannelId` so the runner does not read the prompt or the data scope. `TurnToken` cancels inference on interrupt.
+4. Return `IterationOutcome` with the model's `ToolCalls` (cleared when the budget is final) and empty `ToolResultTurns`. `ToolLoopLimitMiddleware` drops leftover calls as a backstop. `ToolDispatchMiddleware` executes the calls (including after interrupt, so history stays paired) and writes the result turns. `ToolResultEnqueueMiddleware` enqueues those turns only when the turn was not interrupted.
 
 Inbound batch persist and compaction happen before this call, in `CompactionMiddleware`; see [compaction.md](compaction.md). Compacting first keeps the trailing user turn and leaves room for the model's reply — compacting after would rewrite the store and drop that reply.
 
@@ -114,7 +115,7 @@ Intake starting in `StartAsync` (before `agent:started`) is slightly earlier tha
 
 - **Lock / interrupt CTS / activity / correlation / tool re-enqueue / system prompt / ephemeral context / compaction / iteration.** Middleware.
 - **Channel / interrupt / shutdown / config-reload handlers.** `IAgentService`.
-- **`Tools.TurnLimit`.** That knob is gone. Multi-step tool use is queue → onion → enqueue tool turns → loop. Per-turn tool-call bounding lives on `ToolCallExecutor`.
+- **A second TurnLimit counter inside `ISubagentRunner` or `InferenceRunner`.** `subagent_run` overlays `AgentConfig.Tools.TurnLimit` on the child; the budget and `ToolLoopLimitMiddleware` enforce it. Multi-step tool use is still queue → onion → enqueue tool turns → loop. Per-turn fan-out bounding lives on `ToolCallExecutor`. Zero stays unlimited so the main session is not silently capped.
 - **`IAgent.LockAsync` / `RequestCompactionAsync`.** Those methods are gone. Lock through `IAgentLock` / `IAgentLockManager`. Compaction through `CompactionAgentService` / `IContextCompactor`.
 
 ## Tests

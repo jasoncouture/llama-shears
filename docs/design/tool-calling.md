@@ -162,15 +162,15 @@ This is structurally cheaper than `ReportStatus`: no extra round-trip on the hap
 
 ## Iteration limit
 
-`AgentConfig.Tools.TurnLimit` (default `8`) caps how many model round-trips one batch can drive. The mechanic is:
+`AgentConfig.Tools.TurnLimit` (default **`0` = unlimited**) caps how many model round-trips one inbound user or framework-user batch may drive. A positive `N` is the ceiling. The design-doc guess of 8 is **not** applied to every agent — that would silently cap the main session. `subagent_run` may overlay a positive `maxTurns` (1–64) on the child only. The mechanic is:
 
 - One iteration = one model prompt round, regardless of how many parallel tool calls fan out from it.
 - Iterations 1 to `N-1` see the full tool catalog.
-- Iteration `N` (the final one) sees an empty tool catalog and an `important_message` in the ephemeral block telling the model to wrap up in text. Any tool calls it still emits are dropped.
+- Iteration `N` (the final one) sees an empty tool catalog. Any tool calls it still emits are dropped (`IAgentIterationRunner` plus `ToolLoopLimitMiddleware` at 10500).
 
 `N` is therefore the *total* iteration ceiling and `N-1` is the *tool-using* ceiling. This is intentional: the configured number is the number of model calls the agent will make, full stop. Setting `turnLimit: 1` is the degenerate case — one final-iteration call, no tools available.
 
-The default of 8 is a "tall enough that healthy agents don't notice, low enough that a confused model burns out within a batch" guess. Tune per-agent in the config when you have real evidence one way or the other.
+A positive per-agent `turnLimit` is the "tall enough that healthy agents don't notice, low enough that a confused model burns out within a batch" knob. Leave it at 0 unless you have evidence a session needs a ceiling.
 
 ## Provider responsibility split
 

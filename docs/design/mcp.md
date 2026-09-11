@@ -21,6 +21,7 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
             .WithTools<ShellTools>()
             .WithTools<SkillTools>()
             .WithTools<SessionTools>()
+            .WithTools<SubagentTools>()
             .WithTools<DiscordTools>()
             .WithTools<HttpTools>();
 ```
@@ -33,6 +34,8 @@ Tool names follow a `<category>_<action>` convention so they group naturally in 
 | `memory_store`, `memory_search`, `memory_index` | Memory operations. See [memory.md](memory.md). |
 | `discord_list`, `discord_send` | Post to operator-configured Discord webhooks. See *Discord webhooks* below. |
 | `http_request` | First-class HTTP client (GET/POST/headers/timeouts). See *HTTP requests* below. |
+| `session_list`, `session_send` | List the calling agent's live sessions; deliver a user-role turn to one of them. |
+| `subagent_run` | Spawn a one-shot child of the calling root session. See *Sub-agents* below. |
 
 The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__file_read`, `llamashears__memory_store`, etc.
 
@@ -55,6 +58,18 @@ Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
 - **Response.** Returns `status`, `reasonPhrase`, `ok`, flattened headers, `contentType`, and an inline `body`. HTTP error statuses complete the call (`ok=false`); they are not tool failures. HEAD / 204 / 304 skip the body. Inline text is capped at 64 KiB; `truncated=true` only when more bytes remain (an exact 64 KiB body is not truncated). A hard cut drops an incomplete trailing UTF-8 sequence. Binary is sniffed first (NUL in the first 512 bytes), then the Content-Type for image/audio/video/pdf/zip. `application/octet-stream` is not forced binary.
 - **Save.** Optional `saveAs` writes the full body (text or binary) into the workspace, same confinement as `file_write` (no `system/`, no path escape, file-protection policy). The body is streamed to a sibling temp file and `File.Move`d into place so a failed or timed-out download does not clobber an existing file. Cap 512 MiB (`savedTruncated=true` if cut) so Go binaries and small archives fit. Existing files require `overwrite=true`. A failed save sets `saveError` and leaves `ok` as the HTTP status; `error` stays transport-only. Prefer `saveAs` for images, PDFs, binaries, and anything larger than the inline cap.
 - **Auth.** Authenticated agent required. Transport/timeout failures set `error` / `timedOut`.
+
+### Sub-agents
+
+[`SubagentTools`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/Subagent/SubagentTools.cs) is the bundled `subagent_run` tool. It wraps [`ISubagentRunner`](../../src/public/LlamaShears.Core.Abstractions/Agent/ISubagentRunner.cs). The MCP HTTP request already joins the caller's [`IDataContextScope`](../../src/LlamaShears.Api/Authentication/RejectInvalidAgentBearerMiddleware.cs), so the scoped runner sees the parent session — same as `session_send`.
+
+- **Spawn.** Root sessions only. Nested children are refused (same ban as [`PromptedAgentSpawner`](../../src/LlamaShears.Core/PromptedAgentSpawner.cs)). The child is a transient (`subagent-{guid}`) that renders bundled [`SUBAGENT.md`](../../src/LlamaShears/content/templates/workspace/system/SUBAGENT.md). It shares the parent's workspace, memory, todos, and MCP allowlist — not a sandbox.
+- **Await.** Default. The tool waits for child idle (timeout 120s, 1–600) and returns the last assistant text in `output`. Await sets `TransientAgentReportPolicy.ReportToParent = false` so the answer is not also enqueued as a parent `ChannelMessage`. Timeout publishes `AgentStop` for the child and returns `timedOut` plus any partial text.
+- **Fire-and-forget.** `awaitResult=false` returns `{ started, sessionId }` immediately. The child reports later via `session_send` or the existing parent ChannelMessage path.
+- **Overlays.** Optional `model` is a `provider/model` identity (`CompositeIdentity.TryParse`); unparseable values are refused. Optional `maxTurns` (1–64) sets the child's `Tools.TurnLimit`. Optional `context` is prepended to `prompt` as one user turn.
+- **Result.** `ok` means the awaited child finished. `error` is refuse / spawn / timeout — not the child's HTTP-style status.
+
+Locks are keyed on session canonical id, so the parent can hold `IAgentLock` while the child runs. See [agent-loop.md](agent-loop.md).
 
 ### Filesystem tools
 

@@ -56,7 +56,7 @@ Any field left unset (or set to whitespace) falls through to the default. The fo
 │       ├── BOOTSTRAP.md, IDENTITY.md, ...
 │       └── system/
 │           ├── DEFAULT.md, MINIMAL.md, SUBAGENT.md
-│           └── context/PROMPT.md
+│           └── context/PROMPT.md, SUBAGENT.md
 ├── workspace/                             # PathKind.Workspace
 │   └── <agent-id>/                        # default per-agent workspace
 │       ├── (same shape as templates/workspace/, plus runtime state)
