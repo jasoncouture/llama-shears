@@ -53,7 +53,7 @@ Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
 
 - **Request.** Absolute `http`/`https` only. Methods: GET, HEAD, POST, PUT, PATCH, DELETE. Optional header map (Host / Content-Length / hop-by-hop headers are refused). Optional raw body — forbidden on GET/HEAD. Missing Content-Type defaults to `application/json` when the body looks like JSON, otherwise `text/plain`. Timeout defaults to 30s (1–120).
 - **Response.** Returns `status`, `reasonPhrase`, `ok`, flattened headers, `contentType`, and an inline `body`. HTTP error statuses complete the call (`ok=false`); they are not tool failures. Inline text is capped at 64 KiB (`truncated=true`). Binary bodies are omitted (`binary=true`).
-- **Save.** Optional `saveAs` writes the full body (text or binary) into the workspace, same confinement as `file_write` (no `system/`, no path escape, file-protection policy). Cap 16 MiB (`savedTruncated=true` if cut). Existing files require `overwrite=true`. Prefer `saveAs` for images, PDFs, and anything larger than the inline cap.
+- **Save.** Optional `saveAs` writes the full body (text or binary) into the workspace, same confinement as `file_write` (no `system/`, no path escape, file-protection policy). Cap 512 MiB (`savedTruncated=true` if cut) so Go binaries and small archives fit. Existing files require `overwrite=true`. Prefer `saveAs` for images, PDFs, binaries, and anything larger than the inline cap.
 - **Auth.** Authenticated agent required. Transport/timeout failures set `error` / `timedOut`.
 
 ### Filesystem tools
