@@ -14,6 +14,7 @@ Starts a child session for `request`. When
 `true`, waits for the child to idle (or time
 out) and returns the last assistant text. When
 `false`, returns as soon as the child is
-started; the child reports later via the parent channel or
-`session_send`.
+started ([SubagentRunResult](SubagentRunResult.md).`Ok` is still
+`true`); the child reports later via the
+parent channel or `session_send`.
 

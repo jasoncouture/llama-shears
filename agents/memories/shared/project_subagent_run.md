@@ -14,4 +14,4 @@ type: project
 - **TurnLimit.** `AgentToolConfig.TurnLimit` is `int`, **0 = unlimited**. Do not apply the design-doc default of 8 to every agent. `IToolLoopBudget` is scoped per session; reset on inbound User / FrameworkUser. Final iteration strips the catalog; leftover calls drop at 10500 (`ToolLoopLimitMiddleware`).
 - **Not a sandbox.** Child inherits parent MCP allowlist and shared workspace / memory / todos, same as cron. Not an SSRF or workspace jail.
 
-`ok` means the awaited child finished. `error` is refuse / spawn / timeout — not the child's HTTP-style status.
+`ok` means the requested mode succeeded (awaited idle, or fire-and-forget spawn started). `awaited` is whether the caller waited for the child to finish. Fire-and-forget success is `ok=true` + `started=true` + `awaited=false` — do not treat `ok` as "child finished." `error` is refuse / spawn / timeout — not the child's HTTP-style status.

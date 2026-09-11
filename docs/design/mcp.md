@@ -65,9 +65,9 @@ Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
 
 - **Spawn.** Root sessions only. Nested children are refused (same ban as [`PromptedAgentSpawner`](../../src/LlamaShears.Core/PromptedAgentSpawner.cs)). The child is a transient (`subagent-{guid}`) that renders bundled [`SUBAGENT.md`](../../src/LlamaShears/content/templates/workspace/system/SUBAGENT.md). It shares the parent's workspace, memory, todos, and MCP allowlist — not a sandbox.
 - **Await.** Default. The tool waits for child idle (timeout 120s, 1–600) and returns the last assistant text in `output`. Await sets `TransientAgentReportPolicy.ReportToParent = false` so the answer is not also enqueued as a parent `ChannelMessage`. Timeout publishes `AgentStop` for the child and returns `timedOut` plus any partial text.
-- **Fire-and-forget.** `awaitResult=false` returns `{ started, sessionId }` immediately. The child reports later via `session_send` or the existing parent ChannelMessage path.
+- **Fire-and-forget.** `awaitResult=false` returns immediately after spawn (`ok=true`, `started=true`, `awaited=false`). The child reports later via `session_send` or the existing parent ChannelMessage path.
 - **Overlays.** Optional `model` is a `provider/model` identity (`CompositeIdentity.TryParse`); unparseable values are refused. Optional `maxTurns` (1–64) sets the child's `Tools.TurnLimit`. Optional `context` is prepended to `prompt` as one user turn.
-- **Result.** `ok` means the awaited child finished. `error` is refuse / spawn / timeout — not the child's HTTP-style status.
+- **Result.** `ok` means the requested mode succeeded (awaited idle, or fire-and-forget spawn). `awaited` is whether you waited for the child to finish. `error` is refuse / spawn / timeout — not the child's HTTP-style status. Do not treat `ok=false` as the only way to notice a still-running child.
 
 Locks are keyed on session canonical id, so the parent can hold `IAgentLock` while the child runs. See [agent-loop.md](agent-loop.md).
 
