@@ -86,7 +86,7 @@ public sealed class SubagentToolsTests
                 captured = call.Arg<SubagentRunRequest>();
                 return new ValueTask<SubagentRunResult>(
                     new SubagentRunResult(
-                        Ok: false,
+                        Ok: true,
                         SessionId: "alice:00000000-0000-0000-0000-000000000001:subagent-x",
                         Awaited: false,
                         Output: null,
@@ -99,6 +99,7 @@ public sealed class SubagentToolsTests
         var result = await tool.RunSubagent("go", awaitResult: false);
 
         await Assert.That(captured!.AwaitResult).IsFalse();
+        await Assert.That(result.Ok).IsTrue();
         await Assert.That(result.Started).IsTrue();
         await Assert.That(result.Awaited).IsFalse();
     }

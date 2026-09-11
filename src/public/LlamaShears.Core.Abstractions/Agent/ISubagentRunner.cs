@@ -12,8 +12,9 @@ public interface ISubagentRunner
     /// <see langword="true"/>, waits for the child to idle (or time
     /// out) and returns the last assistant text. When
     /// <see langword="false"/>, returns as soon as the child is
-    /// started; the child reports later via the parent channel or
-    /// <c>session_send</c>.
+    /// started (<see cref="SubagentRunResult.Ok"/> is still
+    /// <see langword="true"/>); the child reports later via the
+    /// parent channel or <c>session_send</c>.
     /// </summary>
     ValueTask<SubagentRunResult> RunAsync(SubagentRunRequest request, CancellationToken cancellationToken);
 }

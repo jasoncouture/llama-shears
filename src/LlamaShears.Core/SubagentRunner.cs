@@ -153,7 +153,7 @@ public sealed class SubagentRunner : ISubagentRunner
         if (!request.AwaitResult)
         {
             return new SubagentRunResult(
-                Ok: false,
+                Ok: true,
                 SessionId: childSession.ToString(),
                 Awaited: false,
                 Output: null,

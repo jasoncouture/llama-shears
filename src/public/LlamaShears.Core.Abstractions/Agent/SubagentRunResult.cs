@@ -2,11 +2,14 @@ namespace LlamaShears.Core.Abstractions.Agent;
 
 /// <summary>
 /// Outcome of <see cref="ISubagentRunner.RunAsync"/>.
-/// <see cref="Ok"/> means the child finished while the caller
-/// waited. <see cref="Error"/> is refuse / spawn / timeout
+/// <see cref="Ok"/> means the requested mode succeeded: an
+/// awaited child reached idle, or a fire-and-forget spawn
+/// started. Do not treat <see cref="Ok"/> as "the child
+/// finished" — use <see cref="Awaited"/> for that.
+/// <see cref="Error"/> is refuse / spawn / timeout
 /// transport — not the child's HTTP-style status.
 /// </summary>
-/// <param name="Ok"><see langword="true"/> when the awaited child reached idle.</param>
+/// <param name="Ok"><see langword="true"/> when <see cref="Error"/> is null (spawn or await succeeded as requested).</param>
 /// <param name="SessionId">Canonical child session id, when a session was created.</param>
 /// <param name="Awaited"><see langword="true"/> when the caller asked to wait.</param>
 /// <param name="Output">Last assistant text captured from the child, if any.</param>

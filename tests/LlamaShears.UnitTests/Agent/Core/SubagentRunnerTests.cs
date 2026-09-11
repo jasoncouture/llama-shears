@@ -65,7 +65,8 @@ public sealed class SubagentRunnerTests
 
         await Assert.That(result.Started).IsTrue();
         await Assert.That(result.Awaited).IsFalse();
-        await Assert.That(result.Ok).IsFalse();
+        await Assert.That(result.Ok).IsTrue();
+        await Assert.That(result.Error).IsNull();
         await Assert.That(result.TimedOut).IsFalse();
         await Assert.That(result.Output).IsNull();
         var policy = (TransientAgentReportPolicy)harness.LastStart!.ContextData![TransientAgentReportPolicy.DataKey]!;
