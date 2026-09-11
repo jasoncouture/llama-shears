@@ -21,7 +21,8 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
             .WithTools<ShellTools>()
             .WithTools<SkillTools>()
             .WithTools<SessionTools>()
-            .WithTools<DiscordTools>();
+            .WithTools<DiscordTools>()
+            .WithTools<HttpTools>();
 ```
 
 Tool names follow a `<category>_<action>` convention so they group naturally in the model's tool listing:
@@ -31,6 +32,7 @@ Tool names follow a `<category>_<action>` convention so they group naturally in 
 | `file_read`, `file_list`, `file_write`, `file_append`, `file_delete`, `file_regex_replace`, `file_grep` | Filesystem operations. Relative paths resolve against the agent's workspace; absolute paths are honored. See *Filesystem tools* below. |
 | `memory_store`, `memory_search`, `memory_index` | Memory operations. See [memory.md](memory.md). |
 | `discord_list`, `discord_send` | Post to operator-configured Discord webhooks. See *Discord webhooks* below. |
+| `http_request` | First-class HTTP client (GET/POST/headers/timeouts). See *HTTP requests* below. |
 
 The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__file_read`, `llamashears__memory_store`, etc.
 
@@ -44,6 +46,15 @@ The internal listener is published into the host's outbound MCP registry under t
 - **Auth.** Same as other bundled tools: an authenticated agent on the request. No webhooks configured, unknown name, or multiple webhooks without a name is a loud refuse.
 
 Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
+
+### HTTP requests
+
+[`HttpTools`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/Http/HttpTools.cs) is the bundled `http_request` tool. Use it instead of `shell_run` + curl.
+
+- **Request.** Absolute `http`/`https` only. Methods: GET, HEAD, POST, PUT, PATCH, DELETE. Optional header map (Host / Content-Length / hop-by-hop headers are refused). Optional raw body — forbidden on GET/HEAD. Missing Content-Type defaults to `application/json` when the body looks like JSON, otherwise `text/plain`. Timeout defaults to 30s (1–120).
+- **Response.** Returns `status`, `reasonPhrase`, `ok`, flattened headers, `contentType`, and an inline `body`. HTTP error statuses complete the call (`ok=false`); they are not tool failures. Inline text is capped at 64 KiB (`truncated=true`). Binary bodies are omitted (`binary=true`).
+- **Save.** Optional `saveAs` writes the full body (text or binary) into the workspace, same confinement as `file_write` (no `system/`, no path escape, file-protection policy). Cap 16 MiB (`savedTruncated=true` if cut). Existing files require `overwrite=true`. Prefer `saveAs` for images, PDFs, and anything larger than the inline cap.
+- **Auth.** Authenticated agent required. Transport/timeout failures set `error` / `timedOut`.
 
 ### Filesystem tools
 
