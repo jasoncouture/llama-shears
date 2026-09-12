@@ -16,7 +16,8 @@ public sealed class ChatSession :
     IEventHandler<AgentThoughtFragment>,
     IEventHandler<AgentToolCallFragment>,
     IEventHandler<AgentToolResultFragment>,
-    IEventHandler<AgentCompactionRequest>
+    IEventHandler<AgentCompactionRequest>,
+    IEventHandler<AgentLifecycleEvent>
 {
     private readonly IEventBus _bus;
     private readonly IEventBus _publisher;
@@ -33,6 +34,7 @@ public sealed class ChatSession :
     private bool _showStreaming = true;
     private bool _showTools = true;
     private bool _isCompacting;
+    private bool _isProcessing;
 
     public ChatSession(
         IEventBus bus,
@@ -166,6 +168,7 @@ public sealed class ChatSession :
             _inFlightToolBubbles.Clear();
             _renderedResultCallIds.Clear();
             _isCompacting = false;
+            _isProcessing = false;
             _subscriptions?.Dispose();
             _subscriptions = null;
             if (session is not null)
@@ -209,6 +212,14 @@ public sealed class ChatSession :
                         this))
                     .And(_bus.Subscribe<AgentCompactionRequest>(
                         Event.WellKnown.Agent.CompactingFinished with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentLifecycleEvent>(
+                        Event.WellKnown.Agent.Busy with { Id = session },
+                        EventDeliveryMode.Awaited,
+                        this))
+                    .And(_bus.Subscribe<AgentLifecycleEvent>(
+                        Event.WellKnown.Agent.Idle with { Id = session },
                         EventDeliveryMode.Awaited,
                         this));
             }
@@ -268,16 +279,25 @@ public sealed class ChatSession :
                 content,
                 DateTimeOffset.UtcNow,
                 attachments: safeAttachments));
+            _isProcessing = true;
         }
 
         Changed?.Invoke();
-        await _publisher.PublishAsync(
-            Event.WellKnown.Channel.Message with { Id = session },
-            new ChannelMessage(content, "user:webui", DateTimeOffset.Now)
-            {
-                Attachments = safeAttachments,
-            },
-            cancellationToken);
+        try
+        {
+            await _publisher.PublishAsync(
+                Event.WellKnown.Channel.Message with { Id = session },
+                new ChannelMessage(content, "user:webui", DateTimeOffset.Now)
+                {
+                    Attachments = safeAttachments,
+                },
+                cancellationToken);
+        }
+        catch
+        {
+            ApplyProcessingState(session.ToString(), active: false);
+            throw;
+        }
     }
 
     public bool IsCompacting
@@ -287,6 +307,17 @@ public sealed class ChatSession :
             lock (_gate)
             {
                 return _isCompacting;
+            }
+        }
+    }
+
+    public bool IsProcessing
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _isProcessing;
             }
         }
     }
@@ -356,6 +387,24 @@ public sealed class ChatSession :
         return ValueTask.CompletedTask;
     }
 
+    public ValueTask HandleAsync(IEventEnvelope<AgentLifecycleEvent> envelope, CancellationToken cancellationToken)
+    {
+        if (IsLifecycle(envelope.Type, Event.WellKnown.Agent.Busy))
+        {
+            ApplyProcessingState(envelope.Type.Id, active: true);
+        }
+        else if (IsLifecycle(envelope.Type, Event.WellKnown.Agent.Idle))
+        {
+            ApplyProcessingState(envelope.Type.Id, active: false);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private static bool IsLifecycle(EventType actual, EventType expected)
+        => string.Equals(actual.Component, expected.Component, StringComparison.Ordinal)
+           && string.Equals(actual.EventName, expected.EventName, StringComparison.Ordinal);
+
     private void ApplyCompactionState(string? eventId, bool active)
     {
         bool changed;
@@ -368,6 +417,26 @@ public sealed class ChatSession :
 
             changed = _isCompacting != active;
             _isCompacting = active;
+        }
+
+        if (changed)
+        {
+            Changed?.Invoke();
+        }
+    }
+
+    private void ApplyProcessingState(string? eventId, bool active)
+    {
+        bool changed;
+        lock (_gate)
+        {
+            if (!string.Equals(eventId, _selectedSession?.ToString(), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            changed = _isProcessing != active;
+            _isProcessing = active;
         }
 
         if (changed)

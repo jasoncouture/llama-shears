@@ -6,7 +6,7 @@
     {
         <p class="messages-empty">Pick an agent to start a conversation.</p>
     }
-    else if (Session.Bubbles.Count == 0 && !Session.IsCompacting)
+    else if (Session.Bubbles.Count == 0 && !Session.IsCompacting && !Session.IsProcessing)
     {
         <p class="messages-empty">No messages yet. Send something below.</p>
     }
@@ -62,6 +62,15 @@
                     <span></span><span></span><span></span>
                 </div>
                 <small class="typing-indicator-label">@label</small>
+            </div>
+        }
+        else if (Session.IsProcessing && !hasVisibleBusy)
+        {
+            <div class="typing-indicator typing-indicator-processing" role="status">
+                <div class="typing-indicator-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <small class="typing-indicator-label">processing</small>
             </div>
         }
     }

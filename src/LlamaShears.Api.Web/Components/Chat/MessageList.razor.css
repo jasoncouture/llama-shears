@@ -96,6 +96,11 @@
     opacity: 0.85;
 }
 
+.typing-indicator-processing .typing-indicator-dots span {
+    animation-name: typing-pulse;
+    animation-duration: 1.6s;
+}
+
 @keyframes typing-pulse {
     0%, 100% {
         transform: scale(0.7);

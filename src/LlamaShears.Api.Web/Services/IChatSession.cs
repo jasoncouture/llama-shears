@@ -50,6 +50,15 @@ public interface IChatSession : IDisposable
     bool IsCompacting { get; }
 
     /// <summary>
+    /// True from the moment a user turn is sent (or the selected
+    /// session reports busy) until it goes idle again. Drives the
+    /// message-list "processing" indicator for the gap before the
+    /// first thought, tool, or assistant fragment. Cleared when the
+    /// selected session changes.
+    /// </summary>
+    bool IsProcessing { get; }
+
+    /// <summary>
     /// Raised when any of the above observable state changes.
     /// </summary>
     event Action? Changed;
