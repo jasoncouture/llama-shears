@@ -27,3 +27,4 @@
 - [Discord webhooks are named host config](project_discord_webhooks.md) — `discord_list` / `discord_send`; URLs live in `Discord:Webhooks` (env `.local.env`); model never supplies or sees a URL; only `discord.com` / `discordapp.com` webhook paths; mentions parse disabled
 - [http_request is the native HTTP client](project_http_request_tool.md) — bundled MCP `http_request`; http/https only; `ok` is HTTP status; `error` is transport; `saveError` is disk; sniff then Content-Type; `saveAs` sibling-temp then File.Move (512 MiB); cookies off; do not send agents to shell_run+curl for HTTP
 - [First-class subagent_run](project_subagent_run.md) — session-keyed lock; await suppresses parent ChannelMessage; nested banned; TurnLimit 0=unlimited; child shares workspace (not a sandbox)
+- [Chat UI busy indicators](project_chat_ui_busy_indicators.md) — message-list chips: compacting, hidden stream (thinking/tools/typing), then processing (`IsProcessing` from send/busy until idle)

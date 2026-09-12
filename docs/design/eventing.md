@@ -34,7 +34,8 @@ The well-known `EventName`s are also defined in `Event.cs`. The current set:
 | `agent:tool-call:<id>` | [`AgentToolCallFragment`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentToolCallFragment.cs) | `InferenceRunner` |
 | `agent:tool-result:<id>` | [`AgentToolResultFragment`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentToolResultFragment.cs) | `Agent` (after dispatch) |
 | `agent:compacting-started:<id>` / `agent:compacting-finished:<id>` | [`AgentCompactionMarker`](../../src/public/LlamaShears.Core.Abstractions.Events/Agent/AgentCompactionMarker.cs) | `ContextCompactor` |
-| `agent:loaded` / `agent:unloaded` / `agent:loading-error` / `agent:busy` / `agent:idle` | (declared in `Event.WellKnown.Agent`; emit sites currently TBD) | — |
+| `agent:loaded` / `agent:unloaded` / `agent:loading-error` | (declared in `Event.WellKnown.Agent`; emit sites currently TBD) | — |
+| `agent:busy:<id>` / `agent:idle:<id>` | [`AgentLifecycleEvent`](../../src/public/LlamaShears.Core.Abstractions/Events/Agent/AgentLifecycleEvent.cs) | `Agent` loop (first dequeued batch ↔ queue empty). The chat UI sets `IChatSession.IsProcessing` on send or busy, and clears it on idle. |
 | `channel:message:<channel-id>` | [`ChannelMessage`](../../src/public/LlamaShears.Core.Abstractions.Events/Channel/ChannelMessage.cs) | Chat UI / external producers |
 | `channel:created` / `channel:destroyed` / `channel:error` | (declared, not yet emitted) | — |
 
