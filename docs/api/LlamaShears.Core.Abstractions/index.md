@@ -258,6 +258,7 @@ The package is organised into namespaces by concern; each namespace was previous
 - [IInferenceRunner](LlamaShears/Core/Abstractions/Provider/IInferenceRunner.md)
 - [ILanguageModel](LlamaShears/Core/Abstractions/Provider/ILanguageModel.md)
 - [IModelCompletionResponse](LlamaShears/Core/Abstractions/Provider/IModelCompletionResponse.md)
+- [IModelPromptAssembler](LlamaShears/Core/Abstractions/Provider/IModelPromptAssembler.md)
 - [IModelResponseFragment](LlamaShears/Core/Abstractions/Provider/IModelResponseFragment.md)
 - [IModelTextFormatter](LlamaShears/Core/Abstractions/Provider/IModelTextFormatter.md)
 - [IModelTextResponse](LlamaShears/Core/Abstractions/Provider/IModelTextResponse.md)

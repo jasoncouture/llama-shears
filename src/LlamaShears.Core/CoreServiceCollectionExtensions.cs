@@ -172,6 +172,7 @@ public static class CoreServiceCollectionExtensions
         services.TryAddSingleton<ISystemPromptProvider, FilesystemSystemPromptProvider>();
         services.AddOptions<FilesystemPromptContextOptions>();
         services.TryAddSingleton<IPromptContextProvider, FilesystemPromptContextProvider>();
+        services.TryAddScoped<IModelPromptAssembler, ModelPromptAssembler>();
         return services;
     }
 
