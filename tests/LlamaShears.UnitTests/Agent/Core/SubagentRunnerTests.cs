@@ -314,6 +314,55 @@ public sealed class SubagentRunnerTests
     }
 
     [Test]
+    public async Task TemplateOverlaysReplaceTheDefaultSubagentFiles()
+    {
+        using var harness = Harness.Create();
+        harness.PublishChildTurnThenIdle("ok");
+
+        await harness.Runner.RunAsync(
+            new SubagentRunRequest(
+                "summarize",
+                SystemPrompt: "COMPACTION.md",
+                PromptContext: "COMPACTION.md"),
+            CancellationToken.None);
+
+        await Assert.That(harness.LastStart!.Config.SystemPrompt).IsEqualTo("COMPACTION.md");
+        await Assert.That(harness.LastStart.Config.PromptContext).IsEqualTo("COMPACTION.md");
+    }
+
+    [Test]
+    public async Task OmittedTemplatesKeepTheDefaultSubagentFiles()
+    {
+        using var harness = Harness.Create();
+        harness.PublishChildTurnThenIdle("ok");
+
+        await harness.Runner.RunAsync(
+            new SubagentRunRequest("do the work", SystemPrompt: null, PromptContext: null),
+            CancellationToken.None);
+
+        await Assert.That(harness.LastStart!.Config.SystemPrompt).IsEqualTo("SUBAGENT.md");
+        await Assert.That(harness.LastStart.Config.PromptContext).IsEqualTo("SUBAGENT.md");
+    }
+
+    [Test]
+    public async Task InvalidTemplateNamesAreRefused()
+    {
+        using var harness = Harness.Create();
+
+        var blank = await harness.Runner.RunAsync(
+            new SubagentRunRequest("do the work", SystemPrompt: "  "),
+            CancellationToken.None);
+        var path = await harness.Runner.RunAsync(
+            new SubagentRunRequest("do the work", PromptContext: "context/COMPACTION.md"),
+            CancellationToken.None);
+
+        await Assert.That(blank.Error).Contains("systemPrompt");
+        await Assert.That(path.Error).Contains("promptContext");
+        await harness.Spawner.DidNotReceive()
+            .CreateAsync(Arg.Any<PromptedAgentStartInformation>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task EmptyPromptIsRefused()
     {
         using var harness = Harness.Create();

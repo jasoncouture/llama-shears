@@ -22,13 +22,25 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// Await ceiling in seconds (1–600). Default 120. Ignored when
 /// <paramref name="AwaitResult"/> is <see langword="false"/>.
 /// </param>
+/// <param name="SystemPrompt">
+/// Optional system-prompt template file name (e.g.
+/// <c>COMPACTION.md</c>). Omitted keeps <c>SUBAGENT.md</c>. Must not
+/// contain path separators.
+/// </param>
+/// <param name="PromptContext">
+/// Optional prompt-context template file name (e.g.
+/// <c>COMPACTION.md</c>). Omitted keeps <c>SUBAGENT.md</c>. Must not
+/// contain path separators.
+/// </param>
 public sealed record SubagentRunRequest(
     string Prompt,
     string? Model = null,
     string? Context = null,
     int? MaxTurns = null,
     bool AwaitResult = true,
-    int TimeoutSeconds = SubagentRunRequest.DefaultTimeoutSeconds)
+    int TimeoutSeconds = SubagentRunRequest.DefaultTimeoutSeconds,
+    string? SystemPrompt = null,
+    string? PromptContext = null)
 {
     /// <summary>Default await ceiling when the caller omits a timeout.</summary>
     public const int DefaultTimeoutSeconds = 120;

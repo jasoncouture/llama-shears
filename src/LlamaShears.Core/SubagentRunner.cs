@@ -63,6 +63,18 @@ public sealed class SubagentRunner : ISubagentRunner
                 $"Refused: maxTurns must be between {SubagentRunRequest.MinMaxTurns} and {SubagentRunRequest.MaxMaxTurns}.");
         }
 
+        if (IsInvalidTemplateName(request.SystemPrompt))
+        {
+            return Refuse(
+                "Refused: systemPrompt must be a file name without path separators.");
+        }
+
+        if (IsInvalidTemplateName(request.PromptContext))
+        {
+            return Refuse(
+                "Refused: promptContext must be a file name without path separators.");
+        }
+
         CompositeIdentity? modelId = null;
         if (request.Model is not null)
         {
@@ -74,6 +86,16 @@ public sealed class SubagentRunner : ISubagentRunner
         }
 
         var config = PromptedAgentStartInformation.CreateDefaultSubAgentConfig("subagent", parent);
+        if (request.SystemPrompt is not null)
+        {
+            config = config with { SystemPrompt = request.SystemPrompt };
+        }
+
+        if (request.PromptContext is not null)
+        {
+            config = config with { PromptContext = request.PromptContext };
+        }
+
         if (modelId is not null)
         {
             config = config with { Model = config.Model with { Id = modelId } };
@@ -224,4 +246,8 @@ public sealed class SubagentRunner : ISubagentRunner
             Output: null,
             TimedOut: false,
             Error: error);
+
+    private static bool IsInvalidTemplateName(string? name)
+        => name is not null
+           && (string.IsNullOrWhiteSpace(name) || name.AsSpan().IndexOfAny('/', '\\') >= 0);
 }

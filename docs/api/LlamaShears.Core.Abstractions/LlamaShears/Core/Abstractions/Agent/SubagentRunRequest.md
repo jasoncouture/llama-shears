@@ -17,6 +17,12 @@ finish and return its last assistant text. When
 `false`, return after spawn.
 - `TimeoutSeconds` — Await ceiling in seconds (1–600). Default 120. Ignored when
 `AwaitResult` is `false`.
+- `SystemPrompt` — Optional system-prompt template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
+- `PromptContext` — Optional prompt-context template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
 
 ## Fields
 
@@ -66,6 +72,18 @@ values are refused. Not a free-form URL.
 
 User-role instruction for the child. Required.
 
+### `PromptContext`
+
+Optional prompt-context template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
+
+### `SystemPrompt`
+
+Optional system-prompt template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
+
 ### `TimeoutSeconds`
 
 Await ceiling in seconds (1–600). Default 120. Ignored when
@@ -73,7 +91,7 @@ Await ceiling in seconds (1–600). Default 120. Ignored when
 
 ## Methods
 
-### `SubagentRunRequest`(string Prompt, string Model, string Context, Nullable<int> MaxTurns, bool AwaitResult, int TimeoutSeconds)
+### `SubagentRunRequest`(string Prompt, string Model, string Context, Nullable<int> MaxTurns, bool AwaitResult, int TimeoutSeconds, string SystemPrompt, string PromptContext)
 
 Inputs for [ISubagentRunner](ISubagentRunner.md).`RunAsync`.
 
@@ -90,4 +108,16 @@ finish and return its last assistant text. When
 `false`, return after spawn.
 - `TimeoutSeconds` — Await ceiling in seconds (1–600). Default 120. Ignored when
 `AwaitResult` is `false`.
+- `SystemPrompt` — Optional system-prompt template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
+- `PromptContext` — Optional prompt-context template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
+- `SystemPrompt` — Optional system-prompt template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
+- `PromptContext` — Optional prompt-context template file name (e.g.
+`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
+contain path separators.
 
