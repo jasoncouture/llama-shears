@@ -109,6 +109,24 @@ public sealed class SubagentRunnerTests
     }
 
     [Test]
+    public async Task EmptyAssistantTurnDoesNotWipeCapturedText()
+    {
+        // Regression: a tools-only Assistant turn publishes Content="" and
+        // overwrote lastAssistant, so awaited output was empty after a real reply.
+        using var harness = Harness.Create();
+        harness.Spawner
+            .CreateAsync(Arg.Any<PromptedAgentStartInformation>(), Arg.Any<CancellationToken>())
+            .Returns(call => harness.PublishTurnThenEmptyAssistantThenIdleAsync(call, "hello from child"));
+
+        var result = await harness.Runner.RunAsync(
+            new SubagentRunRequest("do the work"),
+            CancellationToken.None);
+
+        await Assert.That(result.Ok).IsTrue();
+        await Assert.That(result.Output).IsEqualTo("hello from child");
+    }
+
+    [Test]
     public async Task TimeoutKeepsPartialAssistantText()
     {
         using var harness = Harness.Create();
@@ -438,6 +456,18 @@ public sealed class SubagentRunnerTests
             var info = call.Arg<PromptedAgentStartInformation>();
             LastStart = info;
             await PublishTurnAsync(info, text);
+            await PublishIdleAsync(info);
+            return HandleFor(info);
+        }
+
+        public async ValueTask<AgentHandle> PublishTurnThenEmptyAssistantThenIdleAsync(
+            NSubstitute.Core.CallInfo call,
+            string text)
+        {
+            var info = call.Arg<PromptedAgentStartInformation>();
+            LastStart = info;
+            await PublishTurnAsync(info, text);
+            await PublishTurnAsync(info, "");
             await PublishIdleAsync(info);
             return HandleFor(info);
         }

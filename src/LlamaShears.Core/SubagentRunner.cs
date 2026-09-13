@@ -144,7 +144,7 @@ public sealed class SubagentRunner : ISubagentRunner
             EventDeliveryMode.Awaited,
             (envelope, _) =>
             {
-                if (envelope.Data is { Role: ModelRole.Assistant } turn)
+                if (envelope.Data is { Role: ModelRole.Assistant, Content.Length: > 0 } turn)
                 {
                     lastAssistant = turn.Content;
                 }
