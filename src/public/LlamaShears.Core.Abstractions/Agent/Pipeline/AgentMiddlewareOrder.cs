@@ -31,10 +31,9 @@ public static class AgentMiddlewareOrder
     public const int ToolResultEnqueue = 6000;
 
     /// <summary>
-    /// Publish the inbound batch, optionally overlay
-    /// <c>AgentConfig.SystemPrompt</c> and
-    /// <c>AgentConfig.PromptContext</c> for a summarizer pass, then
-    /// <c>next</c> so those middleware render the templates.
+    /// Publish the inbound batch, optionally spawn a compaction
+    /// child (<c>COMPACTION.md</c> templates), commit the summary,
+    /// then set <c>Prompt</c> for the rest of the onion.
     /// </summary>
     public const int Compaction = 7000;
 

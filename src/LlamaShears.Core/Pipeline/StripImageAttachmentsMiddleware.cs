@@ -19,10 +19,7 @@ public sealed class StripImageAttachmentsMiddleware : IAgentMiddleware
         }
         finally
         {
-            if (!context.FrameworkPass)
-            {
-                context.AgentContext.StripImageAttachments();
-            }
+            context.AgentContext.StripImageAttachments();
         }
     }
 }

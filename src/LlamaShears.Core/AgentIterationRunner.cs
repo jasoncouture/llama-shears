@@ -70,7 +70,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         context.Tools = tools;
         var promptOptions = new PromptOptions(
             Tools: tools,
-            EmitTurns: !context.FrameworkPass);
+            EmitTurns: true);
 
         InferenceOutcome outcome;
         var emptyAttempt = 0;

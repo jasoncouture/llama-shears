@@ -53,6 +53,7 @@ public sealed class AgentMiddlewareOrderTests
             new ToolResultEnqueueMiddleware(Substitute.For<ISessionQueue>()),
             new CompactionMiddleware(
                 Substitute.For<IContextCompactor>(),
+                Substitute.For<ISubagentRunner>(),
                 Substitute.For<IAgentContextProvider>(),
                 Substitute.For<IEventBus>(),
                 PipelineTestContext.ScopeFor()),

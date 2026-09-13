@@ -132,11 +132,4 @@ public sealed class AgentPipelineContext
     /// deciding whether to compact.
     /// </summary>
     public bool ForceCompaction { get; set; }
-
-    /// <summary>
-    /// When <see langword="true"/>, the current <c>next</c> is a
-    /// framework summarizer pass: do not persist model turns onto the
-    /// live conversation and do not strip inbound image attachments.
-    /// </summary>
-    public bool FrameworkPass { get; set; }
 }

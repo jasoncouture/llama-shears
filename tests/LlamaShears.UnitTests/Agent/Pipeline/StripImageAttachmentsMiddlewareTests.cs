@@ -57,25 +57,4 @@ public sealed class StripImageAttachmentsMiddlewareTests
             .Throws<InvalidOperationException>();
         await Assert.That(context.AgentContext.Turns[0].Attachments.IsDefaultOrEmpty).IsTrue();
     }
-
-    [Test]
-    public async Task LeavesImageAttachmentsOnAFrameworkPass()
-    {
-        var turn = new ModelTurn(ModelRole.User, "see this", DateTimeOffset.UnixEpoch)
-        {
-            Attachments = [new Attachment(AttachmentKind.Image, "image/png", "Zm9v")],
-        };
-        IAgentMiddleware middleware = new StripImageAttachmentsMiddleware();
-        var context = new AgentPipelineContext(
-            new FakeAgentContext("alice", [turn]),
-            [turn],
-            CancellationToken.None)
-        {
-            FrameworkPass = true,
-        };
-
-        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
-
-        await Assert.That(context.AgentContext.Turns[0].Attachments.Length).IsEqualTo(1);
-    }
 }

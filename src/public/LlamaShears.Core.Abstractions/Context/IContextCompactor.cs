@@ -4,10 +4,8 @@ namespace LlamaShears.Core.Abstractions.Context;
 
 /// <summary>
 /// Decides whether a <see cref="ModelPrompt"/> needs compaction and
-/// commits a summary plus the preserved tail. Does not call the model
-/// and does not render system or ephemeral templates; the pipeline
-/// overlays those template names and <c>next</c>s so existing
-/// middleware render them.
+/// commits a summary plus the preserved tail. Does not call the model;
+/// the pipeline launches a compaction child for the summary.
 /// </summary>
 public interface IContextCompactor
 {
