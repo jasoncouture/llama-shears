@@ -92,4 +92,29 @@ public sealed class SystemPromptMiddlewareTests
             Arg.Any<IReadOnlyDictionary<string, object?>>(),
             turn.Token);
     }
+
+    [Test]
+    public async Task PrependsTheRenderedSystemTurnOntoAnExistingPrompt()
+    {
+        var provider = Substitute.For<ISystemPromptProvider>();
+        provider
+            .GetAsync(Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, object?>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult("you are alice"));
+        var time = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        IAgentMiddleware middleware = new SystemPromptMiddleware(
+            provider,
+            PipelineTestContext.ScopeFor(),
+            time);
+        var user = new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch);
+        var context = PipelineTestContext.Create();
+        context.Prompt = new ModelPrompt([user]);
+
+        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
+
+        await Assert.That(context.Prompt).IsNotNull();
+        await Assert.That(context.Prompt!.Turns.Count).IsEqualTo(2);
+        await Assert.That(context.Prompt.Turns[0].Role).IsEqualTo(ModelRole.System);
+        await Assert.That(context.Prompt.Turns[0].Content).IsEqualTo("you are alice");
+        await Assert.That(context.Prompt.Turns[1]).IsEqualTo(user);
+    }
 }

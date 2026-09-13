@@ -159,6 +159,7 @@ The package is organised into namespaces by concern; each namespace was previous
 ## LlamaShears.Core.Abstractions.Context
 
 - [AgentContext](LlamaShears/Core/Abstractions/Context/AgentContext.md)
+- [CompactionPlan](LlamaShears/Core/Abstractions/Context/CompactionPlan.md)
 - [IAgentContextProvider](LlamaShears/Core/Abstractions/Context/IAgentContextProvider.md)
 - [IContextCompactor](LlamaShears/Core/Abstractions/Context/IContextCompactor.md)
 - [LanguageModelContext](LlamaShears/Core/Abstractions/Context/LanguageModelContext.md)

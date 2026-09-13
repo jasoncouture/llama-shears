@@ -34,6 +34,20 @@ public sealed class SystemPromptMiddleware : IAgentMiddleware
         var template = _dataScope.GetAgentConfig().SystemPrompt;
         var body = await _systemPrompt.GetAsync(template, _dataScope.Snapshot(), context.TurnToken);
         context.SystemPrompt = new ModelTurn(ModelRole.System, body, _time.GetLocalNow());
+        if (context.Prompt is { } prompt)
+        {
+            context.Prompt = PrependSystem(prompt, context.SystemPrompt);
+        }
         await next.Invoke(context, cancellationToken);
+    }
+
+    private static ModelPrompt PrependSystem(ModelPrompt prompt, ModelTurn system)
+    {
+        if (prompt.Turns.Count > 0 && prompt.Turns[0].Role == ModelRole.System)
+        {
+            return new ModelPrompt([system, .. prompt.Turns.Skip(1)]);
+        }
+
+        return new ModelPrompt([system, .. prompt.Turns]);
     }
 }

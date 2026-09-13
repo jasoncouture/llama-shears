@@ -56,7 +56,8 @@ public sealed class EphemeralContextMiddleware : IAgentMiddleware
             context.TurnToken);
         _dataScope.SetItem("memories", memories);
         var body = await _promptContext.GetAsync(config.PromptContext, _dataScope.Snapshot(), context.TurnToken);
-        if (!string.IsNullOrWhiteSpace(body))
+        if (!string.IsNullOrWhiteSpace(body)
+            && context.Prompt?.Turns.Any(static turn => turn.Role == ModelRole.SystemEphemeral) != true)
         {
             context.EphemeralContext = new ModelTurn(
                 ModelRole.SystemEphemeral,

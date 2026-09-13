@@ -3,27 +3,33 @@ using LlamaShears.Core.Abstractions.Provider;
 namespace LlamaShears.Core.Abstractions.Context;
 
 /// <summary>
-/// Decides whether a <see cref="ModelPrompt"/> exceeds the model's
-/// context window and, if so, rewrites it so the next model call
-/// fits — typically by summarizing earlier turns into a single
-/// assistant message and preserving the trailing user turn. Pure
-/// w.r.t. external storage; callers archive any displaced context
-/// themselves.
+/// Decides whether a <see cref="ModelPrompt"/> needs compaction and
+/// commits a summary plus the preserved tail. Does not call the model
+/// and does not render system or ephemeral templates; the pipeline
+/// overlays those template names and <c>next</c>s so existing
+/// middleware render them.
 /// </summary>
 public interface IContextCompactor
 {
     /// <summary>
-    /// Returns <paramref name="prompt"/> unchanged when no compaction
-    /// is needed (under budget, too few turns, or no context window
-    /// known). Otherwise returns a rebuilt prompt; reference equality
-    /// with the input is the caller's signal that compaction did or
-    /// did not occur. Pass <paramref name="force"/> as <see langword="true"/>
-    /// to skip the under-budget guard (eager compaction); the
-    /// min-turn-count and missing-context-length guards still apply.
+    /// Returns a <see cref="CompactionPlan"/> when older history should
+    /// be summarized, or <see langword="null"/> when no compaction is
+    /// needed (under budget, six or fewer eligible turns, or no context
+    /// window known). Pass <paramref name="force"/> as
+    /// <see langword="true"/> to skip the under-budget guard.
     /// </summary>
-    ValueTask<ModelPrompt> CompactAsync(
+    ValueTask<CompactionPlan?> TryPrepareAsync(
         AgentContext agentContext,
         ModelPrompt prompt,
         bool force,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Archives the live context and writes
+    /// <c>[system?, Assistant(summary), ...preserved]</c>.
+    /// </summary>
+    ValueTask<ModelPrompt> CommitAsync(
+        CompactionPlan plan,
+        string summary,
         CancellationToken cancellationToken);
 }

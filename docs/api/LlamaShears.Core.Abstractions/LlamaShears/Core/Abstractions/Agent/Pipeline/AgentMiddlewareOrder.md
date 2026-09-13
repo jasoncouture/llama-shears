@@ -21,7 +21,10 @@ Hold [IAgentLock](../IAgentLock.md) across the rest of the turn.
 
 ### `Compaction`
 
-Publish the inbound batch, build and compact `Prompt`.
+Publish the inbound batch, optionally overlay
+`AgentConfig.SystemPrompt` and
+`AgentConfig.PromptContext` for a summarizer pass, then
+`next` so those middleware render the templates.
 
 ### `CorrelationScope`
 
@@ -45,7 +48,7 @@ Drop image attachments from live context after the model has seen them.
 
 ### `SystemPrompt`
 
-Render the persistent system-prompt turn onto the bag.
+Render the persistent system-prompt turn onto the bag and prepend it to `Prompt`.
 
 ### `ToolDispatch`
 

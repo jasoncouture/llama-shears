@@ -28,6 +28,12 @@ Channel this batch arrived on. `null` until
 run-iteration middleware copies it from the inbound batch.
 The iteration passes it to inference for fragment routing.
 
+### `CompactionOnly`
+
+When `true`, this invocation is a background
+compaction (idle or `/compact`): run a summarizer pass if
+needed and do not continue into a user-facing iteration.
+
 ### `CorrelationId`
 
 Correlation id stamped on events published during the
@@ -40,6 +46,17 @@ until ephemeral-context middleware renders it, or when the
 template is empty. Not persisted; that middleware also inserts
 it into [AgentPipelineContext](AgentPipelineContext.md).`Prompt` immediately before the last user
 cluster when the compacted prompt ends in a user turn.
+
+### `ForceCompaction`
+
+When `true`, skip the under-budget guard when
+deciding whether to compact.
+
+### `FrameworkPass`
+
+When `true`, the current `next` is a
+framework summarizer pass: do not persist model turns onto the
+live conversation and do not strip inbound image attachments.
 
 ### `Outcome`
 
@@ -69,8 +86,8 @@ persistence that must finish after interrupt uses this, not
 ### `SystemPrompt`
 
 Persistent system-prompt turn for this batch. `null`
-until system-prompt middleware renders it. Not persisted; compaction
-prepends it when building [AgentPipelineContext](AgentPipelineContext.md).`Prompt`.
+until system-prompt middleware renders it. Not persisted; that
+middleware prepends it onto [AgentPipelineContext](AgentPipelineContext.md).`Prompt`.
 
 ### `Tools`
 

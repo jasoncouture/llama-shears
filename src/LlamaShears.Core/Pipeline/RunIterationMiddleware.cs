@@ -38,7 +38,10 @@ public sealed class RunIterationMiddleware : IAgentMiddleware
         }
         finally
         {
-            context.AgentContext.StripImageAttachments();
+            if (!context.FrameworkPass)
+            {
+                context.AgentContext.StripImageAttachments();
+            }
         }
     }
 }

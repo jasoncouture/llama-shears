@@ -2,22 +2,24 @@
 
 Assembly: `LlamaShears.Core.Abstractions`
 
-Decides whether a [ModelPrompt](../Provider/ModelPrompt.md) exceeds the model's
-context window and, if so, rewrites it so the next model call
-fits — typically by summarizing earlier turns into a single
-assistant message and preserving the trailing user turn. Pure
-w.r.t. external storage; callers archive any displaced context
-themselves.
+Decides whether a [ModelPrompt](../Provider/ModelPrompt.md) needs compaction and
+commits a summary plus the preserved tail. Does not call the model
+and does not render system or ephemeral templates; the pipeline
+overlays those template names and `next`s so existing
+middleware render them.
 
 ## Methods
 
-### `CompactAsync`([AgentContext](AgentContext.md) agentContext, [ModelPrompt](../Provider/ModelPrompt.md) prompt, bool force, CancellationToken cancellationToken)
+### `CommitAsync`([CompactionPlan](CompactionPlan.md) plan, string summary, CancellationToken cancellationToken)
 
-Returns `prompt` unchanged when no compaction
-is needed (under budget, too few turns, or no context window
-known). Otherwise returns a rebuilt prompt; reference equality
-with the input is the caller's signal that compaction did or
-did not occur. Pass `force` as `true`
-to skip the under-budget guard (eager compaction); the
-min-turn-count and missing-context-length guards still apply.
+Archives the live context and writes
+`[system?, Assistant(summary), ...preserved]`.
+
+### `TryPrepareAsync`([AgentContext](AgentContext.md) agentContext, [ModelPrompt](../Provider/ModelPrompt.md) prompt, bool force, CancellationToken cancellationToken)
+
+Returns a [CompactionPlan](CompactionPlan.md) when older history should
+be summarized, or `null` when no compaction is
+needed (under budget, six or fewer eligible turns, or no context
+window known). Pass `force` as
+`true` to skip the under-budget guard.
 

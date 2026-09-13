@@ -70,8 +70,8 @@ public sealed class AgentPipelineContext
 
     /// <summary>
     /// Persistent system-prompt turn for this batch. <see langword="null"/>
-    /// until system-prompt middleware renders it. Not persisted; compaction
-    /// prepends it when building <see cref="Prompt"/>.
+    /// until system-prompt middleware renders it. Not persisted; that
+    /// middleware prepends it onto <see cref="Prompt"/>.
     /// </summary>
     public ModelTurn? SystemPrompt { get; set; }
 
@@ -119,4 +119,24 @@ public sealed class AgentPipelineContext
     /// Dispatch middleware may replace <see cref="IterationOutcome.ToolResultTurns"/>.
     /// </summary>
     public IterationOutcome? Outcome { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, this invocation is a background
+    /// compaction (idle or <c>/compact</c>): run a summarizer pass if
+    /// needed and do not continue into a user-facing iteration.
+    /// </summary>
+    public bool CompactionOnly { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, skip the under-budget guard when
+    /// deciding whether to compact.
+    /// </summary>
+    public bool ForceCompaction { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, the current <c>next</c> is a
+    /// framework summarizer pass: do not persist model turns onto the
+    /// live conversation and do not strip inbound image attachments.
+    /// </summary>
+    public bool FrameworkPass { get; set; }
 }

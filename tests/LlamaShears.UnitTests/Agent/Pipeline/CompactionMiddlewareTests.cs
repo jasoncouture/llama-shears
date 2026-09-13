@@ -1,6 +1,9 @@
+using System.Collections.Immutable;
+using LlamaShears.Core;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
+using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Content;
 using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
@@ -13,45 +16,43 @@ namespace LlamaShears.UnitTests.Agent.Pipeline;
 
 public sealed class CompactionMiddlewareTests
 {
+    private static readonly DateTimeOffset _now = DateTimeOffset.UnixEpoch;
+
     [Test]
-    public async Task CompactsAndWritesThePromptBeforeNext()
+    public async Task NoPlanSetsTheLivePromptAndCallsNextOnce()
+    {
+        var remembered = new ModelTurn(ModelRole.User, "remembered", _now);
+        var inbound = new ModelTurn(ModelRole.User, "hi", _now);
+        var scope = PipelineTestContext.ScopeFor();
+        var original = scope.GetAgentConfig();
+        var nextCount = 0;
+        ModelPrompt? seen = null;
+        var middleware = BuildMiddleware(scope, plan: null);
+
+        await middleware.InvokeAsync(
+            BuildContext([remembered], [inbound]),
+            (ctx, _) =>
+            {
+                nextCount++;
+                seen = ctx.Prompt;
+                return Task.CompletedTask;
+            },
+            CancellationToken.None);
+
+        await Assert.That(nextCount).IsEqualTo(1);
+        await Assert.That(seen).IsNotNull();
+        await Assert.That(seen!.Turns).IsEquivalentTo([remembered]);
+        await Assert.That(scope.GetAgentConfig()).IsEqualTo(original);
+        await Assert.That(scope.GetAgentConfig().PromptContext).IsEqualTo(original.PromptContext);
+    }
+
+    [Test]
+    public async Task NoPlanAndCompactionOnlyDoesNotCallNext()
     {
         var nextCalled = false;
-        var compactBeforeNext = false;
-        var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
-        var system = new ModelTurn(ModelRole.System, "persona", DateTimeOffset.UnixEpoch);
-        var snapshot = TestAgentConfigs.BuildAgentContext("alice");
-        var provider = Substitute.For<IAgentContextProvider>();
-        provider
-            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(snapshot));
-        var compacted = new ModelPrompt([system, remembered]);
-        var compactor = Substitute.For<IContextCompactor>();
-        ModelPrompt? sent = null;
-        compactor
-            .CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                compactBeforeNext = !nextCalled;
-                sent = call.Arg<ModelPrompt>();
-                return ValueTask.FromResult(compacted);
-            });
-        IAgentMiddleware middleware = new CompactionMiddleware(
-            compactor,
-            provider,
-            Substitute.For<IEventBus>(),
-            PipelineTestContext.ScopeFor());
-        var context = new AgentPipelineContext(
-            new FakeAgentContext("alice", [remembered]),
-            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
-            CancellationToken.None)
-        {
-            SystemPrompt = system,
-        };
+        var middleware = BuildMiddleware(PipelineTestContext.ScopeFor(), plan: null);
+        var context = BuildContext([], [new ModelTurn(ModelRole.User, "hi", _now)]);
+        context.CompactionOnly = true;
 
         await middleware.InvokeAsync(
             context,
@@ -62,124 +63,162 @@ public sealed class CompactionMiddlewareTests
             },
             CancellationToken.None);
 
-        await Assert.That(nextCalled).IsTrue();
-        await Assert.That(compactBeforeNext).IsTrue();
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns[0]).IsEqualTo(system);
-        await Assert.That(sent.Turns[1]).IsEqualTo(remembered);
-        await Assert.That(context.Prompt).IsEqualTo(compacted);
-        await compactor.Received(1).CompactAsync(
-            snapshot,
-            Arg.Any<ModelPrompt>(),
-            false,
-            context.TurnToken);
+        await Assert.That(nextCalled).IsFalse();
+        await Assert.That(context.Prompt).IsNull();
     }
 
     [Test]
-    public async Task OmitsSystemWhenTheBagHasNone()
+    public async Task PlanOverlaysSystemAndEphemeralTemplatesThenRestoresThem()
     {
-        var remembered = new ModelTurn(ModelRole.User, "remembered", DateTimeOffset.UnixEpoch);
-        var provider = Substitute.For<IAgentContextProvider>();
-        provider
-            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext("alice")));
-        ModelPrompt? sent = null;
-        var compactor = Substitute.For<IContextCompactor>();
-        compactor
-            .CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call =>
+        var transcript = new ModelTurn(ModelRole.User, "<turn role=\"user\">older</turn>", _now);
+        var preserved = new ModelTurn(ModelRole.User, "keep-me", _now);
+        var plan = new CompactionPlan(null, transcript, [preserved]);
+        var rebuilt = new ModelPrompt([
+            new ModelTurn(ModelRole.Assistant, "the summary", _now),
+            preserved,
+        ]);
+        var scope = PipelineTestContext.ScopeFor();
+        var original = scope.GetAgentConfig();
+        var nextCount = 0;
+        AgentConfig? firstConfig = null;
+        ModelPrompt? firstPrompt = null;
+        AgentConfig? secondConfig = null;
+        var (middleware, compactor) = BuildMiddlewareWithCompactor(scope, plan, rebuilt);
+        var context = BuildContext([preserved], [new ModelTurn(ModelRole.User, "hi", _now)]);
+
+        await middleware.InvokeAsync(
+            context,
+            (ctx, _) =>
             {
-                sent = call.Arg<ModelPrompt>();
-                return ValueTask.FromResult(call.Arg<ModelPrompt>());
-            });
-        IAgentMiddleware middleware = new CompactionMiddleware(
-            compactor,
-            provider,
-            Substitute.For<IEventBus>(),
-            PipelineTestContext.ScopeFor());
-        var context = new AgentPipelineContext(
-            new FakeAgentContext("alice", [remembered]),
-            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+                nextCount++;
+                if (nextCount == 1)
+                {
+                    firstConfig = scope.GetAgentConfig();
+                    firstPrompt = ctx.Prompt;
+                    ctx.Outcome = new IterationOutcome(
+                        Interrupted: false,
+                        ToolResultTurns: [],
+                        Content: "the summary");
+                }
+                else
+                {
+                    secondConfig = scope.GetAgentConfig();
+                }
+                return Task.CompletedTask;
+            },
             CancellationToken.None);
 
-        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
-
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns[0]).IsEqualTo(remembered);
-        await Assert.That(context.Prompt).IsEqualTo(sent);
+        await Assert.That(nextCount).IsEqualTo(2);
+        await Assert.That(firstConfig!.SystemPrompt).IsEqualTo("COMPACTION.md");
+        await Assert.That(firstConfig.PromptContext).IsEqualTo("COMPACTION.md");
+        await Assert.That(firstPrompt!.Turns).IsEquivalentTo([transcript]);
+        await Assert.That(firstPrompt.Turns.Any(t => t.Role is ModelRole.System or ModelRole.SystemEphemeral))
+            .IsFalse();
+        await Assert.That(secondConfig).IsEqualTo(original);
+        await Assert.That(scope.GetAgentConfig()).IsEqualTo(original);
+        await Assert.That(context.Prompt).IsEqualTo(rebuilt);
+        await compactor.Received(1).CommitAsync(plan, "the summary", context.TurnToken);
     }
 
     [Test]
-    public async Task PromptKeepsImageAttachmentsFromLiveTurns()
+    public async Task CompactionOnlyStopsAfterTheSummarizerPass()
+    {
+        var transcript = new ModelTurn(ModelRole.User, "older", _now);
+        var plan = new CompactionPlan(null, transcript, []);
+        var nextCount = 0;
+        var middleware = BuildMiddleware(
+            PipelineTestContext.ScopeFor(),
+            plan,
+            new ModelPrompt([new ModelTurn(ModelRole.Assistant, "summary", _now)]));
+        var context = BuildContext([], []);
+        context.CompactionOnly = true;
+
+        await middleware.InvokeAsync(
+            context,
+            (ctx, _) =>
+            {
+                nextCount++;
+                ctx.Outcome = new IterationOutcome(
+                    Interrupted: false,
+                    ToolResultTurns: [],
+                    Content: "summary");
+                return Task.CompletedTask;
+            },
+            CancellationToken.None);
+
+        await Assert.That(nextCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task EmptySummaryThrows()
+    {
+        var plan = new CompactionPlan(null, new ModelTurn(ModelRole.User, "older", _now), []);
+        var middleware = BuildMiddleware(PipelineTestContext.ScopeFor(), plan);
+
+        await Assert.That(async () => await middleware.InvokeAsync(
+                BuildContext([], [new ModelTurn(ModelRole.User, "hi", _now)]),
+                (ctx, _) =>
+                {
+                    ctx.Outcome = new IterationOutcome(
+                        Interrupted: false,
+                        ToolResultTurns: [],
+                        Content: "  ");
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None))
+            .Throws<CompactionFailedException>();
+    }
+
+    [Test]
+    public async Task InterruptThrows()
+    {
+        var plan = new CompactionPlan(null, new ModelTurn(ModelRole.User, "older", _now), []);
+        var middleware = BuildMiddleware(PipelineTestContext.ScopeFor(), plan);
+
+        await Assert.That(async () => await middleware.InvokeAsync(
+                BuildContext([], [new ModelTurn(ModelRole.User, "hi", _now)]),
+                (ctx, _) =>
+                {
+                    ctx.Outcome = new IterationOutcome(Interrupted: true, ToolResultTurns: []);
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None))
+            .Throws<CompactionFailedException>();
+    }
+
+    [Test]
+    public async Task PromptKeepsImageAttachmentsFromLiveTurnsWhenNotCompacting()
     {
         var image = new Attachment(AttachmentKind.Image, "image/png", "Zm9v");
-        var remembered = new ModelTurn(ModelRole.User, "see this", DateTimeOffset.UnixEpoch)
+        var remembered = new ModelTurn(ModelRole.User, "see this", _now)
         {
             Attachments = [image],
         };
-        var provider = Substitute.For<IAgentContextProvider>();
-        provider
-            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext("alice")));
-        ModelPrompt? sent = null;
-        var compactor = Substitute.For<IContextCompactor>();
-        compactor
-            .CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call =>
+        ModelPrompt? seen = null;
+        var middleware = BuildMiddleware(PipelineTestContext.ScopeFor(), plan: null);
+
+        await middleware.InvokeAsync(
+            BuildContext([remembered], [new ModelTurn(ModelRole.User, "hi", _now)]),
+            (ctx, _) =>
             {
-                sent = call.Arg<ModelPrompt>();
-                return ValueTask.FromResult(call.Arg<ModelPrompt>());
-            });
-        IAgentMiddleware middleware = new CompactionMiddleware(
-            compactor,
-            provider,
-            Substitute.For<IEventBus>(),
-            PipelineTestContext.ScopeFor());
-        var context = new AgentPipelineContext(
-            new FakeAgentContext("alice", [remembered]),
-            [new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch)],
+                seen = ctx.Prompt;
+                return Task.CompletedTask;
+            },
             CancellationToken.None);
 
-        await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
-
-        await Assert.That(sent).IsNotNull();
-        await Assert.That(sent!.Turns[0].Attachments).IsEquivalentTo([image]);
+        await Assert.That(seen).IsNotNull();
+        await Assert.That(seen!.Turns[0].Attachments).IsEquivalentTo([image]);
     }
 
     [Test]
     public async Task PublishesInboundBatchTurns()
     {
         var bus = Substitute.For<IEventBus>();
-        var provider = Substitute.For<IAgentContextProvider>();
-        provider
-            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext("alice")));
-        var compactor = Substitute.For<IContextCompactor>();
-        compactor
-            .CompactAsync(
-                Arg.Any<AgentContext>(),
-                Arg.Any<ModelPrompt>(),
-                Arg.Any<bool>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
         var scope = PipelineTestContext.ScopeFor();
-        IAgentMiddleware middleware = new CompactionMiddleware(compactor, provider, bus, scope);
-        var inbound = new ModelTurn(ModelRole.User, "hi", DateTimeOffset.UnixEpoch);
-        var context = new AgentPipelineContext(
-            new FakeAgentContext("alice"),
-            [inbound],
-            CancellationToken.None)
-        {
-            CorrelationId = Guid.CreateVersion7(),
-        };
+        var inbound = new ModelTurn(ModelRole.User, "hi", _now);
+        var middleware = BuildMiddleware(scope, plan: null, bus: bus);
+        var context = BuildContext([], [inbound]);
+        context.CorrelationId = Guid.CreateVersion7();
 
         await middleware.InvokeAsync(context, (_, _) => Task.CompletedTask, CancellationToken.None);
 
@@ -209,4 +248,48 @@ public sealed class CompactionMiddlewareTests
                 CancellationToken.None))
             .Throws<InvalidOperationException>();
     }
+
+    private static IAgentMiddleware BuildMiddleware(
+        IDataContextScope scope,
+        CompactionPlan? plan,
+        ModelPrompt? rebuilt = null,
+        IEventBus? bus = null)
+        => BuildMiddlewareWithCompactor(scope, plan, rebuilt, bus).Middleware;
+
+    private static (IAgentMiddleware Middleware, IContextCompactor Compactor) BuildMiddlewareWithCompactor(
+        IDataContextScope scope,
+        CompactionPlan? plan,
+        ModelPrompt? rebuilt = null,
+        IEventBus? bus = null)
+    {
+        var provider = Substitute.For<IAgentContextProvider>();
+        provider
+            .CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext("alice")));
+        var compactor = Substitute.For<IContextCompactor>();
+        compactor
+            .TryPrepareAsync(
+                Arg.Any<AgentContext>(),
+                Arg.Any<ModelPrompt>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(plan));
+        if (rebuilt is not null)
+        {
+            compactor
+                .CommitAsync(Arg.Any<CompactionPlan>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromResult(rebuilt));
+        }
+        IAgentMiddleware middleware = new CompactionMiddleware(
+            compactor,
+            provider,
+            bus ?? Substitute.For<IEventBus>(),
+            scope);
+        return (middleware, compactor);
+    }
+
+    private static AgentPipelineContext BuildContext(
+        IReadOnlyList<ModelTurn> liveTurns,
+        ImmutableArray<ModelTurn> batch)
+        => new(new FakeAgentContext("alice", liveTurns), batch, CancellationToken.None);
 }

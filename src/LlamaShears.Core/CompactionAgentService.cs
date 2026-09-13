@@ -1,12 +1,10 @@
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
+using LlamaShears.Core.Abstractions.Agent.Pipeline;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
-using LlamaShears.Core.Abstractions.Context;
 using LlamaShears.Core.Abstractions.Events;
 using LlamaShears.Core.Abstractions.Events.Agent;
-using LlamaShears.Core.Abstractions.Provider;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
@@ -18,27 +16,21 @@ public sealed partial class CompactionAgentService
       IDisposable
 {
     private readonly IDataContextScope _dataScope;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IContextStore _contextStore;
-    private readonly IAgentContextProvider _agentContextProvider;
-    private readonly IAgentLock _agentLock;
+    private readonly IAgentPipeline _pipeline;
     private readonly ILogger<CompactionAgentService> _logger;
     private readonly IDisposable _subscriptions;
 
     public CompactionAgentService(
         IEventBus bus,
         IDataContextScope dataScope,
-        IServiceScopeFactory scopeFactory,
         IContextStore contextStore,
-        IAgentContextProvider agentContextProvider,
-        IAgentLock agentLock,
+        IAgentPipeline pipeline,
         ILogger<CompactionAgentService> logger)
     {
         _dataScope = dataScope;
-        _scopeFactory = scopeFactory;
         _contextStore = contextStore;
-        _agentContextProvider = agentContextProvider;
-        _agentLock = agentLock;
+        _pipeline = pipeline;
         _logger = logger;
         var sessionId = _dataScope.GetCurrentSessionId();
         _subscriptions = DisposableList.Create()
@@ -69,20 +61,15 @@ public sealed partial class CompactionAgentService
     private async ValueTask CompactAsync(bool force, CancellationToken cancellationToken)
     {
         var agentId = _dataScope.GetAgentConfig().Id;
-        using var lockScope = await _agentLock.AcquireLockAsync(cancellationToken);
-        await using var bundle = _scopeFactory.CreateAsyncScopeWithData();
-        bundle.ServiceScope.ApplyScopeData(cancellationToken);
-
-        var agentContext = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
-        var prompt = new ModelPrompt([.. agentContext.Turns]);
-        var snapshot = await _agentContextProvider.CreateAgentContextAsync(_dataScope.GetCurrentSessionId(), cancellationToken)
-                           .ConfigureAwait(false)
-                       ?? throw new InvalidOperationException(
-                           $"Agent context provider returned null for running agent '{agentId}'.");
-        var compactor = bundle.ServiceProvider.GetRequiredService<IContextCompactor>();
+        var live = await _contextStore.OpenAsync(_dataScope.GetCurrentSessionId(), cancellationToken);
+        var context = new AgentPipelineContext(live, [], cancellationToken)
+        {
+            CompactionOnly = true,
+            ForceCompaction = force,
+        };
         try
         {
-            await compactor.CompactAsync(snapshot, prompt, force: force, cancellationToken);
+            await _pipeline.InvokeAsync(context, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -16,8 +16,15 @@ results; the enqueue step does not feed those back.
 dispatch middleware runs, or when the model emitted no tool calls.
 - `ToolCalls` — Tool calls the model emitted. Empty when the model produced only text.
 Dispatch middleware reads this; the iteration runner does not execute them.
+- `Content` — Visible assistant text from this iteration. Empty when the model
+produced only tool calls or was suppressed.
 
 ## Properties
+
+### `Content`
+
+Visible assistant text from this iteration. Empty when the model
+produced only tool calls or was suppressed.
 
 ### `Interrupted`
 
@@ -38,7 +45,7 @@ dispatch middleware runs, or when the model emitted no tool calls.
 
 ## Methods
 
-### `IterationOutcome`(bool Interrupted, ImmutableArray<[ModelTurn](../Provider/ModelTurn.md)> ToolResultTurns, ImmutableArray<[ToolCall](../Provider/ToolCall.md)> ToolCalls)
+### `IterationOutcome`(bool Interrupted, ImmutableArray<[ModelTurn](../Provider/ModelTurn.md)> ToolResultTurns, ImmutableArray<[ToolCall](../Provider/ToolCall.md)> ToolCalls, string Content)
 
 Result of running one agent iteration: was the turn interrupted before
 completion, the tool calls the model emitted, and any tool-result
@@ -54,4 +61,6 @@ results; the enqueue step does not feed those back.
 dispatch middleware runs, or when the model emitted no tool calls.
 - `ToolCalls` — Tool calls the model emitted. Empty when the model produced only text.
 Dispatch middleware reads this; the iteration runner does not execute them.
+- `Content` — Visible assistant text from this iteration. Empty when the model
+produced only tool calls or was suppressed.
 

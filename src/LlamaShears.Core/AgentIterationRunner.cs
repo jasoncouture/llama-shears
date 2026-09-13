@@ -70,7 +70,7 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         context.Tools = tools;
         var promptOptions = new PromptOptions(
             Tools: tools,
-            EmitTurns: true);
+            EmitTurns: !context.FrameworkPass);
 
         InferenceOutcome outcome;
         var emptyAttempt = 0;
@@ -127,7 +127,8 @@ public sealed partial class AgentIterationRunner : IAgentIterationRunner
         return new IterationOutcome(
             Interrupted: outcome.Interrupted,
             ToolResultTurns: [],
-            ToolCalls: stripTools ? [] : outcome.ToolCalls);
+            ToolCalls: stripTools ? [] : outcome.ToolCalls,
+            Content: outcome.Content);
     }
 
     [LoggerMessage(Level = LogLevel.Warning,

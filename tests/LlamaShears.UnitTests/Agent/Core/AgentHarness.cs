@@ -40,12 +40,12 @@ internal static class AgentHarness
         services.GetRequiredService<IDataContextFactory>().Current = dataScope;
 
         var compactor = Substitute.For<IContextCompactor>();
-        compactor.CompactAsync(
+        compactor.TryPrepareAsync(
                 Arg.Any<AgentContext>(),
                 Arg.Any<ModelPrompt>(),
                 Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.Arg<ModelPrompt>()));
+            .Returns(ValueTask.FromResult<CompactionPlan?>(null));
         var contextProvider = Substitute.For<IAgentContextProvider>();
         contextProvider.CreateAgentContextAsync(Arg.Any<SessionId>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<AgentContext?>(TestAgentConfigs.BuildAgentContext(id)));

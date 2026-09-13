@@ -30,11 +30,16 @@ public static class AgentMiddlewareOrder
     /// <summary>Re-enqueue tool-result turns when the iteration was not interrupted.</summary>
     public const int ToolResultEnqueue = 6000;
 
-    /// <summary>Render the persistent system-prompt turn onto the bag.</summary>
-    public const int SystemPrompt = 7000;
+    /// <summary>
+    /// Publish the inbound batch, optionally overlay
+    /// <c>AgentConfig.SystemPrompt</c> and
+    /// <c>AgentConfig.PromptContext</c> for a summarizer pass, then
+    /// <c>next</c> so those middleware render the templates.
+    /// </summary>
+    public const int Compaction = 7000;
 
-    /// <summary>Publish the inbound batch, build and compact <c>Prompt</c>.</summary>
-    public const int Compaction = 8000;
+    /// <summary>Render the persistent system-prompt turn onto the bag and prepend it to <c>Prompt</c>.</summary>
+    public const int SystemPrompt = 8000;
 
     /// <summary>Render the ephemeral turn and insert it into <c>Prompt</c>.</summary>
     public const int EphemeralContext = 9000;

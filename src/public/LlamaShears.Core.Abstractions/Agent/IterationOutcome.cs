@@ -22,7 +22,12 @@ namespace LlamaShears.Core.Abstractions.Agent;
 /// Tool calls the model emitted. Empty when the model produced only text.
 /// Dispatch middleware reads this; the iteration runner does not execute them.
 /// </param>
+/// <param name="Content">
+/// Visible assistant text from this iteration. Empty when the model
+/// produced only tool calls or was suppressed.
+/// </param>
 public sealed record IterationOutcome(
     bool Interrupted,
     ImmutableArray<ModelTurn> ToolResultTurns,
-    ImmutableArray<ToolCall> ToolCalls = default);
+    ImmutableArray<ToolCall> ToolCalls = default,
+    string Content = "");

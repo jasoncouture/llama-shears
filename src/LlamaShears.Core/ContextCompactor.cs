@@ -1,77 +1,36 @@
-using System.Collections.Immutable;
 using LlamaShears.Core.Abstractions.Agent;
 using LlamaShears.Core.Abstractions.Agent.Persistence;
 using LlamaShears.Core.Abstractions.Agent.Sessions;
 using LlamaShears.Core.Abstractions.Common;
 using LlamaShears.Core.Abstractions.Context;
-using LlamaShears.Core.Abstractions.Events;
-using LlamaShears.Core.Abstractions.Events.Agent;
 using LlamaShears.Core.Abstractions.Provider;
-using LlamaShears.Core.Abstractions.SystemPrompt;
-using LlamaShears.Core.Tools.ModelContextProtocol;
 using Microsoft.Extensions.Logging;
 
 namespace LlamaShears.Core;
 
 public sealed partial class ContextCompactor : IContextCompactor
 {
-    private const int MinTurnsForCompaction = 5;
-
+    private const int PreserveLastTurnCount = 6;
     private const int MinTokenLimitFloor = 256;
-
     private const int DefaultPredictDivisor = 6;
-    private const int SummaryDivisor = 3;
-    private const int MaxToolCallingTurns = 5;
-
-    private const string CompactionTemplateFileName = "COMPACTION.md";
-    private const string MemoryToolName = "memory_store";
-    private const string KickerFileName = "PROMPT.md";
-    private const string KickerSubFolder = "compaction";
 
     private readonly IContextStore _contextStore;
-    private readonly IAgentStateTracker _stateTracker;
-    private readonly IInferenceRunner _inferenceRunner;
-    private readonly ToolCallExecutor _toolExecutor;
-    private readonly IEventBus _eventPublisher;
-    private readonly IModelContextProtocolServerRegistry _serverRegistry;
-    private readonly IModelContextProtocolToolDiscovery _toolDiscovery;
-    private readonly ITemplateFileLocator _locator;
-    private readonly ITemplateRenderer _templateRenderer;
-    private readonly ISystemPromptProvider _systemPrompt;
-    private readonly TimeProvider _time;
+    private readonly CompactionTranscriptFormatter _transcriptFormatter;
     private readonly IDataContextScope _dataContextScope;
     private readonly ILogger<ContextCompactor> _logger;
 
-    public ContextCompactor(IContextStore contextStore,
-        IAgentStateTracker stateTracker,
-        IInferenceRunner inferenceRunner,
-        ToolCallExecutor toolExecutor,
-        IEventBus eventPublisher,
-        IModelContextProtocolServerRegistry serverRegistry,
-        IModelContextProtocolToolDiscovery toolDiscovery,
-        ITemplateFileLocator locator,
-        ITemplateRenderer templateRenderer,
-        ISystemPromptProvider systemPrompt,
-        TimeProvider time,
+    public ContextCompactor(
+        IContextStore contextStore,
         IDataContextScope dataContextScope,
         ILogger<ContextCompactor> logger)
     {
         _contextStore = contextStore;
-        _stateTracker = stateTracker;
-        _inferenceRunner = inferenceRunner;
-        _toolExecutor = toolExecutor;
-        _eventPublisher = eventPublisher;
-        _serverRegistry = serverRegistry;
-        _toolDiscovery = toolDiscovery;
-        _locator = locator;
-        _templateRenderer = templateRenderer;
-        _systemPrompt = systemPrompt;
-        _time = time;
+        _transcriptFormatter = new CompactionTranscriptFormatter();
         _dataContextScope = dataContextScope;
         _logger = logger;
     }
 
-    public async ValueTask<ModelPrompt> CompactAsync(
+    public ValueTask<CompactionPlan?> TryPrepareAsync(
         AgentContext agentContext,
         ModelPrompt prompt,
         bool force,
@@ -79,15 +38,15 @@ public sealed partial class ContextCompactor : IContextCompactor
     {
         ArgumentNullException.ThrowIfNull(prompt);
 
-        if (prompt.Turns.Count < MinTurnsForCompaction)
+        if (!TrySplit(prompt, out var systemTurn, out var older, out var preserved))
         {
-            return prompt;
+            return ValueTask.FromResult<CompactionPlan?>(null);
         }
 
         var configuration = _dataContextScope.GetModelConfiguration();
         if (configuration.ContextLength is not { } window)
         {
-            return prompt;
+            return ValueTask.FromResult<CompactionPlan?>(null);
         }
 
         if (!force)
@@ -99,199 +58,92 @@ public sealed partial class ContextCompactor : IContextCompactor
             var threshold = (int)Math.Floor(window * 0.75);
             if (lastReportedTokens + predictBudget + nextTokenEstimate < threshold)
             {
-                return prompt;
+                return ValueTask.FromResult<CompactionPlan?>(null);
             }
         }
 
-        var lastTurn = prompt.Turns[^1];
-        var preserveTrailingUser = lastTurn.Role is ModelRole.User or ModelRole.FrameworkUser;
-        if (!preserveTrailingUser && !force)
+        var transcript = new ModelTurn(
+            ModelRole.User,
+            _transcriptFormatter.Format(older),
+            prompt.Turns[^1].Timestamp);
+        return ValueTask.FromResult<CompactionPlan?>(
+            new CompactionPlan(systemTurn, transcript, [.. preserved]));
+    }
+
+    public async ValueTask<ModelPrompt> CommitAsync(
+        CompactionPlan plan,
+        string summary,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentException.ThrowIfNullOrWhiteSpace(summary);
+
+        var stamp = plan.Preserved.Length > 0 ? plan.Preserved[^1].Timestamp : plan.Transcript.Timestamp;
+        var rebuilt = new List<ModelTurn>(plan.Preserved.Length + 2);
+        if (plan.SystemTurn is not null)
         {
-            return prompt;
+            rebuilt.Add(plan.SystemTurn);
         }
+        rebuilt.Add(new ModelTurn(ModelRole.Assistant, summary, stamp));
+        rebuilt.AddRange(plan.Preserved);
+        var rebuiltPrompt = new ModelPrompt(rebuilt);
 
-        await _eventPublisher.PublishAsync(
-            Event.WellKnown.Agent.CompactingStarted with { Id = _dataContextScope.GetCurrentSessionId() },
-            new AgentCompactionRequest(),
-            cancellationToken);
-        try
+        LogContextCompacted(_dataContextScope.GetAgentConfig().Id);
+        var session = _dataContextScope.GetCurrentSessionId();
+        await _contextStore.ClearAsync(session, archive: true, cancellationToken);
+        var live = await _contextStore.OpenAsync(session, cancellationToken);
+        foreach (var turn in rebuiltPrompt.Turns)
         {
-            var memoryTools = await ResolveMemoryStoreToolAsync(cancellationToken);
-            var summary = await SummarizeAsync(
-                agentContext.AgentId,
-                prompt,
-                window,
-                preserveTrailingUser,
-                memoryTools,
-                cancellationToken);
-
-            var rebuilt = new List<ModelTurn>(3);
-            if (prompt.Turns[0].Role == ModelRole.System)
+            if (turn.Role == ModelRole.System)
             {
-                rebuilt.Add(prompt.Turns[0]);
+                continue;
             }
-            rebuilt.Add(new ModelTurn(ModelRole.Assistant, summary, lastTurn.Timestamp));
-            if (preserveTrailingUser)
-            {
-                rebuilt.Add(lastTurn);
-            }
-            var rebuiltPrompt = new ModelPrompt(rebuilt);
-
-            LogContextCompacted(agentContext.AgentId);
-            var session = _dataContextScope.GetCurrentSessionId();
-            await _contextStore.ClearAsync(session, archive: true, cancellationToken);
-            var live = await _contextStore.OpenAsync(session, cancellationToken);
-            foreach (var turn in rebuiltPrompt.Turns)
-            {
-                if (turn.Role == ModelRole.System)
-                {
-                    continue;
-                }
-                await live.AppendAsync(turn, cancellationToken);
-            }
-            return rebuiltPrompt;
+            await live.AppendAsync(turn, cancellationToken);
         }
-        finally
-        {
-            await _eventPublisher.PublishAsync(
-                Event.WellKnown.Agent.CompactingFinished with { Id = _dataContextScope.GetCurrentSessionId() },
-                new AgentCompactionRequest(),
-                CancellationToken.None);
-        }
+        return rebuiltPrompt;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent '{AgentId}' compacted its context to fit the window.")]
     private partial void LogContextCompacted(string agentId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{AgentId}' compaction reached the tool-calling turn cap ({Limit}); stripping tools and forcing a text-only summary turn.")]
-    private partial void LogCompactionToolLimitReached(string agentId, int limit);
-
-    private async ValueTask<ImmutableArray<ToolGroup>> ResolveMemoryStoreToolAsync(CancellationToken cancellationToken)
-    {
-        var servers = _serverRegistry.Resolve(whitelist: [ToolCall.InternalToolSource]);
-        if (servers.Count == 0)
-        {
-            return [];
-        }
-        var groups = await _toolDiscovery.DiscoverAsync(servers.Keys, cancellationToken);
-        foreach (var group in groups)
-        {
-            if (!string.Equals(group.Source, ToolCall.InternalToolSource, StringComparison.Ordinal))
-            {
-                continue;
-            }
-            foreach (var descriptor in group.Tools)
-            {
-                if (string.Equals(descriptor.Name, MemoryToolName, StringComparison.Ordinal))
-                {
-                    return [new ToolGroup(ToolCall.InternalToolSource, [descriptor])];
-                }
-            }
-        }
-        return [];
-    }
-
-    private async ValueTask<string> LoadKickerAsync(CancellationToken cancellationToken)
-    {
-        var resolved = _locator.Locate(KickerSubFolder, KickerFileName, KickerFileName)
-            ?? throw new FileNotFoundException(
-                $"Compaction kicker template '{KickerFileName}' not found in workspace, templates, or bundled '{KickerSubFolder}/' folder.");
-        var data = SnapshotScope();
-        var rendered = await _templateRenderer.RenderAsync(resolved, data, cancellationToken).ConfigureAwait(false)
-            ?? throw new FileNotFoundException(
-                $"Compaction kicker template '{resolved}' could not be rendered.");
-        return rendered;
-    }
-
-    private IReadOnlyDictionary<string, object?> SnapshotScope()
-        => _dataContextScope.Snapshot();
-
-    private async ValueTask<string> SummarizeAsync(
-        string agentId,
+    private static bool TrySplit(
         ModelPrompt prompt,
-        int window,
-        bool preserveTrailingUser,
-        ImmutableArray<ToolGroup> tools,
-        CancellationToken cancellationToken)
+        out ModelTurn? systemTurn,
+        out IReadOnlyList<ModelTurn> older,
+        out IReadOnlyList<ModelTurn> preserved)
     {
-        var historyCount = preserveTrailingUser
-            ? prompt.Turns.Count - 1
-            : prompt.Turns.Count;
-        _stateTracker.SetState(channelId: "compactor", eventId: $"{agentId}-compaction");
-        var historyTurns = new List<ModelTurn>(historyCount + 1);
-        for (var i = 0; i < historyCount; i++)
+        systemTurn = prompt.Turns.Count > 0 && prompt.Turns[0].Role == ModelRole.System
+            ? prompt.Turns[0]
+            : null;
+
+        List<ModelTurn> eligible = [.. prompt.Turns.Where(IsEligible)];
+        if (eligible.Count <= PreserveLastTurnCount)
         {
-            historyTurns.Add(prompt.Turns[i]);
-        }
-        if (historyTurns.Count == 0 || historyTurns[^1].Role is not ModelRole.User and not ModelRole.FrameworkUser)
-        {
-            var kicker = await LoadKickerAsync(cancellationToken);
-            historyTurns.Add(new ModelTurn(ModelRole.User, kicker, prompt.Turns[^1].Timestamp));
+            older = [];
+            preserved = [];
+            return false;
         }
 
-        var summaryCap = Math.Max(window / SummaryDivisor, MinTokenLimitFloor);
-        var options = new PromptOptions(
-            TokenLimit: summaryCap,
-            Tools: tools);
-        var systemBody = await _systemPrompt.GetAsync(
-            CompactionTemplateFileName,
-            SnapshotScope(),
-            cancellationToken);
-        var systemTurn = new ModelTurn(ModelRole.System, systemBody, _time.GetLocalNow());
-
-        var toolCallingTurns = 0;
-
-        while (true)
+        var cut = eligible.Count - PreserveLastTurnCount;
+        while (cut > 0 && eligible[cut].Role == ModelRole.Tool)
         {
-            var summarizationPrompt = new ModelPrompt([systemTurn, .. historyTurns]);
-            var outcome = await _inferenceRunner.RunAsync(
-                prompt: summarizationPrompt,
-                options: options,
-                sessionId: _dataContextScope.GetCurrentSessionId(),
-                correlationId: _dataContextScope.GetCorrelationId(),
-                channelId: prompt.Turns[^1].ChannelId,
-                cancellationToken: cancellationToken);
-
-            if (outcome.Interrupted)
-            {
-                throw new CompactionFailedException("Compaction was interrupted before the model produced a summary.");
-            }
-
-            if (!outcome.ToolCalls.IsDefaultOrEmpty)
-            {
-                toolCallingTurns++;
-                var assistantTurn = new ModelTurn(ModelRole.Assistant, outcome.Content, prompt.Turns[^1].Timestamp)
-                {
-                    ToolCalls = outcome.ToolCalls,
-                };
-                historyTurns.Add(assistantTurn);
-                var toolTurns = await _toolExecutor.ExecuteAsync(
-                    outcome.ToolCalls,
-                    options.Tools,
-                    _dataContextScope.GetCurrentSessionId(),
-                    _dataContextScope.GetCorrelationId(),
-                    prompt.Turns[^1].ChannelId,
-                    turnSessionId: null,
-                    cancellationToken,
-                    cancellationToken);
-                historyTurns.AddRange(toolTurns);
-                if (toolCallingTurns >= MaxToolCallingTurns)
-                {
-                    LogCompactionToolLimitReached(agentId, MaxToolCallingTurns);
-                    options = options with { Tools = [] };
-                }
-                continue;
-            }
-
-            var summary = outcome.Content.Trim();
-            if (summary.Length == 0)
-            {
-                throw new CompactionFailedException(
-                    "Model produced an empty summary; cannot compact context.");
-            }
-            return summary;
+            cut--;
         }
+
+        if (cut <= 0)
+        {
+            older = [];
+            preserved = [];
+            return false;
+        }
+
+        older = eligible.GetRange(0, cut);
+        preserved = eligible.GetRange(cut, eligible.Count - cut);
+        return true;
     }
+
+    private static bool IsEligible(ModelTurn turn)
+        => turn.Role is not ModelRole.System and not ModelRole.SystemEphemeral && !turn.Ephemeral;
 
     private static int ResolvePredictBudget(ModelConfiguration configuration, int window)
     {
