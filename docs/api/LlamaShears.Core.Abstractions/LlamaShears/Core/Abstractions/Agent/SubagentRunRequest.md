@@ -114,10 +114,4 @@ contain path separators.
 - `PromptContext` — Optional prompt-context template file name (e.g.
 `COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
 contain path separators.
-- `SystemPrompt` — Optional system-prompt template file name (e.g.
-`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
-contain path separators.
-- `PromptContext` — Optional prompt-context template file name (e.g.
-`COMPACTION.md`). Omitted keeps `SUBAGENT.md`. Must not
-contain path separators.
 
