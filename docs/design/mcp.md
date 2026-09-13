@@ -22,6 +22,7 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
             .WithTools<SkillTools>()
             .WithTools<SessionTools>()
             .WithTools<SubagentTools>()
+            .WithTools<CompactionTools>()
             .WithTools<DiscordTools>()
             .WithTools<HttpTools>();
 ```
@@ -36,6 +37,7 @@ Tool names follow a `<category>_<action>` convention so they group naturally in 
 | `http_request` | First-class HTTP client (GET/POST/headers/timeouts). See *HTTP requests* below. |
 | `session_list`, `session_send` | List the calling agent's live sessions; deliver a user-role turn to one of them. |
 | `subagent_run` | Spawn a one-shot child of the calling root session. See *Sub-agents* below. |
+| `context_compact` | Summarize older turns now (last six eligible kept). Same child path as automatic compaction; does not go through `/compact`. |
 
 The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__file_read`, `llamashears__memory_store`, etc.
 

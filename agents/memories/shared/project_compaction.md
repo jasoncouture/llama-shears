@@ -14,6 +14,8 @@ type: project
 
 `CompactionAgentService` invokes the pipeline (`CompactionOnly`, optional `ForceCompaction`). Do not take `IAgentLock` first — it is not reentrant. Nested sessions cannot spawn; compaction there fails loudly.
 
+`context_compact` (bundled MCP) is the in-turn path: `TryPrepareAsync(force: true)` then the same `ISubagentRunner` overlays. Do **not** publish `CompactionRequest` from the tool — that re-enters the parent pipeline and deadlocks on `IAgentLock`.
+
 **How to apply:**
 
 - New compaction templates go in `system/COMPACTION.md` and `system/context/COMPACTION.md`. Selection is `SubagentRunRequest` overlays only.

@@ -50,6 +50,11 @@ invokes the pipeline with `CompactionOnly` (and `ForceCompaction` for
 already holds it. Nested sessions cannot spawn; a child that needs
 compaction fails loudly.
 
+Agents can also call bundled `context_compact`. That tool runs the same
+prepare → child → commit path in-process (`force: true`) so it can
+fire during a turn without re-entering the parent lock. Do not implement
+it as a `CompactionRequest` publish.
+
 ## Budget (auto-compaction)
 
 With `force: false`, a plan is prepared only when the last reported
