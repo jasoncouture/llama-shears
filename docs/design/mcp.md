@@ -24,7 +24,8 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
             .WithTools<SubagentTools>()
             .WithTools<CompactionTools>()
             .WithTools<DiscordTools>()
-            .WithTools<HttpTools>();
+            .WithTools<HttpTools>()
+            .WithTools<SqliteTools>();
 ```
 
 Tool names follow a `<category>_<action>` convention so they group naturally in the model's tool listing:
@@ -35,6 +36,7 @@ Tool names follow a `<category>_<action>` convention so they group naturally in 
 | `memory_store`, `memory_search`, `memory_index` | Memory operations. See [memory.md](memory.md). |
 | `discord_list`, `discord_send` | Post to operator-configured Discord webhooks. See *Discord webhooks* below. |
 | `http_request` | First-class HTTP client (GET/POST/headers/timeouts). See *HTTP requests* below. |
+| `sqlite_query` | Execute SQL against a workspace-confined SQLite file. See *SQLite* below. |
 | `session_list`, `session_send` | List the calling agent's live sessions; deliver a user-role turn to one of them. |
 | `subagent_run` | Spawn a one-shot child of the calling root session. See *Sub-agents* below. |
 | `context_compact` | Summarize older turns now (last six eligible kept). Same child path as automatic compaction; does not go through `/compact`. |
@@ -60,6 +62,19 @@ Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
 - **Response.** Returns `status`, `reasonPhrase`, `ok`, flattened headers, `contentType`, and an inline `body`. HTTP error statuses complete the call (`ok=false`); they are not tool failures. HEAD / 204 / 304 skip the body. Inline text is capped at 64 KiB; `truncated=true` only when more bytes remain (an exact 64 KiB body is not truncated). A hard cut drops an incomplete trailing UTF-8 sequence. Binary is sniffed first (NUL in the first 512 bytes), then the Content-Type for image/audio/video/pdf/zip. `application/octet-stream` is not forced binary.
 - **Save.** Optional `saveAs` writes the full body (text or binary) into the workspace, same confinement as `file_write` (no `system/`, no path escape, file-protection policy). The body is streamed to a sibling temp file and `File.Move`d into place so a failed or timed-out download does not clobber an existing file. Cap 512 MiB (`savedTruncated=true` if cut) so Go binaries and small archives fit. Existing files require `overwrite=true`. A failed save sets `saveError` and leaves `ok` as the HTTP status; `error` stays transport-only. Prefer `saveAs` for images, PDFs, binaries, and anything larger than the inline cap.
 - **Auth.** Authenticated agent required. Transport/timeout failures set `error` / `timedOut`.
+
+### SQLite
+
+[`SqliteTools`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/Sqlite/SqliteTools.cs) is the bundled `sqlite_query` tool. Use it instead of `shell_run` + `sqlite3`.
+
+- **Path.** Workspace-relative (absolute paths must still resolve inside the workspace). Same write confinement as `file_write`: no `system/`, no escape, file-protection policy. Missing parent directories and the database file are created on open.
+- **SQL.** Raw statements — DDL, DML, `SELECT`, `PRAGMA`. Multiple semicolon-delimited statements run in order. When several produce result sets, the last one is returned and `rowsAffected` is aggregated across the batch.
+- **Budget.** `maxRows` defaults to 100 and is hard-capped at 1000. The reader stops after the cap (`truncated=true`); rows are not buffered unbounded.
+- **Types.** INTEGER → JSON number, REAL → number, TEXT → string, NULL → `null`, BLOB → Base64 string.
+- **Concurrency.** Connections open `ReadWriteCreate` + shared cache, then `PRAGMA journal_mode = WAL` and `PRAGMA busy_timeout = 5000` so concurrent sub-agents wait on locks instead of failing `SQLITE_BUSY`.
+- **Errors.** SQL and IO failures populate `error` and return empty `columns` / `rows`. They do not throw out of the tool call.
+
+This is not a security sandbox. Agents already have `shell_run`. MCP allow/deny of the tool is the gate.
 
 ### Sub-agents
 
