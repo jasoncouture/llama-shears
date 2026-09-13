@@ -46,13 +46,23 @@ public sealed partial class ToolCallExecutor
             return [];
         }
 
-        var turns = new List<ModelTurn>(calls.Length);
+        var pending = new Task<(ToolCall Call, ToolCallResult Result)>[calls.Length];
         for (var i = 0; i < calls.Length; i++)
         {
-            var call = calls[i];
-            var result = i >= ConcurrentToolCallLimit
-                ? await LimitAsync(call, sessionId, correlationId, publishToken)
-                : await _dispatcher.DispatchAsync(call, tools, sessionId, correlationId, dispatchToken);
+            pending[i] = DispatchOrLimitAsync(
+                i,
+                calls[i],
+                tools,
+                sessionId,
+                correlationId,
+                dispatchToken,
+                publishToken);
+        }
+
+        var completed = await Task.WhenAll(pending);
+        var turns = new List<ModelTurn>(completed.Length);
+        foreach (var (call, result) in completed)
+        {
             var turn = new ModelTurn(ModelRole.Tool, result.Content, _time.GetLocalNow(), ChannelId: channelId)
             {
                 ToolCall = call,
@@ -68,6 +78,21 @@ public sealed partial class ToolCallExecutor
         }
 
         return [.. turns];
+    }
+
+    private async Task<(ToolCall Call, ToolCallResult Result)> DispatchOrLimitAsync(
+        int index,
+        ToolCall call,
+        ImmutableArray<ToolGroup> tools,
+        SessionId sessionId,
+        Guid correlationId,
+        CancellationToken dispatchToken,
+        CancellationToken publishToken)
+    {
+        var result = index >= ConcurrentToolCallLimit
+            ? await LimitAsync(call, sessionId, correlationId, publishToken)
+            : await _dispatcher.DispatchAsync(call, tools, sessionId, correlationId, dispatchToken);
+        return (call, result);
     }
 
     private async Task<ToolCallResult> LimitAsync(
