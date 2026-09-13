@@ -1,3 +1,4 @@
+using LlamaShears.Api.Tools.ModelContextProtocol.Compaction;
 using LlamaShears.Api.Tools.ModelContextProtocol.Cron;
 using LlamaShears.Api.Tools.ModelContextProtocol.Discord;
 using LlamaShears.Api.Tools.ModelContextProtocol.Filesystem;
@@ -56,6 +57,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<SkillTools>()
             .WithTools<SessionTools>()
             .WithTools<SubagentTools>()
+            .WithTools<CompactionTools>()
             .WithTools<DiscordTools>()
             .WithTools<HttpTools>();
 
