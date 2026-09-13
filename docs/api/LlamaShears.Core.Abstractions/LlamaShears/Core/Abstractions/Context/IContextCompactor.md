@@ -3,10 +3,8 @@
 Assembly: `LlamaShears.Core.Abstractions`
 
 Decides whether a [ModelPrompt](../Provider/ModelPrompt.md) needs compaction and
-commits a summary plus the preserved tail. Does not call the model
-and does not render system or ephemeral templates; the pipeline
-overlays those template names and `next`s so existing
-middleware render them.
+commits a summary plus the preserved tail. Does not call the model;
+the pipeline launches a compaction child for the summary.
 
 ## Methods
 

@@ -21,10 +21,9 @@ Hold [IAgentLock](../IAgentLock.md) across the rest of the turn.
 
 ### `Compaction`
 
-Publish the inbound batch, optionally overlay
-`AgentConfig.SystemPrompt` and
-`AgentConfig.PromptContext` for a summarizer pass, then
-`next` so those middleware render the templates.
+Publish the inbound batch, optionally spawn a compaction
+child (`COMPACTION.md` templates), commit the summary,
+then set `Prompt` for the rest of the onion.
 
 ### `CorrelationScope`
 

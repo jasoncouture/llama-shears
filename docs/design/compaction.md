@@ -21,40 +21,34 @@ even when forced.
 The compactor does **not** render system or ephemeral templates and
 does not copy source turns into the summarizer prompt. It only
 prepares the transcript. [`CompactionMiddleware`](../../src/LlamaShears.Core/Pipeline/CompactionMiddleware.cs)
-(order 7000) overlays both template names, then `next()` so the usual
-middleware render them:
+(order 7000) launches an awaited child via
+[`ISubagentRunner`](../../src/public/LlamaShears.Core.Abstractions/Agent/ISubagentRunner.cs):
 
 ```
-AgentConfig.SystemPrompt  = COMPACTION.md   → SystemPromptMiddleware
-AgentConfig.PromptContext = COMPACTION.md   → EphemeralContextMiddleware
-context.Prompt            = [transcript]
+Prompt        = transcript text
+SystemPrompt  = COMPACTION.md
+PromptContext = COMPACTION.md
+MaxTurns      = 5
+AwaitResult   = true
 ```
 
-The model therefore sees `<System><Ephemeral><Transcript>`. The last
-user message is a transcript of older turns, not a live session.
+The child is a normal agent: its onion renders those templates.
+Summarizer turns stay on the child session. The last user message is
+the transcript, not a live session.
 [`system/COMPACTION.md`](../../src/LlamaShears/content/templates/workspace/system/COMPACTION.md)
 asks for a detailed summary plus a bulleted list of important tool
 results. [`system/context/COMPACTION.md`](../../src/LlamaShears/content/templates/workspace/system/context/COMPACTION.md)
 is the ephemeral overlay (`kind=compaction`).
 
-After the summary lands, both template names are restored to the
-original agent config. The user pass then runs as if the live prompt
-had always been `[system?, summary, ...preserved]`.
-
-## Two-pass pipeline
-
-1. **Summarizer pass.** Overlay `COMPACTION.md` on `SystemPrompt` and
-   `PromptContext`, set `FrameworkPass`, `next()` (system + ephemeral +
-   infer + tools). Tool-calling rounds stay on this pass (cap 5).
-2. **User pass.** `CommitAsync` writes
-   `[system?, Assistant(summary), ...preserved]`, restore the original
-   config, `next()` again with the inbound batch. Idle / `/compact`
-   sets `CompactionOnly` and stops after commit.
+`CommitAsync` then writes `[system?, Assistant(summary), ...preserved]`
+onto the parent. The parent `next()` runs once as the user turn. Idle
+/ `/compact` sets `CompactionOnly` and stops after commit.
 
 [`CompactionAgentService`](../../src/LlamaShears.Core/CompactionAgentService.cs)
 invokes the pipeline with `CompactionOnly` (and `ForceCompaction` for
 `/compact`). It does not take `IAgentLock` itself — `AgentLockMiddleware`
-already holds it.
+already holds it. Nested sessions cannot spawn; a child that needs
+compaction fails loudly.
 
 ## Budget (auto-compaction)
 

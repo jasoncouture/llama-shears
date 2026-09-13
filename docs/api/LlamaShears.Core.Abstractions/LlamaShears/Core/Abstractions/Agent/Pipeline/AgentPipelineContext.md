@@ -52,12 +52,6 @@ cluster when the compacted prompt ends in a user turn.
 When `true`, skip the under-budget guard when
 deciding whether to compact.
 
-### `FrameworkPass`
-
-When `true`, the current `next` is a
-framework summarizer pass: do not persist model turns onto the
-live conversation and do not strip inbound image attachments.
-
 ### `Outcome`
 
 Result of the iteration runner. `null` until
