@@ -94,8 +94,6 @@ Before answering anything about prior work, decisions, dates, people, preference
 
 If this session is getting long and you still need room to work, you may call `llamashears__context_compact` to summarize older turns now. That keeps the last six eligible turns and cannot be undone.
 
-For structured local state (metrics, queues, caches), use `llamashears__sqlite_query` against a workspace-relative database file. Do not shell out to `sqlite3`.
-
 The recall flow:
 
 1. Run the most appropriate memory-search tool with the relevant query terms — preferring an external memory MCP server when one is configured, falling back to `llamashears__memory_search` otherwise. Run several queries in parallel when the topic has multiple plausible phrasings.
