@@ -59,8 +59,8 @@ IAgentPipeline
   4000 AgentLockMiddleware              before: IAgentLock.AcquireLockAsync; after: dispose lock
   5000 InterruptScopeMiddleware         before: linked CTS, context.TurnToken, IActiveTurnCancellation.Register; after: unregister
   6000 ToolResultEnqueueMiddleware      after: if Outcome is not interrupted, enqueue ToolResultTurns
-  7000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt (not persisted)
-  8000 CompactionMiddleware             before: publish inbound batch, build Prompt (system + turns), CompactAsync(force: false) → context.Prompt
+  7000 CompactionMiddleware             before: publish inbound batch; optionally overlay SystemPrompt + PromptContext to COMPACTION.md and next() a summarizer pass; restore config; set Prompt to live or [summary + last 6]
+  8000 SystemPromptMiddleware           before: render AgentConfig.SystemPrompt → context.SystemPrompt and prepend onto Prompt
   9000 EphemeralContextMiddleware       before: stamp IAgentStateTracker, memory search + prompt-context template → context.EphemeralContext; insert into Prompt
   10000 RunIterationMiddleware          before: copy SessionId from the data scope and ChannelId from the batch, IAgentIterationRunner.RunAsync → context.Outcome; then next; finally: StripImageAttachments (so a failed infer cannot leave images in live context)
   10500 ToolLoopLimitMiddleware         before: drop leftover Outcome.ToolCalls when IToolLoopBudget.IsFinal so dispatch does not re-enqueue after the last allowed round
@@ -86,13 +86,13 @@ Public types live under `LlamaShears.Core.Abstractions.Agent.Pipeline`. Register
 3. Observe the inbound batch on `IToolLoopBudget`. Discover MCP tools onto `context.Tools` unless this is the final counted iteration (then the catalog is empty). Run `IInferenceRunner.RunAsync` with empty-response retry (up to 3), passing `SessionId`, `CorrelationId`, and `ChannelId` so the runner does not read the prompt or the data scope. `TurnToken` cancels inference on interrupt.
 4. Return `IterationOutcome` with the model's `ToolCalls` (cleared when the budget is final) and empty `ToolResultTurns`. `ToolLoopLimitMiddleware` drops leftover calls as a backstop. `ToolDispatchMiddleware` executes the calls (including after interrupt, so history stays paired) and writes the result turns. `ToolResultEnqueueMiddleware` enqueues those turns only when the turn was not interrupted.
 
-Inbound batch persist and compaction happen before this call, in `CompactionMiddleware`; see [compaction.md](compaction.md). Compacting first keeps the trailing user turn and leaves room for the model's reply — compacting after would rewrite the store and drop that reply.
+Inbound batch persist and compaction happen before this call, in `CompactionMiddleware`; see [compaction.md](compaction.md). Compaction sits outside system and ephemeral so the summarizer `next()` re-renders from the overlaid `COMPACTION.md` names.
 
 `IAgentIterationRunner` knows nothing about the session queue, the agent lock, or interrupt subscriptions.
 
 ## Inference (still a separate engine)
 
-[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) streams `ILanguageModel.PromptAsync` and publishes `agent:message` / `agent:thought` / `agent:tool-call` fragments. It returns tool calls on `InferenceOutcome` and does **not** dispatch them. [`ToolDispatchMiddleware`](../../src/LlamaShears.Core/Pipeline/ToolDispatchMiddleware.cs) / [`ToolCallExecutor`](../../src/LlamaShears.Core/ToolCallExecutor.cs) run `IToolCallDispatcher` (cap 15 per turn) and persist tool-result turns. Compaction uses the same executor when a summary call emits tools. When compaction summarizes, it prepends `COMPACTION.md` before calling the runner.
+[`InferenceRunner`](../../src/LlamaShears.Core/InferenceRunner.cs) streams `ILanguageModel.PromptAsync` and publishes `agent:message` / `agent:thought` / `agent:tool-call` fragments. It returns tool calls on `InferenceOutcome` and does **not** dispatch them. [`ToolDispatchMiddleware`](../../src/LlamaShears.Core/Pipeline/ToolDispatchMiddleware.cs) / [`ToolCallExecutor`](../../src/LlamaShears.Core/ToolCallExecutor.cs) run `IToolCallDispatcher` (cap 15 per turn) and persist tool-result turns. Compaction uses the same dispatch path when a summary call emits tools. It only overlays `COMPACTION.md` on `AgentConfig`; system and ephemeral middleware render those templates.
 
 Do not fold stream / tool / event concerns back onto `Agent`.
 

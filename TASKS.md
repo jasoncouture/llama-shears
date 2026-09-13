@@ -59,12 +59,10 @@ home before they drift. Group by area; trim freely.
   contaminating the main agent's persistent context). Port the
   compactor's current bespoke session-setup onto this primitive once it
   lands. See [ephemeral sessions design](docs/design/ephemeral-sessions.md).
-- [ ] **Smarter compaction.** Safely preserve tools (tool-call ↔ tool-result
-  pairs, schema-anchored entries) and other invariants the current compactor
-  can break. Plus: keep the last user turn *and* every assistant/tool turn
-  that followed it, unless that suffix exceeds 25% of the model's max
-  allowed tokens — in which case fall back to the trailing-user-only
-  behavior. See [compaction design](docs/design/compaction.md#planned-preserve-the-trailing-user-turn-cluster).
+- [ ] **Compaction tail budget.** Last-6 eligible turns (with tool-cut
+  snap-back) already stay as real session turns; older history is one
+  transcript. Still missing: drop that suffix if it would consume more
+  than 25% of the window. See [compaction design](docs/design/compaction.md#still-planned).
 - [ ] **On-demand tool loading.** Stop sending the full tool catalog every
   turn — currently ~10 k tokens of system prompt before the conversation
   even starts. Replace with three meta-tools (`tool_search`, `tool_load`,

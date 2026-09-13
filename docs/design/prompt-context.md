@@ -11,7 +11,7 @@ Both are Scriban templates. The renderer is [`TemplateRenderer`](../../src/Llama
 
 ### What it is
 
-`SystemPromptMiddleware` calls `ISystemPromptProvider.GetAsync(config.SystemPrompt, scope.Snapshot(), context.TurnToken)` once per batch and stores the result as `AgentPipelineContext.SystemPrompt`. The iteration prepends that `System`-role turn at position 0 of `prompt.Turns`. The system prompt is *not* persisted — it's reconstructed every batch. Compaction renders `COMPACTION.md` itself and prepends that turn before calling `IInferenceRunner`.
+`SystemPromptMiddleware` calls `ISystemPromptProvider.GetAsync(config.SystemPrompt, scope.Snapshot(), context.TurnToken)` once per batch, stores the result as `AgentPipelineContext.SystemPrompt`, and prepends that `System`-role turn onto `context.Prompt` when the prompt is already set. The system prompt is *not* persisted — it's reconstructed every batch. Compaction only overlays `AgentConfig.SystemPrompt` to `COMPACTION.md` for the summarizer `next()`; it does not render that template itself.
 
 `AgentConfig.SystemPrompt` selects the template by name (no extension, no path separators). Default is `"DEFAULT"`.
 
@@ -53,11 +53,13 @@ The bundled prompt at [`src/LlamaShears/content/templates/workspace/system/DEFAU
 
 `SUBAGENT.md` is the system-prompt template for on-demand children spawned by `subagent_run` ([`ISubagentRunner`](../../src/public/LlamaShears.Core.Abstractions/Agent/ISubagentRunner.cs) overlays `SystemPrompt` / `PromptContext` to `SUBAGENT.md`). The bundled files live at [`src/LlamaShears/content/templates/workspace/system/SUBAGENT.md`](../../src/LlamaShears/content/templates/workspace/system/SUBAGENT.md) and [`src/LlamaShears/content/templates/workspace/system/context/SUBAGENT.md`](../../src/LlamaShears/content/templates/workspace/system/context/SUBAGENT.md). The child shares the parent's workspace; it is not a separate sandbox.
 
+`COMPACTION.md` is the same overlay pattern for the summarizer pass ([`CompactionMiddleware`](../../src/LlamaShears.Core/Pipeline/CompactionMiddleware.cs) sets both `SystemPrompt` and `PromptContext` to `COMPACTION.md`, then `next()`). Bundled files: [`system/COMPACTION.md`](../../src/LlamaShears/content/templates/workspace/system/COMPACTION.md) and [`system/context/COMPACTION.md`](../../src/LlamaShears/content/templates/workspace/system/context/COMPACTION.md). See [compaction.md](compaction.md).
+
 ## The ephemeral prompt-context block
 
 ### What it is
 
-`EphemeralContextMiddleware` stamps `IAgentStateTracker` from the inbound batch (so `PROMPT.md` can read `agent_state`), then calls `IPromptContextProvider.GetAsync(config.PromptContext, scope.Snapshot(), context.TurnToken)` once per batch (after a memory search over persisted turns plus the inbound batch), stores the result as `AgentPipelineContext.EphemeralContext`, and inserts that `SystemEphemeral`-roled turn once into the compacted `context.Prompt`, immediately before the last user cluster when the prompt ends in a user turn. Empty or whitespace templates leave both fields alone. A rendered template with no `Prompt` is a loud failure — compaction must run first. Empty-response retries keep that same inserted turn.
+`EphemeralContextMiddleware` stamps `IAgentStateTracker` from the inbound batch (so `PROMPT.md` can read `agent_state`), then calls `IPromptContextProvider.GetAsync(config.PromptContext, scope.Snapshot(), context.TurnToken)` once per batch (after a memory search over persisted turns plus the inbound batch), stores the result as `AgentPipelineContext.EphemeralContext`, and inserts that `SystemEphemeral`-roled turn once into `context.Prompt`, immediately before the last user cluster when the prompt ends in a user turn. Empty or whitespace templates leave both fields alone. A rendered template with no `Prompt` is a loud failure — compaction must set `Prompt` first. Compaction only overlays `AgentConfig.PromptContext` to `COMPACTION.md` for the summarizer pass, then restores the original name before the user pass. Empty-response retries skip a second insert when a `SystemEphemeral` turn is already present.
 
 This block is the framework's single coherent place to inject *everything that's true right now* without having to chain it through the persistent context:
 
