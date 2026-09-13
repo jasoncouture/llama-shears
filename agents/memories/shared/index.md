@@ -8,6 +8,7 @@
 - [Always use DateTimeOffset](feedback_always_datetimeoffset.md) — every timestamp is `DateTimeOffset`; convert at the boundary when an API returns `DateTime`
 - [Source-generated logging is the default](feedback_source_generated_logging.md) — use `[LoggerMessage]` partial methods; direct `ILogger.LogX` is a code smell (CA1873)
 - [Don't test log output](feedback_dont_test_logs.md) — tests don't assert on log messages/levels/properties; only requirement is "doesn't throw"
+- [System prompts do not catalog tools](feedback_dont_outline_tools_in_system_prompt.md) — `DEFAULT.md` and other system/ephemeral templates must not advertise named MCP tools; the harness already sends the catalog. Protocol (naming, parallel, prefer tools over CLI) can stay; skill injection is not a tool outline
 - [Every bug gets a regression test](feedback_regression_test_per_bug.md) — when a bug is found, the fix carries a test that fails on the bug and passes on the fix
 - [Tests focus on public contracts only](feedback_test_public_contracts_only.md) — exercise interfaces, not internals; no `InternalsVisibleTo`, no assertions on impl-specific details. Substitute deps via standard BCL seams (`TimeProvider`, etc.).
 - [Loud failures beat silent success](feedback_loud_failures_over_silent_success.md) — when a path can only be hit by a bug, surface the failure (403/exception/etc.) instead of falling through to a sentinel. Distinguish "didn't try" from "tried and failed".
