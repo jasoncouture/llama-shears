@@ -33,6 +33,7 @@ public sealed class ChatSession :
     private bool _showThoughts = true;
     private bool _showStreaming = true;
     private bool _showTools = true;
+    private bool _showDataContext;
     private bool _isCompacting;
     private bool _isProcessing;
 
@@ -139,6 +140,31 @@ public sealed class ChatSession :
                 }
 
                 _showTools = value;
+            }
+
+            Changed?.Invoke();
+        }
+    }
+
+    public bool ShowDataContext
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _showDataContext;
+            }
+        }
+        set
+        {
+            lock (_gate)
+            {
+                if (_showDataContext == value)
+                {
+                    return;
+                }
+
+                _showDataContext = value;
             }
 
             Changed?.Invoke();

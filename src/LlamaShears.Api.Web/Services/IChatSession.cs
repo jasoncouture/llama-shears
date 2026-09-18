@@ -7,7 +7,8 @@ namespace LlamaShears.Api.Web.Services;
 /// <summary>
 /// Per-circuit view of the active chat: which session is selected,
 /// what bubbles have arrived, and the user's display preferences
-/// for thoughts and streaming output. Components react to
+/// for thoughts, streaming output, tools, and the data-context
+/// drawer. Components react to
 /// <see cref="Changed"/> rather than polling.
 /// </summary>
 public interface IChatSession : IDisposable
@@ -40,6 +41,12 @@ public interface IChatSession : IDisposable
     /// placeholder while tools run. Setting fires <see cref="Changed"/>.
     /// </summary>
     bool ShowTools { get; set; }
+
+    /// <summary>
+    /// Whether the data-context drawer is open for the selected
+    /// session. Setting fires <see cref="Changed"/>.
+    /// </summary>
+    bool ShowDataContext { get; set; }
 
     /// <summary>
     /// True while the selected session is summarizing its context.

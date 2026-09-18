@@ -117,6 +117,22 @@ public sealed class ChatSessionTests
     }
 
     [Test]
+    public async Task ShowDataContextDefaultsOffAndFiresChangedOnce()
+    {
+        var fixture = await Fixture.CreateAsync();
+        var changes = 0;
+        fixture.Session.Changed += () => changes++;
+
+        await Assert.That(fixture.Session.ShowDataContext).IsFalse();
+
+        fixture.Session.ShowDataContext = true;
+        fixture.Session.ShowDataContext = true;
+
+        await Assert.That(fixture.Session.ShowDataContext).IsTrue();
+        await Assert.That(changes).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task ChangedFiresWhenProcessingStartsAndStops()
     {
         var fixture = await Fixture.CreateAsync();
