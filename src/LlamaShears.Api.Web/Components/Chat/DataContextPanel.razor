@@ -1,0 +1,89 @@
+@implements IDisposable
+@using LlamaShears.Core.Abstractions.Agent.Sessions
+@inject IChatSession Session
+@inject IDataContextInspector Inspector
+
+<aside class="data-context" id="data-context-panel" aria-label="Session data context">
+    <header class="data-context-header">
+        <div class="data-context-title">
+            <span>Data context</span>
+            @if (Session.SelectedSession is { } selected)
+            {
+                <span class="data-context-session">@selected</span>
+            }
+        </div>
+        <button type="button"
+                class="data-context-refresh"
+                title="Refresh data context"
+                aria-label="Refresh data context"
+                @onclick="Refresh">
+            <Icon Name="arrow-clockwise" />
+        </button>
+    </header>
+    @if (Session.SelectedSession is null)
+    {
+        <p class="data-context-empty">Select a session to inspect its data context.</p>
+    }
+    else if (_inspection.Error is { } error)
+    {
+        <p class="data-context-error">@error</p>
+    }
+    else if (_inspection.Entries.IsDefaultOrEmpty)
+    {
+        <p class="data-context-empty">Scope is empty.</p>
+    }
+    else
+    {
+        <dl class="data-context-list scroll-thin">
+            @foreach (var entry in _inspection.Entries)
+            {
+                <div class="data-context-item">
+                    <dt>
+                        <span class="data-context-key">@entry.Key</span>
+                        <span class="data-context-type">@entry.TypeName</span>
+                    </dt>
+                    <dd>
+                        <pre class="data-context-value">@entry.Value</pre>
+                    </dd>
+                </div>
+            }
+        </dl>
+    }
+</aside>
+
+@code {
+    private DataContextInspection _inspection = DataContextInspection.Empty(string.Empty);
+    private SessionId? _inspectedSession;
+
+    protected override void OnInitialized()
+    {
+        Session.Changed += HandleChanged;
+        Refresh();
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= HandleChanged;
+    }
+
+    private void HandleChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (!Equals(Session.SelectedSession, _inspectedSession))
+            {
+                Refresh();
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private void Refresh()
+    {
+        _inspectedSession = Session.SelectedSession;
+        _inspection = _inspectedSession is { } session
+            ? Inspector.Inspect(session)
+            : DataContextInspection.Empty(string.Empty);
+    }
+}

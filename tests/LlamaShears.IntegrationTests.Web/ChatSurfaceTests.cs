@@ -86,6 +86,18 @@ public sealed class ChatSurfaceTests
     }
 
     [Test]
+    public async Task ChatHeaderRendersADataContextToggleThatStartsOff()
+    {
+        using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);
+        var html = await response.Content.ReadAsStringAsync(CancellationToken.None);
+
+        await Assert.That(html).Contains("id=\"data-context-toggle\"");
+        await Assert.That(html).Contains("Toggle data context");
+        await Assert.That(html).Contains("M2.114 8.063V7.9");
+        await Assert.That(html).DoesNotContain("id=\"data-context-panel\"");
+    }
+
+    [Test]
     public async Task EmptyAgentsDirectoryRendersTheNoAgentsState()
     {
         using var response = await _sharedClient.GetAsync("/chat", CancellationToken.None);

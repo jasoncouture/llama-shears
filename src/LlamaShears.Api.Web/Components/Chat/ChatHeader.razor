@@ -73,6 +73,15 @@
                 @onclick="ToggleTools">
             <Icon Name="tools" />
         </button>
+        <button type="button"
+                id="data-context-toggle"
+                class="chat-header-button chat-header-toggle @(Session.ShowDataContext ? "is-on" : null)"
+                title="@(Session.ShowDataContext ? "Hide data context" : "Show data context")"
+                aria-label="Toggle data context"
+                aria-pressed="@(Session.ShowDataContext ? "true" : "false")"
+                @onclick="ToggleDataContext">
+            <Icon Name="braces" />
+        </button>
         <select id="message-limit-select"
                 class="chat-header-select"
                 title="Maximum messages to display"
@@ -114,6 +123,7 @@
         var thoughts = await ReadBoolAsync(ThoughtsKey(current));
         var streaming = await ReadBoolAsync(StreamingKey(current));
         var tools = await ReadBoolAsync(ToolsKey(current));
+        var dataContext = await ReadBoolAsync(DataContextKey(current));
         var limit = await ReadIntAsync(MessageLimitKey(current));
         if (thoughts is bool t)
         {
@@ -126,6 +136,10 @@
         if (tools is bool to)
         {
             Session.ShowTools = to;
+        }
+        if (dataContext is bool dc)
+        {
+            Session.ShowDataContext = dc;
         }
         if (limit is int l)
         {
@@ -207,6 +221,15 @@
         }
     }
 
+    private async Task ToggleDataContext()
+    {
+        Session.ShowDataContext = !Session.ShowDataContext;
+        if (Session.SelectedAgentId is { } id)
+        {
+            await WriteBoolAsync(DataContextKey(id), Session.ShowDataContext);
+        }
+    }
+
     private async Task OnMessageLimitChangedAsync(ChangeEventArgs e)
     {
         if (e.Value is not string raw || !int.TryParse(raw, out var value))
@@ -259,6 +282,8 @@
     private static string StreamingKey(string agentId) => $"llamashears:agent:{agentId}:showStreaming";
 
     private static string ToolsKey(string agentId) => $"llamashears:agent:{agentId}:showTools";
+
+    private static string DataContextKey(string agentId) => $"llamashears:agent:{agentId}:showDataContext";
 
     private static string MessageLimitKey(string agentId) => $"llamashears:agent:{agentId}:messageLimit";
 

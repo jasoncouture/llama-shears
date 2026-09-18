@@ -1,9 +1,21 @@
 .chat {
     display: grid;
-    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr;
     height: 100%;
     padding: 0 0 1rem;
     gap: 1rem;
+}
+
+.chat-main {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 1rem;
+    min-width: 0;
+    min-height: 0;
+}
+
+.chat.is-data-context-open {
+    grid-template-columns: 1fr minmax(18rem, 28rem);
 }
 
 .conversation {
@@ -14,4 +26,15 @@
     box-shadow: var(--shadow-sm);
     overflow: hidden;
     min-height: 0;
+}
+
+@media (max-width: 800px) {
+    .chat.is-data-context-open {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+    }
+
+    .chat.is-data-context-open ::deep(.data-context) {
+        max-height: 40vh;
+    }
 }

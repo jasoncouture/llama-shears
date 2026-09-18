@@ -1,5 +1,6 @@
 @page "/chat/{AgentId?}"
 @using LlamaShears.Core
+@implements IDisposable
 @inject IChatSession Session
 @inject IAgentDirectory Directory
 @inject IAgentInstanceRepository Repository
@@ -7,17 +8,31 @@
 
 <PageTitle>LlamaShears</PageTitle>
 
-<div class="chat">
-    <section class="conversation">
-        <ChatHeader />
-        <MessageList />
-    </section>
-    <Composer />
+<div class="chat @(_showDataContext ? "is-data-context-open" : null)">
+    <div class="chat-main">
+        <section class="conversation">
+            <ChatHeader />
+            <MessageList />
+        </section>
+        <Composer />
+    </div>
+    @if (_showDataContext)
+    {
+        <DataContextPanel />
+    }
 </div>
 
 @code {
     [Parameter]
     public string? AgentId { get; set; }
+
+    private bool _showDataContext;
+
+    protected override void OnInitialized()
+    {
+        _showDataContext = Session.ShowDataContext;
+        Session.Changed += HandleChanged;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -33,5 +48,21 @@
             return;
         }
         await Session.SelectSessionAsync(handle.SessionPath.Current, CancellationToken.None);
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= HandleChanged;
+    }
+
+    private void HandleChanged()
+    {
+        if (_showDataContext == Session.ShowDataContext)
+        {
+            return;
+        }
+
+        _showDataContext = Session.ShowDataContext;
+        _ = InvokeAsync(StateHasChanged);
     }
 }
