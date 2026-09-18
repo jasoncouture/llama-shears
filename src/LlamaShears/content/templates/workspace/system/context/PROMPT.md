@@ -6,6 +6,12 @@
   <current_datetime>{{ now | format_datetimeoffset 'yyyy-MM-ddTHH:mm:sszzz' }}</current_datetime>
   <timezone>{{ timezone }}</timezone>
   <day_of_week>{{ day_of_week }}</day_of_week>
+  <host_environment>
+    <os>{{ host.operating_system }}</os>
+    <hostname>{{ host.hostname }}</hostname>
+    <arch>{{ host.runtime_identifier }}</arch>
+    <user>{{ host.username }}</user>
+  </host_environment>
 {{- if agent_state.channel_id }}
   <channel>{{ agent_state.channel_id }}</channel>
 {{- end }}
