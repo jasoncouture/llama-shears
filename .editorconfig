@@ -43,6 +43,11 @@ dotnet_diagnostic.IDE0303.severity = error
 dotnet_diagnostic.IDE0304.severity = error
 dotnet_diagnostic.IDE0305.severity = error
 
+# SDK 11 also emits IDE0028 for that option, including `new Dictionary<,>(comparer)`
+# and `new HashSet<>(comparer)`. Those constructors are not collection expressions:
+# the comparer would be dropped. Keep IDE0028 off so only IDE0300–IDE0305 fail the build.
+dotnet_diagnostic.IDE0028.severity = none
+
 # IDE0001 ("Name can be simplified") surfaces as a warning. EnforceCodeStyleInBuild
 # does not run IDE0001 at build time (Microsoft docs: a handful of IDE-only style
 # rules are skipped on build for perf), so escalating to error is dishonest — the
