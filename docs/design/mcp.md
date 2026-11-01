@@ -25,7 +25,8 @@ Everything lives under [`Api/Authentication/`](../../src/LlamaShears.Api/Authent
             .WithTools<CompactionTools>()
             .WithTools<DiscordTools>()
             .WithTools<HttpTools>()
-            .WithTools<SqliteTools>();
+            .WithTools<SqliteTools>()
+            .WithTools<TimerTools>();
 ```
 
 Tool names follow a `<category>_<action>` convention so they group naturally in the model's tool listing:
@@ -40,6 +41,7 @@ Tool names follow a `<category>_<action>` convention so they group naturally in 
 | `session_list`, `session_send` | List the calling agent's live sessions; deliver a user-role turn to one of them. |
 | `subagent_run` | Spawn a one-shot child of the calling root session. See *Sub-agents* below. |
 | `context_compact` | Summarize older turns now (last six eligible kept). Same child path as automatic compaction; does not go through `/compact`. |
+| `timer_set` | Arm an in-memory one-shot timer that later wakes this session. See *Timers* below. |
 
 The internal listener is published into the host's outbound MCP registry under the fixed name `llamashears` (see [`ModelContextProtocolServerRegistry.BuildAllKnown`](../../src/LlamaShears.Core/Tools/ModelContextProtocol/ModelContextProtocolServerRegistry.cs)). An agent that whitelists `"llamashears"` (or omits the whitelist) sees the bundled tools as `llamashears__file_read`, `llamashears__memory_store`, etc.
 
@@ -75,6 +77,17 @@ Webhook URLs are secrets. Put them in `.local.env`, not in agent JSON.
 - **Errors.** SQL and IO failures populate `error` and return empty `columns` / `rows`. They do not throw out of the tool call.
 
 This is not a security sandbox. Agents already have `shell_run`. MCP allow/deny of the tool is the gate.
+
+### Timers
+
+[`TimerTools`](../../src/LlamaShears.Api/Tools/ModelContextProtocol/Timer/TimerTools.cs) is the bundled `timer_set` tool. It arms a one-shot timer and returns immediately. The call does not sleep.
+
+- **Delay.** `seconds` is an integer from 1 to 604800 (7 days).
+- **Wakeup.** When the delay elapses, the calling session receives a `ChannelMessage` on channel `timer`. The text is `Timer wakeup.` followed by a blank line and `prompt` verbatim. Intake stores that as a user-role turn, the same path as `session_send`.
+- **Prompt.** Write it as a directive to the future self, the same way a cron prompt is written. The wakeup is delivered to the calling session only.
+- **Cap.** 32 pending timers per session. Prompts longer than 8192 characters are refused.
+- **Lifetime.** Host memory only. Not written to disk. A process restart drops armed timers. `cron_schedule` is the durable schedule.
+- **Auth.** An authenticated agent session is required.
 
 ### Sub-agents
 

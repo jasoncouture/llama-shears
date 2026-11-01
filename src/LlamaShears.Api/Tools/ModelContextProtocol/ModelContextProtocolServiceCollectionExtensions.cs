@@ -9,6 +9,7 @@ using LlamaShears.Api.Tools.ModelContextProtocol.Shell;
 using LlamaShears.Api.Tools.ModelContextProtocol.Skills;
 using LlamaShears.Api.Tools.ModelContextProtocol.Sqlite;
 using LlamaShears.Api.Tools.ModelContextProtocol.Subagent;
+using LlamaShears.Api.Tools.ModelContextProtocol.Timer;
 using LlamaShears.Api.Tools.ModelContextProtocol.Todo;
 using LlamaShears.Core.Abstractions.Paths;
 using LlamaShears.Core.Paths;
@@ -31,6 +32,7 @@ public static class ModelContextProtocolServiceCollectionExtensions
         services.TryAddScoped<IAgentWorkspaceLocator, AgentWorkspaceLocator>();
         services.AddDiscordWebhookTools();
         services.AddHttpRequestTools();
+        services.AddTimerTools();
 
         services
             .AddPathExpander()
@@ -61,7 +63,8 @@ public static class ModelContextProtocolServiceCollectionExtensions
             .WithTools<CompactionTools>()
             .WithTools<DiscordTools>()
             .WithTools<HttpTools>()
-            .WithTools<SqliteTools>();
+            .WithTools<SqliteTools>()
+            .WithTools<TimerTools>();
 
         return services;
     }
